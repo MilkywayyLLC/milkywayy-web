@@ -1,0 +1,1571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Milkywayy Site Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout concept: one brand, two page tones. Cinematic black pages for the Dubai production work;
+   gallery-white pages for editing and AI, where clients judge detail and want calm and clarity.
+   Type and components stay identical so the switch reads as one studio, not two sites. */
+:root{
+  --black:#111111; --paper:#EDEDEA; --champagne:#E6D3A3; --white:#F5F4F0; --ink:#111110; --brass:#7A5C2E; --rec:#E5484D;
+  --f-display:"Archivo","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-mono:"DM Mono",ui-monospace,Menlo,monospace;
+  --ui-bg:#1b1b1b; --ui-fg:#e9e7e2; --ui-muted:#9a968e; --ui-line:#333;
+  /* default tone tokens (dark) */
+  --bg:#111111; --surface:#191919; --surface-2:#222120; --line:#2E2D2B; --fg:#EDEDEA; --muted:#8E8C87;
+  --btn:#E6D3A3; --btn-ink:#111111; --acc:#E6D3A3; --hl-bg:transparent; --hl-fg:#E6D3A3;
+  color-scheme:dark;
+}
+[data-tone="dark"]{--bg:#111111;--surface:#191919;--surface-2:#222120;--line:#2E2D2B;--fg:#EDEDEA;--muted:#8E8C87;--btn:#E6D3A3;--btn-ink:#111111;--acc:#E6D3A3;--hl-bg:transparent;--hl-fg:#E6D3A3;color-scheme:dark}
+[data-tone="light"]{--bg:#F5F4F0;--surface:#FFFFFF;--surface-2:#ECE9E2;--line:#DAD6CD;--fg:#111110;--muted:#5F5A52;--btn:#111110;--btn-ink:#F5F4F0;--acc:#7A5C2E;--hl-bg:#E6D3A3;--hl-fg:#111110;color-scheme:light}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;background:#111111}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;font-variation-settings:"wdth" 100}
+a{color:inherit}
+img{max-width:100%;display:block}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- review strip (mockup chrome only) ---------- */
+.review{background:var(--ui-bg);color:var(--ui-fg);border-bottom:1px solid var(--ui-line);font:500 12px/1 var(--f-mono)}
+.review-in{max-width:1240px;margin:0 auto;padding:8px 20px;display:flex;gap:10px;align-items:center;overflow-x:auto;scrollbar-width:none}
+.review-in::-webkit-scrollbar{display:none}
+.review .lbl{color:var(--ui-muted);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.review a{white-space:nowrap;text-decoration:none;padding:6px 10px;border:1px solid var(--ui-line);border-radius:999px;display:flex;gap:6px;align-items:center;letter-spacing:.02em}
+.review a[aria-current="page"]{background:var(--ui-fg);color:var(--ui-bg);border-color:var(--ui-fg)}
+.review .t{width:9px;height:9px;border-radius:50%;border:1px solid currentColor}
+.review .t.d{background:#111}.review .t.l{background:#F5F4F0}
+
+/* ---------- base ---------- */
+.w{max-width:1200px;margin:0 auto;padding-inline:24px}
+@media (max-width:400px){.w{padding-inline:16px}}
+.sec{padding-block:clamp(64px,9vw,120px)}
+.sec.tight{padding-block:clamp(40px,6vw,72px)}
+.alt{background:var(--surface-2)}
+.eb{font:500 12px/1.3 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;align-items:center}
+.eb .rec{width:7px;height:7px;border-radius:50%;background:var(--rec);animation:blink 1.4s steps(2) infinite}
+@keyframes blink{50%{opacity:.2}}
+.d{font-family:var(--f-display);font-weight:800;text-transform:uppercase;font-variation-settings:"wdth" 68;letter-spacing:-.005em;line-height:.96;margin:0;text-wrap:balance}
+.h1{font-size:clamp(3rem,8.4vw,7.4rem)}
+/* Hero titles: always exactly two lines. Each line never wraps; size is fitted to the copy column. */
+.fit{container-type:inline-size;min-width:0}
+.h1.two{font-size:min(calc(100cqi / (var(--ch,14) * .54)), 7.6rem);line-height:.92}
+.h1.two .ln{display:block;white-space:nowrap}
+.h2{font-size:clamp(2.1rem,4.6vw,3.8rem)}
+.h3{font-size:clamp(1.4rem,2.1vw,1.8rem);font-variation-settings:"wdth" 74;font-weight:700;line-height:1.05}
+.hl{color:var(--hl-fg);background:var(--hl-bg);box-decoration-break:clone;-webkit-box-decoration-break:clone;padding:0 .08em}
+[data-tone="light"] .hl{padding:0 .12em}
+.lede{font-size:clamp(1.05rem,1.4vw,1.25rem);color:var(--muted);max-width:56ch;margin:0;line-height:1.5}
+.muted{color:var(--muted)}
+.mono{font-family:var(--f-mono)}
+.tab-num{font-variant-numeric:tabular-nums}
+.stack{display:grid;gap:20px}
+.head{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:24px 48px;align-items:end;margin-bottom:clamp(32px,4vw,56px)}
+.head > *{min-width:0}
+.head .stack{gap:16px}
+@media (max-width:820px){.head{grid-template-columns:1fr}}
+.sample{display:inline-block;font:500 10.5px/1.5 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px dashed var(--line);padding:4px 7px;justify-self:start;max-width:100%}
+.hero > *,.p-hero > *,.pp-hero > *,.av-hero > *,.formwrap > *,.pb > *,.builder > *,.ba-gal > *,.dash > *,.faq > *,.founder > *,.band-in > *,.door > *{min-width:0}
+.qsteps,.cur,.toggle{flex-wrap:wrap}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 24px;font:600 15px/1 var(--f-body);text-decoration:none;border:1px solid transparent;cursor:pointer;transition:transform .15s ease,background .2s ease,border-color .2s ease,color .2s ease;white-space:nowrap}
+.btn:hover{transform:translateY(-1px)}
+.btn-p{background:var(--btn);color:var(--btn-ink)}
+.btn-g{border-color:var(--line);background:transparent;color:var(--fg)}
+.btn-g:hover{border-color:var(--fg)}
+.btn-s{min-height:42px;padding:0 16px;font-size:14px}
+.btn svg{flex:0 0 auto}
+.lnk{color:var(--acc);font-weight:600;text-decoration:none;display:inline-flex;gap:8px;align-items:center}
+.lnk:hover{text-decoration:underline;text-underline-offset:4px}
+.ctas{display:flex;gap:12px;flex-wrap:wrap}
+
+/* ---------- header ---------- */
+.hdr{position:sticky;top:env(safe-area-inset-top,0px);z-index:40;background:var(--bg);border-bottom:1px solid var(--line);transition:background .3s ease}
+.hdr-in{height:72px;display:flex;align-items:center;gap:28px}
+.logo{display:flex;align-items:center;gap:9px;text-decoration:none;font-family:var(--f-display);font-weight:800;font-size:22px;letter-spacing:.02em;text-transform:uppercase;font-variation-settings:"wdth" 72}
+.logo i{width:9px;height:9px;border-radius:50%;background:var(--rec);animation:blink 1.4s steps(2) infinite}
+.nav{display:flex;gap:4px;font-size:14.5px;font-weight:500}
+.nav a{text-decoration:none;color:var(--muted);padding:8px 10px}
+.nav a:hover,.nav a[aria-current="page"]{color:var(--fg)}
+.nav a[aria-current="page"]{box-shadow:inset 0 -2px 0 var(--acc)}
+.hdr-r{margin-left:auto;display:flex;align-items:center;gap:10px}
+.login{font-size:14px;color:var(--muted);text-decoration:none;margin-right:4px}
+.icon-btn{width:42px;height:42px;display:inline-grid;place-items:center;border:1px solid var(--line);background:transparent;color:var(--fg);text-decoration:none;cursor:pointer}
+.menu-btn{display:none}
+@media (max-width:1020px){.nav,.login{display:none}.menu-btn{display:inline-grid}.hdr .wa-h{display:none}}
+.mnav{position:fixed;inset:0;z-index:60;background:var(--bg);padding:calc(env(safe-area-inset-top,0px) + 20px) 24px 24px;display:flex;flex-direction:column;gap:6px}
+.mnav a.item{font-family:var(--f-display);text-transform:uppercase;font-weight:800;font-variation-settings:"wdth" 70;font-size:40px;line-height:1.1;text-decoration:none;padding:6px 0;border-bottom:1px solid var(--line)}
+.mnav .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+
+/* ---------- media frames ---------- */
+.fr{position:relative;overflow:hidden;isolation:isolate;max-width:100%;background:#222}
+.fr::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.18),transparent 25%,transparent 60%,rgba(0,0,0,.5));z-index:1;pointer-events:none}
+.fr.clean::after{display:none}
+.corners{position:absolute;inset:14px;z-index:2;pointer-events:none;background:
+ linear-gradient(#F5F4F0,#F5F4F0) left top/24px 1.5px no-repeat,linear-gradient(#F5F4F0,#F5F4F0) left top/1.5px 24px no-repeat,
+ linear-gradient(#F5F4F0,#F5F4F0) right top/24px 1.5px no-repeat,linear-gradient(#F5F4F0,#F5F4F0) right top/1.5px 24px no-repeat,
+ linear-gradient(#F5F4F0,#F5F4F0) left bottom/24px 1.5px no-repeat,linear-gradient(#F5F4F0,#F5F4F0) left bottom/1.5px 24px no-repeat,
+ linear-gradient(#F5F4F0,#F5F4F0) right bottom/24px 1.5px no-repeat,linear-gradient(#F5F4F0,#F5F4F0) right bottom/1.5px 24px no-repeat}
+.tc{position:absolute;top:26px;right:28px;z-index:3;font:500 11px/1 var(--f-mono);letter-spacing:.08em;color:#F5F4F0;display:flex;gap:7px;align-items:center}
+.tc i{width:7px;height:7px;border-radius:50%;background:var(--rec);animation:blink 1.4s steps(2) infinite}
+.tl{position:absolute;top:26px;left:28px;z-index:3;font:500 11px/1 var(--f-mono);letter-spacing:.08em;color:#F5F4F0}
+.tag{position:absolute;left:28px;bottom:24px;right:28px;z-index:3;font:500 11.5px/1.3 var(--f-mono);letter-spacing:.06em;color:#F5F4F0;text-transform:uppercase;display:flex;justify-content:space-between;gap:12px}
+.fr.sm .tag{left:14px;bottom:12px;right:14px;font-size:10.5px}
+.play{position:absolute;inset:0;margin:auto;width:66px;height:66px;z-index:3;border:1.5px solid #F5F4F0;display:grid;place-items:center;background:rgba(17,17,17,.25);backdrop-filter:blur(2px)}
+.play::before{content:"";border-left:15px solid #F5F4F0;border-top:9px solid transparent;border-bottom:9px solid transparent;margin-left:4px}
+.fr.sm .play{width:46px;height:46px}
+.fr.sm .play::before{border-left-width:11px;border-top-width:7px;border-bottom-width:7px}
+
+/* placeholder photography (replace with real media) */
+.ph-dusk{background:radial-gradient(30% 16% at 72% 64%,rgba(255,196,120,.55),transparent 70%),linear-gradient(180deg,#1b2238 0%,#48436a 34%,#c98a62 58%,#e7b27a 63%,#2a211c 64%,#15110f 100%)}
+.ph-dusk::before{content:"";position:absolute;left:6%;right:8%;bottom:36%;height:36%;z-index:0;background:linear-gradient(#0f0d0c,#0f0d0c) 0 100%/7% 60% no-repeat,linear-gradient(#141110,#141110) 12% 100%/5% 94% no-repeat,linear-gradient(#0f0d0c,#0f0d0c) 22% 100%/8% 45% no-repeat,linear-gradient(#121010,#121010) 38% 100%/4% 100% no-repeat,linear-gradient(#0f0d0c,#0f0d0c) 50% 100%/9% 55% no-repeat,linear-gradient(#141110,#141110) 66% 100%/6% 80% no-repeat,linear-gradient(#0f0d0c,#0f0d0c) 82% 100%/8% 40% no-repeat,linear-gradient(#121010,#121010) 100% 100%/5% 66% no-repeat}
+.ph-int{background:radial-gradient(45% 55% at 78% 30%,rgba(255,240,214,.95),transparent 62%),linear-gradient(90deg,transparent 58%,rgba(255,246,228,.35) 58% 61%,transparent 61% 76%,rgba(255,246,228,.35) 76% 79%,transparent 79%),linear-gradient(170deg,#d8c19e 0%,#b39068 50%,#6e5238 78%,#3b2c20 100%)}
+.ph-villa{background:radial-gradient(60% 30% at 50% 0%,rgba(255,255,255,.7),transparent 70%),linear-gradient(180deg,#8fb8d0 0%,#cfe0e8 42%,#efe7da 43%,#e4d7c1 58%,#5aa7c4 59%,#3f8fb0 78%,#d9ccb4 79%,#bfae8e 100%)}
+.ph-villa-dusk{background:radial-gradient(40% 20% at 50% 62%,rgba(255,200,130,.6),transparent 70%),linear-gradient(180deg,#1c2442 0%,#5b4a78 36%,#e39a6a 42%,#3c3140 43%,#57495a 58%,#2f6f8f 59%,#1f4e66 78%,#3a3230 79%,#241f1d 100%)}
+.ph-villa-grey{background:linear-gradient(180deg,#b9bcbf 0%,#d4d5d5 42%,#e9e3d8 43%,#ddd1bd 58%,#7ea0ad 59%,#6b8f9d 78%,#d3c7b0 79%,#b8a88a 100%)}
+.ph-night{background:radial-gradient(28% 34% at 26% 44%,rgba(255,180,110,.75),transparent 70%),radial-gradient(22% 26% at 70% 38%,rgba(255,210,150,.45),transparent 70%),linear-gradient(180deg,#1d1915 0%,#2d251e 70%,#15120f 100%)}
+.ph-kitchen{background:linear-gradient(180deg,transparent 62%,#2b2724 62% 64%,transparent 64%),radial-gradient(50% 40% at 30% 20%,rgba(255,250,240,.9),transparent 70%),linear-gradient(90deg,#e8e2d8 0 40%,#cfc5b6 40% 42%,#e8e2d8 42%),linear-gradient(180deg,#efeae2,#b9ad9b)}
+.ph-bath{background:radial-gradient(35% 45% at 70% 35%,rgba(255,255,255,.9),transparent 70%),linear-gradient(90deg,#d9d4cc 0 55%,#c2b8aa 55% 56%,#e2ddd5 56%),linear-gradient(180deg,#ece8e1,#a89c8a)}
+.ph-aerial{background:radial-gradient(18% 14% at 40% 55%,#3f8fb0 96%,transparent),linear-gradient(135deg,transparent 45%,#d8cfbf 45% 48%,transparent 48%),linear-gradient(45deg,transparent 60%,#d8cfbf 60% 62%,transparent 62%),linear-gradient(160deg,#7c8a5c,#a9a079 50%,#c9b98f)}
+.ph-clinic{background:radial-gradient(35% 45% at 30% 40%,rgba(255,255,255,.85),transparent 70%),linear-gradient(180deg,#e9eef0 0%,#d3dde0 55%,#b9c7cb 56%,#9fb0b5 100%)}
+.ph-salon{background:radial-gradient(30% 40% at 65% 35%,rgba(255,210,160,.7),transparent 70%),linear-gradient(90deg,#2a2420 0 30%,#3b322b 30% 70%,#2a2420 70%),linear-gradient(180deg,#3a302a,#1a1512)}
+.ph-adam{background:radial-gradient(9% 12% at 50% 34%,#7a604c 96%,transparent 100%),radial-gradient(10.5% 5% at 50% 23%,#2b2622 96%,transparent 100%),radial-gradient(24% 22% at 50% 84%,#3e4a45 96%,transparent 100%),radial-gradient(14% 20% at 50% 80%,#e9dfcf 96%,transparent 100%),radial-gradient(50% 55% at 50% 45%,#f4ecdd,transparent 75%),linear-gradient(90deg,#8aa07e 0 12%,transparent 12% 88%,#7f9873 88%),linear-gradient(180deg,#f6f2ea,#ddd4c4)}
+.ph-av2{background:radial-gradient(9% 12% at 50% 36%,#c89b7b 96%,transparent 100%),radial-gradient(12% 9% at 50% 27%,#3a2a22 96%,transparent 100%),radial-gradient(24% 22% at 50% 86%,#f1efe9 96%,transparent 100%),linear-gradient(180deg,#dfe7ea,#b8c6cc)}
+.ph-av3{background:radial-gradient(9% 12% at 50% 36%,#8d6a52 96%,transparent 100%),radial-gradient(11% 6% at 50% 25%,#1d1a18 96%,transparent 100%),radial-gradient(24% 22% at 50% 86%,#1f2a3a 96%,transparent 100%),linear-gradient(180deg,#2c2a27,#4a4540)}
+.ph-av4{background:radial-gradient(9% 12% at 50% 36%,#e0b89a 96%,transparent 100%),radial-gradient(13% 12% at 50% 30%,#6b4a2f 96%,transparent 100%),radial-gradient(24% 22% at 50% 86%,#b5523b 96%,transparent 100%),linear-gradient(180deg,#f3e3cf,#e2c9a8)}
+
+/* ---------- proof strip ---------- */
+.proof{border-block:1px solid var(--line)}
+.proof-in{display:flex;align-items:center;gap:16px 40px;flex-wrap:wrap;padding-block:20px}
+.clients{display:flex;gap:10px 32px;flex-wrap:wrap;align-items:center;flex:1 1 300px;min-width:0}
+.clients span{font-family:var(--f-display);font-weight:800;text-transform:uppercase;font-variation-settings:"wdth" 80;font-size:17px;letter-spacing:.04em;color:var(--muted)}
+.rating{display:flex;gap:12px;align-items:center}
+.rating b{font-family:var(--f-display);font-weight:800;font-size:30px;font-variation-settings:"wdth" 70;line-height:1}
+.rating small{display:block;font:500 11px/1.4 var(--f-mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.stars{color:var(--acc);letter-spacing:2px;font-size:13px}
+
+/* ---------- HOME ---------- */
+.hero{padding-block:clamp(40px,6vw,72px) clamp(40px,5vw,64px);display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:clamp(32px,4vw,64px);align-items:end}
+.hero-copy{display:grid;gap:26px;min-width:0}
+.hero .fr{aspect-ratio:4/5}
+@media (max-width:900px){.hero{grid-template-columns:1fr}.hero .fr{aspect-ratio:4/3}}
+.need{border:1px solid var(--line);display:grid}
+.need-h{font:500 11.5px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:14px 18px;border-bottom:1px solid var(--line)}
+.need a{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center;padding:16px 18px;text-decoration:none;border-bottom:1px solid var(--line);transition:background .2s ease}
+.need a:last-child{border-bottom:0}
+.need a:hover{background:var(--surface)}
+.need a:hover .arr{transform:translateX(4px);color:var(--acc)}
+.need .k{font:500 11px/1 var(--f-mono);color:var(--muted);letter-spacing:.08em;width:64px}
+.need b{font-weight:600;font-size:16px;display:block}
+.need small{display:block;color:var(--muted);font-size:13.5px}
+.need .arr{transition:transform .2s ease;font-size:18px}
+
+.doors{display:grid;border-top:1px solid var(--line)}
+.door{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(24px,4vw,64px);padding-block:clamp(32px,4vw,48px);border-bottom:1px solid var(--line);align-items:center;text-decoration:none}
+.door-copy{display:grid;gap:14px;min-width:0}
+.door .k{font:500 12px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--acc)}
+.door p{margin:0;color:var(--muted);max-width:46ch}
+.door .price{font:500 13px/1.4 var(--f-mono);letter-spacing:.04em}
+.door .price b{color:var(--fg);font-weight:500}
+.door-media{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;min-width:0}
+.door-media .fr{aspect-ratio:3/4}
+.door-media .fr:first-child{aspect-ratio:auto}
+.door:hover .lnk{text-decoration:underline;text-underline-offset:4px}
+.pill{display:inline-flex;gap:8px;align-items:center;font:500 10.5px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);padding:6px 8px;width:max-content;color:var(--muted)}
+.pill i{width:8px;height:8px;border-radius:50%;border:1px solid var(--muted)}
+.pill i.l{background:#F5F4F0}
+@media (max-width:860px){.door{grid-template-columns:1fr}.door-media{order:-1}}
+
+.reels{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(200px,1fr);gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:10px;scrollbar-width:thin}
+.reel{scroll-snap-align:start;display:grid;gap:10px;min-width:0}
+.reel .fr{aspect-ratio:9/16}
+.reel figcaption{display:flex;justify-content:space-between;gap:8px;font-size:14px;font-weight:500}
+.reel figcaption span{font:400 12px/1.5 var(--f-mono);color:var(--muted)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font:500 13px/1 var(--f-body);padding:10px 14px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--muted)}
+.chip[aria-pressed="true"]{color:var(--fg);border-color:var(--fg)}
+
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-block:1px solid var(--line)}
+.stat{padding:28px 24px;display:grid;gap:6px;min-width:0}
+.stat + .stat{border-left:1px solid var(--line)}
+.stat b{font-family:var(--f-display);font-weight:800;font-variation-settings:"wdth" 66;font-size:clamp(2.6rem,5vw,4.2rem);line-height:.9;text-transform:uppercase}
+.stat span{font:500 12px/1.4 var(--f-mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+@media (max-width:760px){.stats{grid-template-columns:1fr 1fr}.stat:nth-child(3){border-left:0}.stat:nth-child(n+3){border-top:1px solid var(--line)}}
+
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line)}
+.steps.five{grid-template-columns:repeat(5,minmax(0,1fr))}
+.step{padding:26px 22px 4px 0;display:grid;gap:10px;align-content:start;min-width:0}
+.step + .step{padding-left:22px;border-left:1px solid var(--line)}
+.step .n{font:500 12px/1 var(--f-mono);color:var(--acc);letter-spacing:.08em}
+.step p{margin:0;color:var(--muted);font-size:15px}
+@media (max-width:900px){.steps,.steps.five{grid-template-columns:1fr 1fr}.step:nth-child(odd){padding-left:0;border-left:0}.step:nth-child(n+3){border-top:1px solid var(--line)}}
+@media (max-width:520px){.steps,.steps.five{grid-template-columns:1fr}.step + .step{padding-left:0;border-left:0;border-top:1px solid var(--line)}}
+
+.founder{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(28px,5vw,80px);align-items:center}
+.founder .fr{aspect-ratio:4/5}
+.founder .fr img{width:100%;height:100%;object-fit:cover}
+.founder blockquote{margin:0;font-family:var(--f-display);font-weight:600;text-transform:none;font-variation-settings:"wdth" 86;font-size:clamp(1.4rem,2.5vw,2.1rem);line-height:1.22;letter-spacing:-.01em;text-wrap:pretty}
+.sig{display:flex;gap:14px;align-items:center;font:500 13px/1.4 var(--f-mono);color:var(--muted)}
+.sig b{color:var(--fg);font-weight:500;display:block}
+@media (max-width:820px){.founder{grid-template-columns:1fr}.founder .fr{max-width:420px}}
+
+.quotes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.q{border:1px solid var(--line);background:var(--surface);padding:26px;display:grid;gap:18px;align-content:space-between;min-width:0}
+.q p{margin:0;font-size:17px;line-height:1.5}
+.q cite{font:500 12px/1.4 var(--f-mono);color:var(--muted);font-style:normal;letter-spacing:.03em}
+@media (max-width:860px){.quotes{grid-template-columns:1fr}}
+
+.faq{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(24px,5vw,80px);align-items:start}
+.faq-list{border-top:1px solid var(--line)}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{list-style:none;cursor:pointer;padding:22px 40px 22px 0;position:relative;font-weight:600;font-size:17px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";position:absolute;right:4px;top:18px;font:400 24px/1 var(--f-mono);color:var(--acc)}
+.faq details[open] summary::after{content:"–"}
+.faq details p{margin:0 0 22px;color:var(--muted);max-width:62ch}
+@media (max-width:820px){.faq{grid-template-columns:1fr}}
+
+.band{padding-block:clamp(56px,7vw,96px)}
+[data-tone="dark"] .band{background:var(--champagne);color:var(--black)}
+[data-tone="dark"] .band .btn-p{background:var(--black);color:var(--champagne)}
+[data-tone="dark"] .band .btn-g{border-color:rgba(17,17,17,.35);color:var(--black)}
+[data-tone="light"] .band{background:var(--black);color:var(--paper)}
+[data-tone="light"] .band .btn-p{background:var(--champagne);color:var(--black)}
+[data-tone="light"] .band .btn-g{border-color:#3a3936;color:var(--paper)}
+[data-tone="light"] .band .muted{color:#a8a49c}
+[data-tone="dark"] .band .muted{color:#4a4336}
+.band-in{display:grid;grid-template-columns:minmax(0,1.3fr) auto;gap:28px;align-items:end}
+.band .h2{font-size:clamp(2.2rem,5.4vw,4.4rem)}
+.band p{margin:14px 0 0;max-width:48ch}
+@media (max-width:820px){.band-in{grid-template-columns:1fr}}
+
+/* ---------- PRODUCTION ---------- */
+.p-hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(28px,4vw,64px);align-items:center;padding-block:clamp(40px,6vw,72px)}
+.p-hero .stack{gap:24px}
+.anchor{display:flex;gap:10px 24px;flex-wrap:wrap;font:500 13px/1.4 var(--f-mono);letter-spacing:.03em;color:var(--muted)}
+.anchor b{color:var(--fg);font-weight:500}
+.trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:end}
+.trio .fr{aspect-ratio:9/16}
+.trio .fr:nth-child(2){transform:translateY(-28px)}
+@media (max-width:900px){.p-hero{grid-template-columns:1fr}}
+.paths{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.path{border:1px solid var(--line);padding:clamp(22px,3vw,32px);display:grid;gap:14px;text-decoration:none;background:var(--surface);align-content:start;transition:border-color .2s ease}
+.path:hover{border-color:var(--fg)}
+.path.on{border-color:var(--acc)}
+.path .k{font:500 11.5px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--acc)}
+.path p{margin:0;color:var(--muted)}
+@media (max-width:760px){.paths{grid-template-columns:1fr}}
+.incl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.incl div{padding:24px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:grid;gap:8px;min-width:0}
+.incl .k{font:500 11.5px/1 var(--f-mono);letter-spacing:.08em;color:var(--acc);text-transform:uppercase}
+.incl b{font-weight:600;font-size:17px}
+.incl p{margin:0;color:var(--muted);font-size:14.5px}
+@media (max-width:820px){.incl{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.incl{grid-template-columns:1fr}}
+
+.toggle{display:inline-flex;border:1px solid var(--line);padding:3px;gap:3px}
+.toggle button{border:0;background:transparent;padding:10px 14px;cursor:pointer;font:500 13px/1 var(--f-body);color:var(--muted)}
+.toggle button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.toggle .save{font:500 10.5px/1 var(--f-mono);color:var(--acc);margin-left:6px}
+.toggle button[aria-pressed="true"] .save{color:inherit;opacity:.7}
+.tiers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:24px}
+.tier{border:1px solid var(--line);background:var(--surface);padding:28px;display:grid;gap:18px;align-content:start;min-width:0;position:relative}
+.tier.feat{border-color:var(--acc)}
+.tier.feat::before{content:"Most chosen";position:absolute;top:-1px;right:-1px;background:var(--acc);color:var(--bg);font:500 10.5px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;padding:7px 9px}
+.tier .nm{font:500 12px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tier .pr{font-family:var(--f-display);font-weight:800;font-variation-settings:"wdth" 68;font-size:clamp(2.4rem,3.6vw,3.2rem);line-height:.95;font-variant-numeric:tabular-nums;text-transform:uppercase}
+.tier .pr small{font:500 13px/1 var(--f-mono);color:var(--muted);letter-spacing:.02em;margin-left:4px}
+.tier .was{font:500 12px/1 var(--f-mono);color:var(--muted);min-height:12px}
+.tier .was s{opacity:.8}
+.tier ul{list-style:none;margin:0;padding:0;display:grid;gap:10px;font-size:15px}
+.tier li{display:grid;grid-template-columns:10px 1fr;gap:12px}
+.tier li::before{content:"";width:6px;height:6px;margin-top:9px;background:var(--acc)}
+.tier .fit{font-size:13.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+.tnote{margin:18px 0 0;color:var(--muted);font-size:14.5px}
+.pk-band{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:32px 64px;border:1px solid var(--line);background:var(--surface);padding:clamp(24px,4vw,48px)}
+.pk-band > *{min-width:0}
+.chips-static{display:flex;flex-wrap:wrap;gap:8px}
+.chips-static span{border:1px solid var(--line);padding:9px 12px;font:500 12px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+@media (max-width:820px){.pk-band{grid-template-columns:1fr}}
+@media (max-width:900px){.tiers{grid-template-columns:1fr}}
+
+.builder{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:16px;align-items:start}
+.b-controls{border:1px solid var(--line);background:var(--surface)}
+.b-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:20px 22px;border-bottom:1px solid var(--line)}
+.b-row:last-child{border-bottom:0}
+.b-row b{font-weight:600;display:block}
+.b-row small{color:var(--muted);font-size:13.5px}
+.stepper{display:flex;align-items:center;border:1px solid var(--line)}
+.stepper button{width:42px;height:42px;border:0;background:transparent;cursor:pointer;font-size:18px}
+.stepper button:hover{background:var(--surface-2)}
+.stepper output{min-width:48px;text-align:center;font:500 16px/1 var(--f-mono);font-variant-numeric:tabular-nums}
+.b-sum{border:1px solid var(--acc);background:var(--surface);padding:26px;display:grid;gap:16px;position:sticky;top:96px}
+.b-sum .tot{font-family:var(--f-display);font-weight:800;font-variation-settings:"wdth" 66;font-size:clamp(2.6rem,4vw,3.6rem);line-height:.9;font-variant-numeric:tabular-nums}
+.b-sum dl{margin:0;display:grid;gap:8px;font-size:14px}
+.b-sum dl div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dashed var(--line);padding-bottom:8px}
+.b-sum dt{color:var(--muted)}
+.b-sum dd{margin:0;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.tip{font-size:14px;border-left:2px solid var(--acc);padding:4px 0 4px 12px;color:var(--fg)}
+@media (max-width:900px){.builder{grid-template-columns:1fr}.b-sum{position:static}}
+
+/* forms */
+.formwrap{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:clamp(28px,5vw,80px);align-items:start}
+.direct{display:grid;gap:0;border-top:1px solid var(--line)}
+.direct div{display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);font-size:15px;flex-wrap:wrap}
+.direct span{font:500 12px/1.6 var(--f-mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.form{border:1px solid var(--line);background:var(--surface);padding:clamp(22px,3vw,34px);display:grid;gap:16px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:560px){.row2{grid-template-columns:1fr}}
+.fld{display:grid;gap:7px;font-size:13px;font-weight:600;color:var(--muted)}
+.fld input,.fld select,.fld textarea{font:400 15.5px/1.4 var(--f-body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:0;padding:13px 14px;width:100%}
+.fld textarea{min-height:96px;resize:vertical}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--acc)}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px;padding:0}
+.opts{display:flex;gap:8px;flex-wrap:wrap}
+.opt{position:relative}
+.opt input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.opt span{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--line);padding:11px 14px;font-size:14px;color:var(--fg);background:var(--bg)}
+.opt input:checked + span{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.opt input:focus-visible + span{outline:2px solid var(--acc);outline-offset:2px}
+.opt.card span{display:grid;gap:4px;padding:14px 16px;min-width:150px}
+.opt.card small{color:var(--muted);font-size:12.5px}
+.fine{font-size:12.5px;color:var(--muted);margin:0}
+.done{border:1px solid var(--acc);padding:22px;display:grid;gap:10px;background:var(--bg)}
+.done b{font-family:var(--f-display);text-transform:uppercase;font-variation-settings:"wdth" 70;font-weight:800;font-size:26px}
+.wa-preview{white-space:pre-line;font:400 14px/1.5 var(--f-body);background:#DCF8C6;color:#111;padding:12px 14px;border-radius:10px 10px 10px 2px;max-width:420px}
+@media (max-width:860px){.formwrap{grid-template-columns:1fr}}
+
+/* property builder */
+.pb{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr);gap:16px;align-items:start}
+.pb-steps{display:grid;gap:16px}
+.pb-step{border:1px solid var(--line);background:var(--surface);padding:22px;display:grid;gap:14px}
+.pb-step h3{margin:0;font:500 12px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px}
+.pb-step h3 b{color:var(--acc);font-weight:500}
+.svc{display:grid;gap:8px}
+.svc label{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--line);padding:14px 16px;cursor:pointer;background:var(--bg)}
+.svc label:has(input:checked){border-color:var(--acc)}
+.svc input{accent-color:var(--acc);width:18px;height:18px;margin:0}
+.svc small{display:block;color:var(--muted);font-size:13px}
+.svc .p{font-family:var(--f-mono);font-size:14px;font-variant-numeric:tabular-nums}
+@media (max-width:900px){.pb{grid-template-columns:1fr}}
+
+/* multi-property booking */
+.bk{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr);gap:16px;align-items:start}
+.bk > *{min-width:0}
+.props{display:grid;gap:12px}
+.prop{border:1px solid var(--line);background:var(--surface)}
+.prop.open{border-color:var(--fg)}
+.prop-h{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:16px 18px;cursor:pointer;width:100%;background:transparent;border:0;text-align:left}
+.prop-h .no{font:500 12px/1 var(--f-mono);color:var(--acc);letter-spacing:.08em}
+.prop-h b{display:block;font-weight:600}
+.prop-h small{display:block;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prop-h .amt{font:500 15px/1 var(--f-mono);font-variant-numeric:tabular-nums}
+.prop-h .chev{transition:transform .2s ease;color:var(--muted)}
+.prop.open .prop-h .chev{transform:rotate(180deg)}
+.prop-b{padding:4px 18px 18px;display:grid;gap:22px;border-top:1px solid var(--line)}
+.grp{display:grid;gap:10px;padding-top:16px}
+.grp > .gl{font:500 11.5px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1px solid var(--line);background:var(--bg);padding:10px 14px;cursor:pointer;font:500 14px/1 var(--f-body);color:var(--muted)}
+.seg button[aria-pressed="true"]{border-color:var(--fg);color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+.seg button:disabled{opacity:.35;cursor:not-allowed}
+.cards3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sc{border:1px solid var(--line);background:var(--bg);padding:14px;display:grid;gap:4px;text-align:left;cursor:pointer;position:relative;min-width:0}
+.sc[aria-pressed="true"]{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.sc[aria-pressed="true"]::after{content:"✓";position:absolute;top:10px;right:12px;font:600 13px/1 var(--f-mono);color:var(--acc)}
+.sc b{font-weight:600;font-size:15px}
+.sc:disabled{opacity:.4;cursor:not-allowed}
+.sc .pop{position:absolute;top:-9px;left:12px;background:var(--acc);color:var(--bg);font:500 9.5px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;padding:4px 6px}
+.incl-strip{display:flex;flex-wrap:wrap;gap:8px 24px;border:1px solid var(--line);padding:12px 14px;font-size:13.5px;color:var(--muted);background:var(--bg)}
+.incl-strip b{color:var(--fg);font-weight:600;margin-right:4px}
+.incl-strip .off{opacity:.5}
+@media (max-width:760px){.cards3[style*="repeat(4"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+.sc small{color:var(--muted);font-size:12.5px}
+.sc .p{font:500 14px/1.2 var(--f-mono);margin-top:6px}
+.sub{border:1px dashed var(--line);padding:14px;display:grid;gap:12px;background:var(--bg)}
+.sub .row{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.chk{display:flex;gap:10px;align-items:center;cursor:pointer;font-size:14.5px}
+.chk input{width:18px;height:18px;accent-color:var(--acc);margin:0}
+.note{font-size:13px;color:var(--muted);margin:0}
+.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.prop-f{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--line);padding-top:14px;flex-wrap:wrap}
+.txtbtn{background:transparent;border:0;color:var(--muted);cursor:pointer;font:500 13.5px/1 var(--f-body);padding:6px 0;display:inline-flex;gap:6px;align-items:center}
+.txtbtn:hover{color:var(--fg)}
+.addprop{border:1px dashed var(--line);background:transparent;padding:18px;cursor:pointer;font:600 15px/1 var(--f-body);color:var(--fg);width:100%}
+.addprop:hover{border-color:var(--fg)}
+.multi{border-left:2px solid var(--acc);padding:6px 0 6px 12px;font-size:14px}
+.sum-list{display:grid;gap:10px}
+.sum-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;font-size:14px;border-bottom:1px dashed var(--line);padding-bottom:10px}
+.sum-item small{display:block;color:var(--muted);font-size:12.5px}
+.sum-item span:last-child{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+@media (max-width:900px){.bk{grid-template-columns:1fr}}
+@media (max-width:600px){.cards3,.row3{grid-template-columns:1fr}.prop-h{grid-template-columns:auto minmax(0,1fr) auto}.prop-h .chev{display:none}}
+
+/* samples tabs */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto}
+.tabs button{border:0;background:transparent;padding:14px 18px;cursor:pointer;font:600 14px/1 var(--f-body);color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--acc)}
+.gal{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.gal .fr{aspect-ratio:4/3}
+.gal .fr.big{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}
+@media (max-width:760px){.gal{grid-template-columns:1fr 1fr}}
+
+.dash{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,4vw,64px);align-items:center}
+.dash-ui{border:1px solid var(--line);background:var(--surface);font-size:14px}
+.dash-ui .bar{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.dash-ui .bar i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.drow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);align-items:center}
+.drow:last-child{border-bottom:0}
+.drow small{display:block;color:var(--muted);font-family:var(--f-mono);font-size:11.5px}
+.st{font:500 10.5px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border:1px solid var(--line)}
+.st.ok{color:#5FC08A;border-color:#2f5a42}
+.st.go{color:var(--acc);border-color:var(--acc)}
+@media (max-width:820px){.dash{grid-template-columns:1fr}}
+.compare{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line)}
+.compare > div{padding:24px;display:grid;gap:12px;align-content:start}
+.compare > div + div{border-left:1px solid var(--line);background:var(--surface)}
+.compare ul{margin:0;padding:0;list-style:none;display:grid;gap:10px;font-size:15px}
+.compare .bad li::before{content:"× ";color:var(--muted)}
+.compare .good li::before{content:"✓ ";color:var(--acc)}
+@media (max-width:640px){.compare{grid-template-columns:1fr}.compare > div + div{border-left:0;border-top:1px solid var(--line)}}
+
+/* ---------- POST-PRODUCTION (light) ---------- */
+.ba{position:relative;aspect-ratio:4/3;overflow:hidden;user-select:none;touch-action:pan-y;max-width:100%}
+.ba .lyr{position:absolute;inset:0}
+.ba .before{filter:grayscale(.55) brightness(.78) contrast(.78) saturate(.7)}
+.ba .clip{position:absolute;inset:0;clip-path:inset(0 calc(100% - var(--pos,50%)) 0 0)}
+.ba .handle{position:absolute;top:0;bottom:0;left:var(--pos,50%);width:2px;background:#F5F4F0;transform:translateX(-1px);z-index:3;pointer-events:none}
+.ba .knob{position:absolute;top:50%;left:var(--pos,50%);transform:translate(-50%,-50%);width:48px;height:48px;background:#F5F4F0;color:#111;display:grid;place-items:center;z-index:4;pointer-events:none;font:500 14px/1 var(--f-mono)}
+.ba input[type=range]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;z-index:5;margin:0}
+.ba .lab{position:absolute;bottom:16px;z-index:4;font:500 11px/1 var(--f-mono);letter-spacing:.1em;color:#F5F4F0;background:rgba(17,17,17,.55);padding:7px 9px}
+.ba .lab.l{left:16px}.ba .lab.r{right:16px}
+.pp-hero{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:clamp(28px,4vw,64px);align-items:center;padding-block:clamp(40px,6vw,72px)}
+.pp-hero .stack{gap:24px}
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:10px;font-size:15.5px}
+.checks li{display:grid;grid-template-columns:18px 1fr;gap:10px}
+.checks li::before{content:"";width:10px;height:10px;margin-top:7px;background:var(--hl-bg);border:1px solid var(--fg)}
+[data-tone="dark"] .checks li::before{background:var(--acc);border-color:var(--acc)}
+@media (max-width:900px){.pp-hero{grid-template-columns:1fr}}
+.why{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:2px solid var(--fg)}
+.why div{padding:26px 24px 8px 0;display:grid;gap:10px;min-width:0}
+.why div + div{padding-left:24px;border-left:1px solid var(--line)}
+.why p{margin:0;color:var(--muted)}
+@media (max-width:820px){.why{grid-template-columns:1fr}.why div + div{padding-left:0;border-left:0;border-top:1px solid var(--line)}}
+.svc3,.svc4{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.svc4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1080px){.svc4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){.svc4{grid-template-columns:1fr}}
+.s3{border:1px solid var(--line);background:var(--surface);display:grid;min-width:0}
+.s3 .fr{aspect-ratio:16/10}
+.s3 .bd{padding:22px;display:grid;gap:10px}
+.s3 .k{font:500 11.5px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--acc)}
+.s3 p{margin:0;color:var(--muted);font-size:15px}
+.s3 .ft{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:14px;margin-top:6px;font-size:14px;align-items:center}
+@media (max-width:900px){.svc3{grid-template-columns:1fr}}
+.ba-gal{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr);gap:16px;align-items:start}
+.ba-side{display:grid;gap:12px;padding-top:52px}
+@media (max-width:860px){.ba-side{padding-top:0}}
+.ba-side p{margin:0;color:var(--muted)}
+@media (max-width:860px){.ba-gal{grid-template-columns:1fr}}
+.cur{display:inline-flex;border:1px solid var(--line);padding:3px;gap:3px;background:var(--surface)}
+.cur button{border:0;background:transparent;padding:9px 12px;cursor:pointer;font:500 13px/1 var(--f-mono);color:var(--muted)}
+.cur button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.price-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.pcard{border:1px solid var(--line);background:var(--surface);padding:26px;display:grid;gap:14px;align-content:start;min-width:0}
+.pcard.feat{border:2px solid var(--fg)}
+.pcard .nm{font:500 12px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.pcard .pr{font-family:var(--f-display);font-weight:800;font-variation-settings:"wdth" 68;font-size:clamp(2.2rem,3.4vw,3rem);line-height:.95;font-variant-numeric:tabular-nums}
+.pcard .pr small{font:500 13px/1 var(--f-mono);color:var(--muted);margin-left:4px}
+.pcard ul{list-style:none;margin:0;padding:0;display:grid;gap:9px;font-size:15px}
+.pcard li{display:grid;grid-template-columns:10px 1fr;gap:12px}
+.pcard li::before{content:"";width:6px;height:6px;margin-top:9px;background:var(--fg)}
+.ptable{width:100%;border-collapse:collapse;font-size:15px;margin-top:24px}
+.ptable th,.ptable td{text-align:left;padding:14px 12px;border-bottom:1px solid var(--line)}
+.ptable th{font:500 11.5px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.ptable td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+.ptable th.n{text-align:right}
+.scroll-x{overflow-x:auto}
+@media (max-width:900px){.price-grid{grid-template-columns:1fr}}
+.tz{border:1px solid var(--line);background:var(--surface);padding:clamp(20px,3vw,32px);display:grid;gap:18px}
+.tz-track{position:relative;height:64px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:repeating-linear-gradient(90deg,transparent 0 calc(100%/24 - 1px),var(--line) calc(100%/24 - 1px) calc(100%/24))}
+.tz-seg{position:absolute;top:10px;bottom:10px;display:flex;align-items:center;padding:0 10px;font:500 11px/1.2 var(--f-mono);letter-spacing:.04em;overflow:hidden;white-space:nowrap}
+.tz-seg.you{background:var(--surface-2);color:var(--fg);border:1px solid var(--line)}
+.tz-seg.us{background:var(--hl-bg);color:#111}
+.tz-legend{display:flex;justify-content:space-between;font:500 11px/1 var(--f-mono);color:var(--muted)}
+.guar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:28px;align-items:center;border:2px solid var(--fg);padding:clamp(22px,3vw,36px);background:var(--surface)}
+.seal{width:92px;height:92px;border-radius:50%;border:1.5px solid var(--fg);display:grid;place-items:center;text-align:center;font:500 10px/1.3 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;padding:10px}
+@media (max-width:760px){.guar{grid-template-columns:1fr}}
+.qsteps{display:flex;gap:10px;font:500 11.5px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.qsteps span[aria-current="step"]{color:var(--fg)}
+.cal{border:1px solid var(--line);background:var(--bg);padding:18px;display:grid;gap:12px}
+.cal-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.cal-grid button{border:1px solid var(--line);background:var(--surface);padding:10px 4px;cursor:pointer;font:500 12px/1.3 var(--f-mono);display:grid;gap:2px}
+.cal-grid button:hover,.cal-grid button[aria-pressed="true"]{border-color:var(--acc)}
+.cal-grid small{color:var(--muted);font-size:10.5px}
+
+/* ---------- AI AVATARS (light) ---------- */
+.av-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(28px,4vw,64px);align-items:center;padding-block:clamp(40px,6vw,72px)}
+.av-hero .stack{gap:24px}
+.av-stage{position:relative}
+.av-stage .fr{aspect-ratio:4/5}
+.reveal{position:absolute;inset:0;z-index:4;display:grid;place-items:center;background:rgba(17,17,17,.0);opacity:0;transition:opacity .5s ease,background .5s ease;pointer-events:none}
+.reveal.on{opacity:1;background:rgba(17,17,17,.62)}
+.reveal div{text-align:center;color:#F5F4F0;display:grid;gap:8px;padding:20px}
+.reveal b{font-family:var(--f-display);text-transform:uppercase;font-weight:800;font-variation-settings:"wdth" 66;font-size:clamp(2.2rem,5vw,3.6rem);line-height:.9}
+.reveal span{font:500 11.5px/1.3 var(--f-mono);letter-spacing:.1em;text-transform:uppercase}
+.caption{position:absolute;left:28px;right:28px;bottom:56px;z-index:3;font:600 16px/1.35 var(--f-body);color:#F5F4F0;text-shadow:0 1px 8px rgba(0,0,0,.4)}
+.caption b{background:#E6D3A3;color:#111;padding:0 4px}
+.pa{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.pa div{border:1px solid var(--line);background:var(--surface);padding:24px;display:grid;gap:10px;align-content:start}
+.pa .from{font:500 12px/1.4 var(--f-mono);color:var(--muted);text-decoration:line-through;text-decoration-color:var(--acc)}
+.pa b{font-weight:600;font-size:17px}
+.pa p{margin:0;color:var(--muted);font-size:15px}
+@media (max-width:860px){.pa{grid-template-columns:1fr}.av-hero{grid-template-columns:1fr}}
+.avs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.avs figure{margin:0;display:grid;gap:10px;min-width:0}
+.avs .fr{aspect-ratio:3/4}
+.avs figcaption b{display:block;font-weight:600}
+.avs figcaption span{font:400 12px/1.4 var(--f-mono);color:var(--muted)}
+@media (max-width:860px){.avs{grid-template-columns:1fr 1fr}}
+.ai-tiers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.launch{display:inline-flex;gap:8px;align-items:center;background:var(--hl-bg);color:#111;font:500 11px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;padding:7px 9px;width:max-content}
+@media (max-width:900px){.ai-tiers{grid-template-columns:1fr}}
+.uses{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid var(--line)}
+.uses div{padding:22px 20px 6px 0;display:grid;gap:8px}
+.uses div + div{padding-left:20px;border-left:1px solid var(--line)}
+.uses p{margin:0;color:var(--muted);font-size:14.5px}
+@media (max-width:820px){.uses{grid-template-columns:1fr 1fr}.uses div:nth-child(3){padding-left:0;border-left:0}.uses div:nth-child(n+3){border-top:1px solid var(--line)}}
+
+/* ---------- footer, mobile bar ---------- */
+.ftr{background:#111111;color:#EDEDEA;--line:#2E2D2B;--muted:#8E8C87;--acc:#E6D3A3;padding-block:56px 40px}
+.ftr-grid{display:grid;grid-template-columns:minmax(0,1.5fr) repeat(3,minmax(0,1fr));gap:32px}
+.ftr h4{margin:0 0 14px;font:500 11.5px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ftr ul{list-style:none;margin:0;padding:0;display:grid;gap:9px;font-size:15px}
+.ftr ul a{text-decoration:none}
+.ftr ul a:hover{color:var(--acc)}
+.ftr p{color:var(--muted);font-size:14.5px;margin:12px 0 0;max-width:36ch}
+.legal{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font:500 12px/1.4 var(--f-mono);color:var(--muted)}
+@media (max-width:760px){.ftr-grid{grid-template-columns:1fr 1fr}}
+.mbar{display:none}
+@media (max-width:760px){
+  .mbar{display:grid;grid-template-columns:auto 1fr;gap:8px;position:fixed;left:0;right:0;bottom:0;z-index:45;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--line)}
+  .mbar .btn{min-height:48px}
+  body{padding-bottom:72px}
+}
+[hidden],.page[hidden]{display:none!important}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:12px 16px;font-size:14px;z-index:70;max-width:calc(100% - 32px)}
+</style>
+</head>
+<body>
+
+<div class="review" aria-label="Mockup pages">
+  <div class="review-in">
+    <span class="lbl">Mockup · page</span>
+    <a href="#home" data-go="home"><span class="t d"></span>Home</a>
+    <a href="#production" data-go="production"><span class="t d"></span>Production</a>
+    <a href="#property" data-go="property"><span class="t d"></span>Property shoots</a>
+    <a href="#post" data-go="post"><span class="t l"></span>Post-production</a>
+    <a href="#avatars" data-go="avatars"><span class="t l"></span>AI avatars</a>
+    <a href="#contact" data-go="contact"><span class="t l"></span>Contact</a>
+  </div>
+</div>
+
+<header class="hdr" id="hdr" data-tone="dark">
+  <div class="w hdr-in">
+    <a class="logo" href="#home" data-go="home" aria-label="Milkywayy home"><i aria-hidden="true"></i>Milkywayy</a>
+    <nav class="nav" aria-label="Main">
+      <a href="#production" data-go="production" data-nav="production">Production</a>
+      <a href="#post" data-go="post" data-nav="post">Post-production</a>
+      <a href="#avatars" data-go="avatars" data-nav="avatars">AI avatars</a>
+      <a href="#home" data-go="home" data-scroll="work">Work</a>
+      <a href="#home" data-go="home" data-scroll="founder">About</a>
+    </nav>
+    <div class="hdr-r">
+      <a class="login" href="#home" data-toast="Opens the existing client dashboard">Client login</a>
+      <a class="icon-btn wa-h" href="#contact" data-go="contact" aria-label="WhatsApp us">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3.5 20.5l1.3-4.2A8.5 8.5 0 1 1 8 19.3z"/></svg>
+      </a>
+      <a class="btn btn-p btn-s" href="#contact" data-go="contact">Get a quote</a>
+      <button class="icon-btn menu-btn" type="button" id="menuOpen" aria-label="Open menu" aria-expanded="false">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="mnav" id="mnav" data-tone="dark" hidden>
+  <div class="top"><a class="logo" href="#home" data-go="home"><i aria-hidden="true"></i>Milkywayy</a><button class="icon-btn" type="button" id="menuClose" aria-label="Close menu">✕</button></div>
+  <a class="item" href="#production" data-go="production">Production</a>
+  <a class="item" href="#property" data-go="property">Property shoots</a>
+  <a class="item" href="#post" data-go="post">Post-production</a>
+  <a class="item" href="#avatars" data-go="avatars">AI avatars</a>
+  <a class="item" href="#contact" data-go="contact">Contact</a>
+  <div class="ctas" style="margin-top:20px"><a class="btn btn-p" href="#contact" data-go="contact">Get a quote</a><a class="btn btn-g" href="#home" data-toast="Opens the existing client dashboard">Client login</a></div>
+</div>
+
+<main id="main">
+
+<!-- =============================== HOME (dark) =============================== -->
+<section class="page" id="p-home" data-page="home" data-tone="dark" aria-label="Home">
+  <div class="w">
+    <div class="hero">
+      <div class="hero-copy">
+        <span class="eb"><i class="rec" aria-hidden="true"></i>Dubai content studio · Clients worldwide</span>
+        <div class="fit"><h1 class="d h1 two" style="--ch:18"><span class="ln">Content that <span class="hl">sells</span></span><span class="ln">property &amp; brands.</span></h1></div>
+        <p class="lede">We shoot and edit in the UAE, edit remotely for studios abroad, and build AI presenters for people who'd rather not be on camera.</p>
+        <nav class="need" aria-label="Choose what you need">
+          <span class="need-h">What do you need?</span>
+          <a href="#production" data-go="production"><span class="k">UAE</span><span><b>Content shot and edited for me</b><small>Monthly packages or a single property shoot</small></span><span class="arr" aria-hidden="true">→</span></a>
+          <a href="#post" data-go="post"><span class="k">GLOBAL</span><span><b>An editor for my own shoots</b><small>Photo, video and AI avatar editing</small></span><span class="arr" aria-hidden="true">→</span></a>
+          <a href="#avatars" data-go="avatars"><span class="k">ANYONE</span><span><b>A presenter without filming</b><small>A custom AI avatar for your brand</small></span><span class="arr" aria-hidden="true">→</span></a>
+        </nav>
+      </div>
+      <div class="fr ph-dusk" role="img" aria-label="Showreel placeholder: Dubai skyline at dusk">
+        <span class="corners" aria-hidden="true"></span>
+        <span class="tl">4K · 25P</span>
+        <span class="tc"><i aria-hidden="true"></i><span id="tcode">REC 00:00:14:08</span></span>
+        <button class="play" type="button" aria-label="Play showreel" data-toast="Plays the 45-second showreel"></button>
+        <span class="tag"><span>Showreel 2026</span><span>0:45</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="proof">
+    <div class="w proof-in">
+      <span class="eb">Trusted by</span>
+      <div class="clients"><span>Binghatti</span><span>Xperience Realty</span><span>K Estates</span><span>Inhouse</span></div>
+      <div class="rating"><b>5.0</b><div><span class="stars" aria-label="5 out of 5 stars">★★★★★</span><small>Google reviews</small></div></div>
+    </div>
+  </div>
+
+  <div class="sec" id="services">
+    <div class="w">
+      <div class="head">
+        <div class="stack"><span class="eb">What we do</span><h2 class="d h2">Three services. One studio.</h2></div>
+        <p class="lede">Every service has its own page with real samples, the process and prices. Pick the one that fits.</p>
+      </div>
+      <div class="doors">
+        <a class="door" href="#production" data-go="production">
+          <div class="door-copy">
+            <span class="k">01 · Production · UAE</span>
+            <h3 class="d h3" style="font-size:clamp(1.9rem,3.2vw,2.8rem)">Shoot and edit, handled end to end.</h3>
+            <p>Monthly content for agencies and brands: shoot days, reels and long-form. Or one property shoot, booked in a minute.</p>
+            <span class="price">Packages from <b>AED 4,000 / month</b> · Shoots from <b>AED 450</b></span>
+            <span class="lnk">Explore production →</span>
+          </div>
+          <div class="door-media">
+            <div class="fr sm ph-int" role="img" aria-label="Placeholder: apartment interior"><span class="tag"><span>Marina 2BR</span></span></div>
+            <div class="fr sm ph-night" role="img" aria-label="Placeholder: penthouse at night"><span class="play" aria-hidden="true"></span></div>
+            <div class="fr sm ph-salon" role="img" aria-label="Placeholder: salon brand reel"><span class="play" aria-hidden="true"></span></div>
+          </div>
+        </a>
+        <a class="door" href="#post" data-go="post">
+          <div class="door-copy">
+            <span class="k">02 · Post-production · Worldwide</span>
+            <h3 class="d h3" style="font-size:clamp(1.9rem,3.2vw,2.8rem)">Your remote edit team.</h3>
+            <p>Photo edits, short-form and long-form video, and AI avatar generation for media companies and creators, anywhere.</p>
+            <span class="price">Edits from <b>$0.80 per photo</b> · Free test edit</span>
+            <span class="lnk">Explore post-production →</span>
+          </div>
+          <div class="door-media">
+            <div class="fr sm ph-villa-dusk" role="img" aria-label="Placeholder: twilight conversion"><span class="tag"><span>Twilight</span></span></div>
+            <div class="fr sm ph-kitchen" role="img" aria-label="Placeholder: HDR kitchen"></div>
+            <div class="fr sm ph-bath" role="img" aria-label="Placeholder: HDR bathroom"></div>
+          </div>
+        </a>
+        <a class="door" href="#avatars" data-go="avatars">
+          <div class="door-copy">
+            <span class="k">03 · AI avatars · Everyone</span>
+            <h3 class="d h3" style="font-size:clamp(1.9rem,3.2vw,2.8rem)">A presenter built for your brand.</h3>
+            <p>A custom AI host with its own face and voice, scripted and edited into videos every month. No camera, no studio.</p>
+            <span class="price"><b>Launch pricing</b> · Book a demo</span>
+            <span class="lnk">Explore AI avatars →</span>
+          </div>
+          <div class="door-media">
+            <div class="fr sm clean ph-adam" role="img" aria-label="Placeholder: AI presenter Adam"><span class="tag" style="color:#111"><span>Adam · AI</span></span></div>
+            <div class="fr sm clean ph-av2" role="img" aria-label="Placeholder: clinic avatar"></div>
+            <div class="fr sm clean ph-av4" role="img" aria-label="Placeholder: coach avatar"></div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec alt" id="work">
+    <div class="w">
+      <div class="head">
+        <div class="stack"><span class="eb">Selected work</span><h2 class="d h2">Made for the feed.</h2></div>
+        <div class="chips" role="group" aria-label="Filter work">
+          <button class="chip" type="button" aria-pressed="true">All</button>
+          <button class="chip" type="button" aria-pressed="false">Property</button>
+          <button class="chip" type="button" aria-pressed="false">Brand</button>
+          <button class="chip" type="button" aria-pressed="false">AI avatar</button>
+          <button class="chip" type="button" aria-pressed="false">Editing</button>
+        </div>
+      </div>
+      <div class="reels" tabindex="0" aria-label="Work reels, scroll sideways">
+        <figure class="reel"><div class="fr sm ph-villa" role="img" aria-label="Placeholder reel: villa"><span class="play" aria-hidden="true"></span><span class="tag"><span>Reel</span><span>0:30</span></span></div><figcaption>Palm Jumeirah villa <span>Property</span></figcaption></figure>
+        <figure class="reel"><div class="fr sm ph-night" role="img" aria-label="Placeholder reel: penthouse"><span class="play" aria-hidden="true"></span><span class="tag"><span>Reel</span><span>0:24</span></span></div><figcaption>Downtown penthouse <span>Night</span></figcaption></figure>
+        <figure class="reel"><div class="fr sm clean ph-adam" role="img" aria-label="Placeholder reel: Adam"><span class="play" aria-hidden="true"></span></div><figcaption>Adam, market update <span>AI avatar</span></figcaption></figure>
+        <figure class="reel"><div class="fr sm ph-clinic" role="img" aria-label="Placeholder reel: clinic"><span class="play" aria-hidden="true"></span><span class="tag"><span>Reel</span><span>0:40</span></span></div><figcaption>Aesthetic clinic <span>Brand</span></figcaption></figure>
+        <figure class="reel"><div class="fr sm ph-int" role="img" aria-label="Placeholder reel: apartment"><span class="play" aria-hidden="true"></span><span class="tag"><span>Reel</span><span>0:28</span></span></div><figcaption>Marina 2BR walkthrough <span>Property</span></figcaption></figure>
+        <figure class="reel"><div class="fr sm ph-salon" role="img" aria-label="Placeholder reel: salon"><span class="play" aria-hidden="true"></span><span class="tag"><span>Reel</span><span>0:35</span></span></div><figcaption>Barber studio <span>Brand</span></figcaption></figure>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec tight">
+    <div class="w">
+      <div class="stats">
+        <div class="stat"><b>2020</b><span>Creating content since</span></div>
+        <div class="stat"><b>1,000+</b><span>Properties shot in Dubai</span></div>
+        <div class="stat"><b>100+</b><span>Brands worked with</span></div>
+        <div class="stat"><b>5,000+</b><span>Videos edited</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" style="padding-top:0">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">How we work</span><h2 class="d h2">Brief to delivery.</h2></div></div>
+      <div class="steps">
+        <div class="step"><span class="n">01</span><h3 class="d h3">Brief</h3><p>A 15-minute call or a WhatsApp chat. We agree scope, dates and price.</p></div>
+        <div class="step"><span class="n">02</span><h3 class="d h3">Shoot or generate</h3><p>On location in Dubai, from your raw files, or with your AI avatar.</p></div>
+        <div class="step"><span class="n">03</span><h3 class="d h3">Edit</h3><p>In-house editors. Photos in 24 hours, reels in 72.</p></div>
+        <div class="step"><span class="n">04</span><h3 class="d h3">Deliver</h3><p>Files, invoices and revision requests in your client dashboard.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec alt" id="founder">
+    <div class="w founder">
+      <div class="fr clean"><img src="data:image/webp;base64,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" alt="Akash Praseed, founder of Milkywayy" width="520" height="650"><span class="corners" aria-hidden="true"></span></div>
+      <div class="stack" style="gap:26px">
+        <span class="eb">From the founder</span>
+        <blockquote>“After years of creating content, we know where production slows down: the follow-ups, the revisions, the back-and-forth. So we're building systems that take them out. You book, we shoot, you download.”</blockquote>
+        <div class="sig"><span><b>Akash Praseed</b>Founder, Milkywayy</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">Client words</span><h2 class="d h2">What clients say.</h2></div><span class="sample">Sample text · replace with real Google reviews</span></div>
+      <div class="quotes">
+        <div class="q"><p>“We send the address, they handle the rest. Photos are back the next morning and the listing goes live the same day.”</p><cite>Leasing manager · Dubai brokerage</cite></div>
+        <div class="q"><p>“Twenty reels a month without us thinking about it. The content plan alone saved our marketing team hours.”</p><cite>Marketing lead · Developer</cite></div>
+        <div class="q"><p>“Clear prices, no chasing files. Everything is in the dashboard with the invoice.”</p><cite>Agent · Holiday homes</cite></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec alt">
+    <div class="w faq">
+      <div class="stack"><span class="eb">Questions</span><h2 class="d h2">Before you ask.</h2><p class="muted">Anything else: WhatsApp us and a real person replies.</p></div>
+      <div class="faq-list"><span class="sample" style="margin:0 0 12px">Draft questions · final list and answers to come</span>
+        <details><summary>Where do you work?</summary><p>We shoot across the UAE, based in Dubai. Editing and AI avatars are fully remote, so we work with clients anywhere.</p></details>
+        <details><summary>How fast is delivery?</summary><p>Property photos in 24 hours. Reels usually within 72 hours. Monthly packages follow an agreed content calendar.</p></details>
+        <details><summary>How does pricing work?</summary><p>Every service page shows starting prices and a builder that estimates your total. The final quote is confirmed in chat or on a short call, before you pay anything.</p></details>
+        <details><summary>How do I start?</summary><p>Send a request or WhatsApp us. We reply within 15 minutes during working hours.</p></details>
+      </div>
+    </div>
+  </div>
+
+  <div class="band">
+    <div class="w band-in">
+      <div><h2 class="d h2">Tell us what you're working on.</h2><p class="muted">We reply within 15 minutes during working hours.</p></div>
+      <div class="ctas"><a class="btn btn-p" href="#contact" data-go="contact">Get a quote</a><a class="btn btn-g" href="#contact" data-go="contact">WhatsApp us</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================== PRODUCTION (dark) =============================== -->
+<section class="page" id="p-production" data-page="production" data-tone="dark" aria-label="Production" hidden>
+  <div class="w">
+    <div class="p-hero">
+      <div class="stack">
+        <span class="eb"><i class="rec" aria-hidden="true"></i>Production · UAE</span>
+        <div class="fit"><h1 class="d h1 two" style="--ch:16"><span class="ln">Monthly content,</span><span class="ln"><span class="hl">shot &amp; edited.</span></span></h1></div>
+        <p class="lede">Shoot days, reels and long-form for agencies, developers and brands in the UAE. One team films, edits and delivers, every month.</p>
+        <div class="ctas"><a class="btn btn-p" href="#prod-form" data-scroll="prod-form">Get your package</a><a class="btn btn-g" href="#contact" data-go="contact">WhatsApp us</a></div>
+        <div class="anchor"><span>Packages from <b>AED 4,000/mo</b></span><span>Single shoots from <b>AED 450</b></span></div>
+      </div>
+      <div class="trio">
+        <div class="fr sm ph-int" role="img" aria-label="Placeholder reel: apartment"><span class="corners" aria-hidden="true"></span><span class="play" aria-hidden="true"></span></div>
+        <div class="fr sm ph-night" role="img" aria-label="Placeholder reel: penthouse"><span class="corners" aria-hidden="true"></span><span class="play" aria-hidden="true"></span></div>
+        <div class="fr sm ph-clinic" role="img" aria-label="Placeholder reel: clinic"><span class="corners" aria-hidden="true"></span><span class="play" aria-hidden="true"></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="proof"><div class="w proof-in"><span class="eb">Trusted by</span><div class="clients"><span>Binghatti</span><span>Xperience Realty</span><span>K Estates</span><span>Inhouse</span></div><div class="rating"><b>5.0</b><div><span class="stars" aria-hidden="true">★★★★★</span><small>Google reviews</small></div></div></div></div>
+
+  <div class="sec">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">Two ways to work with us</span><h2 class="d h2">Every month, or one listing.</h2></div></div>
+      <div class="paths">
+        <a class="path on" href="#packages" data-scroll="packages"><span class="k">Monthly packages · this page</span><h3 class="d h3">For agencies and brands</h3><p>A monthly plan of shoot days, reels and long-form, scheduled with you and delivered to your dashboard.</p><span class="lnk">See packages ↓</span></a>
+        <a class="path" href="#property" data-go="property"><span class="k">Single shoot</span><h3 class="d h3">For one property</h3><p>Pick the property and services, see the price, request a slot. Photos back in 24 hours.</p><span class="lnk">Book a property shoot →</span></a>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec alt">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">What's included</span><h2 class="d h2">Everything, one invoice.</h2></div><p class="lede">You tell us what to shoot. We handle the crew, the edit and the delivery.</p></div>
+      <div class="incl">
+        <div><span class="k">Shoot</span><b>Half or full shoot days</b><p>4-hour half days or full days, anywhere in Dubai.</p></div>
+        <div><span class="k">Short-form</span><b>Edited reels</b><p>Vertical reels for Instagram and TikTok, captioned and branded.</p></div>
+        <div><span class="k">Long-form</span><b>Walkthroughs and YouTube</b><p>Horizontal videos for listings, launches and your channel.</p></div>
+        <div><span class="k">Revisions</span><b>Included on every edit</b><p>Changes handled inside the dashboard, not over endless chats.</p></div>
+        <div><span class="k">Delivery</span><b>Client dashboard</b><p>Files, status and invoices in one place, stored permanently.</p></div>
+        <div><span class="k">Transparency</span><b>Monthly statement</b><p>Every shoot and edit delivered that month, with what it cost.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" id="packages">
+    <div class="w">
+      <div class="pk-band">
+        <div class="stack" style="gap:16px">
+          <span class="eb">Packages</span>
+          <h2 class="d h2">Packages from AED 4,000 a month.</h2>
+          <p class="lede">Every package is built around your listings, volume and schedule. Tell us what you need and we'll put your plan together on a call, over WhatsApp or in person.</p>
+        </div>
+        <div class="stack" style="gap:14px;align-content:end">
+          <div class="chips-static"><span>Shoot days</span><span>Edited reels</span><span>Long-form video</span><span>Photography</span><span>360 tours</span></div>
+          <div class="ctas"><a class="btn btn-p" href="#prod-form" data-scroll="prod-form">Get your package</a><a class="btn btn-g" href="#contact" data-go="contact">WhatsApp us</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">How it works</span><h2 class="d h2">Your first month.</h2></div></div>
+      <div class="steps">
+        <div class="step"><span class="n">Day 1</span><h3 class="d h3">Onboarding</h3><p>A short call about your brand and listings. We collect logos, fonts and references.</p></div>
+        <div class="step"><span class="n">Week 1</span><h3 class="d h3">Book shoot days</h3><p>Pick your dates in the dashboard. We confirm the crew and locations.</p></div>
+        <div class="step"><span class="n">Weeks 1–4</span><h3 class="d h3">Shoot and edit</h3><p>Edits land in your dashboard. Request changes there, not over chat.</p></div>
+        <div class="step"><span class="n">Month end</span><h3 class="d h3">Statement</h3><p>A clear list of everything delivered and billed that month.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec alt">
+    <div class="w faq">
+      <div class="stack"><span class="eb">Questions</span><h2 class="d h2">Production FAQ.</h2></div>
+      <div class="faq-list"><span class="sample" style="margin:0 0 12px">Draft questions · final list and answers to come</span>
+        <details><summary>How many revisions do I get?</summary><p>Two rounds of revisions per edit are included. Changes to the brief after shooting are quoted separately.</p></details>
+        <details><summary>What if I don't use all my shoot days?</summary><p>Unused shoot days can move to the next month once. We'll remind you mid-month so nothing is wasted.</p></details>
+        <details><summary>Who owns the footage?</summary><p>You do. Final edits and raw footage from your shoots are yours to use anywhere.</p></details>
+        <details><summary>Can I change package mid-contract?</summary><p>Yes. Your package can grow with your listings from any month.</p></details>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" id="prod-form">
+    <div class="w formwrap">
+      <div class="stack"><span class="eb">Start</span><h2 class="d h2">Get your package.</h2><p class="lede">Tell us about your team and how much content you need. We reply within 15 minutes during working hours.</p>
+        <div class="direct"><div><span>WhatsApp</span>+971 50 726 3306</div><div><span>Email</span>hello@milkywayy.com</div></div>
+      </div>
+      <form class="form" data-form="production" novalidate>
+        <div class="row2"><label class="fld">Name<input name="name" autocomplete="name" required></label><label class="fld">Company<input name="company" autocomplete="organization"></label></div>
+        <div class="row2"><label class="fld">Phone<input name="phone" type="tel" autocomplete="tel" placeholder="+971"></label><label class="fld">Email<input name="email" type="email" autocomplete="email"></label></div>
+        <label class="fld">What do you need?<textarea name="brief" placeholder="e.g. about 10 listings a month in Marina and JLT, plus brand content"></textarea></label>
+        <fieldset><legend>How should we reply?</legend><div class="opts">
+          <label class="opt"><input type="radio" name="pref" value="WhatsApp" checked><span>WhatsApp</span></label>
+          <label class="opt"><input type="radio" name="pref" value="Email"><span>Email</span></label>
+          <label class="opt"><input type="radio" name="pref" value="Call"><span>Call</span></label></div></fieldset>
+        <button class="btn btn-p" type="submit">Send request</button>
+        <p class="fine">No payment now. We confirm scope and price first.</p>
+      </form>
+    </div>
+  </div>
+
+  <div class="band"><div class="w band-in"><div><h2 class="d h2">Your content, sorted every month.</h2><p class="muted">Start with any package. Upgrade anytime.</p></div><div class="ctas"><a class="btn btn-p" href="#contact" data-go="contact">Get a quote</a><a class="btn btn-g" href="#contact" data-go="contact">WhatsApp us</a></div></div></div>
+</section>
+
+<!-- =============================== PROPERTY SHOOTS (dark) =============================== -->
+<section class="page" id="p-property" data-page="property" data-tone="dark" aria-label="Property shoots" hidden>
+  <div class="w">
+    <div class="p-hero">
+      <div class="stack">
+        <span class="eb"><i class="rec" aria-hidden="true"></i>Production · Property shoots</span>
+        <div class="fit"><h1 class="d h1 two" style="--ch:16"><span class="ln">Don't just list.</span><span class="ln"><span class="hl">Dominate.</span></span></h1></div>
+        <p class="lede">Photos, video and 360 tours for Dubai listings. See your price in a minute, photos back in 24 hours.</p>
+        <div class="ctas"><a class="btn btn-p" href="#pb" data-scroll="pb">Price my shoot</a><a class="btn btn-g" href="#contact" data-go="contact">WhatsApp us</a></div>
+        <div class="anchor"><span>Photos from <b>AED 450</b></span><span>Delivered in <b>24h</b></span><span><b>Dubai-wide</b></span></div>
+      </div>
+      <div class="fr ph-int" style="aspect-ratio:4/3" role="img" aria-label="Placeholder: apartment living room"><span class="corners" aria-hidden="true"></span><span class="tl">F/8 · ISO 100</span><span class="tag"><span>Dubai Marina · 2BR</span><span>Photo 07 / 32</span></span></div>
+    </div>
+  </div>
+
+  <div class="sec alt" id="pb">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">Request a shoot</span><h2 class="d h2">Build your booking.</h2></div><p class="lede">Pick the property and services, see the price, and send it to us on WhatsApp. No payment now: we confirm the slot and invoice after delivery.</p></div>
+      <div class="bk">
+        <div class="props">
+          <div id="propList" class="props"></div>
+          <button type="button" class="addprop" id="addProp">+ Add another property</button>
+          <p class="multi">Shooting more than one property on the same day or in the same area? We'll send you a better price for the whole booking in the same chat.</p>
+        </div>
+        <aside class="b-sum" aria-live="polite">
+          <span class="eb">Booking summary</span>
+          <div class="sum-list" id="sumList"></div>
+          <div><span class="fine">Estimated total</span><div class="tot" id="pTotal">AED 0</div></div>
+          <div class="stack" style="gap:8px"><span class="fine">This message opens in WhatsApp:</span><div class="wa-preview" id="pMsg"></div></div>
+          <a class="btn btn-p" href="#contact" id="pReq">Send request on WhatsApp</a>
+          <p class="fine">No payment now. We confirm your slot, shoot, deliver, then invoice. Media is licensed for your marketing use.</p>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">Samples</span><h2 class="d h2">What you'll get.</h2></div></div>
+      <div class="tabs" role="tablist" aria-label="Sample type">
+        <button role="tab" aria-selected="true" type="button">Photo</button><button role="tab" aria-selected="false" type="button">Video</button><button role="tab" aria-selected="false" type="button">360° tour</button>
+      </div>
+      <div class="gal">
+        <div class="fr sm big ph-int" role="img" aria-label="Placeholder: living room"><span class="tag"><span>Living room</span></span></div>
+        <div class="fr sm ph-kitchen" role="img" aria-label="Placeholder: kitchen"></div>
+        <div class="fr sm ph-bath" role="img" aria-label="Placeholder: bathroom"></div>
+        <div class="fr sm ph-villa" role="img" aria-label="Placeholder: pool"></div>
+        <div class="fr sm ph-aerial" role="img" aria-label="Placeholder: aerial view"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec alt">
+    <div class="w dash">
+      <div class="stack"><span class="eb">After you book</span><h2 class="d h2">Everything in one dashboard.</h2><p class="lede">Track the shoot, download files and invoices, request a reshoot. Your files stay there permanently.</p><div class="ctas"><a class="btn btn-g" href="#home" data-toast="Opens the existing client dashboard">Client login</a></div></div>
+      <div class="dash-ui" aria-label="Dashboard preview">
+        <div class="bar"><i></i><i></i><i></i></div>
+        <div class="drow"><span>Dubai Marina · 2BR<small>Photo + reel · Thu 2 Oct</small></span><span class="st go">Editing</span></div>
+        <div class="drow"><span>JVC Townhouse<small>Photo + 360 · Mon 29 Sep</small></span><span class="st ok">Delivered</span></div>
+        <div class="drow"><span>Business Bay office<small>Commercial Essential · Fri 26 Sep</small></span><span class="st ok">Delivered</span></div>
+        <div class="drow"><span>Invoice MW-1042<small>AED 1,050 · Paid</small></span><span class="st">PDF</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">The difference</span><h2 class="d h2">No more chasing.</h2></div></div>
+      <div class="compare">
+        <div class="bad"><span class="eb">The usual way</span><ul><li>Message three photographers for quotes</li><li>Wait days for a price</li><li>Chase files over WhatsApp</li><li>Invoices by email, if you ask</li></ul></div>
+        <div class="good"><span class="eb">With Milkywayy</span><ul><li>See the price in a minute</li><li>Pick a slot that suits you</li><li>Photos in 24 hours, in your dashboard</li><li>Invoices ready to download</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec alt">
+    <div class="w faq">
+      <div class="stack"><span class="eb">Questions</span><h2 class="d h2">Shoot-day FAQ.</h2></div>
+      <div class="faq-list"><span class="sample" style="margin:0 0 12px">Draft questions · final list and answers to come</span>
+        <details><summary>How should I prepare the property?</summary><p>Lights on, blinds open, surfaces clear, personal items away. We send a 5-point checklist when you book.</p></details>
+        <details><summary>Can I reschedule?</summary><p>Yes, free up to 24 hours before the shoot.</p></details>
+        <details><summary>Which areas do you cover?</summary><p>All of Dubai. Other emirates on request.</p></details>
+        <details><summary>What if the weather is bad?</summary><p>We move exterior shots to a clear day at no cost, or replace the sky in editing.</p></details>
+      </div>
+    </div>
+  </div>
+
+  <div class="band"><div class="w band-in"><div><h2 class="d h2">Your next listing, shot this week.</h2></div><div class="ctas"><a class="btn btn-p" href="#pb" data-scroll="pb">Price my shoot</a><a class="btn btn-g" href="#contact" data-go="contact">WhatsApp us</a></div></div></div>
+</section>
+
+<!-- =============================== POST-PRODUCTION (light) =============================== -->
+<section class="page" id="p-post" data-page="post" data-tone="light" aria-label="Post-production" hidden>
+  <div class="w">
+    <div class="pp-hero">
+      <div class="stack">
+        <span class="eb">Post-production · Worldwide</span>
+        <div class="fit"><h1 class="d h1 two" style="--ch:12"><span class="ln">Your remote</span><span class="ln"><span class="hl">edit team.</span></span></h1></div>
+        <p class="lede">Photo, video and AI avatar editing for media companies, agencies and creators. We run our own productions, so we edit like people who've been on set.</p>
+        <ul class="checks">
+          <li>Photo edits, short-form, long-form and AI avatars</li>
+          <li>Your style saved and matched on every batch</li>
+          <li>One point of contact, from brief to delivery</li>
+        </ul>
+        <div class="ctas"><a class="btn btn-p" href="#freetest" data-scroll="freetest">Book a free test edit</a><a class="btn btn-g" href="#pp-work" data-scroll="pp-work">See our work</a></div>
+      </div>
+      <div class="ba" id="ba1" style="--pos:50%">
+        <div class="lyr ph-int before"></div>
+        <div class="clip"><div class="lyr ph-int"></div></div>
+        <span class="handle" aria-hidden="true"></span><span class="knob" aria-hidden="true">↔</span>
+        <span class="lab l">After</span><span class="lab r">Before</span>
+        <label class="sr" for="ba1r">Compare before and after</label>
+        <input type="range" id="ba1r" min="0" max="100" value="50">
+      </div>
+    </div>
+  </div>
+
+  <div class="proof"><div class="w proof-in"><span class="eb">Trusted by</span><div class="clients"><span>Binghatti</span><span>Xperience Realty</span><span>K Estates</span><span>Inhouse</span></div><div class="rating"><b>5.0</b><div><span class="stars" aria-hidden="true">★★★★★</span><small>Google reviews</small></div></div></div></div>
+
+  <div class="sec">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">Why teams work with us</span><h2 class="d h2">Editors who also produce.</h2></div></div>
+      <div class="why">
+        <div><h3 class="d h3">We know what the edit is for</h3><p>We produce for real estate, hospitality, clinics and brands, so we understand the shot before you explain it.</p></div>
+        <div><h3 class="d h3">Same look, every batch</h3><p>We save your style as a preset and a written guide. Batch 50 looks like batch 1.</p></div>
+        <div><h3 class="d h3">One team, every format</h3><p>Photos, reels, long-form and AI avatars from one team, in one workflow.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec alt">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">Services</span><h2 class="d h2">Anything on your plate.</h2></div><p class="lede">Photo edits, video in any format, or AI avatar generation for your clients. We do it all.</p></div>
+      <div class="svc4">
+        <div class="s3"><div class="fr sm ph-villa-dusk" role="img" aria-label="Placeholder: twilight edit"><span class="tag"><span>Twilight</span></span></div><div class="bd"><span class="k">Photo edits</span><h3 class="d h3">HDR, twilight, sky, declutter</h3><p>Bracket blending, window pulls, colour correction, virtual twilight and object removal.</p><div class="ft"><span>From <b>$0.80</b> / HDR photo</span><a class="lnk" href="#freetest" data-scroll="freetest">Free test →</a></div></div></div>
+        <div class="s3"><div class="fr sm ph-night" role="img" aria-label="Placeholder: short-form edit"><span class="play" aria-hidden="true"></span></div><div class="bd"><span class="k">Short-form</span><h3 class="d h3">Social media reels</h3><p>Vertical edits for Instagram, TikTok and Shorts with music, captions and your branding.</p><div class="ft"><span>From <b>$50</b> / reel</span><a class="lnk" href="#freetest" data-scroll="freetest">Free test →</a></div></div></div>
+        <div class="s3"><div class="fr sm ph-salon" role="img" aria-label="Placeholder: long-form edit"><span class="play" aria-hidden="true"></span></div><div class="bd"><span class="k">Long-form</span><h3 class="d h3">YouTube and walkthroughs</h3><p>Tours, launches, vlogs and explainers, cut to hold attention with b-roll and graphics.</p><div class="ft"><span>From <b>$150</b> / video</span><a class="lnk" href="#freetest" data-scroll="freetest">Free test →</a></div></div></div>
+        <div class="s3"><div class="fr sm clean ph-adam" role="img" aria-label="Placeholder: AI avatar"></div><div class="bd"><span class="k">AI avatars</span><h3 class="d h3">Avatar generation</h3><p>Custom AI presenters for your clients, produced under your brand.</p><div class="ft"><span>White-label</span><a class="lnk" href="#avatars" data-go="avatars">See AI avatars →</a></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">Before / after</span><h2 class="d h2">Drag to compare.</h2></div></div>
+      <div class="ba-gal">
+        <div class="stack" style="gap:0">
+          <div class="tabs" role="tablist" aria-label="Edit type" style="margin-bottom:0;border-bottom:0">
+            <button role="tab" type="button" aria-selected="true" data-ba="sky">Sky</button><button role="tab" type="button" aria-selected="false" data-ba="twilight">Twilight</button><button role="tab" type="button" aria-selected="false" data-ba="hdr">HDR</button>
+          </div>
+          <div class="ba" id="ba2" style="--pos:55%">
+            <div class="lyr ph-villa-grey" id="ba2b"></div>
+            <div class="clip"><div class="lyr ph-villa" id="ba2a"></div></div>
+            <span class="handle" aria-hidden="true"></span><span class="knob" aria-hidden="true">↔</span>
+            <span class="lab l">After</span><span class="lab r">Before</span>
+            <label class="sr" for="ba2r">Compare before and after</label>
+            <input type="range" id="ba2r" min="0" max="100" value="55">
+          </div>
+        </div>
+        <div class="ba-side">
+          <h3 class="d h3" id="baTitle">Sky replacement</h3>
+          <p id="baText">Grey or blown-out skies replaced with a natural blue sky that matches the light on the building.</p>
+          <span class="sample">Placeholder imagery · real before/after pairs go here</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" id="pp-rates">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">Starting rates</span><h2 class="d h2">Price per edit.</h2></div><p class="lede">Rates in USD. Your final quote depends on volume, style and turnaround, and we can quote in your currency on the call.</p></div>
+      <div class="price-grid">
+        <div class="pcard"><span class="nm">Photo edits</span><div class="pr">$0.80<small>/ HDR photo</small></div><ul><li>Bracket blending and window pulls</li><li>Sky replacement and declutter</li><li>Twilight on request</li></ul><span class="fine">Starting from</span></div>
+        <div class="pcard feat"><span class="nm">Short-form</span><div class="pr">$50<small>/ reel</small></div><ul><li>Reels up to 60 seconds</li><li>Music, captions and branding</li><li>Formatted for every platform</li></ul><span class="fine">Starting from</span></div>
+        <div class="pcard"><span class="nm">Long-form</span><div class="pr">$150<small>/ video</small></div><ul><li>YouTube videos up to 10 minutes</li><li>B-roll, graphics and titles</li><li>Thumbnail on request</li></ul><span class="fine">Starting from</span></div>
+      </div>
+      <div class="ctas" style="margin-top:28px"><a class="btn btn-p" href="#freetest" data-scroll="freetest">Get a custom quote</a></div>
+    </div>
+  </div>
+
+  <div class="sec alt" id="pp-work">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">Track record</span><h2 class="d h2">Work we've delivered.</h2></div></div>
+      <div class="stats">
+        <div class="stat"><b>5,000+</b><span>Videos edited</span></div>
+        <div class="stat"><b>1,000+</b><span>Properties produced</span></div>
+        <div class="stat"><b>100+</b><span>Brands worked with</span></div>
+        <div class="stat"><b>2020</b><span>Creating content since</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">How it works</span><h2 class="d h2">Send. Edit. Done.</h2></div><p class="lede">Use the tools you already use. Everything else runs through one contact and one folder.</p></div>
+      <div class="steps five">
+        <div class="step"><span class="n">01</span><h3 class="d h3">Upload</h3><p>Dropbox, Google Drive or WeTransfer. Whatever you use now.</p></div>
+        <div class="step"><span class="n">02</span><h3 class="d h3">Edit</h3><p>Your saved style, applied by a named editor.</p></div>
+        <div class="step"><span class="n">03</span><h3 class="d h3">Review</h3><p>Check the batch in your folder or a review link.</p></div>
+        <div class="step"><span class="n">04</span><h3 class="d h3">Revise</h3><p>Two rounds included, usually back in hours.</p></div>
+        <div class="step"><span class="n">05</span><h3 class="d h3">Deliver</h3><p>Final files, named and sized for MLS and social.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="w faq">
+      <div class="stack"><span class="eb">Questions</span><h2 class="d h2">Editing FAQ.</h2></div>
+      <div class="faq-list"><span class="sample" style="margin:0 0 12px">Draft questions · final list and answers to come</span>
+        <details><summary>Can you match our current editing style?</summary><p>Yes. Send 5–10 finished photos you like. We build a preset and a written style guide before your first batch.</p></details>
+        <details><summary>What file formats do you accept?</summary><p>RAW brackets (CR3, NEF, ARW, DNG), JPEG, and video in any common format. Deliverables in the size and naming you need.</p></details>
+        <details><summary>How do payments work?</summary><p>We invoice monthly after a custom quote. Retainer clients can pay by card automatically.</p></details>
+        <details><summary>Is the free test really free?</summary><p>Yes. After a 15-minute call we edit one listing (up to 10 photos) or one reel, free, so you can judge the quality.</p></details>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec alt" id="freetest">
+    <div class="w formwrap">
+      <div class="stack">
+        <span class="eb">Free test edit</span>
+        <h2 class="d h2">See the quality first.</h2>
+        <p class="lede">Tell us what you need, book a 15-minute call, and we'll edit a small test project for free.</p>
+        <div class="direct"><div><span>Test size</span>1 listing (up to 10 photos) or 1 reel</div><div><span>Commitment</span>None</div></div>
+      </div>
+      <form class="form" id="ftForm" novalidate>
+        <div class="qsteps" aria-label="Progress"><span id="q1" aria-current="step">1 · Your volume</span><span>/</span><span id="q2">2 · Details</span><span>/</span><span id="q3">3 · Book</span></div>
+        <div id="ft1" class="stack" style="gap:16px">
+          <fieldset><legend>What do you need edited?</legend><div class="opts">
+            <label class="opt card"><input type="checkbox" name="what" value="Photo edits" checked><span><b>Photo edits</b><small>Listing and property photos</small></span></label>
+            <label class="opt card"><input type="checkbox" name="what" value="Short-form"><span><b>Short-form</b><small>Social media reels</small></span></label>
+            <label class="opt card"><input type="checkbox" name="what" value="Long-form"><span><b>Long-form</b><small>YouTube videos</small></span></label></div></fieldset>
+          <label class="fld">How much per month?<textarea name="volume" rows="2" style="min-height:64px" placeholder="Around 100–200 listing photos + 30 reels + 10 long-form"></textarea></label>
+          <fieldset><legend>Who edits for you now?</legend><div class="opts">
+            <label class="opt"><input type="radio" name="now" value="In-house" checked><span>In-house</span></label>
+            <label class="opt"><input type="radio" name="now" value="Freelancer"><span>Freelancer</span></label>
+            <label class="opt"><input type="radio" name="now" value="Nobody yet"><span>Nobody yet</span></label></div></fieldset>
+          <button class="btn btn-p" type="button" id="ftNext">Continue</button>
+        </div>
+        <div id="ft2" class="stack" style="gap:16px" hidden>
+          <div class="row2"><label class="fld">Name<input name="name" autocomplete="name"></label><label class="fld">Company<input name="company" autocomplete="organization"></label></div>
+          <div class="row2"><label class="fld">Email<input name="email" type="email" autocomplete="email"></label><label class="fld">Country<select name="country"><option>United States</option><option>Canada</option><option>United Kingdom</option><option>Europe</option><option>Australia</option><option>Other</option></select></label></div>
+          <label class="fld">Link to a recent listing or video<input name="link" type="url" placeholder="https://"></label>
+          <div class="ctas"><button class="btn btn-p" type="button" id="ftNext2">Choose a call time</button><button class="btn btn-g" type="button" id="ftBack">Back</button></div>
+          <p class="fine">Prefer email? <a href="#freetest" id="ftEmail" class="lnk">Send your requirements instead</a></p>
+        </div>
+        <div id="ft3" class="stack" style="gap:16px" hidden></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="band"><div class="w band-in"><div><h2 class="d h2">Try us on one project.</h2><p class="muted">Free test edit. No contract. Your style, matched.</p></div><div class="ctas"><a class="btn btn-p" href="#freetest" data-scroll="freetest">Book a free test</a><a class="btn btn-g" href="#pp-work" data-scroll="pp-work">See our work</a></div></div></div>
+</section>
+
+<!-- =============================== AI AVATARS (light) =============================== -->
+<section class="page" id="p-avatars" data-page="avatars" data-tone="light" aria-label="AI avatars" hidden>
+  <div class="w">
+    <div class="av-hero">
+      <div class="stack">
+        <span class="eb">AI avatars · For anyone</span>
+        <div class="fit"><h1 class="d h1 two" style="--ch:14"><span class="ln">Meet Adam.</span><span class="ln"><span class="hl">He isn't real.</span></span></h1></div>
+        <p class="lede">We build AI presenters that look and sound like your brand, then script and edit them into videos every month. No camera, no studio, no reshoots.</p>
+        <div class="ctas"><a class="btn btn-p" href="#av-form" data-scroll="av-form">Book a demo call</a><button class="btn btn-g" type="button" id="revealBtn">Show me the reveal</button></div>
+        <div class="anchor"><span>Clients shown Adam <b>didn't spot he was AI</b></span></div>
+      </div>
+      <div class="av-stage">
+        <div class="fr clean ph-adam" role="img" aria-label="Placeholder: Adam, AI presenter, in a bright loft">
+          <span class="corners" aria-hidden="true" style="filter:invert(1)"></span>
+          <span class="tc" style="color:#111"><i aria-hidden="true"></i>REC 00:00:07:12</span>
+          <span class="caption">“Dubai rents are up again this quarter. Here's what that means <b>for buyers.</b>”</span>
+        </div>
+        <div class="reveal" id="reveal" aria-live="polite"><div><b>100% AI</b><span>Face, voice and gestures generated · edited by Milkywayy</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec alt">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">Why brands use one</span><h2 class="d h2">Video, without the filming.</h2></div></div>
+      <div class="pa">
+        <div><span class="from">No time to film</span><b>Posts go out every week</b><p>Your avatar never cancels a shoot or needs a second take.</p></div>
+        <div><span class="from">Not comfortable on camera</span><b>A confident face for your brand</b><p>Pick the look, the voice and the tone. You approve every script.</p></div>
+        <div><span class="from">Inconsistent content</span><b>One host, one style</b><p>The same presenter across Reels, TikTok, YouTube and ads.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">Avatar styles</span><h2 class="d h2">Built for your audience.</h2></div><span class="sample">Placeholder avatars · real examples go here</span></div>
+      <div class="avs">
+        <figure><div class="fr sm clean ph-adam" role="img" aria-label="Placeholder: real estate avatar"><span class="play" aria-hidden="true" style="border-color:#111;background:rgba(255,255,255,.4)"></span></div><figcaption><b>Adam</b><span>Real estate · market updates</span></figcaption></figure>
+        <figure><div class="fr sm clean ph-av2" role="img" aria-label="Placeholder: clinic avatar"><span class="play" aria-hidden="true" style="border-color:#111;background:rgba(255,255,255,.4)"></span></div><figcaption><b>Clinic host</b><span>Treatments · FAQs</span></figcaption></figure>
+        <figure><div class="fr sm clean ph-av3" role="img" aria-label="Placeholder: finance avatar"><span class="play" aria-hidden="true"></span></div><figcaption><b>Finance explainer</b><span>Mortgages · investment</span></figcaption></figure>
+        <figure><div class="fr sm clean ph-av4" role="img" aria-label="Placeholder: coach avatar"><span class="play" aria-hidden="true" style="border-color:#111;background:rgba(255,255,255,.4)"></span></div><figcaption><b>Coach</b><span>Courses · personal brand</span></figcaption></figure>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec alt">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">How it works</span><h2 class="d h2">Live in a week.</h2></div></div>
+      <div class="steps five">
+        <div class="step"><span class="n">01</span><h3 class="d h3">Brand brief</h3><p>Your audience, tone and the kind of face that fits.</p></div>
+        <div class="step"><span class="n">02</span><h3 class="d h3">Design</h3><p>We create 2–3 looks. You pick one.</p></div>
+        <div class="step"><span class="n">03</span><h3 class="d h3">Voice</h3><p>Choose from shortlisted voices and accents.</p></div>
+        <div class="step"><span class="n">04</span><h3 class="d h3">Scripts</h3><p>You send topics or we write them. You approve.</p></div>
+        <div class="step"><span class="n">05</span><h3 class="d h3">Monthly videos</h3><p>Edited, captioned and ready to post.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">Plans</span><h2 class="d h2">Three ways in.</h2></div><span class="launch">Launch pricing · set on your demo call</span></div>
+      <div class="ai-tiers">
+        <div class="pcard"><span class="nm">Avatar setup</span><div class="pr">One-off</div><ul><li>Custom face and look</li><li>Voice selection</li><li>3 test videos</li><li>Yours to keep</li></ul><a class="btn btn-g" href="#av-form" data-scroll="av-form">Book a demo</a></div>
+        <div class="pcard feat"><span class="nm">Videos</span><div class="pr">Monthly</div><ul><li>Everything in setup</li><li>Monthly video bundle</li><li>Captions and branding</li><li>You send scripts or topics</li></ul><a class="btn btn-p" href="#av-form" data-scroll="av-form">Book a demo</a></div>
+        <div class="pcard"><span class="nm">Videos + strategy</span><div class="pr">Monthly</div><ul><li>Everything in Videos</li><li>Content strategy</li><li>We write every script</li><li>Monthly performance review</li></ul><a class="btn btn-g" href="#av-form" data-scroll="av-form">Book a demo</a></div>
+      </div>
+      <p class="tnote">Each extra avatar is added with its own setup fee.</p>
+    </div>
+  </div>
+
+  <div class="sec alt">
+    <div class="w">
+      <div class="head"><div class="stack"><span class="eb">Use cases</span><h2 class="d h2">What it's for.</h2></div></div>
+      <div class="uses">
+        <div><h3 class="d h3">Listings</h3><p>Walkthrough voiceovers and new-launch announcements.</p></div>
+        <div><h3 class="d h3">Market updates</h3><p>Weekly prices, rents and trends, in your brand's voice.</p></div>
+        <div><h3 class="d h3">Clinic FAQs</h3><p>Treatments explained clearly, without booking a doctor's time.</p></div>
+        <div><h3 class="d h3">Courses</h3><p>Lessons and onboarding videos at any scale.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="w faq">
+      <div class="stack"><span class="eb">Questions</span><h2 class="d h2">The honest answers.</h2></div>
+      <div class="faq-list"><span class="sample" style="margin:0 0 12px">Draft questions · final list and answers to come</span>
+        <details><summary>Will people know it's AI?</summary><p>Most won't spot it. We still label AI content where platforms require it, such as Meta and TikTok, and we recommend being open about it.</p></details>
+        <details><summary>Who owns the avatar?</summary><p>You do. The avatar is built for your brand and isn't reused for anyone else.</p></details>
+        <details><summary>Can it speak Arabic?</summary><p>Yes. English and Arabic are supported, and other languages on request.</p></details>
+        <details><summary>Can it look like me?</summary><p>Yes, with your consent and a short photo session we can build an avatar based on you.</p></details>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec alt" id="av-form">
+    <div class="w formwrap">
+      <div class="stack"><span class="eb">Demo</span><h2 class="d h2">See your avatar idea.</h2><p class="lede">A 20-minute call. We show live examples and sketch what your presenter could look like.</p></div>
+      <form class="form" data-form="avatars" novalidate>
+        <div class="row2"><label class="fld">Name<input name="name" autocomplete="name"></label><label class="fld">Company<input name="company" autocomplete="organization"></label></div>
+        <div class="row2"><label class="fld">Email<input name="email" type="email" autocomplete="email"></label><label class="fld">Phone<input name="phone" type="tel" autocomplete="tel"></label></div>
+        <fieldset><legend>What's it for?</legend><div class="opts">
+          <label class="opt"><input type="radio" name="use" value="Real estate" checked><span>Real estate</span></label>
+          <label class="opt"><input type="radio" name="use" value="Clinic"><span>Clinic</span></label>
+          <label class="opt"><input type="radio" name="use" value="Personal brand"><span>Personal brand</span></label>
+          <label class="opt"><input type="radio" name="use" value="Other"><span>Other</span></label></div></fieldset>
+        <label class="fld" id="avOther" hidden>Tell us what it's for<input name="use_other" placeholder="e.g. a hotel concierge avatar for our website"></label>
+        <fieldset><legend>How should we reply?</legend><div class="opts">
+          <label class="opt"><input type="radio" name="pref" value="Call" checked><span>Book a call</span></label>
+          <label class="opt"><input type="radio" name="pref" value="WhatsApp"><span>WhatsApp</span></label>
+          <label class="opt"><input type="radio" name="pref" value="Email"><span>Email</span></label></div></fieldset>
+        <button class="btn btn-p" type="submit">Book my demo</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="band"><div class="w band-in"><div><h2 class="d h2">Your brand, on camera. Without you.</h2></div><div class="ctas"><a class="btn btn-p" href="#av-form" data-scroll="av-form">Book a demo call</a><a class="btn btn-g" href="#contact" data-go="contact">WhatsApp us</a></div></div></div>
+</section>
+
+<!-- =============================== CONTACT (light) =============================== -->
+<section class="page" id="p-contact" data-page="contact" data-tone="light" aria-label="Contact" hidden>
+  <div class="sec">
+    <div class="w formwrap">
+      <div class="stack" style="gap:24px">
+        <span class="eb">Contact</span>
+        <div class="fit"><h1 class="d h1 two" style="--ch:13"><span class="ln">Tell us what</span><span class="ln">you need.</span></h1></div>
+        <p class="lede">One form for everything. We reply within 15 minutes during working hours, on the channel you pick.</p>
+        <div class="direct">
+          <div><span>WhatsApp</span>+971 50 726 3306</div>
+          <div><span>Email</span>hello@milkywayy.com</div>
+          <div><span>Studio</span>Dubai, UAE</div>
+          <div><span>Licence</span>Sharjah Media City</div>
+        </div>
+      </div>
+      <form class="form" data-form="contact" novalidate>
+        <fieldset><legend>Which service?</legend><div class="opts">
+          <label class="opt card"><input type="radio" name="svc" value="Production" checked><span><b>Production</b><small>UAE shoots and packages</small></span></label>
+          <label class="opt card"><input type="radio" name="svc" value="Post-production"><span><b>Post-production</b><small>Editing, anywhere</small></span></label>
+          <label class="opt card"><input type="radio" name="svc" value="AI avatars"><span><b>AI avatars</b><small>Custom presenter</small></span></label></div></fieldset>
+        <div class="row2"><label class="fld">Name<input name="name" autocomplete="name"></label><label class="fld">Company<input name="company" autocomplete="organization"></label></div>
+        <div class="row2"><label class="fld">Phone<input name="phone" type="tel" autocomplete="tel" placeholder="+971"></label><label class="fld">Email<input name="email" type="email" autocomplete="email"></label></div>
+        <label class="fld">Anything we should know?<textarea name="brief"></textarea></label>
+        <fieldset><legend>How should we reply?</legend><div class="opts">
+          <label class="opt"><input type="radio" name="pref" value="WhatsApp" checked><span>WhatsApp</span></label>
+          <label class="opt"><input type="radio" name="pref" value="Email"><span>Email</span></label>
+          <label class="opt"><input type="radio" name="pref" value="Call"><span>Call</span></label></div></fieldset>
+        <button class="btn btn-p" type="submit">Send request</button>
+        <p class="fine">No payment now. We confirm scope and price first.</p>
+      </form>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="ftr">
+  <div class="w">
+    <div class="ftr-grid">
+      <div><a class="logo" href="#home" data-go="home"><i aria-hidden="true"></i>Milkywayy</a><p>A Dubai content studio. Production in the UAE, editing and AI presenters worldwide.</p></div>
+      <div><h4>Services</h4><ul><li><a href="#production" data-go="production">Production</a></li><li><a href="#property" data-go="property">Property shoots</a></li><li><a href="#post" data-go="post">Post-production</a></li><li><a href="#avatars" data-go="avatars">AI avatars</a></li></ul></div>
+      <div><h4>Studio</h4><ul><li><a href="#home" data-go="home" data-scroll="work">Work</a></li><li><a href="#home" data-go="home" data-scroll="founder">About</a></li><li><a href="#contact" data-go="contact">Contact</a></li></ul></div>
+      <div><h4>Follow</h4><ul><li><a href="#home" data-toast="Opens Instagram @milkywayy_com">Instagram</a></li><li><a href="#home" data-toast="Opens LinkedIn">LinkedIn</a></li><li><a href="#home" data-toast="Opens the existing client dashboard">Client login</a></li></ul></div>
+    </div>
+    <div class="legal"><span>© 2026 Milkywayy LLC · Sharjah Media City</span><span>Mockup · placeholder imagery</span></div>
+  </div>
+</footer>
+
+<div class="mbar" id="mbar" data-tone="dark">
+  <a class="btn btn-g" href="#contact" data-go="contact" aria-label="WhatsApp us"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3.5 20.5l1.3-4.2A8.5 8.5 0 1 1 8 19.3z"/></svg></a>
+  <a class="btn btn-p" id="mbarCta" href="#contact" data-go="contact">Get a quote</a>
+</div>
+
+<script>
+(function(){
+  var pages = ["home","production","property","post","avatars","contact"];
+  var tones = {home:"dark",production:"dark",property:"dark",post:"light",avatars:"light",contact:"light"};
+  var navOf = {home:"",production:"production",property:"production",post:"post",avatars:"avatars",contact:""};
+  var mbarLabel = {home:["Get a quote","contact"],production:["Get your package","prod-form"],property:["Price my shoot","pb"],post:["Book a free test","freetest"],avatars:["Book a demo","av-form"],contact:["Send request",""]};
+  var hdr = document.getElementById("hdr"), mbar = document.getElementById("mbar");
+  function show(p, scrollId){
+    if(pages.indexOf(p) < 0) p = "home";
+    document.querySelectorAll(".page").forEach(function(s){ s.hidden = s.dataset.page !== p; });
+    var t = tones[p];
+    document.body.setAttribute("data-tone", t); hdr.setAttribute("data-tone", t); mbar.setAttribute("data-tone", t);
+    document.getElementById("mnav").setAttribute("data-tone", t);
+    document.querySelectorAll(".review a").forEach(function(a){ a.toggleAttribute("aria-current", a.dataset.go === p); if(a.dataset.go===p) a.setAttribute("aria-current","page"); });
+    document.querySelectorAll(".nav a[data-nav]").forEach(function(a){ if(a.dataset.nav === navOf[p]) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
+    var m = mbarLabel[p], c = document.getElementById("mbarCta");
+    c.textContent = m[0];
+    c.dataset.go = m[1] ? "" : "contact"; c.dataset.scrollTarget = m[1];
+    if(p === "contact"){ c.dataset.go = ""; c.dataset.scrollTarget = ""; }
+    if(typeof fitTitles==="function") setTimeout(fitTitles,0);
+    if(scrollId){ var el = document.getElementById(scrollId); if(el){ setTimeout(function(){ el.scrollIntoView({behavior:"smooth",block:"start"}); }, 30); return; } }
+    window.scrollTo({top:0});
+  }
+  function current(){ var p = null; document.querySelectorAll(".page").forEach(function(s){ if(!s.hidden) p = s.dataset.page; }); return p; }
+  document.addEventListener("click", function(e){
+    var a = e.target.closest("a,button"); if(!a) return;
+    if(a.dataset.toast){ e.preventDefault(); toast(a.dataset.toast); return; }
+    if(a.id === "mbarCta"){
+      e.preventDefault();
+      var tgt = a.dataset.scrollTarget;
+      if(current()==="home"){ show("contact"); return; }
+      if(current()==="contact"){ var f=document.querySelector("#p-contact form button[type=submit]"); if(f) f.focus(); return; }
+      if(tgt){ var el=document.getElementById(tgt); if(el) el.scrollIntoView({behavior:"smooth"}); }
+      return;
+    }
+    var go = a.dataset.go, sc = a.dataset.scroll;
+    if(go){ e.preventDefault(); closeMenu(); show(go, sc); try{ history.replaceState(null,"","#"+go); }catch(_){} return; }
+    if(sc){ e.preventDefault(); var el2=document.getElementById(sc); if(el2) el2.scrollIntoView({behavior:"smooth",block:"start"}); }
+  });
+  // Fit hero titles: widest line fills the column, capped. CSS container units are the no-JS fallback.
+  function fitTitles(){
+    document.querySelectorAll(".page:not([hidden]) .h1.two").forEach(function(h){
+      var box = h.parentElement.clientWidth; if(!box) return;
+      h.style.fontSize = "100px";
+      var w = 0; h.querySelectorAll(".ln").forEach(function(l){ w = Math.max(w, l.scrollWidth); });
+      if(!w) return;
+      var cap = Math.min(124, window.innerHeight * 0.16 + 40);
+      h.style.fontSize = Math.max(34, Math.min(cap, 100 * box / w * 0.98)) + "px";
+    });
+  }
+  window.addEventListener("resize", fitTitles);
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(fitTitles);
+  var start = (location.hash||"").replace("#","");
+  show(pages.indexOf(start) >= 0 ? start : "home");
+
+  // mobile menu
+  var mnav = document.getElementById("mnav"), mo = document.getElementById("menuOpen");
+  function closeMenu(){ mnav.hidden = true; mo.setAttribute("aria-expanded","false"); }
+  mo.addEventListener("click", function(){ mnav.hidden = false; mo.setAttribute("aria-expanded","true"); document.getElementById("menuClose").focus(); });
+  document.getElementById("menuClose").addEventListener("click", closeMenu);
+  document.addEventListener("keydown", function(e){ if(e.key==="Escape") closeMenu(); });
+
+  // toast
+  var tt;
+  function toast(msg){ var el=document.querySelector(".toast"); if(!el){ el=document.createElement("div"); el.className="toast"; el.setAttribute("role","status"); document.body.appendChild(el);} el.textContent="Mockup: "+msg; el.hidden=false; clearTimeout(tt); tt=setTimeout(function(){ el.hidden=true; }, 2600); }
+
+  // running timecode
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var tc = document.getElementById("tcode"), fr = 14*25+8;
+  function pad(n){ return (n<10?"0":"")+n; }
+  if(!reduce) setInterval(function(){ fr = (fr+1) % (3600*25); var s=Math.floor(fr/25), f=fr%25; tc.textContent = "REC 00:"+pad(Math.floor(s/60))+":"+pad(s%60)+":"+pad(f); }, 40);
+
+  // chips
+  document.querySelectorAll(".chips").forEach(function(g){ g.addEventListener("click", function(e){ var b=e.target.closest(".chip"); if(!b) return; g.querySelectorAll(".chip").forEach(function(x){x.setAttribute("aria-pressed","false")}); b.setAttribute("aria-pressed","true"); }); });
+  document.querySelectorAll('.tabs:not([aria-label="Edit type"])').forEach(function(g){ g.addEventListener("click", function(e){ var b=e.target.closest("button"); if(!b) return; g.querySelectorAll("button").forEach(function(x){x.setAttribute("aria-selected","false")}); b.setAttribute("aria-selected","true"); }); });
+
+  var fmt = function(n){ return Math.round(n).toLocaleString("en-US"); };
+
+  // property booking (prices from the booking portal pricing table)
+  var P = {
+    apt:{label:"Apartment",sizes:["Studio","1 Bed","2 Bed","3 Bed","4 Bed","5 Bed"],
+      photo:[450,500,550,650,750,850],short:[300,300,350,400,400,450],day:[500,600,700,800,900,1000],night:[600,700,800,900,1000,1200],dn:[800,950,1100,1200,1350,1500],tour:[500,600,700,800,900,1000]},
+    villa:{label:"Villa / townhouse",sizes:["2 Bed","3 Bed","4 Bed","5 Bed","6 Bed","7 Bed"],
+      photo:[700,800,900,1100,1200,1400],short:[400,450,550,650,750,800],day:[900,950,1050,1150,1250,1350],night:[1000,1100,1200,1300,1400,1600],dn:[1250,1400,1500,1600,1800,2000],tour:[900,950,1100,1250,1400,1500]},
+    com:{label:"Commercial",sizes:["Basic","Essential","Premium","Executive"],desc:["Small spaces","Most offices","Large commercial spaces","HQ / warehouses"],
+      incl:[["Up to 15","30–45 s",null,null],["Up to 20","45–60 s","3–5 min","8–10 hotspots"],["Up to 30","60–75 s","5–10 min","Up to 15 hotspots"],["Up to 40","60–90 s","8–15 min","Up to 20 hotspots"]],
+      photo:[450,550,700,850],short:[300,350,450,500],day:[500,600,800,1000],tour:[500,600,800,1000]}
+  };
+  var TWI_STD = {5:120, 10:220, 20:400}, TWI_VILLA = {5:150, 10:275, 20:500}; // twilight add-on: apartments + commercial / villas
+  function twi(p){ return p.type==="villa" ? TWI_VILLA : TWI_STD; }
+  var LIGHT = {day:"Daylight", night:"Night", dn:"Day + night"};
+  var days = ["Thu 2 Oct","Fri 3 Oct","Sat 4 Oct","Mon 6 Oct","Tue 7 Oct"];
+  var props = [], openIdx = 0, uid = 0;
+  function blank(from){ return {id:++uid,type:"apt",size:1,photo:true,twi:false,twiQty:5,video:false,short:false,long:false,light:"day",tour:false,
+    area:from?from.area:"Dubai Marina",bldg:from?"":"Marina Heights",unit:"",day:from?from.day:days[0],slot:from?from.slot:"Morning"}; }
+  function priceOf(p){
+    if(comLocked(p,'long')) p.long=false; if(comLocked(p,'tour')) p.tour=false;
+    var d=P[p.type], i=p.size, t=0, lines=[];
+    if(p.photo){ t+=d.photo[i]; lines.push(["Photography", d.photo[i]]); if(p.twi){ var T=twi(p); t+=T[p.twiQty]; lines.push(["Twilight × "+p.twiQty, T[p.twiQty]]); } }
+    if(p.video && p.short){ t+=d.short[i]; lines.push(["Short-form video", d.short[i]]); }
+    if(p.video && p.long){ var k = p.type==="com" ? "day" : p.light; t+=d[k][i]; lines.push(["Long-form ("+(p.type==="com"?"daylight":LIGHT[p.light].toLowerCase())+")", d[k][i]]); }
+    if(p.tour){ t+=d.tour[i]; lines.push(["360° tour", d.tour[i]]); }
+    return {total:t, lines:lines};
+  }
+  function needsEvening(p){ return p.video && p.long && p.type!=="com" && p.light!=="day"; }
+  function svcText(p){ var a=[]; if(p.photo) a.push("Photography"+(p.twi?" + "+p.twiQty+" twilight":"")); if(p.video&&p.short) a.push("Short-form video"); if(p.video&&p.long) a.push("Long-form video"+(p.type==="com"?"":" ("+LIGHT[p.light].toLowerCase()+")")); if(p.tour) a.push("360° tour"); return a; }
+  function title(p){ return P[p.type].sizes[p.size] + (p.type==="com" ? " commercial" : " " + P[p.type].label.toLowerCase()); }
+  function esc2(x){ return String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"); }
+  function seg(key, opts, val, dis){ return '<div class="seg" role="group">'+opts.map(function(o){ return '<button type="button" data-set="'+key+'" data-val="'+o[0]+'" aria-pressed="'+(String(o[0])===String(val))+'"'+(dis&&dis(o[0])?' disabled':'')+'>'+o[1]+'</button>'; }).join("")+'</div>'; }
+  function comTiers(p){
+    var d=P.com, inc=d.incl[p.size];
+    var cards = d.sizes.map(function(n,i){ return '<button type="button" class="sc" data-set="size" data-val="'+i+'" aria-pressed="'+(p.size===i)+'">'+(i===1?'<span class="pop">Most popular</span>':'')+'<b>'+n+'</b><small>'+d.desc[i]+'</small></button>'; }).join("");
+    var strip = '<div class="incl-strip"><span><b>Photos</b> '+inc[0]+'</span><span><b>Reel</b> '+inc[1]+'</span><span'+(inc[2]?'':' class="off"')+'><b>Walkthrough</b> '+(inc[2]||'Not included')+'</span><span'+(inc[3]?'':' class="off"')+'><b>360 tour</b> '+(inc[3]||'Not included')+'</span></div>';
+    return '<div class="grp"><span class="gl">Property scale</span><div class="cards3" style="grid-template-columns:repeat(4,minmax(0,1fr))">'+cards+'</div>'+strip+'</div>';
+  }
+  function comLocked(p,k){ return p.type==="com" && ((k==="long" && !P.com.incl[p.size][2]) || (k==="tour" && !P.com.incl[p.size][3])); }
+  function render(){
+    var list = document.getElementById("propList");
+    list.innerHTML = props.map(function(p, idx){
+      var d=P[p.type], pr=priceOf(p), open = idx===openIdx;
+      var h = '<div class="prop'+(open?' open':'')+'" data-idx="'+idx+'">'+
+        '<button type="button" class="prop-h" data-toggle="'+idx+'" aria-expanded="'+open+'"><span class="no">'+(idx<9?'0':'')+(idx+1)+'</span><span><b>'+esc2(title(p))+'</b><small>'+esc2([p.bldg,p.area].filter(Boolean).join(", ")||"Location to add")+' · '+esc2(svcText(p).join(" + ")||"No services yet")+'</small></span><span class="amt">AED '+fmt(pr.total)+'</span><span class="chev" aria-hidden="true">⌄</span></button>';
+      if(open){
+        h += '<div class="prop-b">'+
+          '<div class="grp"><span class="gl">Property type</span>'+seg("type",[["apt","Apartment"],["villa","Villa / townhouse"],["com","Commercial"]],p.type)+'</div>'+
+          (p.type==="com" ? comTiers(p) : '<div class="grp"><span class="gl">Size</span>'+seg("size",d.sizes.map(function(x,i){return [i,x]}),p.size)+'</div>')+
+          '<div class="grp"><span class="gl">Services</span><div class="cards3">'+
+            '<button type="button" class="sc" data-tog="photo" aria-pressed="'+p.photo+'"><b>Photography</b><small>Delivery 24h</small><span class="p">AED '+fmt(d.photo[p.size])+'</span></button>'+
+            '<button type="button" class="sc" data-tog="video" aria-pressed="'+p.video+'"><b>Videography</b><small>Short-form, long-form or both</small><span class="p">'+(p.video?'Choose below':'From AED '+fmt(d.short[p.size]))+'</span></button>'+
+            '<button type="button" class="sc" data-tog="tour" aria-pressed="'+p.tour+'"'+(comLocked(p,'tour')?' disabled':'')+'><b>360° tour</b><small>Delivery 48–72h</small><span class="p">'+(comLocked(p,'tour')?'Not in Basic':'AED '+fmt(d.tour[p.size]))+'</span></button>'+
+          '</div>';
+        if(p.photo){ h += '<div class="sub"><div class="row"><label class="chk"><input type="checkbox" data-chk="twi"'+(p.twi?' checked':'')+'> Add twilight images <span class="muted" style="font-size:13px">(edited from your daylight shots)</span></label></div>'+
+          (p.twi? (function(){ var T=twi(p); return '<div class="row">'+seg("twiQty",[[5,"5 images · AED "+T[5]],[10,"10 images · AED "+T[10]],[20,"20 images · AED "+T[20]]],p.twiQty)+'</div><p class="note">'+(p.twiQty===5?"AED "+(T[5]/5)+" per image.":"AED "+(T[p.twiQty]/p.twiQty).toFixed(1).replace(/\.0$/,"")+" per image. You save AED "+fmt(T[5]/5*p.twiQty-T[p.twiQty])+".")+'</p>'; })() : '')+'</div>'; }
+        if(p.video){ var lk = p.type==="com" ? "day" : p.light;
+          h += '<div class="sub"><span class="gl" style="font:500 11.5px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Video format</span><div class="cards3" style="grid-template-columns:repeat(2,minmax(0,1fr))">'+
+            '<button type="button" class="sc" data-tog="short" aria-pressed="'+p.short+'"><b>Short-form</b><small>Social media reels · 24–48h</small><span class="p">AED '+fmt(d.short[p.size])+'</span></button>'+
+            '<button type="button" class="sc" data-tog="long" aria-pressed="'+p.long+'"'+(comLocked(p,'long')?' disabled':'')+'><b>Long-form</b><small>YouTube walkthrough · 24–48h</small><span class="p">'+(comLocked(p,'long')?'Not in Basic':'AED '+fmt(d[lk][p.size]))+'</span></button></div>';
+          if(p.long && p.type!=="com"){ h += '<span class="gl" style="font:500 11.5px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Lighting</span>'+seg("light",[["day","Daylight"],["night","Night"],["dn","Day + night"]],p.light)+(p.light!=="day"?'<p class="note">Night footage needs an evening slot, so we\'ll book you in the evening.</p>':''); }
+          h += '</div>'; }
+        h += '</div>'+
+          '<div class="grp"><span class="gl">Location</span><div class="row3">'+
+            '<label class="fld">Community / area<input data-in="area" value="'+esc2(p.area)+'"></label>'+
+            '<label class="fld">Building / tower<input data-in="bldg" value="'+esc2(p.bldg)+'"></label>'+
+            '<label class="fld">Unit number<input data-in="unit" value="'+esc2(p.unit)+'" placeholder="Optional"></label></div></div>'+
+          '<div class="grp"><span class="gl">Preferred date and time</span>'+seg("day",days.map(function(x){return [x,x]}),p.day)+
+            seg("slot",[["Morning","Morning"],["Afternoon","Afternoon"],["Evening","Evening"]],p.slot,function(v){ return needsEvening(p) && v!=="Evening"; })+'</div>'+
+          '<div class="prop-f"><span style="display:flex;gap:18px"><button type="button" class="txtbtn" data-dup="'+idx+'">⧉ Duplicate</button>'+(props.length>1?'<button type="button" class="txtbtn" data-del="'+idx+'">✕ Remove</button>':'')+'</span><span class="mono tab-num">Subtotal AED '+fmt(pr.total)+'</span></div>'+
+        '</div>';
+      }
+      return h + '</div>';
+    }).join("");
+    summary();
+  }
+  function summary(){
+    var tot=0, items="", msg=["Ref #MW-1042","Hi Milkywayy,"];
+    msg.push(props.length>1 ? "I'd like to book "+props.length+" properties:" : "I'd like to book:");
+    props.forEach(function(p, idx){
+      var pr=priceOf(p); tot+=pr.total;
+      items += '<div class="sum-item"><span><b>'+esc2(title(p))+'</b><small>'+esc2([p.unit,p.bldg,p.area].filter(Boolean).join(", "))+'</small><small>'+esc2(svcText(p).join(" + ")||"No services yet")+'</small><small>'+esc2(p.day+" · "+p.slot)+'</small></span><span>AED '+fmt(pr.total)+'</span></div>';
+      msg.push((props.length>1 ? (idx+1)+". " : "") + title(p).charAt(0).toUpperCase()+title(p).slice(1) + " — " + (svcText(p).join(" + ")||"services to confirm") + ".");
+      msg.push("   " + [p.unit?("Unit "+p.unit):"", p.bldg, p.area].filter(Boolean).join(", ") + " · " + p.day + ", " + p.slot.toLowerCase());
+    });
+    document.getElementById("sumList").innerHTML = items;
+    document.getElementById("pTotal").textContent = "AED " + fmt(tot);
+    document.getElementById("pMsg").textContent = msg.join("\n").replace(/\n   /g,"\n");
+  }
+  var pl = document.getElementById("propList");
+  pl.addEventListener("click", function(e){
+    var el = e.target.closest("button"); if(!el) return;
+    var card = el.closest(".prop"); var idx = card ? +card.dataset.idx : openIdx; var p = props[idx];
+    if(el.dataset.toggle!==undefined){ openIdx = (openIdx===idx ? -1 : idx); render(); return; }
+    if(el.dataset.dup!==undefined){ var c = JSON.parse(JSON.stringify(p)); c.id=++uid; c.unit=""; props.splice(idx+1,0,c); openIdx=idx+1; render(); return; }
+    if(el.dataset.del!==undefined){ props.splice(idx,1); openIdx=Math.min(idx, props.length-1); render(); return; }
+    if(el.dataset.tog){ var k=el.dataset.tog; if(comLocked(p,k)) return; p[k]=!p[k]; if(k==="video" && p.video && !p.short && !p.long) p.short=true; if(needsEvening(p)) p.slot="Evening"; render(); return; }
+    if(el.dataset.set){ var key=el.dataset.set, v=el.dataset.val;
+      if(key==="type"){ p.type=v; p.size = v==="villa"?0:1; }
+      else if(key==="size"||key==="twiQty"){ p[key]=+v; }
+      else p[key]=v;
+      if(needsEvening(p)) p.slot="Evening";
+      render(); }
+  });
+  pl.addEventListener("change", function(e){ var el=e.target; if(el.dataset.chk){ props[+el.closest(".prop").dataset.idx][el.dataset.chk]=el.checked; render(); } });
+  pl.addEventListener("input", function(e){ var el=e.target; if(el.dataset.in){ props[+el.closest(".prop").dataset.idx][el.dataset.in]=el.value; summary(); var h=el.closest(".prop").querySelector(".prop-h small"); var p=props[+el.closest(".prop").dataset.idx]; if(h) h.textContent=([p.bldg,p.area].filter(Boolean).join(", ")||"Location to add")+" · "+(svcText(p).join(" + ")||"No services yet"); } });
+  document.getElementById("addProp").addEventListener("click", function(){ props.push(blank(props[props.length-1])); openIdx=props.length-1; render(); });
+  var first = blank(); first.video=true; first.short=true; first.long=true; props.push(first); render();
+  document.getElementById("pReq").addEventListener("click", function(e){ e.preventDefault(); toast("Saves the lead, then opens WhatsApp with this message"); });
+
+  // before/after sliders
+  function ba(id){ var el=document.getElementById(id); var r=el.querySelector("input"); r.addEventListener("input", function(){ el.style.setProperty("--pos", r.value+"%"); }); }
+  ba("ba1"); ba("ba2");
+  var baSets = {
+    sky:{b:"ph-villa-grey",a:"ph-villa",f:"none",t:"Sky replacement",x:"Grey or blown-out skies replaced with a natural blue sky that matches the light on the building."},
+    twilight:{b:"ph-villa",a:"ph-villa-dusk",f:"none",t:"Virtual twilight",x:"A daytime exterior turned into a dusk shot with warm windows and a glowing pool. The listing photo that gets the click."},
+    hdr:{b:"ph-int",a:"ph-int",f:"grayscale(.55) brightness(.78) contrast(.78) saturate(.7)",t:"HDR blending",x:"Bracketed exposures blended for bright rooms, clean window views, straight verticals and true colour."}
+  };
+  document.querySelectorAll("[data-ba]").forEach(function(b){ b.addEventListener("click", function(){
+    document.querySelectorAll("[data-ba]").forEach(function(x){x.setAttribute("aria-selected", x===b?"true":"false")});
+    var s = baSets[b.dataset.ba], bb=document.getElementById("ba2b"), aa=document.getElementById("ba2a");
+    bb.className = "lyr " + s.b; aa.className = "lyr " + s.a; bb.style.filter = s.f;
+    document.getElementById("baTitle").textContent = s.t; document.getElementById("baText").textContent = s.x;
+  }); });
+
+  // currency
+  var rates = {USD:[1,"$"],GBP:[0.78,"£"],CAD:[1.37,"C$"],EUR:[0.92,"€"]};
+  function money(usd, cur){ var r=rates[cur], v=usd*r[0]; var s = v < 10 ? (Math.round(v*20)/20).toFixed(2).replace(/\.00$/,"") : fmt(Math.round(v/5)*5); return r[1]+s; }
+  function setCur(cur){
+    document.querySelectorAll("[data-cur]").forEach(function(b){ b.setAttribute("aria-pressed", b.dataset.cur===cur?"true":"false"); });
+    document.querySelectorAll(".money").forEach(function(m){ m.textContent = money(+m.dataset.usd, cur); });
+    try{ localStorage.setItem("mw-cur", cur); }catch(_){}
+  }
+  document.querySelectorAll("[data-cur]").forEach(function(b){ b.addEventListener("click", function(){ setCur(b.dataset.cur); }); });
+  var sc0 = "USD"; try{ var s0=localStorage.getItem("mw-cur"); if(s0 && rates[s0]) sc0=s0; }catch(_){}
+  setCur(sc0);
+
+  // free test steps
+  var ft1=document.getElementById("ft1"), ft2=document.getElementById("ft2"), ft3=document.getElementById("ft3");
+  function stepTo(n){ ft1.hidden=n!==1; ft2.hidden=n!==2; ft3.hidden=n!==3; ["q1","q2","q3"].forEach(function(q,i){ var el=document.getElementById(q); if(i+1===n) el.setAttribute("aria-current","step"); else el.removeAttribute("aria-current"); }); }
+  document.getElementById("ftNext").addEventListener("click", function(){ stepTo(2); });
+  document.getElementById("ftBack").addEventListener("click", function(){ stepTo(1); });
+  function slots(){
+    var days=["Mon 6","Tue 7","Wed 8","Thu 9","Fri 10"], times=["9:00 AM","11:30 AM","4:00 PM"], h="";
+    days.forEach(function(d){ times.forEach(function(t){ h += '<button type="button" aria-pressed="false"><span>'+d+' Oct</span><small>'+t+'</small></button>'; }); });
+    return h;
+  }
+  document.getElementById("ftNext2").addEventListener("click", function(){
+    ft3.innerHTML = '<div class="cal"><span class="eb">Pick a 15-minute call · your time zone</span><div class="cal-grid" id="calg">'+slots()+'</div></div><button class="btn btn-p" type="button" id="ftBook">Confirm call</button><p class="fine">Calendar will be a Cal.com embed on the live site.</p>';
+    ft3.querySelector("#calg").addEventListener("click", function(e){ var b=e.target.closest("button"); if(!b) return; ft3.querySelectorAll("#calg button").forEach(function(x){x.setAttribute("aria-pressed","false")}); b.setAttribute("aria-pressed","true"); });
+    ft3.querySelector("#ftBook").addEventListener("click", function(){ var sel = ft3.querySelector('#calg button[aria-pressed="true"]'); var when = sel ? sel.querySelector("span").textContent + ", " + sel.querySelector("small").textContent : "your chosen time"; ft3.innerHTML = '<div class="done"><b>Call booked.</b><p class="muted" style="margin:0">'+when+'. You\'ll get a calendar invite and a folder link for your test files.</p><p class="fine">Ref #MW-2088 · Mockup: nothing was sent</p></div>'; });
+    stepTo(3);
+  });
+  document.getElementById("ftEmail").addEventListener("click", function(e){ e.preventDefault(); ft3.innerHTML = '<div class="done"><b>Got it.</b><p class="muted" style="margin:0">We\'ll email you within a few hours with a folder link for your free test.</p><p class="fine">Ref #MW-2089</p></div>'; stepTo(3); });
+
+  // generic forms
+  document.querySelectorAll("form[data-form]").forEach(function(f){ f.addEventListener("submit", function(e){
+    e.preventDefault();
+    var pref = (f.querySelector('input[name="pref"]:checked')||{}).value || "WhatsApp";
+    var next = pref==="WhatsApp" ? "WhatsApp opens with your details filled in." : pref==="Email" ? "We'll email you within 15 minutes during working hours." : "The booking calendar opens so you can pick a time.";
+    var box = document.createElement("div"); box.className="done";
+    box.innerHTML = "<b>Request received.</b><p class='muted' style='margin:0'>"+next+"</p><p class='fine'>Ref #MW-1043 · Mockup: nothing was sent</p>";
+    f.replaceChildren(box);
+  }); });
+
+  // AI demo: 'Other' opens a text box
+  document.querySelectorAll('input[name="use"]').forEach(function(r){ r.addEventListener('change', function(){ var o=document.getElementById('avOther'); o.hidden = document.querySelector('input[name="use"]:checked').value!=='Other'; if(!o.hidden) o.querySelector('input').focus(); }); });
+  // AI reveal
+  var rv=document.getElementById("reveal"), rb=document.getElementById("revealBtn");
+  rb.addEventListener("click", function(){ var on = !rv.classList.contains("on"); rv.classList.toggle("on", on); rb.textContent = on ? "Hide the reveal" : "Show me the reveal"; });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,166 @@
+@import "tailwindcss";
+
+/*
+ * Milkywayy "Viewfinder" tokens (guide §4.1, values copied from reference/site-mockup.html).
+ * Components only use tokens; a [data-tone] wrapper decides which set applies.
+ */
+:root {
+  --black: #111111;
+  --paper: #ededea;
+  --champagne: #e6d3a3;
+  --white: #f5f4f0;
+  --ink: #111110;
+  --brass: #7a5c2e;
+  --rec: #e5484d;
+}
+
+:root,
+[data-tone="dark"] {
+  --bg: #111111;
+  --surface: #191919;
+  --surface-2: #222120;
+  --line: #2e2d2b;
+  --fg: #ededea;
+  --muted: #8e8c87;
+  --btn: #e6d3a3;
+  --btn-ink: #111111;
+  --acc: #e6d3a3;
+  --hl-bg: transparent;
+  --hl-fg: #e6d3a3;
+  color-scheme: dark;
+}
+
+[data-tone="light"] {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface-2: #ece9e2;
+  --line: #dad6cd;
+  --fg: #111110;
+  --muted: #5f5a52;
+  --btn: #111110;
+  --btn-ink: #f5f4f0;
+  --acc: #7a5c2e;
+  --hl-bg: #e6d3a3;
+  --hl-fg: #111110;
+  color-scheme: light;
+}
+
+@theme inline {
+  --font-sans: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-archivo), "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, Menlo, monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-btn: var(--btn);
+  --color-btn-ink: var(--btn-ink);
+  --color-acc: var(--acc);
+  --color-rec: var(--rec);
+  --color-champagne: var(--champagne);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-black: var(--black);
+
+  --radius-*: initial;
+  --radius-none: 0;
+  --radius-full: 9999px;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  html {
+    background: var(--black);
+    scroll-behavior: smooth;
+  }
+  body {
+    margin: 0;
+    background: var(--black);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.55;
+    font-variation-settings: "wdth" 100;
+    -webkit-font-smoothing: antialiased;
+  }
+  a {
+    color: inherit;
+  }
+  img {
+    max-width: 100%;
+    display: block;
+  }
+  button {
+    font: inherit;
+    color: inherit;
+  }
+  :focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 3px;
+  }
+}
+
+.tone-root {
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100dvh;
+}
+
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -100px;
+  z-index: 100;
+  padding: 12px 16px;
+  background: var(--champagne);
+  color: var(--black);
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip-link:focus {
+  top: 16px;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.logo-mark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-variation-settings: "wdth" 72;
+  text-decoration: none;
+}
+.logo-mark i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--rec);
+  animation: blink 1.4s steps(2) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

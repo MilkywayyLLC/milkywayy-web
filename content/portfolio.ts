@@ -1,0 +1,99 @@
+import type { PortfolioItem } from "./types";
+
+// TODO(owner): real portfolio media (reels, photos, long-form). Placeholders until supplied.
+let n = 0;
+const item = (p: Omit<PortfolioItem, "id" | "published" | "sortOrder">): PortfolioItem => ({
+  ...p,
+  id: `item-${++n}`,
+  published: true,
+  sortOrder: n,
+  sample: true,
+});
+
+export const portfolio: PortfolioItem[] = [
+  item({
+    title: "Palm Jumeirah villa",
+    category: "property",
+    format: "reel",
+    duration: "0:30",
+    meta: "Property",
+    media: { alt: "Placeholder reel: villa with pool", placeholder: "villa" },
+    placements: ["home-reels", "work"],
+  }),
+  item({
+    title: "Downtown penthouse",
+    category: "property",
+    format: "reel",
+    duration: "0:24",
+    meta: "Night",
+    media: { alt: "Placeholder reel: penthouse at night", placeholder: "night" },
+    placements: ["home-reels", "home-row-production", "production-hero", "work"],
+  }),
+  item({
+    title: "Adam, market update",
+    category: "ai-avatar",
+    format: "reel",
+    meta: "AI avatar",
+    media: { alt: "Placeholder: AI presenter Adam", placeholder: "adam" },
+    placements: ["home-reels", "home-row-avatars", "work"],
+  }),
+  item({
+    title: "Aesthetic clinic",
+    category: "brand",
+    format: "reel",
+    duration: "0:40",
+    meta: "Brand",
+    media: { alt: "Placeholder reel: clinic interior", placeholder: "clinic" },
+    placements: ["home-reels", "production-hero", "work"],
+  }),
+  item({
+    title: "Marina 2BR walkthrough",
+    category: "property",
+    format: "reel",
+    duration: "0:28",
+    meta: "Property",
+    tag: "Marina 2BR",
+    media: { alt: "Placeholder: apartment interior", placeholder: "interior" },
+    placements: [
+      "home-reels",
+      "home-row-production",
+      "property-hero",
+      "property-gallery-photo",
+      "work",
+    ],
+  }),
+  item({
+    title: "Barber studio",
+    category: "brand",
+    format: "reel",
+    duration: "0:35",
+    meta: "Brand",
+    media: { alt: "Placeholder: salon brand reel", placeholder: "salon" },
+    placements: ["home-reels", "home-row-production", "production-hero", "work"],
+  }),
+  item({
+    title: "Villa twilight",
+    category: "editing",
+    format: "photo",
+    tag: "Twilight",
+    meta: "Editing",
+    media: { alt: "Placeholder: twilight conversion of a villa", placeholder: "villa-dusk" },
+    placements: ["home-row-post", "post-service-cards", "work"],
+  }),
+  item({
+    title: "HDR kitchen",
+    category: "editing",
+    format: "photo",
+    meta: "Editing",
+    media: { alt: "Placeholder: HDR kitchen", placeholder: "kitchen" },
+    placements: ["home-row-post", "property-gallery-photo", "work"],
+  }),
+  item({
+    title: "HDR bathroom",
+    category: "editing",
+    format: "photo",
+    meta: "Editing",
+    media: { alt: "Placeholder: HDR bathroom", placeholder: "bath" },
+    placements: ["home-row-post", "property-gallery-photo", "work"],
+  }),
+];
