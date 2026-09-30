@@ -8,6 +8,7 @@
  */
 import { avatarHero, avatars } from "@/content/avatars";
 import { beforeAfter } from "@/content/beforeAfter";
+import { caseStudies } from "@/content/caseStudies";
 import { clients } from "@/content/clients";
 import { faqs } from "@/content/faqs";
 import { portfolio } from "@/content/portfolio";
@@ -73,4 +74,12 @@ export async function getPropertyPricing() {
 
 export async function getOtherPricing() {
   return otherPricing;
+}
+
+export async function getCaseStudies() {
+  return live(caseStudies);
+}
+
+export async function getCaseStudy(slug: string) {
+  return live(caseStudies).find((c) => c.slug === slug) ?? null;
 }

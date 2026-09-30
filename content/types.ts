@@ -167,6 +167,31 @@ export interface Faq extends Publishable {
   draft: boolean;
 }
 
+/* ---------- case studies ---------- */
+
+export interface CaseStudy extends Publishable {
+  slug: string;
+  client: string;
+  title: string;
+  /**
+   * The page's two-line hero title. Keep each line short (about 18 characters) so it fits a
+   * 360px phone at the 34px minimum size; the admin will enforce this.
+   */
+  heroLines?: [string, string];
+  /** One line for cards. */
+  summary: string;
+  brief: string;
+  whatWeDid: string[];
+  /** Label + value pairs, e.g. { value: "40", label: "reels a month" }. */
+  results: { value: string; label: string }[];
+  quote?: { text: string; name: string; role: string };
+  cover: Media;
+  gallery: Media[];
+  /** Portfolio item ids shown as related work. */
+  related: string[];
+  category: PortfolioCategory;
+}
+
 /* ---------- pricing ---------- */
 
 export type ResidentialType = "apartment" | "villa";

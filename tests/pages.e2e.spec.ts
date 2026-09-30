@@ -8,6 +8,12 @@ const PAGES = [
   "/post-production",
   "/post-production/free-test",
   "/ai-avatars",
+  "/contact",
+  "/work",
+  "/work/sample-monthly-content-for-a-brokerage",
+  "/about",
+  "/privacy",
+  "/terms",
   "/styleguide",
 ];
 
@@ -28,7 +34,16 @@ for (const path of PAGES) {
 }
 
 test("hero titles are exactly two lines @mobile", async ({ page }) => {
-  for (const path of ["/", "/production", "/property-shoots", "/post-production", "/ai-avatars"]) {
+  for (const path of [
+    "/",
+    "/production",
+    "/property-shoots",
+    "/post-production",
+    "/ai-avatars",
+    "/contact",
+    "/work",
+    "/about",
+  ]) {
     await page.goto(path);
     await page.evaluate(() => document.fonts.ready);
     const lines = await page.locator("h1.two").evaluate((h) => {

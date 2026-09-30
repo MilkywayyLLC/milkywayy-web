@@ -13,7 +13,7 @@ Everything here ships as a clearly marked sample or placeholder until replaced. 
 - [ ] **AI avatar examples:** Adam hero video + poster (the "reveal" hero), and Clinic host, Finance explainer, Coach clips with posters (`content/avatars.ts`). (The proof line "Clients shown Adam didn't spot he was AI" is confirmed.)
 - [ ] **AI avatar prices** (shown as "launch pricing" until set) (`content/pricing.ts`).
 - [ ] **Final FAQs** for every page (currently drafts) (`content/faqs.ts`).
-- [ ] **Privacy and Terms** text.
-- [ ] **About page:** story, team (shooters, editors).
-- [ ] **Case studies** for `/work/[slug]`.
+- [ ] **Privacy and Terms:** review the drafts on `/privacy` and `/terms` (ideally with a lawyer) and remove the draft labels.
+- [ ] **About page:** confirm the draft story on `/about`; team photos/names if wanted; licence number if it should be shown.
+- [ ] **Case studies:** replace the sample on `/work/sample-monthly-content-for-a-brokerage` with real ones (client permission, brief, what we did, real results, a short two-line title).
 - [ ] **Client logos** (optional; names are shown as text).
