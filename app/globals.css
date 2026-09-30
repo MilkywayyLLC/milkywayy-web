@@ -81,6 +81,8 @@
   html {
     background: var(--black);
     scroll-behavior: smooth;
+    /* Sticky header (72px) + gap, for hash targets reached without JS. AnchorScroll measures it. */
+    scroll-padding-top: 88px;
   }
   body {
     margin: 0;
@@ -109,6 +111,10 @@
   :focus-visible {
     outline: 2px solid var(--acc);
     outline-offset: 3px;
+  }
+  /* Sections focused by AnchorScroll aren't controls; no ring on them. */
+  [tabindex="-1"]:focus {
+    outline: none;
   }
 }
 

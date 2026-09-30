@@ -91,7 +91,6 @@
     background: var(--hl-bg);
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
-    padding: 0 0.08em;
   }
   [data-tone="light"] .hl {
     padding: 0 0.12em;

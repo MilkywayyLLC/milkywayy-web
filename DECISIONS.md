@@ -35,3 +35,7 @@ Choices not spelled out in `MILKYWAYY_BUILD_GUIDE.md` (v3), or owner answers tha
 - **Styleguide shows later-phase components statically:** booking builder (open/close only), forms (step switching only, no submit). Logic lands in Phases 3 and 6.
 - **Placeholder media** keyed by `PlaceholderKey` in `app/styles/placeholders.css`; every placeholder item is `sample: true` in the seed.
 - **Portfolio ordering per placement** (e.g. the Production home row shows the penthouse first rather than the mockup's Marina 2BR) is left to the `portfolio_placements.sort_order` column in 5A.
+
+## Phase 1 review fixes (30 Sep 2026)
+- **Headline highlight has no padding on dark** (text-colour only, so both hero lines share a left edge); light keeps `0 0.12em` for the champagne block.
+- **In-page anchors are handled in JS** (`components/layout/AnchorScroll.tsx`, mounted in the root layout): smooth scroll offset by the measured sticky header + 16px, hash pushed to history, focus moved to the target, an instant-jump fallback if smooth scrolling stalls, and correct positioning when a page opens with a hash. `scroll-padding-top: 88px` on `html` covers the no-JS case. Reduced motion jumps instantly.

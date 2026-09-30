@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { AnchorScroll } from "@/components/layout/AnchorScroll";
 import { env, isIndexable } from "@/lib/env";
 import { archivo, dmMono } from "./fonts";
 import "./globals.css";
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         {children}
+        <AnchorScroll />
       </body>
     </html>
   );
