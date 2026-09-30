@@ -50,7 +50,9 @@ export async function getReviews(page: PageKey) {
 
 export async function getPortfolio(placement?: PortfolioPlacement) {
   const rows = live(portfolio);
-  return placement ? rows.filter((p) => p.placements.includes(placement)) : rows;
+  if (!placement) return rows;
+  const pos = (p: (typeof rows)[number]) => p.placementOrder?.[placement] ?? p.sortOrder;
+  return rows.filter((p) => p.placements.includes(placement)).sort((a, b) => pos(a) - pos(b));
 }
 
 export async function getBeforeAfter() {

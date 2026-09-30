@@ -39,3 +39,14 @@ Choices not spelled out in `MILKYWAYY_BUILD_GUIDE.md` (v3), or owner answers tha
 ## Phase 1 review fixes (30 Sep 2026)
 - **Headline highlight has no padding on dark** (text-colour only, so both hero lines share a left edge); light keeps `0 0.12em` for the champagne block.
 - **In-page anchors are handled in JS** (`components/layout/AnchorScroll.tsx`, mounted in the root layout): smooth scroll offset by the measured sticky header + 16px, hash pushed to history, focus moved to the target, an instant-jump fallback if smooth scrolling stalls, and correct positioning when a page opens with a hash. `scroll-padding-top: 88px` on `html` covers the no-JS case. Reduced motion jumps instantly.
+
+## Phase 2 — shell + Home
+- **Shell per tone:** `SiteShell` (header → main → footer → mobile bar) is used by the `(dark)` and `(light)` route-group layouts. The mobile bar's label and target come from `lib/pages.ts` by route; in-page targets use stable section ids (`#get-your-package`, `#build-your-booking`, `#free-test`, `#demo`, `#contact-form`) that Phases 3–5 give their sections.
+- **Hero titles are sized on the server.** `lib/heroFit.ts` holds Archivo's measured glyph widths; `HeroTitle` passes the widest line's width in em to CSS (`--em-d`, `--em-l` for light tone, which adds the highlight padding), so the first paint is already fitted and the client only refines it. CLS went from 0.026 to 0.
+- **Timecode writes to the DOM directly** and starts on idle; it no longer re-renders React 25×/s.
+- **Click-to-play video:** `LiteVideo` embeds YouTube (nocookie), Vimeo (dnt) or Bunny Stream only after a click. Without a playable video it shows a dimmed, non-interactive play mark, never a dead button.
+- **Reel filter chips only show categories that have items** (Home shows All / Property / Brand / AI avatar until an editing reel is placed there).
+- **Placeholder showreel** carries a visible "Placeholder · showreel coming" label (guide §0).
+- **Per-placement ordering** added now (`placementOrder`, mirrors `portfolio_placements.sort_order`) so the Production home row matches the mockup.
+- **Performance, measured on Vercel staging (Lighthouse mobile ×3):** Performance 98–99, Accessibility 100, Best Practices 96, LCP 1.9–2.3 s, CLS 0, TBT 10 ms. SEO is 69 on staging only because of the noindex lock; 100 with `NEXT_PUBLIC_SITE_ENV=production`. Best Practices loses points for 404 prefetches of pages not built yet (`/production`, `/contact`, …); clears as those pages land.
+- **JS budget is tight:** ~150 KB gzipped per page, of which ~131 KB is the Next.js 16 + React 19 framework baseline; our code is ~19 KB. Open question for the owner (see Phase 2 summary).

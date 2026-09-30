@@ -84,6 +84,8 @@ export interface PortfolioItem extends Publishable {
   /** Caption meta, e.g. "Property" */
   meta?: string;
   placements: PortfolioPlacement[];
+  /** Position within a placement (mirrors portfolio_placements.sort_order); falls back to sortOrder. */
+  placementOrder?: Partial<Record<PortfolioPlacement, number>>;
   featured?: boolean;
 }
 

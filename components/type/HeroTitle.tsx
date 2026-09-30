@@ -1,12 +1,16 @@
 "use client";
 
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { isValidElement, useLayoutEffect, useRef, type ReactNode } from "react";
+import { Hl } from "@/components/ui/Section";
+import { LIGHT_HL_PAD_EM, lineEm } from "@/lib/heroFit";
 
 /**
- * Hero title that is always exactly two lines (guide §4.3). Each line is nowrap; after fonts load
- * and on every resize the font size is set so the widest line fills the column:
+ * Hero title that is always exactly two lines (guide §4.3). Each line is nowrap and the font size
+ * is set so the widest line fills the column:
  *   size = column / widestLineAt100px × 100 × 0.98, capped at min(124, 0.16 × vh + 40), min 34.
- * Before JS runs, CSS container units give a close approximation (`--ch` = longest line length).
+ * The server computes each line's width from Archivo's glyph widths (lib/heroFit) and passes it to
+ * CSS as --em-d / --em-l, so the first paint is already fitted. After fonts load, the client
+ * measures the real lines and corrects any small error, and keeps fitting on resize.
  */
 export function HeroTitle({
   line1,
@@ -28,36 +32,40 @@ export function HeroTitle({
     const fit = () => {
       const width = box.clientWidth;
       if (!width) return;
+      const lines = h.querySelectorAll<HTMLElement>(".ln");
+      // Measure at 100px; lines are display:block, so measure their content (max-content) width.
       h.style.fontSize = "100px";
       let widest = 0;
-      // Lines are display:block, so measure their content width, not the block's width
-      // (otherwise a line shorter than the column reads as exactly the column width).
-      h.querySelectorAll<HTMLElement>(".ln").forEach((l) => {
+      lines.forEach((l) => {
         l.style.width = "max-content";
         widest = Math.max(widest, l.getBoundingClientRect().width);
         l.style.width = "";
       });
-      if (!widest) return;
+      if (!widest) {
+        h.style.fontSize = "";
+        return;
+      }
       const cap = Math.min(124, window.innerHeight * 0.16 + 40);
       h.style.fontSize = `${Math.max(34, Math.min(cap, (100 * width * 0.98) / widest))}px`;
     };
 
-    fit();
     document.fonts?.ready.then(fit);
     const ro = new ResizeObserver(fit);
     ro.observe(box);
-    window.addEventListener("resize", fit);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", fit);
-    };
+    return () => ro.disconnect();
   }, []);
 
-  const chars = Math.max(textLength(line1), textLength(line2));
+  const d = Math.max(widthEm(line1, 0), widthEm(line2, 0));
+  const l = Math.max(widthEm(line1, LIGHT_HL_PAD_EM), widthEm(line2, LIGHT_HL_PAD_EM));
 
   return (
     <div className="fit" ref={wrap}>
-      <h1 className="d h1 two" id={id} ref={h1} style={{ ["--ch" as string]: chars }}>
+      <h1
+        className="d h1 two"
+        id={id}
+        ref={h1}
+        style={{ ["--em-d" as string]: d.toFixed(3), ["--em-l" as string]: l.toFixed(3) }}
+      >
         <span className="ln">{line1}</span>
         <span className="ln">{line2}</span>
       </h1>
@@ -65,12 +73,17 @@ export function HeroTitle({
   );
 }
 
-/** Character count of a line for the CSS fallback, including text inside a highlight span. */
-function textLength(node: ReactNode): number {
-  if (typeof node === "string" || typeof node === "number") return String(node).length;
-  if (Array.isArray(node)) return node.reduce((n, c) => n + textLength(c), 0);
-  if (node && typeof node === "object" && "props" in node) {
-    return textLength((node.props as { children?: ReactNode }).children);
+/** Estimated width in em of a line, adding `hlPad` for each highlighted segment. */
+function widthEm(node: ReactNode, hlPad: number): number {
+  if (typeof node === "string" || typeof node === "number") return lineEm(String(node));
+  if (Array.isArray(node))
+    return node.reduce((n: number, c: ReactNode) => n + widthEm(c, hlPad), 0);
+  if (isValidElement(node)) {
+    const props = node.props as { children?: ReactNode; className?: string };
+    const inner = widthEm(props.children, hlPad);
+    // From a server component, <Hl> arrives already rendered as <span className="hl">.
+    const isHl = node.type === Hl || props.className?.split(" ").includes("hl");
+    return isHl ? inner + hlPad : inner;
   }
   return 0;
 }

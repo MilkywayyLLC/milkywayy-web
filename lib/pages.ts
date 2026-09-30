@@ -32,3 +32,18 @@ export const mobileNav = [
 
 export const isCurrent = (path: string, match: readonly string[]) =>
   match.some((m) => path === m || path.startsWith(`${m}/`));
+
+/** Mobile action bar: the page's main action (guide §5). Hash targets are sections on that page. */
+export const mobileActions: Record<string, { label: string; href: string }> = {
+  "/": { label: "Get a quote", href: "/contact" },
+  "/production": { label: "Get your package", href: "#get-your-package" },
+  "/production/property-shoots": { label: "Price my shoot", href: "#build-your-booking" },
+  "/book": { label: "Price my shoot", href: "#build-your-booking" },
+  "/post-production": { label: "Book a free test", href: "#free-test" },
+  "/post-production/free-test": { label: "Book a free test", href: "#free-test" },
+  "/ai-avatars": { label: "Book a demo", href: "#demo" },
+  "/contact": { label: "Send request", href: "#contact-form" },
+};
+
+export const mobileActionFor = (path: string) =>
+  mobileActions[path] ?? { label: "Get a quote", href: "/contact" };

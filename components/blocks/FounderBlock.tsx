@@ -5,7 +5,12 @@ import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
 export function FounderBlock({ founder }: { founder: SiteSettings["founder"] }) {
   return (
     <div className="founder">
-      <ViewfinderFrame media={founder.photo} sizes="(max-width: 820px) 420px, 40vw" />
+      <ViewfinderFrame
+        media={founder.photo}
+        corners={false}
+        clean
+        sizes="(max-width: 820px) 420px, 40vw"
+      />
       <div className="stack" style={{ gap: 24 }}>
         <span className="eb">From the founder</span>
         <blockquote>“{founder.quote}”</blockquote>

@@ -61,6 +61,7 @@ export const portfolio: PortfolioItem[] = [
       "property-gallery-photo",
       "work",
     ],
+    placementOrder: { "home-row-production": 0, "property-gallery-photo": 0 },
   }),
   item({
     title: "Barber studio",
