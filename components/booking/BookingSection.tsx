@@ -15,7 +15,7 @@ export async function BookingSection() {
           <div className="stack">
             <span className="eb">
               <i className="rec-dot" aria-hidden="true" />
-              Book a shoot
+              Book property shoot
             </span>
             <h1 className="d h2" id="booking-title">
               Build your booking.

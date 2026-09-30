@@ -24,7 +24,7 @@ export function Footer({ site }: { site: SiteSettings }) {
                 <Link href="/production/property-shoots">Property shoots</Link>
               </li>
               <li>
-                <Link href="/book">Book a shoot</Link>
+                <Link href="/book">Book property shoot</Link>
               </li>
               <li>
                 <Link href="/post-production">Post-production</Link>

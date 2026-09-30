@@ -107,7 +107,7 @@ test.describe("desktop builder", () => {
   }) => {
     const b = await open(page);
     const w = range();
-    const cal = b.getByRole("group", { name: "Preferred date" });
+    const cal = b.getByRole("group", { name: "Preferred date", exact: true });
     const day = (iso: string) => cal.getByRole("button", { name: new RegExp(`^${longDate(iso)}`) });
 
     const first = firstBookable(w);
@@ -143,6 +143,75 @@ test.describe("desktop builder", () => {
     await day(next).focus();
     await page.keyboard.press("ArrowRight");
     await expect(day(addDays(next, 1))).toBeFocused();
+  });
+
+  test("one options panel at a time; selected cards reopen, ✓ corner and Remove deselect", async ({
+    page,
+  }) => {
+    const b = await open(page);
+    const photo = card(b, /^Photography/);
+    const video = card(b, /^Videography/);
+    const tour = card(b, /^360° tour/);
+    const photoPanel = b.getByRole("group", { name: "Photography options" });
+    const videoPanel = b.getByRole("group", { name: "Videography options" });
+
+    await expect(photoPanel).toBeVisible();
+    await expect(photo).toHaveAttribute("aria-expanded", "true");
+    await expect(photo).toContainText("No add-ons");
+
+    // Selecting Videography opens its panel and closes Photography's; Photography stays selected.
+    await video.click();
+    await expect(videoPanel).toBeVisible();
+    await expect(photoPanel).toBeHidden();
+    await expect(photo).toHaveAttribute("aria-pressed", "true");
+    await expect(photo).toHaveAttribute("aria-expanded", "false");
+    await expect(video).toContainText("Short-form");
+    await card(videoPanel, /^Long-form/).click();
+    await expect(video).toContainText("Short-form + Long-form (day)");
+
+    // Clicking the selected Photography card reopens its panel, it doesn't deselect.
+    await photo.click();
+    await expect(photo).toHaveAttribute("aria-pressed", "true");
+    await expect(photoPanel).toBeVisible();
+    await expect(videoPanel).toBeHidden();
+    await photoPanel.getByLabel(/Add twilight images/).check();
+    await expect(photo).toContainText("+ 5 twilight");
+    await expect(video).toContainText("Short-form + Long-form (day)"); // still visible while closed
+
+    // 360: select, click again keeps it, the ✓ corner removes it.
+    await tour.click();
+    await expect(photoPanel).toBeHidden();
+    await tour.click();
+    await expect(tour).toHaveAttribute("aria-pressed", "true");
+    await b.getByRole("button", { name: "Remove 360° tour" }).click();
+    await expect(tour).toHaveAttribute("aria-pressed", "false");
+
+    // ✓ corner on Videography, then the Remove link inside the Photography panel.
+    await b.getByRole("button", { name: "Remove Videography" }).click();
+    await expect(video).toHaveAttribute("aria-pressed", "false");
+    await expect(videoPanel).toHaveCount(0);
+    await photo.click();
+    await photoPanel.getByRole("button", { name: "Remove photography" }).click();
+    await expect(photo).toHaveAttribute("aria-pressed", "false");
+    await expect(total(b)).toHaveText("AED 0");
+  });
+
+  test("tablet (768px) behaves like desktop: one panel at a time", async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    const b = await open(page);
+    await card(b, /^Videography/).click();
+    await expect(b.getByRole("group", { name: "Videography options" })).toBeVisible();
+    await expect(b.getByRole("group", { name: "Photography options" })).toBeHidden();
+  });
+
+  test("calendar fills the card: time slots sit beside it on desktop", async ({ page }) => {
+    const b = await open(page);
+    const cal = await b.getByRole("group", { name: "Preferred date", exact: true }).boundingBox();
+    const slots = await b.getByRole("group", { name: "Time slot" }).boundingBox();
+    const cardBox = await b.locator(".prop.open .prop-b").boundingBox();
+    expect(slots!.x).toBeGreaterThan(cal!.x + cal!.width - 1);
+    // Calendar + slots span the card's content width (18px padding each side).
+    expect(slots!.x + slots!.width).toBeGreaterThan(cardBox!.x + cardBox!.width - 20);
   });
 
   test("multiple properties: numbered message, summary and total", async ({ page }) => {
@@ -225,6 +294,22 @@ test.describe("phone layout @mobile-only", () => {
     for (const c of await tiers.all()) {
       expect(await c.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
     }
+  });
+
+  test("phones: clicking a selected card deselects it; slots sit below the calendar", async ({
+    page,
+  }) => {
+    const b = await open(page);
+    await card(b, /^Photography/).click();
+    await expect(card(b, /^Photography/)).toHaveAttribute("aria-pressed", "false");
+    await card(b, /^Videography/).click();
+    await card(b, /^Photography/).click();
+    // Both selected panels show, each under its own card.
+    await expect(b.getByRole("group", { name: "Photography options" })).toBeVisible();
+    await expect(b.getByRole("group", { name: "Videography options" })).toBeVisible();
+    const cal = await b.getByRole("group", { name: "Preferred date", exact: true }).boundingBox();
+    const slots = await b.getByRole("group", { name: "Time slot" }).boundingBox();
+    expect(slots!.y).toBeGreaterThan(cal!.y + cal!.height - 1);
   });
 
   test("bottom bar opens the summary sheet; send works from the sheet", async ({ page }) => {

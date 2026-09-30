@@ -25,7 +25,7 @@ export const siteSettings: SiteSettings = {
   },
   booking: {
     slots: ["Morning", "Afternoon", "Evening"],
-    // TODO(owner): confirm off days. Sunday is off for now, as in the mockup; [] = 7 days a week.
+    // Sunday is the only off day (owner, 30 Sep 2026). [] = 7 days a week.
     closedWeekdays: [0],
     windowDays: 60,
     multiPropertyNote:

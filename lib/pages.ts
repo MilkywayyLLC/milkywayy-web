@@ -3,7 +3,7 @@ export const pageNames: Record<string, string> = {
   "/": "Home",
   "/production": "Production",
   "/production/property-shoots": "Property shoots",
-  "/book": "Book a shoot",
+  "/book": "Book property shoot",
   "/post-production": "Post-production",
   "/post-production/free-test": "Free test",
   "/ai-avatars": "AI avatars",
@@ -26,13 +26,13 @@ export const mainNav = [
 export const productionMenu = [
   { href: "/production", label: "Monthly packages" },
   { href: "/production/property-shoots", label: "Property shoots" },
-  { href: "/book", label: "Book a shoot" },
+  { href: "/book", label: "Book property shoot" },
 ] as const;
 
 export const mobileNav = [
   { href: "/production", label: "Production" },
   { href: "/production/property-shoots", label: "Property shoots" },
-  { href: "/book", label: "Book a shoot" },
+  { href: "/book", label: "Book property shoot" },
   { href: "/post-production", label: "Post-production" },
   { href: "/ai-avatars", label: "AI avatars" },
   { href: "/contact", label: "Contact" },

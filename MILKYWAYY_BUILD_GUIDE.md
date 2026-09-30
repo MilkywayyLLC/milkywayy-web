@@ -67,7 +67,7 @@ Each page has one tone: **dark** (black) or **light** (gallery white). Dark page
 | Logo | `/` | Home | dark |
 | Production | `/production` | Monthly production packages | dark |
 | (from Production page / menu) | `/production/property-shoots` | Property shoots + booking builder | dark |
-| Production → Book a shoot | `/book` | Booking builder: the only place it lives (focused page) | dark |
+| Production → Book property shoot | `/book` | Booking builder: the only place it lives (focused page) | dark |
 | Post-production | `/post-production` | Global editing | light |
 | — | `/post-production/free-test` | Free test form only | light |
 | AI avatars | `/ai-avatars` | AI presenter service | light |
@@ -148,10 +148,10 @@ Build a `/styleguide` route (noindex, not in sitemap) showing every token and co
 
 ## 5. Global elements
 
-- **Header** (tone of the page): logo "MILKYWAYY" with blinking REC dot · Production (dropdown: Monthly packages, Property shoots, Book a shoot) · Post-production · AI avatars · Work · About · Client login · WhatsApp icon · **Get a quote** button. Mobile: logo, Get a quote, menu → full-screen menu (Production, Property shoots, Book a shoot, Post-production, AI avatars, Contact, Client login).
+- **Header** (tone of the page): logo "MILKYWAYY" with blinking REC dot · Production (dropdown: Monthly packages, Property shoots, Book property shoot) · Post-production · AI avatars · Work · About · Client login · WhatsApp icon · **Get a quote** button. Mobile: logo, Get a quote, menu → full-screen menu (Production, Property shoots, Book property shoot, Post-production, AI avatars, Contact, Client login).
 - **Mobile action bar** (phones only): WhatsApp icon + the page's main action: Home "Get a quote" · Production "Get your package" · Property shoots "Price my shoot" (→ `/book`) · Post-production "Book a free test" · AI avatars "Book a demo". On `/book` it is replaced by the booking bar (property count, estimated total, **Review & send** → bottom sheet with the full summary, WhatsApp preview and send button).
 - **WhatsApp links**: `https://wa.me/971507263306?text=` + encoded "Hi Milkywayy, I came from the {page} page." Fire `Contact` event.
-- **Footer** (always dark): logo + "A Dubai content studio. Production in the UAE, editing and AI presenters worldwide." · Services (incl. Book a shoot) · Studio (Work, About, Contact) · Follow (Instagram @milkywayy_com, LinkedIn milkywayy-com, Client login) · "© {year} Milkywayy LLC · Sharjah Media City".
+- **Footer** (always dark): logo + "A Dubai content studio. Production in the UAE, editing and AI presenters worldwide." · Services (incl. Book property shoot) · Studio (Work, About, Contact) · Follow (Instagram @milkywayy_com, LinkedIn milkywayy-com, Client login) · "© {year} Milkywayy LLC · Sharjah Media City".
 - **Proof strip** is on Home, Production and Post-production for now. The owner will decide per page: an on/off toggle per page in the admin panel.
 
 ---
@@ -252,13 +252,13 @@ Match the mockup's behaviour. All prices in `content/pricing.ts`.
 ### 8.2 Fields per property
 1. **Property type**: Apartment · Villa / townhouse · Commercial, always one row of three ("Villa" on small screens).
 2. **Size**: Apartment Studio–5 Bed (default 1 Bed) · Villa 2–7 Bed · Commercial = four **scale cards** (Basic "Small spaces", Essential "Most offices" with a "Most popular" badge, Premium "Large commercial spaces", Executive "HQ / warehouses") plus an inclusions strip for the selected tier (table below). Layout: one row on desktop (and tablet when it fits); on phones sizes go 3 per row and commercial tiers 2 × 2, with text wrapping inside the cards.
-3. **Services** (toggle cards): Photography (delivery 24h) · Videography (short-form, long-form or both) · 360° tour (delivery 48–72h). Options open like an accordion directly under their card (twilight under Photography; format and lighting under Videography); on desktop, where the cards share a row, the panel opens below the row with a pointer to its card.
+3. **Services** (toggle cards): Photography (delivery 24h) · Videography (short-form, long-form or both) · 360° tour (delivery 48–72h). On phones (< 768 px) cards toggle and each selected card's options open directly under it. From 768 px only one options panel shows at a time, below the row with a pointer to its card: clicking a card selects it and opens its panel (closing the other); clicking a selected card reopens its panel without deselecting; deselect with the ✓ corner (✕ on hover, labelled "Remove …") or the "Remove" link in the panel. Selected cards show a one-line summary of their options ("+ 5 twilight", "Short-form + Long-form (day)").
    - Photography → **Add twilight images** checkbox (edited from daylight shots) → 5 / 10 / 20 images, with "AED X per image. You save AED Y." note.
    - Videography → Short-form (social media reels, 24–48h) and/or Long-form (YouTube walkthrough, 24–48h). Turning Videography on selects Short-form by default.
    - Long-form (apartments and villas) → **Lighting**: Daylight · Night · Day + night. Night or Day + night forces the **Evening** slot (other slots disabled) with the note "Night footage needs an evening slot, so we'll book you in the evening." Commercial long-form has no lighting option (daylight price).
    - **Commercial Basic: Long-form and 360° tour are disabled** and show "Not in Basic".
 4. **Location**: Community / area · Building / tower · Unit number (optional).
-5. **Preferred date and time**: inline month calendar (Monday first; past days, off days and days beyond the booking window disabled; previous/next month; keyboard accessible) with Morning / Afternoon / Evening below it. Off days, time slots and the booking window are site settings (admin).
+5. **Preferred date and time**: inline month calendar filling the card (time slots in a column beside it on wide cards, below it on narrow ones; Monday first; past days, off days and days beyond the booking window disabled; previous/next month; keyboard accessible) with Morning / Afternoon / Evening below it. Off days, time slots and the booking window are site settings (admin).
 
 ### 8.3 Prices (AED)
 

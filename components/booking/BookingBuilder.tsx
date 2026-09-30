@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import type { PropertyPricing } from "@/content/types";
 import {
   EVENING,
@@ -267,6 +275,36 @@ export function BookingBuilder({
   );
 }
 
+/** True from 768px: one options panel at a time, and clicking a selected card reopens it. */
+const WIDE = "(min-width: 768px)";
+function useWide() {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(WIDE);
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(WIDE).matches,
+    () => true,
+  );
+}
+
+type Panel = "photo" | "video";
+const LIGHTING_SHORT = { day: "day", night: "night", dayNight: "day + night" } as const;
+
+/** One-line summaries shown on selected service cards. */
+function photoSummary(p: BookingProperty) {
+  return p.twilight ? `+ ${p.twilightQty} twilight` : "No add-ons";
+}
+function videoSummary(p: BookingProperty) {
+  const parts: string[] = [];
+  if (p.short) parts.push("Short-form");
+  if (p.long) {
+    parts.push(p.type === "commercial" ? "Long-form" : `Long-form (${LIGHTING_SHORT[p.lighting]})`);
+  }
+  return parts.join(" + ");
+}
+
 function PropertyEditor({
   p,
   index,
@@ -306,6 +344,28 @@ function PropertyEditor({
   const update = (patch: Partial<BookingProperty>) => dispatch({ type: "update", id: p.id, patch });
   const tog = (key: Toggle) => dispatch({ type: "toggle", id: p.id, key });
   const fid = (f: string) => `bk-${p.id}-${f}`;
+  const wide = useWide();
+  const [active, setActive] = useState<Panel | null>("photo");
+  const selected = { photo: p.photo, video: p.video, tour: p.tour };
+
+  /**
+   * Service card click. From 768px: select if needed and show that card's panel (closing the other);
+   * a selected card is never deselected by a click. Phones keep the plain toggle.
+   */
+  const pick = (key: Panel | "tour") => {
+    if (!wide) {
+      tog(key);
+      if (!selected[key] && key !== "tour") setActive(key);
+      return;
+    }
+    if (!selected[key]) tog(key);
+    setActive(key === "tour" ? null : key);
+  };
+  const removeService = (key: Panel | "tour") => {
+    if (selected[key]) tog(key);
+    if (active === key) setActive(null);
+  };
+  const isOpen = (key: Panel) => selected[key] && (!wide || active === key);
   const short = (lg: string, sm: string): ReactNode =>
     lg === sm ? (
       lg
@@ -392,16 +452,25 @@ function PropertyEditor({
       <Group label="Services">
         <div className="svc-grid">
           <ChoiceCard
+            col={0}
             id={fid("photo")}
             controls={p.photo ? fid("photo-opts") : undefined}
+            expanded={isOpen("photo")}
             title="Photography"
             sub={`Delivery ${pricing.delivery.photo}`}
             price={formatAED(prices.photo)}
+            summary={photoSummary(p)}
             pressed={p.photo}
-            onClick={() => tog("photo")}
+            onClick={() => pick("photo")}
+            onRemove={() => removeService("photo")}
           />
           {p.photo && (
-            <SubPanel id={fid("photo-opts")} pointTo={0} label="Photography options">
+            <SubPanel
+              id={fid("photo-opts")}
+              pointTo={0}
+              label="Photography options"
+              active={active === "photo"}
+            >
               <label className="chk">
                 <input type="checkbox" checked={p.twilight} onChange={() => tog("twilight")} /> Add
                 twilight images{" "}
@@ -423,18 +492,39 @@ function PropertyEditor({
                   <p className="note">{twilightNote(p, pricing)}</p>
                 </>
               )}
+              <div className="sub-f">
+                <button type="button" className="txtbtn" onClick={() => removeService("photo")}>
+                  Remove photography
+                </button>
+              </div>
             </SubPanel>
           )}
           <ChoiceCard
+            col={1}
             controls={p.video ? fid("video-opts") : undefined}
+            expanded={isOpen("video")}
             title="Videography"
             sub="Short-form, long-form or both"
-            price={p.video ? "Choose below" : `From ${formatAED(prices.short)}`}
+            price={
+              p.video
+                ? formatAED(
+                    (p.short ? prices.short : 0) +
+                      (p.long && prices.long !== null ? prices.long : 0),
+                  )
+                : `From ${formatAED(prices.short)}`
+            }
+            summary={videoSummary(p)}
             pressed={p.video}
-            onClick={() => tog("video")}
+            onClick={() => pick("video")}
+            onRemove={() => removeService("video")}
           />
           {p.video && (
-            <SubPanel id={fid("video-opts")} pointTo={1} label="Videography options">
+            <SubPanel
+              id={fid("video-opts")}
+              pointTo={1}
+              label="Videography options"
+              active={active === "video"}
+            >
               <span className="gl">Video format</span>
               <ChoiceCards cols={2}>
                 <ChoiceCard
@@ -474,15 +564,22 @@ function PropertyEditor({
                   )}
                 </>
               )}
+              <div className="sub-f">
+                <button type="button" className="txtbtn" onClick={() => removeService("video")}>
+                  Remove videography
+                </button>
+              </div>
             </SubPanel>
           )}
           <ChoiceCard
+            col={2}
             title="360° tour"
             sub={`Delivery ${pricing.delivery.tour}`}
             price={tourLocked ? notIn : formatAED(prices.tour ?? 0)}
             pressed={p.tour}
             disabled={tourLocked}
-            onClick={() => tog("tour")}
+            onClick={() => pick("tour")}
+            onRemove={() => removeService("tour")}
           />
         </div>
         {errors?.services && (
@@ -532,18 +629,25 @@ function PropertyEditor({
       </Group>
 
       <Group label="Preferred date and time">
-        <MonthCalendar value={p.date} onChange={(v) => update({ date: v })} range={range} />
-        <Seg
-          label="Time slot"
-          className="grid"
-          value={p.slot}
-          onChange={(v) => update({ slot: v })}
-          isDisabled={(v) => needsEvening(p) && v !== EVENING}
-          options={slots.map((s) => ({ value: s, label: s }))}
-        />
-        {needsEvening(p) && (
-          <p className="note">Evening only: night footage is part of this booking.</p>
-        )}
+        <div className="when">
+          <div className="when-in">
+            <MonthCalendar value={p.date} onChange={(v) => update({ date: v })} range={range} />
+            <div className="when-slots">
+              <span className="gl">Time</span>
+              <Seg
+                label="Time slot"
+                className="slots grid"
+                value={p.slot}
+                onChange={(v) => update({ slot: v })}
+                isDisabled={(v) => needsEvening(p) && v !== EVENING}
+                options={slots.map((s) => ({ value: s, label: s }))}
+              />
+              {needsEvening(p) && (
+                <p className="note">Evening only: night footage is part of this booking.</p>
+              )}
+            </div>
+          </div>
+        </div>
       </Group>
 
       <div className="prop-f">

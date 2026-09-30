@@ -7,11 +7,11 @@ import { getFaqs } from "@/lib/data";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: { absolute: "Book a Property Shoot in Dubai | Instant Price | Milkywayy" },
+  title: { absolute: "Book a Property Shoot in Dubai | Milkywayy" },
   description:
-    "Build your property shoot booking: photos, video and 360 tours for Dubai listings. See the price instantly, pick a date and send it on WhatsApp. No payment now.",
+    "Book a property shoot in Dubai: photos, video and 360 tours for your listing. See the price instantly, pick a date and send it on WhatsApp. No payment now.",
   alternates: { canonical: "/book" },
-  openGraph: { title: "Book a property shoot in Dubai | Milkywayy" },
+  openGraph: { title: "Book a Property Shoot in Dubai | Milkywayy" },
 };
 
 /** The booking builder as a focused page (guide §6.3, owner change 30 Sep 2026): builder + FAQ. */

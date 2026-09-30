@@ -133,7 +133,7 @@ export function Header({ path: pathProp, sticky = true }: { path?: string; stick
 }
 
 /**
- * "Production" with a dropdown (Monthly packages, Property shoots, Book a shoot). The link still
+ * "Production" with a dropdown (Monthly packages, Property shoots, Book property shoot). The link still
  * goes to /production; the chevron button opens the menu for keyboard and touch, hover opens it
  * for mouse. Escape or a click outside closes it.
  */

@@ -59,23 +59,23 @@ test.describe("property shoots page", () => {
 });
 
 test.describe("navigation", () => {
-  test("Production dropdown and footer link to Book a shoot", async ({ page }) => {
+  test("Production dropdown and footer link to Book property shoot", async ({ page }) => {
     await page.goto("/");
     const main = page.getByRole("navigation", { name: "Main" });
     await main.getByRole("button", { name: "Production pages" }).click();
-    await expect(main.getByRole("link", { name: "Book a shoot" })).toBeVisible();
+    await expect(main.getByRole("link", { name: "Book property shoot" })).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(main.getByRole("link", { name: "Book a shoot" })).toBeHidden();
+    await expect(main.getByRole("link", { name: "Book property shoot" })).toBeHidden();
     await expect(
-      page.locator("footer").getByRole("link", { name: "Book a shoot" }),
+      page.locator("footer").getByRole("link", { name: "Book property shoot" }),
     ).toHaveAttribute("href", "/book");
   });
 
-  test("mobile menu has Book a shoot @mobile-only", async ({ page }) => {
+  test("mobile menu has Book property shoot @mobile-only", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Open menu" }).click();
     await expect(
-      page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Book a shoot" }),
+      page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Book property shoot" }),
     ).toHaveAttribute("href", "/book");
   });
 });

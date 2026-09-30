@@ -1495,14 +1495,64 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--gap);
   }
-  .svc-grid > .sc:nth-of-type(1) {
+  .svc-grid > [data-col="0"] {
     grid-area: 1 / 1;
   }
-  .svc-grid > .sc:nth-of-type(2) {
+  .svc-grid > [data-col="1"] {
     grid-area: 1 / 2;
   }
-  .svc-grid > .sc:nth-of-type(3) {
+  .svc-grid > [data-col="2"] {
     grid-area: 1 / 3;
+  }
+  .sc-wrap {
+    position: relative;
+    display: grid;
+    min-width: 0;
+  }
+  .sc .opt-sum {
+    color: var(--acc);
+    font-size: 12.5px;
+    margin-top: 2px;
+  }
+  /* Deselect corner (≥ 768px): shows the ✓, turns into ✕ on hover/focus. */
+  .sc-x {
+    display: none;
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--acc);
+    cursor: pointer;
+    padding: 0;
+    font: 600 13px/1 var(--font-mono);
+  }
+  .sc-x::before {
+    content: "✓";
+  }
+  .sc-x:hover,
+  .sc-x:focus-visible {
+    border-color: var(--acc);
+    background: var(--bg);
+  }
+  .sc-x:hover::before,
+  .sc-x:focus-visible::before {
+    content: "✕";
+  }
+  @media (min-width: 768px) {
+    .sc-wrap .sc-x {
+      display: grid;
+    }
+    .sc-wrap .sc[aria-pressed="true"]::after {
+      content: none;
+    }
+    /* One options panel at a time: only the active one shows. */
+    .svc-grid > .sub:not(.is-active) {
+      display: none;
+    }
   }
   .svc-grid > .sub {
     grid-column: 1 / -1;
@@ -1531,11 +1581,11 @@
       transform: translateY(-4px);
     }
   }
-  @media (max-width: 600px) {
+  @media (max-width: 767px) {
     .svc-grid {
       grid-template-columns: 1fr;
     }
-    .svc-grid > .sc:nth-of-type(n) {
+    .svc-grid > [data-col] {
       grid-area: auto;
     }
     .svc-grid > .sub {
@@ -1605,7 +1655,11 @@
     min-width: 0;
   }
   .sc[aria-pressed="true"] b {
-    padding-right: 16px; /* clear the ✓ */
+    padding-right: 22px; /* clear the ✓ */
+  }
+  .sub-f {
+    display: flex;
+    justify-content: flex-end;
   }
   .sc small {
     color: var(--muted);
@@ -2486,6 +2540,51 @@
     display: grid;
     gap: 10px;
     max-width: 420px;
+  }
+  /* Date + time. Narrow cards: calendar, then the three slots in a row below.
+     Wide cards (≥ 560px of card width): calendar stretches, slots stack in a column beside it. */
+  .when {
+    container: when / inline-size;
+  }
+  .when-in {
+    display: grid;
+    gap: 14px;
+  }
+  .when-slots {
+    display: grid;
+    gap: 8px;
+    align-content: start;
+  }
+  .when-slots > .gl {
+    display: none;
+  }
+  @container when (min-width: 560px) {
+    .when-in > * {
+      min-width: 0;
+    }
+    .when-in {
+      grid-template-columns: minmax(0, 1fr) minmax(150px, 0.42fr);
+      gap: 20px;
+    }
+    .when .cal {
+      max-width: none;
+    }
+    /* The "Time" label takes the height of the month header, so the slots line up with the
+       weekday row of the calendar. */
+    .when-slots {
+      grid-template-rows: 44px auto;
+      gap: 10px;
+    }
+    .when-slots > .gl {
+      display: flex;
+      align-items: center;
+    }
+    .when .seg.slots {
+      grid-template-columns: 1fr;
+    }
+    .when .seg.slots button {
+      min-height: 44px;
+    }
   }
   .cal-h {
     display: grid;
