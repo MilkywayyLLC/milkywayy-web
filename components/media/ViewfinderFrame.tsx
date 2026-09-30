@@ -45,9 +45,10 @@ export function ViewfinderFrame({
   children?: ReactNode;
 }) {
   const placeholder = !media.src && media.placeholder ? `ph-${media.placeholder}` : undefined;
+  const bright = clean ?? media.bright;
   return (
     <div
-      className={cx("fr", small && "sm", clean && "clean", placeholder, className)}
+      className={cx("fr", small && "sm", bright && "clean", placeholder, className)}
       style={{ ...(aspect ? { aspectRatio: aspect } : null), ...style }}
       role={media.src ? undefined : "img"}
       aria-label={media.src ? undefined : media.alt}
@@ -59,12 +60,12 @@ export function ViewfinderFrame({
         <span
           className="corners"
           aria-hidden="true"
-          style={clean ? { filter: "invert(1)" } : undefined}
+          style={bright ? { filter: "invert(1)" } : undefined}
         />
       )}
       {topLeft && <span className="tl">{topLeft}</span>}
       {timecode && (
-        <span className="tc" style={clean ? { color: "#111" } : undefined}>
+        <span className="tc" style={bright ? { color: "#111" } : undefined}>
           <i className="rec-dot" aria-hidden="true" />
           {timecode}
         </span>

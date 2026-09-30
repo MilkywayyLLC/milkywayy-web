@@ -6,7 +6,7 @@
  * falling back to the same seed if the database is unreachable. Signatures stay the same, so
  * pages and components don't change.
  */
-import { avatars } from "@/content/avatars";
+import { avatarHero, avatars } from "@/content/avatars";
 import { beforeAfter } from "@/content/beforeAfter";
 import { clients } from "@/content/clients";
 import { faqs } from "@/content/faqs";
@@ -57,6 +57,10 @@ export async function getPortfolio(placement?: PortfolioPlacement) {
 
 export async function getBeforeAfter() {
   return live(beforeAfter);
+}
+
+export async function getAvatarHero() {
+  return avatarHero;
 }
 
 export async function getAvatars() {

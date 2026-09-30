@@ -307,9 +307,13 @@ test.describe("phone layout @mobile-only", () => {
     // Both selected panels show, each under its own card.
     await expect(b.getByRole("group", { name: "Photography options" })).toBeVisible();
     await expect(b.getByRole("group", { name: "Videography options" })).toBeVisible();
-    const cal = await b.getByRole("group", { name: "Preferred date", exact: true }).boundingBox();
-    const slots = await b.getByRole("group", { name: "Time slot" }).boundingBox();
-    expect(slots!.y).toBeGreaterThan(cal!.y + cal!.height - 1);
+    // Measure both in one pass so a scroll between two reads can't skew the comparison.
+    const [calBottom, slotsTop] = await b.locator(".when-in").evaluate((el) => {
+      const cal = el.querySelector(".cal")!.getBoundingClientRect();
+      const slots = el.querySelector(".when-slots")!.getBoundingClientRect();
+      return [cal.bottom, slots.top];
+    });
+    expect(slotsTop).toBeGreaterThanOrEqual(calBottom);
   });
 
   test("bottom bar opens the summary sheet; send works from the sheet", async ({ page }) => {

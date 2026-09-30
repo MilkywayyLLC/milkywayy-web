@@ -32,9 +32,10 @@ export const portfolio: PortfolioItem[] = [
       "home-row-production",
       "production-hero",
       "property-gallery-video",
+      "post-service-cards",
       "work",
     ],
-    placementOrder: { "production-hero": 1 },
+    placementOrder: { "production-hero": 1, "post-service-cards": 1 },
   }),
   item({
     title: "Adam, market update",
@@ -42,7 +43,7 @@ export const portfolio: PortfolioItem[] = [
     format: "reel",
     meta: "AI avatar",
     tag: "Adam · AI",
-    media: { alt: "Placeholder: AI presenter Adam", placeholder: "adam" },
+    media: { alt: "Placeholder: AI presenter Adam", placeholder: "adam", bright: true },
     placements: ["home-reels", "home-row-avatars", "work"],
   }),
   item({
@@ -79,7 +80,8 @@ export const portfolio: PortfolioItem[] = [
     duration: "0:35",
     meta: "Brand",
     media: { alt: "Placeholder: salon brand reel", placeholder: "salon" },
-    placements: ["home-reels", "home-row-production", "work"],
+    placements: ["home-reels", "home-row-production", "post-service-cards", "work"],
+    placementOrder: { "post-service-cards": 2 },
   }),
   item({
     title: "Living room, Dubai Marina 2BR",
@@ -99,6 +101,7 @@ export const portfolio: PortfolioItem[] = [
     meta: "Editing",
     media: { alt: "Placeholder: twilight conversion of a villa", placeholder: "villa-dusk" },
     placements: ["home-row-post", "post-service-cards", "work"],
+    placementOrder: { "post-service-cards": 0 },
   }),
   item({
     title: "HDR kitchen",
@@ -137,7 +140,7 @@ export const portfolio: PortfolioItem[] = [
     category: "ai-avatar",
     format: "photo",
     meta: "AI avatar",
-    media: { alt: "Placeholder: clinic AI avatar", placeholder: "avatar-clinic" },
+    media: { alt: "Placeholder: clinic AI avatar", placeholder: "avatar-clinic", bright: true },
     placements: ["home-row-avatars"],
   }),
   item({
@@ -145,7 +148,7 @@ export const portfolio: PortfolioItem[] = [
     category: "ai-avatar",
     format: "photo",
     meta: "AI avatar",
-    media: { alt: "Placeholder: coach AI avatar", placeholder: "avatar-coach" },
+    media: { alt: "Placeholder: coach AI avatar", placeholder: "avatar-coach", bright: true },
     placements: ["home-row-avatars"],
   }),
 ];

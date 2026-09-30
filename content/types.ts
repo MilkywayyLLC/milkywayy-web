@@ -35,6 +35,8 @@ export interface Media {
   placeholder?: PlaceholderKey;
   /** Video: Bunny Stream id or YouTube/Vimeo URL. Always paired with a poster (src). */
   video?: string;
+  /** Bright image (e.g. an avatar on white): frames drop the dark gradient and use dark overlays. */
+  bright?: boolean;
 }
 
 export type PlaceholderKey =
@@ -103,6 +105,22 @@ export interface BeforeAfterPair extends Publishable {
 }
 
 /* ---------- AI avatars ---------- */
+
+/** AI avatars hero (admin: AI avatars → hero Adam video, caption line and reveal text). */
+export interface AvatarHero {
+  name: string;
+  poster: Media;
+  /** Optional clip; click-to-play once supplied. */
+  clip?: string;
+  timecode: string;
+  captionLead: string;
+  captionHighlight: string;
+  revealTitle: string;
+  revealText: string;
+  proofLead: string;
+  proofHighlight: string;
+  sample?: boolean;
+}
 
 export interface AvatarExample extends Publishable {
   name: string;

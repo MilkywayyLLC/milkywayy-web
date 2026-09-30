@@ -42,7 +42,12 @@ export function DemoForm() {
       </OptionGroup>
       {use === "Other" && (
         <Field label="Tell us what it's for">
-          <input name="use_other" required autoFocus />
+          <input
+            name="use_other"
+            required
+            autoFocus
+            placeholder="e.g. a hotel concierge avatar for our website"
+          />
         </Field>
       )}
       <OptionGroup legend="How should we reply?">

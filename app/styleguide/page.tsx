@@ -27,7 +27,7 @@ import { FreeTestForm } from "@/components/forms/FreeTestForm";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { MobileActionBar } from "@/components/layout/MobileActionBar";
-import { AvatarReveal } from "@/components/media/AvatarReveal";
+import { AvatarStage, RevealButton, RevealProvider } from "@/components/media/AvatarReveal";
 import { BeforeAfter } from "@/components/media/BeforeAfter";
 import { Timecode } from "@/components/media/Timecode";
 import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
@@ -40,6 +40,7 @@ import { Hl, SectionHead } from "@/components/ui/Section";
 import { WhatsAppIcon } from "@/components/ui/Icons";
 import type { Tone } from "@/content/types";
 import {
+  getAvatarHero,
   getAvatars,
   getBeforeAfter,
   getClients,
@@ -172,6 +173,7 @@ export default async function StyleguidePage() {
     rowAv,
     pairs,
     avatars,
+    avatarHero,
     property,
     other,
     gallery,
@@ -188,12 +190,12 @@ export default async function StyleguidePage() {
     getPortfolio("home-row-avatars"),
     getBeforeAfter(),
     getAvatars(),
+    getAvatarHero(),
     getPropertyPricing(),
     getOtherPricing(),
     getPortfolio("property-gallery-photo"),
   ]);
   const heroPair = pairs.find((p) => p.inHero) ?? pairs[0];
-  const adam = avatars[0];
   const rate = (k: string) => other.postProduction.rates.find((r) => r.key === k)!;
 
   return (
@@ -420,17 +422,16 @@ export default async function StyleguidePage() {
         title="Avatar reveal"
         note="Toggle overlays the “100% AI” reveal on the Adam frame."
       >
-        {() =>
-          adam ? (
-            <div className="w" style={{ maxWidth: 520 }}>
-              <AvatarReveal
-                media={adam.poster}
-                captionLead="Dubai rents are up again this quarter. Here's what that means"
-                captionHighlight="for buyers."
-              />
+        {() => (
+          <RevealProvider>
+            <div className="w stack" style={{ maxWidth: 520, gap: 14 }}>
+              <AvatarStage hero={avatarHero} />
+              <div className="ctas">
+                <RevealButton />
+              </div>
             </div>
-          ) : null
-        }
+          </RevealProvider>
+        )}
       </Both>
 
       <Both id="proof" title="Proof strip, need selector, service rows">

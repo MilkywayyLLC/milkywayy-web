@@ -1,7 +1,16 @@
 import { expect, test } from "@playwright/test";
 
 /** Every built page renders: 200, one h1, no uncaught errors, no horizontal scroll. */
-const PAGES = ["/", "/production", "/production/property-shoots", "/book", "/styleguide"];
+const PAGES = [
+  "/",
+  "/production",
+  "/production/property-shoots",
+  "/book",
+  "/post-production",
+  "/post-production/free-test",
+  "/ai-avatars",
+  "/styleguide",
+];
 
 for (const path of PAGES) {
   test(`${path} renders cleanly @mobile`, async ({ page }) => {
@@ -19,7 +28,13 @@ for (const path of PAGES) {
 }
 
 test("hero titles are exactly two lines @mobile", async ({ page }) => {
-  for (const path of ["/", "/production", "/production/property-shoots"]) {
+  for (const path of [
+    "/",
+    "/production",
+    "/production/property-shoots",
+    "/post-production",
+    "/ai-avatars",
+  ]) {
     await page.goto(path);
     await page.evaluate(() => document.fonts.ready);
     const lines = await page.locator("h1.two").evaluate((h) => {
