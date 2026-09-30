@@ -51,7 +51,7 @@ import {
   getSiteSettings,
   getStats,
 } from "@/lib/data";
-import { nextShootDates } from "@/lib/booking";
+import { dubaiToday } from "@/lib/booking/dates";
 import { formatNumber, formatUSD } from "@/lib/format";
 import { ToneToggle } from "./ToneToggle";
 import "./styleguide.css";
@@ -746,7 +746,10 @@ export default async function StyleguidePage() {
           <div className="w">
             <BookingBuilder
               pricing={property}
-              dates={nextShootDates(new Date(), site.booking.daysAhead)}
+              today={dubaiToday(new Date())}
+              windowDays={site.booking.windowDays}
+              closedWeekdays={site.booking.closedWeekdays}
+              mobileBar={false}
               slots={site.booking.slots}
               multiPropertyNote={site.booking.multiPropertyNote}
               whatsappNumber={site.whatsapp.number}

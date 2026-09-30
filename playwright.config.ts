@@ -16,6 +16,7 @@ export default defineConfig({
     {
       name: "desktop",
       testMatch: /.*\.e2e\.spec\.ts/,
+      grepInvert: /@mobile-only/,
       use: { ...devices["Desktop Chrome"], channel: "chrome" },
     },
     {

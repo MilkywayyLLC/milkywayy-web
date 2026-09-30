@@ -330,20 +330,3 @@ export function reducer(pricing: PropertyPricing) {
     }
   };
 }
-
-/* ---------- dates ---------- */
-
-/**
- * The next `count` shoot dates as ISO strings, starting tomorrow in Dubai time and skipping
- * closed weekdays (Sunday by default, as in the mockup).
- */
-export function nextShootDates(now: Date, count: number, closedWeekdays: number[] = [0]) {
-  const dubai = new Date(now.getTime() + 4 * 60 * 60 * 1000); // UTC+4, no DST
-  const d = new Date(Date.UTC(dubai.getUTCFullYear(), dubai.getUTCMonth(), dubai.getUTCDate()));
-  const out: string[] = [];
-  while (out.length < count) {
-    d.setUTCDate(d.getUTCDate() + 1);
-    if (!closedWeekdays.includes(d.getUTCDay())) out.push(d.toISOString().slice(0, 10));
-  }
-  return out;
-}

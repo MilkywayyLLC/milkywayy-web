@@ -67,7 +67,7 @@ Each page has one tone: **dark** (black) or **light** (gallery white). Dark page
 | Logo | `/` | Home | dark |
 | Production | `/production` | Monthly production packages | dark |
 | (from Production page / menu) | `/production/property-shoots` | Property shoots + booking builder | dark |
-| — | `/book` | Booking builder only (same component) | dark |
+| Production → Book a shoot | `/book` | Booking builder: the only place it lives (focused page) | dark |
 | Post-production | `/post-production` | Global editing | light |
 | — | `/post-production/free-test` | Free test form only | light |
 | AI avatars | `/ai-avatars` | AI presenter service | light |
@@ -148,10 +148,10 @@ Build a `/styleguide` route (noindex, not in sitemap) showing every token and co
 
 ## 5. Global elements
 
-- **Header** (tone of the page): logo "MILKYWAYY" with blinking REC dot · Production · Post-production · AI avatars · Work · About · Client login · WhatsApp icon · **Get a quote** button. Mobile: logo, Get a quote, menu → full-screen menu (Production, Property shoots, Post-production, AI avatars, Contact, Client login).
-- **Mobile action bar** (phones only): WhatsApp icon + the page's main action: Home "Get a quote" · Production "Get your package" · Property shoots "Price my shoot" · Post-production "Book a free test" · AI avatars "Book a demo".
+- **Header** (tone of the page): logo "MILKYWAYY" with blinking REC dot · Production (dropdown: Monthly packages, Property shoots, Book a shoot) · Post-production · AI avatars · Work · About · Client login · WhatsApp icon · **Get a quote** button. Mobile: logo, Get a quote, menu → full-screen menu (Production, Property shoots, Book a shoot, Post-production, AI avatars, Contact, Client login).
+- **Mobile action bar** (phones only): WhatsApp icon + the page's main action: Home "Get a quote" · Production "Get your package" · Property shoots "Price my shoot" (→ `/book`) · Post-production "Book a free test" · AI avatars "Book a demo". On `/book` it is replaced by the booking bar (property count, estimated total, **Review & send** → bottom sheet with the full summary, WhatsApp preview and send button).
 - **WhatsApp links**: `https://wa.me/971507263306?text=` + encoded "Hi Milkywayy, I came from the {page} page." Fire `Contact` event.
-- **Footer** (always dark): logo + "A Dubai content studio. Production in the UAE, editing and AI presenters worldwide." · Services · Studio (Work, About, Contact) · Follow (Instagram @milkywayy_com, LinkedIn milkywayy-com, Client login) · "© {year} Milkywayy LLC · Sharjah Media City".
+- **Footer** (always dark): logo + "A Dubai content studio. Production in the UAE, editing and AI presenters worldwide." · Services (incl. Book a shoot) · Studio (Work, About, Contact) · Follow (Instagram @milkywayy_com, LinkedIn milkywayy-com, Client login) · "© {year} Milkywayy LLC · Sharjah Media City".
 - **Proof strip** is on Home, Production and Post-production for now. The owner will decide per page: an on/off toggle per page in the admin panel.
 
 ---
@@ -184,13 +184,16 @@ Follow the mockup section by section. Summary:
 9. CTA band.
 
 ### 6.3 Property shoots (dark) + `/book`
-1. Hero: "Don't just list. Dominate.", lede, Price my shoot (→ builder) · WhatsApp us, anchor "Photos from AED 450 · Delivered in 24h · Dubai-wide", ViewfinderFrame photo.
-2. **BookingBuilder** (section 8).
-3. "What you'll get." Tabs Photo · Video · 360° tour + gallery.
+*(Updated 30 Sep 2026, owner review: the builder moved to its own page.)*
+1. Hero: "Don't just list. Dominate.", lede, Price my shoot (→ `/book`) · WhatsApp us, anchor "Photos from AED 450 · Delivered in 24h · Dubai-wide", ViewfinderFrame photo.
+2. **Price overview**: "See your price in a minute." Example starting prices from `pricing` (apartment photos, villa photos, short-form, long-form, 360 tour, commercial) + twilight note · **Build your booking** (→ `/book`) · WhatsApp us.
+3. "What you'll get." Tabs Photo · Video · 360° tour + gallery in a fixed-ratio area (switching tabs never changes the section height; crossfade, off with reduced motion).
 4. "Everything in one dashboard." DashboardPreview + Client login.
 5. "No more chasing." CompareTable.
 6. FAQ (draft).
 7. CTA band.
+
+`/book` (own title and metadata): "Build your booking." as the page H1 → **BookingBuilder** (section 8) → shoot-day FAQ → footer.
 
 ### 6.4 Post-production (light)
 1. Hero: two-line title, lede "Photo, video and AI avatar editing for media companies, agencies and creators. We run our own productions, so we edit like people who've been on set.", three checks (Photo edits, short-form, long-form and AI avatars · Your style saved and matched on every batch · One point of contact, from brief to delivery), Book a free test edit · See our work, BeforeAfter slider.
@@ -244,18 +247,18 @@ Match the mockup's behaviour. All prices in `content/pricing.ts`.
 - Per card footer: **Duplicate** (copies the card, clears unit number) · **Remove** (when more than one) · Subtotal.
 - **+ Add another property** (new card copies the previous card's area, date and slot).
 - Under the list: "Shooting more than one property on the same day or in the same area? We'll send you a better price for the whole booking in the same chat."
-- Sticky summary on the right (stacks below on mobile): each property with services, date, slot and subtotal · Estimated total · WhatsApp message preview · **Send request on WhatsApp** · "No payment now. We confirm your slot, shoot, deliver, then invoice. Media is licensed for your marketing use."
+- Sticky summary on the right on desktop; on phones and tablets (≤ 900 px) a sticky bottom bar (count · estimated total · Review & send) opens it as a bottom sheet: each property with services, date, slot and subtotal · Estimated total · WhatsApp message preview · **Send request on WhatsApp** · "No payment now. We confirm your slot, shoot, deliver, then invoice. Media is licensed for your marketing use."
 
 ### 8.2 Fields per property
-1. **Property type**: Apartment · Villa / townhouse · Commercial.
-2. **Size**: Apartment Studio–5 Bed (default 1 Bed) · Villa 2–7 Bed · Commercial = four **scale cards** (Basic "Small spaces", Essential "Most offices" with a "Most popular" badge, Premium "Large commercial spaces", Executive "HQ / warehouses") plus an inclusions strip for the selected tier (table below).
-3. **Services** (toggle cards): Photography (delivery 24h) · Videography (short-form, long-form or both) · 360° tour (delivery 48–72h).
+1. **Property type**: Apartment · Villa / townhouse · Commercial, always one row of three ("Villa" on small screens).
+2. **Size**: Apartment Studio–5 Bed (default 1 Bed) · Villa 2–7 Bed · Commercial = four **scale cards** (Basic "Small spaces", Essential "Most offices" with a "Most popular" badge, Premium "Large commercial spaces", Executive "HQ / warehouses") plus an inclusions strip for the selected tier (table below). Layout: one row on desktop (and tablet when it fits); on phones sizes go 3 per row and commercial tiers 2 × 2, with text wrapping inside the cards.
+3. **Services** (toggle cards): Photography (delivery 24h) · Videography (short-form, long-form or both) · 360° tour (delivery 48–72h). Options open like an accordion directly under their card (twilight under Photography; format and lighting under Videography); on desktop, where the cards share a row, the panel opens below the row with a pointer to its card.
    - Photography → **Add twilight images** checkbox (edited from daylight shots) → 5 / 10 / 20 images, with "AED X per image. You save AED Y." note.
    - Videography → Short-form (social media reels, 24–48h) and/or Long-form (YouTube walkthrough, 24–48h). Turning Videography on selects Short-form by default.
    - Long-form (apartments and villas) → **Lighting**: Daylight · Night · Day + night. Night or Day + night forces the **Evening** slot (other slots disabled) with the note "Night footage needs an evening slot, so we'll book you in the evening." Commercial long-form has no lighting option (daylight price).
    - **Commercial Basic: Long-form and 360° tour are disabled** and show "Not in Basic".
 4. **Location**: Community / area · Building / tower · Unit number (optional).
-5. **Preferred date and time**: next available dates as chips + Morning / Afternoon / Evening.
+5. **Preferred date and time**: inline month calendar (Monday first; past days, off days and days beyond the booking window disabled; previous/next month; keyboard accessible) with Morning / Afternoon / Evening below it. Off days, time slots and the booking window are site settings (admin).
 
 ### 8.3 Prices (AED)
 
@@ -470,7 +473,7 @@ NEXT_PUBLIC_CLARITY_ID=
 | **Clients** | Client name (and optional logo), order, published; per-page proof-strip toggles | Proof strips |
 | **Pricing: property shoots** | Editable tables exactly like the owner's current portal admin: tabs Apartments / Villas / Commercial; rows = sizes/tiers, columns = Photography · Short-form · LF day · LF night · LF day+night · 360 tour (commercial: Photography · Short-form · Long-form · 360 tour). Commercial tiers also carry description, "most popular" flag and inclusions (photos, reel length, walkthrough length, 360 hotspots, or "not included" which disables that service in the builder). Twilight add-on table (5 / 10 / 20 for Apartment+Commercial and Villa). Size lists editable (add/remove a size) | Booking builder, "from AED 450" lines |
 | **Pricing: other** | Production "Packages from" amount and included-item chips · Post-production starting rates (photo / reel / long-form, value + unit + note) · AI avatar tier names, bullets and "launch pricing" line | Production, Post-production, AI avatars, Home service rows |
-| **Site settings** | WhatsApp number, email, phone, address line, licence line, social links, client login URL, calendar link, showreel (video + poster), founder photo + quote + name, booking time slots and how many days ahead to offer, "multi-property" note text | Global |
+| **Site settings** | WhatsApp number, email, phone, address line, licence line, social links, client login URL, calendar link, showreel (video + poster), founder photo + quote + name, booking off days, time slots and booking window (days ahead), "multi-property" note text | Global |
 | **SEO** | Per page: title, meta description, OG image | `<head>` of each page |
 | **Admins** (Owner only) | Invite/remove admins, set role | — |
 

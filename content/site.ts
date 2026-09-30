@@ -25,7 +25,9 @@ export const siteSettings: SiteSettings = {
   },
   booking: {
     slots: ["Morning", "Afternoon", "Evening"],
-    daysAhead: 5,
+    // TODO(owner): confirm off days. Sunday is off for now, as in the mockup; [] = 7 days a week.
+    closedWeekdays: [0],
+    windowDays: 60,
     multiPropertyNote:
       "Shooting more than one property on the same day or in the same area? We'll send you a better price for the whole booking in the same chat.",
   },

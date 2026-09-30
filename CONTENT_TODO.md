@@ -2,6 +2,7 @@
 
 Everything here ships as a clearly marked sample or placeholder until replaced. Most items are edited in the admin once Phase 5B lands.
 
+- [ ] **Shoot days:** which weekdays are off (currently Sunday), and confirm the Morning / Afternoon / Evening slots and the 60-day booking window (`content/site.ts`, admin Site settings later).
 - [ ] **Stats:** confirm 2020 / 1,000+ / 100+ / 5,000+ are defensible (`content/stats.ts`).
 - [ ] **Google reviews:** 3+ real reviews with name, role, company (`content/reviews.ts`, currently "sample").
 - [ ] **Google rating:** review count and profile link, needed for aggregateRating JSON-LD (`content/site.ts`).

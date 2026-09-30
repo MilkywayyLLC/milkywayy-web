@@ -71,6 +71,7 @@ export function Group({ label, children }: { label: string; children: ReactNode 
 /** Toggle card: service, commercial scale tier, or video format. */
 export function ChoiceCard({
   id,
+  controls,
   title,
   sub,
   price,
@@ -80,6 +81,8 @@ export function ChoiceCard({
   onClick,
 }: {
   id?: string;
+  /** id of the options panel this card opens, when it has one. */
+  controls?: string;
   title: string;
   sub?: string;
   price?: string;
@@ -94,6 +97,7 @@ export function ChoiceCard({
       type="button"
       className="sc"
       aria-pressed={pressed}
+      aria-controls={controls}
       disabled={disabled}
       onClick={onClick}
     >
@@ -106,12 +110,12 @@ export function ChoiceCard({
   );
 }
 
+/**
+ * Grid of choice cards. Layout per `cols` is in CSS (components.css, "choice cards"): 3 → one row
+ * on desktop, stacked on phones; 4 (commercial tiers) → one row, 2 × 2 on phones; 2 → two columns.
+ */
 export function ChoiceCards({ cols = 3, children }: { cols?: 2 | 3 | 4; children: ReactNode }) {
-  return (
-    <div className={cols === 4 ? "cards four" : "cards"} style={{ ["--cols" as string]: cols }}>
-      {children}
-    </div>
-  );
+  return <div className={`cards cols-${cols}`}>{children}</div>;
 }
 
 /** Commercial tier inclusions; "Not included" items are dimmed. */
@@ -127,9 +131,32 @@ export function InclusionsStrip({ items }: { items: { label: string; value: stri
   );
 }
 
-/** Dashed sub-panel under a service (twilight add-on, video format, lighting). */
-export function SubPanel({ children }: { children: ReactNode }) {
-  return <div className="sub">{children}</div>;
+/**
+ * Dashed options panel for a service (twilight, video format, lighting). Inside `.svc-grid` it opens
+ * under its parent card; `pointTo` is that card's column (0–2) for the desktop pointer.
+ */
+export function SubPanel({
+  children,
+  pointTo,
+  id,
+  label,
+}: {
+  children: ReactNode;
+  pointTo?: number;
+  id?: string;
+  label?: string;
+}) {
+  return (
+    <div
+      className="sub"
+      id={id}
+      role={label ? "group" : undefined}
+      aria-label={label}
+      style={pointTo !== undefined ? { ["--c" as string]: pointTo } : undefined}
+    >
+      {children}
+    </div>
+  );
 }
 
 export interface SummaryItem {

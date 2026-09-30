@@ -1,11 +1,18 @@
 import { expect, test } from "@playwright/test";
 import { propertyPricing as pricing } from "@/content/pricing";
 import {
+  addDays,
+  bookingWindow,
+  dubaiToday,
+  firstBookable,
+  isBookable,
+  monthWeeks,
+} from "@/lib/booking/dates";
+import {
   EVENING,
   blankProperty,
   buildMessage,
   dateLabel,
-  nextShootDates,
   priceLines,
   reducer,
   setType,
@@ -270,10 +277,36 @@ test.describe("validation and dates", () => {
     expect(validate(state(base({ area: "JLT", building: "Lake View" })))).toEqual({});
   });
 
-  test("next dates start tomorrow in Dubai and skip Sundays", () => {
+  test("calendar window: from tomorrow in Dubai, off days and past dates closed", () => {
     // 21:30 UTC on Tue 29 Sep is already Wed 30 Sep in Dubai (UTC+4).
-    const dates = nextShootDates(new Date("2026-09-29T21:30:00Z"), 5);
-    expect(dates).toEqual(["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-05", "2026-10-06"]);
+    const today = dubaiToday(new Date("2026-09-29T21:30:00Z"));
+    expect(today).toBe("2026-09-30");
+    const w = bookingWindow(today, 60, [0]);
+    expect(w.first).toBe("2026-10-01");
+    expect(w.last).toBe("2026-11-29");
+    expect(isBookable("2026-09-30", w)).toBe(false); // today
+    expect(isBookable("2026-10-01", w)).toBe(true);
+    expect(isBookable("2026-10-04", w)).toBe(false); // Sunday
+    expect(isBookable("2026-11-30", w)).toBe(false); // past the window
+    // When tomorrow is an off day, the first bookable day skips it.
+    expect(firstBookable(bookingWindow("2026-10-03", 60, [0]))).toBe("2026-10-05");
+    expect(firstBookable(bookingWindow("2026-10-03", 60, []))).toBe("2026-10-04");
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
     expect(dateLabel("2026-10-01")).toBe("Thu 1 Oct");
+  });
+
+  test("month grid is Monday-first with blanks outside the month", () => {
+    const weeks = monthWeeks(2026, 9); // October 2026 starts on a Thursday
+    expect(weeks[0]).toEqual([
+      null,
+      null,
+      null,
+      "2026-10-01",
+      "2026-10-02",
+      "2026-10-03",
+      "2026-10-04",
+    ]);
+    expect(weeks.flat().filter(Boolean)).toHaveLength(31);
+    expect(weeks.every((w) => w.length === 7)).toBe(true);
   });
 });

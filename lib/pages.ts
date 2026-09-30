@@ -3,7 +3,7 @@ export const pageNames: Record<string, string> = {
   "/": "Home",
   "/production": "Production",
   "/production/property-shoots": "Property shoots",
-  "/book": "Booking",
+  "/book": "Book a shoot",
   "/post-production": "Post-production",
   "/post-production/free-test": "Free test",
   "/ai-avatars": "AI avatars",
@@ -22,9 +22,17 @@ export const mainNav = [
   { href: "/about", label: "About", match: ["/about"] },
 ] as const;
 
+/** Production dropdown (desktop header). */
+export const productionMenu = [
+  { href: "/production", label: "Monthly packages" },
+  { href: "/production/property-shoots", label: "Property shoots" },
+  { href: "/book", label: "Book a shoot" },
+] as const;
+
 export const mobileNav = [
   { href: "/production", label: "Production" },
   { href: "/production/property-shoots", label: "Property shoots" },
+  { href: "/book", label: "Book a shoot" },
   { href: "/post-production", label: "Post-production" },
   { href: "/ai-avatars", label: "AI avatars" },
   { href: "/contact", label: "Contact" },
@@ -37,13 +45,15 @@ export const isCurrent = (path: string, match: readonly string[]) =>
 export const mobileActions: Record<string, { label: string; href: string }> = {
   "/": { label: "Get a quote", href: "/contact" },
   "/production": { label: "Get your package", href: "#get-your-package" },
-  "/production/property-shoots": { label: "Price my shoot", href: "#build-your-booking" },
-  "/book": { label: "Price my shoot", href: "#build-your-booking" },
+  "/production/property-shoots": { label: "Price my shoot", href: "/book" },
   "/post-production": { label: "Book a free test", href: "#free-test" },
   "/post-production/free-test": { label: "Book a free test", href: "#free-test" },
   "/ai-avatars": { label: "Book a demo", href: "#demo" },
   "/contact": { label: "Send request", href: "#contact-form" },
 };
+
+/** /book has its own bottom bar (booking total + Review & send) instead of the action bar. */
+export const hasOwnMobileBar = (path: string) => path === "/book";
 
 export const mobileActionFor = (path: string) =>
   mobileActions[path] ?? { label: "Get a quote", href: "/contact" };

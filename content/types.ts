@@ -227,7 +227,15 @@ export interface SiteSettings {
   googleRating: { value: number; count: number | null; url?: string };
   founder: { name: string; role: string; quote: string; photo: Media };
   showreel: Media & { duration: string };
-  booking: { slots: string[]; daysAhead: number; multiPropertyNote: string };
+  booking: {
+    /** Time slots offered under the calendar. The last one must be the evening slot. */
+    slots: string[];
+    /** Days we don't shoot, 0 = Sunday … 6 = Saturday. */
+    closedWeekdays: number[];
+    /** How far ahead the calendar lets people book, in days from today. */
+    windowDays: number;
+    multiPropertyNote: string;
+  };
   proofStripPages: PageKey[];
   footerLine: string;
 }

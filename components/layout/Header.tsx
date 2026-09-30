@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ButtonLink } from "@/components/ui/Button";
 import { CloseIcon, MenuIcon, WhatsAppIcon } from "@/components/ui/Icons";
 import { env } from "@/lib/env";
-import { isCurrent, mainNav, mobileNav, pageNameFor } from "@/lib/pages";
+import { isCurrent, mainNav, mobileNav, pageNameFor, productionMenu } from "@/lib/pages";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { Logo } from "./Logo";
 
@@ -46,15 +46,19 @@ export function Header({ path: pathProp, sticky = true }: { path?: string; stick
       <div className="w hdr-in">
         <Logo />
         <nav className="nav" aria-label="Main">
-          {mainNav.map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              aria-current={isCurrent(path, n.match) ? "page" : undefined}
-            >
-              {n.label}
-            </Link>
-          ))}
+          {mainNav.map((n) =>
+            n.href === "/production" ? (
+              <ProductionMenu key={n.href} path={path} current={isCurrent(path, n.match)} />
+            ) : (
+              <Link
+                key={n.href}
+                href={n.href}
+                aria-current={isCurrent(path, n.match) ? "page" : undefined}
+              >
+                {n.label}
+              </Link>
+            ),
+          )}
         </nav>
         <div className="hdr-r">
           <a className="login" href={env.clientLoginUrl}>
@@ -125,5 +129,81 @@ export function Header({ path: pathProp, sticky = true }: { path?: string; stick
         </div>
       )}
     </header>
+  );
+}
+
+/**
+ * "Production" with a dropdown (Monthly packages, Property shoots, Book a shoot). The link still
+ * goes to /production; the chevron button opens the menu for keyboard and touch, hover opens it
+ * for mouse. Escape or a click outside closes it.
+ */
+function ProductionMenu({ path, current }: { path: string; current: boolean }) {
+  const [open, setOpen] = useState(false);
+  // After Escape or choosing a page, ignore hover until the pointer leaves, so the menu really closes.
+  const [suppressHover, setSuppressHover] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+  const btn = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        setSuppressHover(true);
+        btn.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div
+      className="nav-dd"
+      ref={wrap}
+      data-open={open || undefined}
+      data-no-hover={suppressHover || undefined}
+      onPointerLeave={() => setSuppressHover(false)}
+    >
+      <Link href="/production" aria-current={current ? "page" : undefined}>
+        Production
+      </Link>
+      <button
+        ref={btn}
+        type="button"
+        className="dd-btn"
+        aria-expanded={open}
+        aria-controls="production-menu"
+        aria-label="Production pages"
+        onClick={() => setOpen((v) => !v)}
+      >
+        ▾
+      </button>
+      <div className="nav-menu" id="production-menu">
+        <ul>
+          {productionMenu.map((m) => (
+            <li key={m.href}>
+              <Link
+                href={m.href}
+                aria-current={path === m.href ? "page" : undefined}
+                onClick={() => {
+                  setOpen(false);
+                  setSuppressHover(true);
+                }}
+              >
+                {m.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }

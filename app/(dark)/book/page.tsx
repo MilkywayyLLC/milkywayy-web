@@ -3,21 +3,22 @@ import { BookingSection } from "@/components/booking/BookingSection";
 import { FAQ } from "@/components/blocks/FAQ";
 import { getFaqs } from "@/lib/data";
 
+// The calendar's first bookable day is computed on the server (Dubai time); refresh hourly.
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Book a property shoot",
+  title: { absolute: "Book a Property Shoot in Dubai | Instant Price | Milkywayy" },
   description:
-    "Price and request a property photography, video or 360 tour shoot in Dubai in under a minute. No payment now: we confirm your slot on WhatsApp and invoice after delivery.",
+    "Build your property shoot booking: photos, video and 360 tours for Dubai listings. See the price instantly, pick a date and send it on WhatsApp. No payment now.",
   alternates: { canonical: "/book" },
+  openGraph: { title: "Book a property shoot in Dubai | Milkywayy" },
 };
 
-/** Booking builder on its own (guide §6.3): builder + shoot-day FAQ, with header and footer. */
+/** The booking builder as a focused page (guide §6.3, owner change 30 Sep 2026): builder + FAQ. */
 export default async function BookPage() {
   const faqs = await getFaqs("property-shoots");
   return (
     <>
-      <h1 className="sr">Book a property shoot</h1>
       <BookingSection />
       <section className="sec" aria-label="Questions">
         <div className="w">

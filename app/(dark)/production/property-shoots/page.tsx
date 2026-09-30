@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { BookingSection } from "@/components/booking/BookingSection";
 import { CompareTable } from "@/components/blocks/CompareTable";
 import { CTABand } from "@/components/blocks/CTABand";
 import { DashboardPreview } from "@/components/blocks/DashboardPreview";
 import { FAQ } from "@/components/blocks/FAQ";
+import { PriceOverview } from "@/components/blocks/PriceOverview";
 import { SampleGallery } from "@/components/blocks/SampleGallery";
 import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
 import { HeroTitle } from "@/components/type/HeroTitle";
@@ -15,9 +15,6 @@ import { env } from "@/lib/env";
 import { formatNumber } from "@/lib/format";
 import { lowestShootPrice } from "@/lib/pricing";
 import { pageWhatsappLink } from "@/lib/whatsapp";
-
-// Date chips in the booking builder are computed on the server; refresh them hourly.
-export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: { absolute: "Real Estate Photography & Video in Dubai | Photos in 24h | Milkywayy" },
@@ -50,7 +47,7 @@ export default async function PropertyShootsPage() {
               back in 24 hours.
             </p>
             <div className="ctas">
-              <ButtonLink href="#build-your-booking">Price my shoot</ButtonLink>
+              <ButtonLink href="/book">Price my shoot</ButtonLink>
               <ButtonLink href={whatsapp} variant="ghost">
                 WhatsApp us
               </ButtonLink>
@@ -81,7 +78,28 @@ export default async function PropertyShootsPage() {
         </section>
       </div>
 
-      <BookingSection />
+      <section className="sec alt" id="prices" aria-labelledby="prices-title">
+        <div className="w">
+          <SectionHead
+            id="prices-title"
+            eyebrow="Prices"
+            title="See your price in a minute."
+            aside={
+              <p className="lede">
+                Pick the property and services, see the total, and send the booking on WhatsApp. No
+                payment now: we confirm the slot and invoice after delivery.
+              </p>
+            }
+          />
+          <PriceOverview pricing={pricing} />
+          <div className="ctas" style={{ marginTop: 28 }}>
+            <ButtonLink href="/book">Build your booking</ButtonLink>
+            <ButtonLink href={whatsapp} variant="ghost">
+              WhatsApp us
+            </ButtonLink>
+          </div>
+        </div>
+      </section>
 
       <section className="sec" aria-labelledby="samples-title">
         <div className="w">
@@ -169,7 +187,7 @@ export default async function PropertyShootsPage() {
         title="Your next listing, shot this week."
         actions={
           <>
-            <ButtonLink href="#build-your-booking">Price my shoot</ButtonLink>
+            <ButtonLink href="/book">Price my shoot</ButtonLink>
             <ButtonLink href={whatsapp} variant="ghost">
               WhatsApp us
             </ButtonLink>
