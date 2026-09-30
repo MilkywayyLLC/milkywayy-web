@@ -1,3 +1,4 @@
+import { Ctas } from "@/components/ui/Ctas";
 import type { Metadata } from "next";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { HeroTitle } from "@/components/type/HeroTitle";
@@ -21,15 +22,15 @@ export default function NotFound() {
             <Eyebrow rec>404 · Page not found</Eyebrow>
             <HeroTitle id="nf-title" line1="Out of" line2={<Hl>frame.</Hl>} />
             <p className="lede">This page moved or never existed. Try one of these instead.</p>
-            <div className="ctas">
+            <Ctas>
               <ButtonLink href="/">Home</ButtonLink>
-              <ButtonLink href="/property-shoots" variant="ghost">
-                Property shoots
-              </ButtonLink>
               <ButtonLink href="/contact" variant="ghost">
                 Contact
               </ButtonLink>
-            </div>
+            </Ctas>
+            <ButtonLink href="/property-shoots" variant="link">
+              Book a property shoot →
+            </ButtonLink>
           </div>
         </section>
       </div>

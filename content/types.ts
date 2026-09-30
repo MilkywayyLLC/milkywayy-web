@@ -37,6 +37,11 @@ export interface Media {
   video?: string;
   /** Bright image (e.g. an avatar on white): frames drop the dark gradient and use dark overlays. */
   bright?: boolean;
+  /**
+   * Focal point for cropping, as CSS object-position (e.g. "55% 15%" keeps a face near the top in
+   * frame at any ratio). The admin sets it on upload so crops never cut faces.
+   */
+  focus?: string;
 }
 
 export type PlaceholderKey =

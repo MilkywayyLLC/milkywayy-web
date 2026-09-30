@@ -1,3 +1,4 @@
+import { Ctas } from "@/components/ui/Ctas";
 import type { ReactNode } from "react";
 import { StaticChips } from "@/components/ui/ChipGroup";
 import { formatNumber } from "@/lib/format";
@@ -24,7 +25,7 @@ export function PackagesBand({
       </div>
       <div className="stack" style={{ gap: 14, alignContent: "end" }}>
         <StaticChips items={chips} />
-        <div className="ctas">{actions}</div>
+        <Ctas>{actions}</Ctas>
       </div>
     </div>
   );

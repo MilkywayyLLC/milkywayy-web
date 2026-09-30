@@ -1,3 +1,4 @@
+import { Ctas } from "@/components/ui/Ctas";
 import type { ReactNode } from "react";
 
 /** Final call-to-action band: champagne on dark pages, black on light pages (guide §4.1). */
@@ -17,7 +18,7 @@ export function CTABand({
           <h2 className="d h2">{title}</h2>
           {text && <p className="muted">{text}</p>}
         </div>
-        <div className="ctas">{actions}</div>
+        <Ctas>{actions}</Ctas>
       </div>
     </section>
   );

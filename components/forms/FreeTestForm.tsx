@@ -1,5 +1,6 @@
 "use client";
 
+import { Ctas } from "@/components/ui/Ctas";
 import { useState } from "react";
 import { Field, Option, OptionGroup, Select } from "@/components/ui/Field";
 
@@ -87,14 +88,14 @@ export function FreeTestForm({ initialStep = 1 }: { initialStep?: 1 | 2 | 3 }) {
         <Field label="Link to a recent listing or video">
           <input name="link" type="url" placeholder="https://" />
         </Field>
-        <div className="ctas">
+        <Ctas>
           <button className="btn btn-p" type="button" onClick={() => setStep(3)}>
             Choose a call time
           </button>
           <button className="btn btn-g" type="button" onClick={() => setStep(1)}>
             Back
           </button>
-        </div>
+        </Ctas>
         <p className="fine">
           Prefer email?{" "}
           <button

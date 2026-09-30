@@ -1,3 +1,4 @@
+import { Ctas } from "@/components/ui/Ctas";
 import type { Metadata } from "next";
 import { CTABand } from "@/components/blocks/CTABand";
 import { ProofStrip } from "@/components/blocks/ProofStrip";
@@ -67,7 +68,7 @@ export default async function AboutPage() {
   return (
     <>
       <div className="w">
-        <section className="hero" aria-labelledby="about-title">
+        <section className="hero about-hero" aria-labelledby="about-title">
           <div className="hero-copy">
             <Eyebrow rec>About</Eyebrow>
             <HeroTitle id="about-title" line1="Creating content" line2={<Hl>since 2020.</Hl>} />
@@ -76,12 +77,12 @@ export default async function AboutPage() {
               the UAE, edit remotely for teams abroad, and build AI presenters for people who&apos;d
               rather not be on camera.
             </p>
-            <div className="ctas">
+            <Ctas>
               <ButtonLink href="/contact">Get a quote</ButtonLink>
               <ButtonLink href="/work" variant="ghost">
                 See our work
               </ButtonLink>
-            </div>
+            </Ctas>
           </div>
           <div className="hero-media-col">
             <ViewfinderFrame

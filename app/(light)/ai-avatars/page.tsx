@@ -1,3 +1,4 @@
+import { Ctas } from "@/components/ui/Ctas";
 import type { Metadata } from "next";
 import { AiTiers } from "@/components/blocks/AiTiers";
 import { CTABand } from "@/components/blocks/CTABand";
@@ -81,10 +82,10 @@ export default async function AiAvatarsPage() {
                 We build AI presenters that look and sound like your brand, then script and edit
                 them into videos every month. No camera, no studio, no reshoots.
               </p>
-              <div className="ctas">
+              <Ctas extraLabels={["Show me the reveal"]}>
                 <ButtonLink href="#demo">Book a demo call</ButtonLink>
                 <RevealButton />
-              </div>
+              </Ctas>
               <div className="anchor">
                 <span>
                   {hero.proofLead} <b>{hero.proofHighlight}</b>

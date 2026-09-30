@@ -1,3 +1,4 @@
+import { Ctas } from "@/components/ui/Ctas";
 import type { Metadata } from "next";
 import { BookingSection } from "@/components/booking/BookingSection";
 import { CompareTable } from "@/components/blocks/CompareTable";
@@ -53,12 +54,12 @@ export default async function PropertyShootsPage() {
               Photos, video and 360 tours for Dubai listings. See your price in a minute, photos
               back in 24 hours.
             </p>
-            <div className="ctas">
+            <Ctas>
               <ButtonLink href="#booking">Price my shoot</ButtonLink>
               <ButtonLink href={whatsapp} variant="ghost">
                 WhatsApp us
               </ButtonLink>
-            </div>
+            </Ctas>
             <div className="anchor">
               <span>
                 Photos from <b>AED {formatNumber(lowestShootPrice(pricing))}</b>
@@ -105,11 +106,11 @@ export default async function PropertyShootsPage() {
               Track the shoot, download files and invoices, request a reshoot. Your files stay there
               permanently.
             </p>
-            <div className="ctas">
+            <Ctas>
               <ButtonLink href={env.clientLoginUrl} variant="ghost">
                 Client login
               </ButtonLink>
-            </div>
+            </Ctas>
           </div>
           <DashboardPreview
             rows={[

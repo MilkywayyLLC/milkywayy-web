@@ -1,0 +1,80 @@
+/**
+ * Advance widths (px) of Archivo 600 at 15px, wdth 100 — the button font — measured in the browser.
+ * A button is its label plus 50px (24px padding each side + 1px borders). Used to decide on the
+ * server whether a pair of buttons fits side by side on a phone (see <Ctas>).
+ */
+const GLYPH_PX: Record<string, number> = {
+  " ": 3,
+  a: 8.34,
+  b: 8.88,
+  c: 8.21,
+  d: 8.88,
+  e: 8.42,
+  f: 4.42,
+  g: 8.87,
+  h: 8.76,
+  i: 3.78,
+  j: 3.75,
+  k: 8.15,
+  l: 3.78,
+  m: 12.92,
+  n: 8.76,
+  o: 8.97,
+  p: 8.88,
+  q: 8.88,
+  r: 5.43,
+  s: 8.12,
+  t: 4.71,
+  u: 8.75,
+  v: 7.94,
+  w: 11.37,
+  x: 8.19,
+  y: 7.94,
+  z: 7.64,
+  A: 10.64,
+  B: 10.59,
+  C: 10.82,
+  D: 10.92,
+  E: 10.08,
+  F: 9.14,
+  G: 11.91,
+  H: 10.98,
+  I: 4.23,
+  J: 8.78,
+  K: 10.43,
+  L: 8.55,
+  M: 12.66,
+  N: 10.98,
+  O: 11.73,
+  P: 10.05,
+  Q: 11.73,
+  R: 10.76,
+  S: 10.01,
+  T: 9.29,
+  U: 10.86,
+  V: 10.07,
+  W: 14.31,
+  X: 10.29,
+  Y: 10.16,
+  Z: 9.51,
+  "&": 10.94,
+  "'": 3.69,
+  "’": 4.2,
+  ".": 4.5,
+  ",": 4.5,
+  "-": 5,
+  "→": 14.81,
+  "↓": 7.5,
+  "+": 9.54,
+  "?": 9.2,
+  "!": 4.38,
+  "/": 4.47,
+};
+const DIGIT = 8.64;
+const FALLBACK = 11; // wider than any common glyph, so unknown characters never under-estimate
+
+export function buttonWidth(label: string) {
+  let w = 0;
+  for (const ch of label) w += GLYPH_PX[ch] ?? (/\d/.test(ch) ? DIGIT : FALLBACK);
+  return Math.ceil(w + 50);
+}

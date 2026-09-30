@@ -48,13 +48,27 @@ export function ViewfinderFrame({
   const bright = clean ?? media.bright;
   return (
     <div
-      className={cx("fr", small && "sm", bright && "clean", placeholder, className)}
+      className={cx(
+        "fr",
+        small && "sm",
+        bright && "clean",
+        corners && "has-corners",
+        placeholder,
+        className,
+      )}
       style={{ ...(aspect ? { aspectRatio: aspect } : null), ...style }}
       role={media.src ? undefined : "img"}
       aria-label={media.src ? undefined : media.alt}
     >
       {media.src && (
-        <Image src={media.src} alt={media.alt} fill sizes={sizes} priority={priority} />
+        <Image
+          src={media.src}
+          alt={media.alt}
+          fill
+          sizes={sizes}
+          priority={priority}
+          style={media.focus ? { objectPosition: media.focus } : undefined}
+        />
       )}
       {corners && (
         <span

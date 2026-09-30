@@ -130,15 +130,21 @@ export function Header({ path: pathProp, sticky = true }: { path?: string; stick
               {n.label}
             </Link>
           ))}
-          <div className="ctas" style={{ marginTop: 20 }}>
+          <div className="mnav-actions">
+            <a
+              className="icon-btn"
+              href={wa}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="WhatsApp us"
+            >
+              <WhatsAppIcon size={20} />
+            </a>
             <ButtonLink href="/contact" onClick={leave}>
               Get a quote
             </ButtonLink>
             <ButtonLink href={env.clientLoginUrl} variant="ghost">
               Client login
-            </ButtonLink>
-            <ButtonLink href={wa} variant="ghost">
-              <WhatsAppIcon /> WhatsApp
             </ButtonLink>
           </div>
         </div>

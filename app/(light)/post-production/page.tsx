@@ -1,3 +1,4 @@
+import { Ctas } from "@/components/ui/Ctas";
 import type { Metadata } from "next";
 import { CTABand } from "@/components/blocks/CTABand";
 import { BeforeAfterGallery } from "@/components/blocks/BeforeAfterGallery";
@@ -58,12 +59,12 @@ const STEPS: Step[] = [
   { n: "05", title: "Deliver", text: "Final files, named and sized for MLS and social." },
 ];
 
-/** Labels on the hero frames, by what each frame shows. */
+/** Labels on the hero frames, by what each frame shows. Short: small frames take one line. */
 const HERO_LABEL: Record<PortfolioFormat, string> = {
-  photo: "HDR photo edit",
-  reel: "Vertical reel",
-  "long-form": "Long-form still",
-  "360": "360° tour",
+  photo: "HDR edit",
+  reel: "Reel",
+  "long-form": "Long-form",
+  "360": "360 tour",
 };
 
 const PLACEHOLDER: Media = { alt: "Placeholder edit sample", placeholder: "interior" };
@@ -149,12 +150,12 @@ export default async function PostProductionPage() {
               <li>Your style saved and matched on every batch</li>
               <li>One point of contact, from brief to delivery</li>
             </ul>
-            <div className="ctas">
+            <Ctas>
               <ButtonLink href="#free-test">Book a free test edit</ButtonLink>
               <ButtonLink href="#before-after" variant="ghost">
                 See our work
               </ButtonLink>
-            </div>
+            </Ctas>
           </div>
           {heroMedia.length > 0 && (
             <div className="trio">
@@ -229,9 +230,9 @@ export default async function PostProductionPage() {
             aside={<p className="lede">{other.postProduction.note}</p>}
           />
           <RateCards rates={other.postProduction.rates} />
-          <div className="ctas" style={{ marginTop: 28 }}>
+          <Ctas style={{ marginTop: 28 }}>
             <ButtonLink href="#free-test">Get a custom quote</ButtonLink>
-          </div>
+          </Ctas>
         </div>
       </section>
 

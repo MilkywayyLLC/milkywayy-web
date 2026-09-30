@@ -209,6 +209,17 @@
     gap: 12px;
     flex-wrap: wrap;
   }
+  /* Phones: buttons share the full width in equal columns, or stack full width when the longest
+     label (--btn-min, set by <Ctas>) doesn't fit an equal share. auto-fit collapses unused tracks. */
+  @media (max-width: 600px) {
+    .ctas {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--btn-min, 100%)), 1fr));
+    }
+    .ctas > .btn {
+      min-width: 0;
+    }
+  }
   .icon-btn {
     width: 42px;
     height: 42px;
@@ -430,6 +441,31 @@
     bottom: 12px;
     right: 14px;
     font-size: 10.5px;
+  }
+  /* Labels are always one line; if a frame is too narrow they truncate rather than wrap. */
+  .tag > span {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Small frames with brackets: smaller brackets, and the label sits inside them with padding. */
+  .fr.sm .corners {
+    inset: 10px;
+    background-size:
+      16px 1.5px,
+      1.5px 16px,
+      16px 1.5px,
+      1.5px 16px,
+      16px 1.5px,
+      1.5px 16px,
+      16px 1.5px,
+      1.5px 16px;
+  }
+  .fr.sm.has-corners .tag {
+    left: 18px;
+    right: 18px;
+    bottom: 18px;
   }
   .play {
     position: absolute;
@@ -1077,13 +1113,14 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
-    align-items: end;
+    align-items: start;
   }
   .trio .fr {
     aspect-ratio: 9/16;
   }
-  .trio .fr:nth-child(2) {
-    transform: translateY(-28px);
+  /* Stagger by pushing the outer frames down, never by lifting a frame into the content above. */
+  .trio .fr:nth-child(odd) {
+    margin-top: 28px;
   }
   .paths {
     display: grid;
@@ -2992,8 +3029,12 @@
 
   /* Property shoots: a short hero so the booking builder starts right after it. */
   .p-hero-short {
-    grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
     padding-block: clamp(32px, 4.5vw, 56px);
+  }
+  @media (min-width: 901px) {
+    .p-hero-short {
+      grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
+    }
   }
 
   /* Mobile menu open: it covers everything, and fixed bottom bars step aside. */
@@ -3122,5 +3163,28 @@
     color: var(--acc);
     text-decoration: underline;
     text-underline-offset: 3px;
+  }
+
+  /* Mobile menu actions: WhatsApp icon, Get a quote, Client login on one row, same height. */
+  .mnav-actions {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .mnav-actions .icon-btn {
+    width: 52px;
+    height: 52px;
+  }
+  .mnav-actions .btn {
+    min-width: 0;
+    padding-inline: 10px;
+  }
+
+  /* About: on phones the founder photo gets a portrait frame (focal point keeps the head in). */
+  @media (max-width: 560px) {
+    .about-hero .hero-media-col > .fr {
+      aspect-ratio: 4/5;
+    }
   }
 }

@@ -15,7 +15,12 @@ export const siteSettings: SiteSettings = {
     role: "Founder, Milkywayy",
     quote:
       "After years of creating content, we know where production slows down: the follow-ups, the revisions, the back-and-forth. So we're building systems that take them out. You book, we shoot, you download.",
-    photo: { src: "/founder.webp", alt: "Akash Praseed, founder of Milkywayy" },
+    photo: {
+      src: "/founder.webp",
+      alt: "Akash Praseed, founder of Milkywayy",
+      // Head sits at 12–40% of the height, centred at ~57%: keep it in frame at any ratio.
+      focus: "55% 15%",
+    },
   },
   // TODO(owner): showreel video + poster.
   showreel: {

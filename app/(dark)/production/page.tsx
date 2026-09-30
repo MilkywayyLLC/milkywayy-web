@@ -1,3 +1,4 @@
+import { Ctas } from "@/components/ui/Ctas";
 import type { Metadata } from "next";
 import { CTABand } from "@/components/blocks/CTABand";
 import { FAQ } from "@/components/blocks/FAQ";
@@ -116,12 +117,12 @@ export default async function ProductionPage() {
               Shoot days, reels and long-form for agencies, developers and brands in the UAE. One
               team films, edits and delivers, every month.
             </p>
-            <div className="ctas">
+            <Ctas>
               <ButtonLink href="#get-your-package">Get your package</ButtonLink>
               <ButtonLink href={whatsapp} variant="ghost">
                 WhatsApp us
               </ButtonLink>
-            </div>
+            </Ctas>
             <div className="anchor">
               <span>
                 Packages from <b>AED {from}/mo</b>
