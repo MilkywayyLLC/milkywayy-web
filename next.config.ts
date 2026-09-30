@@ -6,6 +6,14 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
   },
+  async redirects() {
+    // Property shoots and the booking builder merged into /property-shoots (owner, 1 Oct 2026).
+    return [
+      { source: "/production/property-shoots", destination: "/property-shoots", statusCode: 301 },
+      { source: "/book", destination: "/property-shoots", statusCode: 301 },
+      { source: "/booking", destination: "/property-shoots", statusCode: 301 },
+    ];
+  },
   async headers() {
     // Staging lock (guide §12): belt and braces on top of the metadata robots tag.
     if (indexable) return [];

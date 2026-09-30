@@ -8,12 +8,12 @@ import { ServiceCards4, type ServiceCard } from "@/components/blocks/ServiceCard
 import { StatsBand } from "@/components/blocks/StatsBand";
 import { Steps, type Step } from "@/components/blocks/Steps";
 import { FreeTestSection } from "@/components/forms/FreeTestSection";
-import { BeforeAfter } from "@/components/media/BeforeAfter";
+import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Hl, SectionHead } from "@/components/ui/Section";
-import type { Media } from "@/content/types";
+import type { Media, PortfolioFormat } from "@/content/types";
 import {
   getAvatars,
   getBeforeAfter,
@@ -58,21 +58,30 @@ const STEPS: Step[] = [
   { n: "05", title: "Deliver", text: "Final files, named and sized for MLS and social." },
 ];
 
+/** Labels on the hero frames, by what each frame shows. */
+const HERO_LABEL: Record<PortfolioFormat, string> = {
+  photo: "HDR photo edit",
+  reel: "Vertical reel",
+  "long-form": "Long-form still",
+  "360": "360° tour",
+};
+
 const PLACEHOLDER: Media = { alt: "Placeholder edit sample", placeholder: "interior" };
 
 export default async function PostProductionPage() {
-  const [site, clients, proof, pairs, stats, faqs, other, cardMedia, avatars] = await Promise.all([
-    getSiteSettings(),
-    getClients(),
-    showsProofStrip("post-production"),
-    getBeforeAfter(),
-    getStats("post-production"),
-    getFaqs("post-production"),
-    getOtherPricing(),
-    getPortfolio("post-service-cards"),
-    getAvatars(),
-  ]);
-  const heroPair = pairs.find((p) => p.inHero) ?? pairs[0];
+  const [site, clients, proof, pairs, stats, faqs, other, cardMedia, avatars, heroMedia] =
+    await Promise.all([
+      getSiteSettings(),
+      getClients(),
+      showsProofStrip("post-production"),
+      getBeforeAfter(),
+      getStats("post-production"),
+      getFaqs("post-production"),
+      getOtherPricing(),
+      getPortfolio("post-service-cards"),
+      getAvatars(),
+      getPortfolio("post-hero"),
+    ]);
   const rate = (k: "photo" | "short" | "long") =>
     other.postProduction.rates.find((r) => r.key === k);
   const from = (k: "photo" | "short" | "long") => {
@@ -142,18 +151,32 @@ export default async function PostProductionPage() {
             </ul>
             <div className="ctas">
               <ButtonLink href="#free-test">Book a free test edit</ButtonLink>
-              <ButtonLink href="#our-work" variant="ghost">
+              <ButtonLink href="#before-after" variant="ghost">
                 See our work
               </ButtonLink>
             </div>
           </div>
-          {heroPair && <BeforeAfter pair={heroPair} />}
+          {heroMedia.length > 0 && (
+            <div className="trio">
+              {heroMedia.slice(0, 3).map((m, i) => (
+                <ViewfinderFrame
+                  key={m.id}
+                  media={m.media}
+                  small
+                  play={m.format === "reel" ? "icon" : undefined}
+                  tag={HERO_LABEL[m.format]}
+                  priority={i === 1}
+                  sizes="(max-width: 900px) 33vw, 18vw"
+                />
+              ))}
+            </div>
+          )}
         </section>
       </div>
 
       {proof && <ProofStrip clients={clients} rating={site.googleRating.value} />}
 
-      <section className="sec" aria-labelledby="why-title">
+      <section className="sec alt" aria-labelledby="why-title">
         <div className="w">
           <SectionHead
             id="why-title"
@@ -171,7 +194,7 @@ export default async function PostProductionPage() {
         </div>
       </section>
 
-      <section className="sec alt" aria-labelledby="services-title">
+      <section className="sec" aria-labelledby="services-title">
         <div className="w">
           <SectionHead
             id="services-title"
@@ -189,7 +212,7 @@ export default async function PostProductionPage() {
       </section>
 
       {pairs.length > 0 && (
-        <section className="sec" aria-labelledby="compare-title">
+        <section className="sec alt" id="before-after" aria-labelledby="compare-title">
           <div className="w">
             <SectionHead id="compare-title" eyebrow="Before / after" title="Drag to compare." />
             <BeforeAfterGallery pairs={pairs} />
@@ -238,13 +261,13 @@ export default async function PostProductionPage() {
         </div>
       </section>
 
-      <section className="sec" aria-label="Questions">
+      <section className="sec alt" aria-label="Questions">
         <div className="w">
           <FAQ title="Editing FAQ." faqs={faqs} />
         </div>
       </section>
 
-      <FreeTestSection />
+      <FreeTestSection alt={false} />
 
       <CTABand
         title="Try us on one project."
@@ -252,7 +275,7 @@ export default async function PostProductionPage() {
         actions={
           <>
             <ButtonLink href="#free-test">Book a free test</ButtonLink>
-            <ButtonLink href="#our-work" variant="ghost">
+            <ButtonLink href="#before-after" variant="ghost">
               See our work
             </ButtonLink>
           </>

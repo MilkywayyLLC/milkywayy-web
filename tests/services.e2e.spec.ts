@@ -4,16 +4,30 @@ import { otherPricing } from "@/content/pricing";
 /** Phase 4: Post-production and AI avatars (guide §6.4, §6.5). */
 
 test.describe("post-production", () => {
-  test("hero before/after slider works with the keyboard @mobile", async ({ page }) => {
+  test("hero shows three labelled frames; the slider lives in the gallery @mobile", async ({
+    page,
+  }) => {
     await page.goto("/post-production");
-    const hero = page.locator(".pp-hero .ba");
-    const slider = hero.getByRole("slider");
+    const hero = page.locator(".pp-hero");
+    await expect(hero.locator(".trio .fr")).toHaveCount(3);
+    await expect(hero.locator(".trio .tag")).toHaveText([
+      "HDR photo edit",
+      "Vertical reel",
+      "Long-form still",
+    ]);
+    await expect(hero.getByRole("slider")).toHaveCount(0);
+
+    // "See our work" goes to the before/after gallery, where the slider works by keyboard.
+    await hero.getByRole("link", { name: "See our work" }).click();
+    const gallery = page.locator("#before-after");
+    await expect(gallery).toBeInViewport();
+    const slider = gallery.getByRole("slider");
     await expect(slider).toHaveValue("50");
     await slider.focus();
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");
     await expect(slider).toHaveValue("52");
-    await expect(hero).toHaveAttribute("style", /--pos:\s*52%/);
+    await expect(gallery.locator(".ba")).toHaveAttribute("style", /--pos:\s*52%/);
   });
 
   test("before/after tabs switch the pair and its description", async ({ page }) => {
@@ -63,6 +77,47 @@ test.describe("post-production", () => {
     for (const banned of ["overnight", "while you sleep", "guarantee", "usually back in hours"]) {
       expect(text).not.toContain(banned);
     }
+  });
+});
+
+/** Rows of an option group: distinct top positions of its options. */
+const rows = (page: import("@playwright/test").Page, legend: string) =>
+  page
+    .getByRole("group", { name: legend })
+    .locator(".opt")
+    .evaluateAll((els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().top))).size);
+
+test.describe("option groups on phones @mobile-only", () => {
+  test("cards stack full width; 3 options on one row; 4 in 2 × 2; edges match the submit button", async ({
+    page,
+  }) => {
+    await page.goto("/post-production#free-test");
+    const ft = page.getByRole("form", { name: "Book a free test edit" });
+    const cards = ft.getByRole("group", { name: "What do you need edited?" }).locator(".opt");
+    await expect(cards).toHaveCount(3);
+    expect(await rows(page, "What do you need edited?")).toBe(3);
+    expect(await rows(page, "Who edits for you now?")).toBe(1);
+    const submit = await ft.getByRole("button", { name: "Continue" }).boundingBox();
+    for (const c of await cards.all()) {
+      const box = await c.boundingBox();
+      expect(Math.abs(box!.x - submit!.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box!.width - submit!.width)).toBeLessThanOrEqual(1);
+    }
+
+    await page.goto("/ai-avatars#demo");
+    const demo = page.getByRole("form", { name: "Book a demo" });
+    expect(await rows(page, "What's it for?")).toBe(2);
+    expect(await rows(page, "How should we reply?")).toBe(1);
+    const btn = await demo.getByRole("button", { name: "Book my demo" }).boundingBox();
+    const group = await demo
+      .getByRole("group", { name: "How should we reply?" })
+      .locator(".opts")
+      .boundingBox();
+    expect(Math.abs(group!.x - btn!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(group!.x + group!.width - (btn!.x + btn!.width))).toBeLessThanOrEqual(1);
+
+    await page.goto("/production#get-your-package");
+    expect(await rows(page, "How should we reply?")).toBe(1);
   });
 });
 

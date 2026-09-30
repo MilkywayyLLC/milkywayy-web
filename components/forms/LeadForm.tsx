@@ -31,7 +31,7 @@ export function LeadForm({
   return (
     <form className="form" noValidate onSubmit={onSubmit} aria-label="Send a request">
       {showServices && (
-        <OptionGroup legend="Which service?">
+        <OptionGroup legend="Which service?" cards>
           {SERVICES.map((s) => (
             <Option
               key={s.value}

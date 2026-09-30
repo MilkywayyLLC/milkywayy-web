@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 const GAP = 16;
 
@@ -29,12 +30,25 @@ function scrollToId(id: string, smooth: boolean) {
 }
 
 /**
- * Same-page anchor links ("See packages ↓", "Price my shoot", "Book a free test"): smooth scroll
- * to the target, offset for the sticky header, and update the hash. Also corrects the position
- * when a page is opened with a hash. CSS `scroll-padding-top` covers the no-JS case.
+ * Scroll behaviour for the whole site (mounted once in the root layout).
+ *
+ * 1. Same-page anchor links ("See packages ↓", "Price my shoot", "Book a free test"): smooth scroll
+ *    to the target, offset for the sticky header, and update the hash. CSS `scroll-padding-top`
+ *    covers the no-JS case.
+ * 2. Page changes always open at the top (or at the #section in the new URL). Back/forward
+ *    (popstate) is left to the browser so it restores the previous position.
  */
 export function AnchorScroll() {
+  const pathname = usePathname();
+  const first = useRef(true);
+  const popped = useRef(false);
+
   useEffect(() => {
+    const onPop = () => {
+      popped.current = true;
+    };
+    window.addEventListener("popstate", onPop);
+
     const onClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
         return;
@@ -50,13 +64,29 @@ export function AnchorScroll() {
     };
     // Capture phase so this runs before next/link and native hash navigation.
     document.addEventListener("click", onClick, true);
-
-    if (window.location.hash) {
-      const id = decodeURIComponent(window.location.hash.slice(1));
-      window.requestAnimationFrame(() => scrollToId(id, false));
-    }
-    return () => document.removeEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      document.removeEventListener("click", onClick, true);
+    };
   }, []);
+
+  // Runs on first load and after every client-side page change.
+  useEffect(() => {
+    const isFirst = first.current;
+    first.current = false;
+    if (popped.current) {
+      popped.current = false;
+      return;
+    }
+    // A scroll lock left behind (menu, sheet) would pin the old position: clear it.
+    document.body.style.overflow = "";
+    document.documentElement.style.overflow = "";
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    window.requestAnimationFrame(() => {
+      if (id && scrollToId(id, false)) return;
+      if (!isFirst) window.scrollTo({ top: 0, behavior: "instant" });
+    });
+  }, [pathname]);
 
   return null;
 }

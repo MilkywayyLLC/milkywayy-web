@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AppLink as Link } from "@/components/ui/AppLink";
 
 /** "MILKYWAYY" wordmark with the blinking REC dot. */
 export function Logo({ onClick }: { onClick?: () => void }) {

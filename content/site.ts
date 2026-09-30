@@ -31,6 +31,6 @@ export const siteSettings: SiteSettings = {
     multiPropertyNote:
       "Shooting more than one property on the same day or in the same area? We'll send you a better price for the whole booking in the same chat.",
   },
-  proofStripPages: ["home", "production", "post-production"],
+  proofStripPages: ["home", "production"],
   footerLine: "A Dubai content studio. Production in the UAE, editing and AI presenters worldwide.",
 };

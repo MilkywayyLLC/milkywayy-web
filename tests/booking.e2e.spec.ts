@@ -10,12 +10,12 @@ import {
 } from "@/lib/booking/dates";
 
 /**
- * Booking builder on /book (guide §8 + owner changes 30 Sep 2026): multi-property, twilight,
+ * Booking builder on /property-shoots#booking (guide §8 + owner changes 30 Sep / 1 Oct 2026): multi-property, twilight,
  * evening lock, Commercial Basic lock, calendar, accordion panels, WhatsApp message, and the
  * mobile bottom bar + summary sheet. window.open is stubbed to capture the WhatsApp URL.
  */
 
-const URL = "/book";
+const URL = "/property-shoots";
 
 async function open(page: Page) {
   await page.addInitScript(() => {
@@ -26,7 +26,7 @@ async function open(page: Page) {
     }) as typeof window.open;
   });
   await page.goto(URL);
-  return page.locator("#build-your-booking");
+  return page.locator("#booking");
 }
 
 const opened = (page: Page) =>
@@ -318,7 +318,7 @@ test.describe("phone layout @mobile-only", () => {
 
   test("bottom bar opens the summary sheet; send works from the sheet", async ({ page }) => {
     const b = await open(page);
-    await expect(page.locator(".mbar")).toHaveCount(0); // replaced on /book
+    await expect(page.locator(".mbar")).toHaveCount(0); // replaced by the booking bar here
     const bar = page.getByRole("region", { name: "Booking total" });
     await expect(bar).toBeVisible();
     await expect(bar).toContainText("1 property");

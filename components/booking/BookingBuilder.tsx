@@ -35,6 +35,7 @@ import {
   type Toggle,
 } from "@/lib/booking";
 import { bookingWindow, firstBookable, type BookingWindow } from "@/lib/booking/dates";
+import { MENU_OPEN_EVENT } from "@/lib/events";
 import { formatAED } from "@/lib/format";
 import { whatsappLink } from "@/lib/whatsapp";
 import { CloseIcon } from "@/components/ui/Icons";
@@ -107,6 +108,13 @@ export function BookingBuilder({
     el.scrollIntoView({ block: "center" });
     el.focus({ preventScroll: true });
   });
+
+  // The mobile menu covers the page: close the summary sheet if it's open.
+  useEffect(() => {
+    const close = () => sheet.current?.open && sheet.current.close();
+    window.addEventListener(MENU_OPEN_EVENT, close);
+    return () => window.removeEventListener(MENU_OPEN_EVENT, close);
+  }, []);
 
   const grandTotal = total(state, pricing);
   // A confirmation only stands while the booking is unchanged; any edit means a fresh send.

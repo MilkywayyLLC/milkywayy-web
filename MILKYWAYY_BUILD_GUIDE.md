@@ -66,8 +66,7 @@ Each page has one tone: **dark** (black) or **light** (gallery white). Dark page
 |---|---|---|---|
 | Logo | `/` | Home | dark |
 | Production | `/production` | Monthly production packages | dark |
-| (from Production page / menu) | `/production/property-shoots` | Property shoots + booking builder | dark |
-| Production → Book property shoot | `/book` | Booking builder: the only place it lives (focused page) | dark |
+| Property shoots | `/property-shoots` | Property shoots: short hero, booking builder (`#booking`), samples, dashboard, compare, FAQ *(updated 1 Oct 2026)* | dark |
 | Post-production | `/post-production` | Global editing | light |
 | — | `/post-production/free-test` | Free test form only | light |
 | AI avatars | `/ai-avatars` | AI presenter service | light |
@@ -79,7 +78,7 @@ Each page has one tone: **dark** (black) or **light** (gallery white). Dark page
 
 **No Pricing page and no Pricing nav item** (the owner quotes individually). Blog is phase 2: leave it out, keep the layout ready.
 
-Also: `app/sitemap.ts`, `app/robots.ts`, `public/llms.txt`, `not-found.tsx`. Redirects at launch: `/booking → /book`, `/dashboard → NEXT_PUBLIC_CLIENT_LOGIN_URL`.
+Also: `app/sitemap.ts`, `app/robots.ts`, `public/llms.txt`, `not-found.tsx`. Redirects (301, live now): `/production/property-shoots`, `/book` and `/booking` → `/property-shoots`. At launch also `/dashboard → NEXT_PUBLIC_CLIENT_LOGIN_URL`.
 
 ---
 
@@ -148,11 +147,11 @@ Build a `/styleguide` route (noindex, not in sitemap) showing every token and co
 
 ## 5. Global elements
 
-- **Header** (tone of the page): logo "MILKYWAYY" with blinking REC dot · Production (dropdown: Monthly packages, Property shoots, Book property shoot) · Post-production · AI avatars · Work · About · Client login · WhatsApp icon · **Get a quote** button. Mobile: logo, Get a quote, menu → full-screen menu (Production, Property shoots, Book property shoot, Post-production, AI avatars, Contact, Client login).
-- **Mobile action bar** (phones only): WhatsApp icon + the page's main action: Home "Get a quote" · Production "Get your package" · Property shoots "Price my shoot" (→ `/book`) · Post-production "Book a free test" · AI avatars "Book a demo". On `/book` it is replaced by the booking bar (property count, estimated total, **Review & send** → bottom sheet with the full summary, WhatsApp preview and send button).
+- **Header** (tone of the page): logo "MILKYWAYY" with blinking REC dot · Production · Property shoots · Post-production · AI avatars · Work · About · Client login · WhatsApp icon · **Get a quote** button (→ /contact). No dropdown. Mobile: logo, Get a quote, menu → full-screen menu with the same six items, Get a quote, Client login, WhatsApp. While the menu is open, fixed bottom bars are hidden and the booking sheet closes.
+- **Mobile action bar** (phones only): WhatsApp icon + the page's main action: Home "Get a quote" · Production "Get your package" · Post-production "Book a free test" · AI avatars "Book a demo". On `/property-shoots` it is replaced by the booking bar (property count, estimated total, **Review & send** → bottom sheet with the full summary, WhatsApp preview and send button).
 - **WhatsApp links**: `https://wa.me/971507263306?text=` + encoded "Hi Milkywayy, I came from the {page} page." Fire `Contact` event.
 - **Footer** (always dark): logo + "A Dubai content studio. Production in the UAE, editing and AI presenters worldwide." · Services (incl. Book property shoot) · Studio (Work, About, Contact) · Follow (Instagram @milkywayy_com, LinkedIn milkywayy-com, Client login) · "© {year} Milkywayy LLC · Sharjah Media City".
-- **Proof strip** is on Home, Production and Post-production for now. The owner will decide per page: an on/off toggle per page in the admin panel.
+- **Proof strip** is on Home and Production (owner, 1 Oct 2026). The owner will decide per page: an on/off toggle per page in the admin panel.
 
 ---
 
@@ -183,20 +182,20 @@ Follow the mockup section by section. Summary:
 8. "Get your package." LeadForm (service = production).
 9. CTA band.
 
-### 6.3 Property shoots (dark) + `/book`
-*(Updated 30 Sep 2026, owner review: the builder moved to its own page.)*
-1. Hero: "Don't just list. Dominate.", lede, Price my shoot (→ `/book`) · WhatsApp us, anchor "Photos from AED 450 · Delivered in 24h · Dubai-wide", ViewfinderFrame photo.
-2. **Price overview**: "See your price in a minute." Example starting prices from `pricing` (apartment photos, villa photos, short-form, long-form, 360 tour, commercial) + twilight note · **Build your booking** (→ `/book`) · WhatsApp us.
-3. "What you'll get." Tabs Photo · Video · 360° tour + gallery in a fixed-ratio area (switching tabs never changes the section height; crossfade, off with reduced motion).
+### 6.3 Property shoots (dark) — `/property-shoots`
+*(Updated 1 Oct 2026: one page; `/production/property-shoots` and `/book` redirect here with 301.)*
+1. Short hero: "Don't just list. Dominate.", lede, Price my shoot (→ `#booking`) · WhatsApp us, anchor "Photos from AED 450 · Delivered in 24h · Dubai-wide", a smaller photo frame, so the builder starts in the first screen.
+2. **BookingBuilder** (section 8), `#booking`, "Build your booking."
+3. "What you'll get." Tabs Photo · Video · 360° tour, fixed-ratio gallery with crossfade.
 4. "Everything in one dashboard." DashboardPreview + Client login.
 5. "No more chasing." CompareTable.
 6. FAQ (draft).
-7. CTA band.
+7. CTA band "Your next listing, shot this week." (Price my shoot → `#booking`).
 
-`/book` (own title and metadata): "Build your booking." as the page H1 → **BookingBuilder** (section 8) → shoot-day FAQ → footer.
+Title: `Real Estate Photography & Video in Dubai | Property Shoots | Milkywayy`. On phones the booking bar replaces the mobile action bar.
 
 ### 6.4 Post-production (light)
-1. Hero: two-line title, lede "Photo, video and AI avatar editing for media companies, agencies and creators. We run our own productions, so we edit like people who've been on set.", three checks (Photo edits, short-form, long-form and AI avatars · Your style saved and matched on every batch · One point of contact, from brief to delivery), Book a free test edit · See our work, BeforeAfter slider.
+1. Hero: two-line title, lede "Photo, video and AI avatar editing for media companies, agencies and creators. We run our own productions, so we edit like people who've been on set.", three checks (Photo edits, short-form, long-form and AI avatars · Your style saved and matched on every batch · One point of contact, from brief to delivery), Book a free test edit · See our work (→ the before/after gallery), three staggered frames like the Production hero, each labelled: HDR photo edit · Vertical reel · Long-form still. (The before/after slider lives in the gallery below.)
 2. Proof strip.
 3. "Editors who also produce." 3 columns.
 4. "Anything on your plate." 4 service cards: Photo edits (from $0.80 / HDR photo) · Short-form, social media reels (from $50 / reel) · Long-form, YouTube and walkthroughs (from $150 / video) · AI avatars, white-label (→ /ai-avatars).
@@ -360,7 +359,7 @@ Default: `SupabaseLeadStore` (writes to the `leads` table) plus an optional noti
 - **Metadata** per page. Titles:
   - Home: `Milkywayy | Content Production Studio in Dubai`
   - Production: `Content Production Packages in Dubai | Milkywayy`
-  - Property shoots: `Real Estate Photography & Video in Dubai | Photos in 24h | Milkywayy`
+  - Property shoots: `Real Estate Photography & Video in Dubai | Property Shoots | Milkywayy`
   - Post-production: `Photo & Video Editing Services for Agencies | Milkywayy`
   - AI avatars: `Custom AI Avatar Videos for Brands | Milkywayy`
   - Others: `{Page} | Milkywayy`. Descriptions 140–160 characters with service, place and one proof point.
@@ -396,7 +395,7 @@ Consent banner (Accept / Reject) before loading tags. CAPI hashes email/phone (S
 | 0 · Setup | Repo, Next.js + TS + Tailwind, fonts, lint, `.env.example`, `content/` scaffolding, staging deploy with noindex | Blank site live on staging |
 | 1 · Design system | Tokens (both tones), type, hero title fitter, all components, `/styleguide` | Owner approves styleguide on phone and desktop |
 | 2 · Shell + Home | Header (tone-aware, mobile menu), mobile action bar, footer, CTA band, Home complete | Home matches the mockup; Lighthouse budget met |
-| 3 · Production + Property shoots | Both pages, full BookingBuilder with section 8 logic, `/book` | Builder matches every rule and price; Playwright tests for multi-property, twilight, lighting/evening lock, Commercial Basic lock, WhatsApp message |
+| 3 · Production + Property shoots | Both pages, full BookingBuilder with section 8 logic (now one page, `/property-shoots`) | Builder matches every rule and price; Playwright tests for multi-property, twilight, lighting/evening lock, Commercial Basic lock, WhatsApp message |
 | 4 · Post-production + AI avatars | Both pages, BeforeAfter, RateCards, AvatarReveal, forms UI | Match the mockup |
 | 5 · Contact, Work, About, legal, 404 | All routes | All pages live |
 | 5A · Database + content wiring | Supabase project, schema (section 18.4), RLS, seed script from `content/`, website reads everything editable from the database with cached fetches + tag revalidation | Site looks identical to before, now driven by the database |

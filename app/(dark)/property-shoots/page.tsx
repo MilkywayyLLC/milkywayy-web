@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
+import { BookingSection } from "@/components/booking/BookingSection";
 import { CompareTable } from "@/components/blocks/CompareTable";
 import { CTABand } from "@/components/blocks/CTABand";
 import { DashboardPreview } from "@/components/blocks/DashboardPreview";
 import { FAQ } from "@/components/blocks/FAQ";
-import { PriceOverview } from "@/components/blocks/PriceOverview";
 import { SampleGallery } from "@/components/blocks/SampleGallery";
 import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
 import { HeroTitle } from "@/components/type/HeroTitle";
@@ -16,13 +16,20 @@ import { formatNumber } from "@/lib/format";
 import { lowestShootPrice } from "@/lib/pricing";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 
+// The booking calendar's first bookable day is computed on the server (Dubai time); refresh hourly.
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
-  title: { absolute: "Real Estate Photography & Video in Dubai | Photos in 24h | Milkywayy" },
+  title: { absolute: "Real Estate Photography & Video in Dubai | Property Shoots | Milkywayy" },
   description:
-    "Book property photography, video and 360 tours in Dubai. See your price in a minute, send the booking on WhatsApp, and get photos back in 24 hours.",
-  alternates: { canonical: "/production/property-shoots" },
+    "Property photography, video and 360 tours for Dubai listings. See your price in a minute, pick a date and send the booking on WhatsApp. Photos in 24 hours.",
+  alternates: { canonical: "/property-shoots" },
 };
 
+/**
+ * Property shoots, one page (owner, 1 Oct 2026): short hero → booking builder → samples →
+ * dashboard → "No more chasing" → FAQ → CTA band. Replaces /production/property-shoots and /book.
+ */
 export default async function PropertyShootsPage() {
   const [faqs, hero, photos, videos, tours, pricing] = await Promise.all([
     getFaqs("property-shoots"),
@@ -38,7 +45,7 @@ export default async function PropertyShootsPage() {
   return (
     <>
       <div className="w">
-        <section className="p-hero" aria-labelledby="property-title">
+        <section className="p-hero p-hero-short" aria-labelledby="property-title">
           <div className="stack">
             <Eyebrow rec>Production · Property shoots</Eyebrow>
             <HeroTitle id="property-title" line1="Don't just list." line2={<Hl>Dominate.</Hl>} />
@@ -47,7 +54,7 @@ export default async function PropertyShootsPage() {
               back in 24 hours.
             </p>
             <div className="ctas">
-              <ButtonLink href="/book">Price my shoot</ButtonLink>
+              <ButtonLink href="#booking">Price my shoot</ButtonLink>
               <ButtonLink href={whatsapp} variant="ghost">
                 WhatsApp us
               </ButtonLink>
@@ -67,39 +74,18 @@ export default async function PropertyShootsPage() {
           {heroItem && (
             <ViewfinderFrame
               media={heroItem.media}
-              aspect="4/3"
+              aspect="16/10"
               topLeft="F/8 · ISO 100"
               tag={heroItem.tag}
               tagRight="Photo 07 / 32"
               priority
-              sizes="(max-width: 900px) 100vw, 45vw"
+              sizes="(max-width: 900px) 100vw, 42vw"
             />
           )}
         </section>
       </div>
 
-      <section className="sec alt" id="prices" aria-labelledby="prices-title">
-        <div className="w">
-          <SectionHead
-            id="prices-title"
-            eyebrow="Prices"
-            title="See your price in a minute."
-            aside={
-              <p className="lede">
-                Pick the property and services, see the total, and send the booking on WhatsApp. No
-                payment now: we confirm the slot and invoice after delivery.
-              </p>
-            }
-          />
-          <PriceOverview pricing={pricing} />
-          <div className="ctas" style={{ marginTop: 28 }}>
-            <ButtonLink href="/book">Build your booking</ButtonLink>
-            <ButtonLink href={whatsapp} variant="ghost">
-              WhatsApp us
-            </ButtonLink>
-          </div>
-        </div>
-      </section>
+      <BookingSection />
 
       <section className="sec" aria-labelledby="samples-title">
         <div className="w">
@@ -187,7 +173,7 @@ export default async function PropertyShootsPage() {
         title="Your next listing, shot this week."
         actions={
           <>
-            <ButtonLink href="/book">Price my shoot</ButtonLink>
+            <ButtonLink href="#booking">Price my shoot</ButtonLink>
             <ButtonLink href={whatsapp} variant="ghost">
               WhatsApp us
             </ButtonLink>

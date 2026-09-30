@@ -5,10 +5,17 @@ import { FreeTestForm } from "./FreeTestForm";
  * /post-production (h2) and on its own at /post-production/free-test (h1).
  * No turnaround promise here (guide §6.4 tone rules).
  */
-export function FreeTestSection({ headingLevel = 2 }: { headingLevel?: 1 | 2 }) {
+export function FreeTestSection({
+  headingLevel = 2,
+  alt = true,
+}: {
+  headingLevel?: 1 | 2;
+  /** Alternate (surface-2) background; off where the section above is already alternate. */
+  alt?: boolean;
+}) {
   const Heading = headingLevel === 1 ? "h1" : "h2";
   return (
-    <section className="sec alt" id="free-test" aria-labelledby="free-test-title">
+    <section className={alt ? "sec alt" : "sec"} id="free-test" aria-labelledby="free-test-title">
       <div className="w formwrap">
         <div className="stack">
           <span className="eb">Free test edit</span>

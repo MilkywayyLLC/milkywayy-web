@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3200;
+/** Set BASE_URL to test a deployed site (e.g. staging) instead of a local build. */
+const BASE_URL = process.env.BASE_URL;
 
 /**
  * Tests run against a production build on port 3200 using the locally installed Google Chrome
@@ -10,7 +12,7 @@ export default defineConfig({
   testDir: "tests",
   fullyParallel: true,
   reporter: [["list"]],
-  use: { baseURL: `http://localhost:${PORT}`, channel: "chrome", trace: "retain-on-failure" },
+  use: { baseURL: BASE_URL ?? `http://localhost:${PORT}`, channel: "chrome", trace: "retain-on-failure" },
   projects: [
     { name: "logic", testMatch: /.*\.logic\.spec\.ts/ },
     {
@@ -27,7 +29,7 @@ export default defineConfig({
     },
   ],
   // Logic-only runs (npm run test:logic) don't need the site.
-  webServer: process.env.PW_NO_SERVER
+  webServer: process.env.PW_NO_SERVER || BASE_URL
     ? undefined
     : {
         command: `npm run build && npx next start -p ${PORT}`,

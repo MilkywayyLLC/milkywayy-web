@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AppLink as Link } from "@/components/ui/AppLink";
 import type { ComponentProps, ReactNode } from "react";
 import { cx } from "@/lib/cx";
 

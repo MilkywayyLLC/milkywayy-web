@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react";
+import { Children, type ComponentProps, type ReactNode } from "react";
 
 /** Labelled input with an optional inline error that says how to fix it. */
 export function Field({
@@ -83,11 +83,26 @@ export function Option({
   );
 }
 
-export function OptionGroup({ legend, children }: { legend: string; children: ReactNode }) {
+/**
+ * A labelled set of radio/checkbox options. On phones (≤ 560px) the group becomes a full-width grid
+ * so it lines up with the full-width submit button: 3 options → one row of three, 2 or 4 → two
+ * columns (2 × 2), `cards` (options with a sub-line) → one per row. Desktop keeps natural widths.
+ */
+export function OptionGroup({
+  legend,
+  cards,
+  children,
+}: {
+  legend: string;
+  cards?: boolean;
+  children: ReactNode;
+}) {
+  const n = Children.count(children);
+  const cls = ["opts", cards ? "opts-cards" : `opts-n${n}`].join(" ");
   return (
     <fieldset>
       <legend>{legend}</legend>
-      <div className="opts">{children}</div>
+      <div className={cls}>{children}</div>
     </fieldset>
   );
 }

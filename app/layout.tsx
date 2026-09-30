@@ -22,7 +22,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${archivo.variable} ${dmMono.variable}`}>
+    // data-scroll-behavior: Next 16 only suspends the CSS smooth scrolling during route changes when
+    // this is set; without it, a page change animates up from the old position instead of opening
+    // at the top.
+    <html
+      lang="en"
+      className={`${archivo.variable} ${dmMono.variable}`}
+      data-scroll-behavior="smooth"
+    >
       <body>
         <a className="skip-link" href="#main">
           Skip to content

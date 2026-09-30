@@ -2,8 +2,7 @@
 export const pageNames: Record<string, string> = {
   "/": "Home",
   "/production": "Production",
-  "/production/property-shoots": "Property shoots",
-  "/book": "Book property shoot",
+  "/property-shoots": "Property shoots",
   "/post-production": "Post-production",
   "/post-production/free-test": "Free test",
   "/ai-avatars": "AI avatars",
@@ -14,46 +13,31 @@ export const pageNames: Record<string, string> = {
 
 export const pageNameFor = (path: string) => pageNames[path] ?? "website";
 
+/** Main navigation, the same on desktop and in the mobile menu (owner, 1 Oct 2026). */
 export const mainNav = [
-  { href: "/production", label: "Production", match: ["/production", "/book"] },
-  { href: "/post-production", label: "Post-production", match: ["/post-production"] },
-  { href: "/ai-avatars", label: "AI avatars", match: ["/ai-avatars"] },
-  { href: "/work", label: "Work", match: ["/work"] },
-  { href: "/about", label: "About", match: ["/about"] },
-] as const;
-
-/** Production dropdown (desktop header). */
-export const productionMenu = [
-  { href: "/production", label: "Monthly packages" },
-  { href: "/production/property-shoots", label: "Property shoots" },
-  { href: "/book", label: "Book property shoot" },
-] as const;
-
-export const mobileNav = [
   { href: "/production", label: "Production" },
-  { href: "/production/property-shoots", label: "Property shoots" },
-  { href: "/book", label: "Book property shoot" },
+  { href: "/property-shoots", label: "Property shoots" },
   { href: "/post-production", label: "Post-production" },
   { href: "/ai-avatars", label: "AI avatars" },
-  { href: "/contact", label: "Contact" },
+  { href: "/work", label: "Work" },
+  { href: "/about", label: "About" },
 ] as const;
 
-export const isCurrent = (path: string, match: readonly string[]) =>
-  match.some((m) => path === m || path.startsWith(`${m}/`));
+export const isCurrent = (path: string, href: string) =>
+  path === href || path.startsWith(`${href}/`);
 
 /** Mobile action bar: the page's main action (guide §5). Hash targets are sections on that page. */
 export const mobileActions: Record<string, { label: string; href: string }> = {
   "/": { label: "Get a quote", href: "/contact" },
   "/production": { label: "Get your package", href: "#get-your-package" },
-  "/production/property-shoots": { label: "Price my shoot", href: "/book" },
   "/post-production": { label: "Book a free test", href: "#free-test" },
   "/post-production/free-test": { label: "Book a free test", href: "#free-test" },
   "/ai-avatars": { label: "Book a demo", href: "#demo" },
   "/contact": { label: "Send request", href: "#contact-form" },
 };
 
-/** /book has its own bottom bar (booking total + Review & send) instead of the action bar. */
-export const hasOwnMobileBar = (path: string) => path === "/book";
+/** /property-shoots has its own bottom bar (booking total + Review & send) instead of the action bar. */
+export const hasOwnMobileBar = (path: string) => path === "/property-shoots";
 
 export const mobileActionFor = (path: string) =>
   mobileActions[path] ?? { label: "Get a quote", href: "/contact" };

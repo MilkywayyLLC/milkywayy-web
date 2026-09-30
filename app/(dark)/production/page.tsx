@@ -172,7 +172,7 @@ export default async function ProductionPage() {
                 title: "For one property",
                 text: "Pick the property and services, see the price, request a slot. Photos back in 24 hours.",
                 cta: "Book a property shoot →",
-                href: "/production/property-shoots",
+                href: "/property-shoots",
               },
             ]}
           />

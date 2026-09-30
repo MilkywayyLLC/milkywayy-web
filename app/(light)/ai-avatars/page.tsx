@@ -91,7 +91,7 @@ export default async function AiAvatarsPage() {
                 </span>
               </div>
             </div>
-            <div className="stack" style={{ gap: 10 }}>
+            <div className="hero-media-col">
               <AvatarStage hero={hero} priority />
               {hero.sample && <SampleLabel>Placeholder · Adam video coming</SampleLabel>}
             </div>

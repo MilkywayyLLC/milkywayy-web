@@ -31,7 +31,7 @@ export function FreeTestForm({ initialStep = 1 }: { initialStep?: 1 | 2 | 3 }) {
       </ol>
 
       <div className="stack" style={{ gap: 16 }} hidden={step !== 1}>
-        <OptionGroup legend="What do you need edited?">
+        <OptionGroup legend="What do you need edited?" cards>
           <Option
             type="checkbox"
             name="what"

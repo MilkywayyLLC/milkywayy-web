@@ -470,9 +470,9 @@
   .hero {
     padding-block: clamp(40px, 6vw, 72px) clamp(40px, 5vw, 64px);
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
     gap: clamp(32px, 4vw, 64px);
-    align-items: end;
+    align-items: stretch;
   }
   .hero > * {
     min-width: 0;
@@ -481,14 +481,37 @@
     display: grid;
     gap: 26px;
   }
-  .hero .hero-media {
-    aspect-ratio: 4/5;
+  /* Hero media column (Home, AI avatars): size-contained, so the text column alone sets the row
+     height and the frame fills exactly that height — never taller than the copy beside it. */
+  .hero-media-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    contain: size;
+    min-height: 0;
+  }
+  .hero-media-col > .fr,
+  .hero-media-col > .av-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+  .hero-media-col > .av-stage > .fr {
+    height: 100%;
+    aspect-ratio: auto;
   }
   @media (max-width: 900px) {
     .hero {
       grid-template-columns: 1fr;
     }
-    .hero .hero-media {
+  }
+  /* Single column (tablet and phone): back to a proportionate frame. */
+  @media (max-width: 900px) {
+    .hero .hero-media-col {
+      contain: none;
+    }
+    .hero .hero-media-col > .fr {
+      flex: none;
       aspect-ratio: 4/3;
     }
   }
@@ -1308,6 +1331,38 @@
   .opt.card small {
     color: var(--muted);
     font-size: 12.5px;
+  }
+  /* Phones: option groups fill the form width, like the submit button below them. */
+  @media (max-width: 560px) {
+    .opts {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .opts.opts-n1 {
+      grid-template-columns: 1fr;
+    }
+    .opts.opts-n2,
+    .opts.opts-n4 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .opts.opts-cards {
+      grid-template-columns: 1fr;
+    }
+    .opts .opt {
+      display: grid;
+      min-width: 0;
+    }
+    .opts .opt span {
+      justify-content: center;
+      text-align: center;
+      padding-inline: 8px;
+    }
+    .opts.opts-cards .opt span {
+      justify-content: start;
+      text-align: left;
+      min-width: 0;
+      padding-inline: 16px;
+    }
   }
   .fine {
     font-size: 12.5px;
@@ -2373,6 +2428,13 @@
     text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
     margin: 0;
   }
+  /* On bright frames the caption gets a dark backing so it stays readable wherever it lands. */
+  .fr.clean .caption {
+    background: rgba(17, 17, 17, 0.62);
+    padding: 8px 10px;
+    text-shadow: none;
+    bottom: 44px;
+  }
   .caption b {
     background: #e6d3a3;
     color: #111;
@@ -2745,80 +2807,6 @@
     }
   }
 
-  /* ---------- header: Production dropdown ---------- */
-  .nav-dd {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-  .nav-dd > .dd-btn {
-    border: 0;
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-    padding: 8px 4px 8px 0;
-    margin-left: -6px;
-    font-size: 11px;
-  }
-  .nav-dd > .dd-btn:hover,
-  .nav-dd[data-open] > .dd-btn {
-    color: var(--fg);
-  }
-  .nav-menu {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    z-index: 50;
-    min-width: 220px;
-    padding-top: 8px;
-  }
-  .nav-dd:not([data-no-hover]):hover .nav-menu,
-  .nav-dd[data-open] .nav-menu {
-    display: block;
-  }
-  .nav-menu ul {
-    list-style: none;
-    margin: 0;
-    padding: 6px;
-    background: var(--bg);
-    border: 1px solid var(--line);
-    display: grid;
-  }
-  .nav .nav-menu a {
-    display: block;
-    padding: 10px 12px;
-    color: var(--muted);
-    box-shadow: none;
-  }
-  .nav .nav-menu a:hover,
-  .nav .nav-menu a[aria-current="page"] {
-    color: var(--fg);
-    background: var(--surface);
-  }
-
-  /* ---------- property shoot price overview ---------- */
-  .prices .pr {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-variation-settings: "wdth" 68;
-    font-size: clamp(2rem, 3vw, 2.6rem);
-    line-height: 0.95;
-    font-variant-numeric: tabular-nums;
-  }
-  .prices .pr small {
-    font: 500 12px/1 var(--font-mono);
-    color: var(--muted);
-    letter-spacing: 0.04em;
-    margin-right: 6px;
-    text-transform: uppercase;
-  }
-
-  /* /book: a focused page, so the builder starts close to the header. */
-  .bk-page {
-    padding-top: clamp(32px, 5vw, 64px);
-  }
-
   /* ---------- post-production (light) ---------- */
   .pp-hero {
     display: grid;
@@ -2872,9 +2860,9 @@
   /* ---------- AI avatars (light) ---------- */
   .av-hero {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
     gap: clamp(28px, 4vw, 64px);
-    align-items: center;
+    align-items: stretch;
     padding-block: clamp(40px, 6vw, 72px);
   }
   .av-hero > * {
@@ -2916,6 +2904,21 @@
     .pa,
     .av-hero {
       grid-template-columns: 1fr;
+    }
+    .av-hero .hero-media-col {
+      contain: none;
+    }
+    .av-hero .hero-media-col > .av-stage {
+      flex: none;
+    }
+    .av-hero .hero-media-col > .av-stage > .fr {
+      aspect-ratio: 4/3;
+      height: auto;
+    }
+  }
+  @media (max-width: 560px) {
+    .av-hero .hero-media-col > .av-stage > .fr {
+      aspect-ratio: 4/5;
     }
   }
   .avs {
@@ -2985,5 +2988,20 @@
   }
   .fr.clean .play::before {
     border-left-color: #111;
+  }
+
+  /* Property shoots: a short hero so the booking builder starts right after it. */
+  .p-hero-short {
+    grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
+    padding-block: clamp(32px, 4.5vw, 56px);
+  }
+
+  /* Mobile menu open: it covers everything, and fixed bottom bars step aside. */
+  .hdr.menu-open {
+    z-index: 70;
+  }
+  html[data-menu-open] .mbar,
+  html[data-menu-open] .bk-bar {
+    display: none !important;
   }
 }

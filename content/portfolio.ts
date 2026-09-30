@@ -33,9 +33,10 @@ export const portfolio: PortfolioItem[] = [
       "production-hero",
       "property-gallery-video",
       "post-service-cards",
+      "post-hero",
       "work",
     ],
-    placementOrder: { "production-hero": 1, "post-service-cards": 1 },
+    placementOrder: { "production-hero": 1, "post-service-cards": 1, "post-hero": 1 },
   }),
   item({
     title: "Adam, market update",
@@ -109,7 +110,8 @@ export const portfolio: PortfolioItem[] = [
     format: "photo",
     meta: "Editing",
     media: { alt: "Placeholder: HDR kitchen", placeholder: "kitchen" },
-    placements: ["home-row-post", "property-gallery-photo", "work"],
+    placements: ["home-row-post", "property-gallery-photo", "post-hero", "work"],
+    placementOrder: { "post-hero": 0 },
   }),
   item({
     title: "HDR bathroom",
@@ -118,6 +120,15 @@ export const portfolio: PortfolioItem[] = [
     meta: "Editing",
     media: { alt: "Placeholder: HDR bathroom", placeholder: "bath" },
     placements: ["home-row-post", "property-gallery-photo", "work"],
+  }),
+  item({
+    title: "Villa walkthrough",
+    category: "editing",
+    format: "long-form",
+    meta: "Long-form",
+    media: { alt: "Placeholder: still from a villa walkthrough video", placeholder: "villa-dusk" },
+    placements: ["post-hero", "work"],
+    placementOrder: { "post-hero": 2 },
   }),
   item({
     title: "Villa pool",

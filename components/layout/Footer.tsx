@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AppLink as Link } from "@/components/ui/AppLink";
 import type { SiteSettings } from "@/content/types";
 import { env } from "@/lib/env";
 import { Logo } from "./Logo";
@@ -21,10 +21,7 @@ export function Footer({ site }: { site: SiteSettings }) {
                 <Link href="/production">Production</Link>
               </li>
               <li>
-                <Link href="/production/property-shoots">Property shoots</Link>
-              </li>
-              <li>
-                <Link href="/book">Book property shoot</Link>
+                <Link href="/property-shoots">Property shoots</Link>
               </li>
               <li>
                 <Link href="/post-production">Post-production</Link>

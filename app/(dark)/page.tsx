@@ -134,10 +134,9 @@ export default async function HomePage() {
             </p>
             <NeedSelector needs={NEEDS} />
           </div>
-          <div className="stack" style={{ gap: 10 }}>
+          <div className="hero-media-col">
             <ViewfinderFrame
               media={site.showreel}
-              className="hero-media"
               topLeft="4K · 25P"
               timecode={<Timecode start="00:14:08" />}
               tag="Showreel 2026"

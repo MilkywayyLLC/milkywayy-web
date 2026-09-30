@@ -70,6 +70,7 @@ export type PortfolioPlacement =
   | "property-gallery-photo"
   | "property-gallery-video"
   | "property-gallery-360"
+  | "post-hero"
   | "post-service-cards"
   | "work";
 
