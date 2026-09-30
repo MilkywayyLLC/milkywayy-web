@@ -14,6 +14,7 @@ export function PropertyCard({
   summary,
   subtotal,
   open,
+  invalid,
   onToggle,
   children,
 }: {
@@ -22,12 +23,13 @@ export function PropertyCard({
   summary: string;
   subtotal: number;
   open: boolean;
+  invalid?: boolean;
   onToggle: () => void;
   children?: ReactNode;
 }) {
   const id = `prop-${index}`;
   return (
-    <div className={open ? "prop open" : "prop"}>
+    <div className={["prop", open && "open", invalid && "invalid"].filter(Boolean).join(" ")}>
       <button
         type="button"
         className="prop-h"
@@ -68,6 +70,7 @@ export function Group({ label, children }: { label: string; children: ReactNode 
 
 /** Toggle card: service, commercial scale tier, or video format. */
 export function ChoiceCard({
+  id,
   title,
   sub,
   price,
@@ -76,6 +79,7 @@ export function ChoiceCard({
   badge,
   onClick,
 }: {
+  id?: string;
   title: string;
   sub?: string;
   price?: string;
@@ -86,16 +90,18 @@ export function ChoiceCard({
 }) {
   return (
     <button
+      id={id}
       type="button"
       className="sc"
       aria-pressed={pressed}
       disabled={disabled}
       onClick={onClick}
     >
-      {badge && <span className="pop">{badge}</span>}
       <b>{title}</b>
       {sub && <small>{sub}</small>}
       {price && <span className="p">{price}</span>}
+      {/* After the title so the accessible name starts with it; positioned by CSS. */}
+      {badge && <span className="pop">{badge}</span>}
     </button>
   );
 }

@@ -50,3 +50,20 @@ Choices not spelled out in `MILKYWAYY_BUILD_GUIDE.md` (v3), or owner answers tha
 - **Per-placement ordering** added now (`placementOrder`, mirrors `portfolio_placements.sort_order`) so the Production home row matches the mockup.
 - **Performance, measured on Vercel staging (Lighthouse mobile ×3):** Performance 98–99, Accessibility 100, Best Practices 96, LCP 1.9–2.3 s, CLS 0, TBT 10 ms. SEO is 69 on staging only because of the noindex lock; 100 with `NEXT_PUBLIC_SITE_ENV=production`. Best Practices loses points for 404 prefetches of pages not built yet (`/production`, `/contact`, …); clears as those pages land.
 - **JS budget is tight:** ~150 KB gzipped per page, of which ~131 KB is the Next.js 16 + React 19 framework baseline; our code is ~19 KB. Open question for the owner (see Phase 2 summary).
+
+## JS budget (owner decision, 30 Sep 2026)
+- Guide §12 updated: per page, **our own JS < 35 KB gzipped and total JS < 175 KB gzipped**; Performance ≥ 90 and LCP < 2.5 s unchanged. Reason: Next.js 16 + React 19 alone ship ~131 KB, which left ~19 KB under the old 150 KB total.
+
+## Phase 3 — Production, Property shoots, /book, booking builder
+- **Builder logic is pure and separate** (`lib/booking/index.ts`): typed state (`BookingState` → one object per property, ready to POST to the booking API later), a reducer, and rule functions. `normalize()` runs after every change so the state can't hold an invalid combination.
+- **Rules as built:** locked commercial services (price `null`, e.g. Basic long-form/360) are forced off and their cards read "Not in {tier}"; turning Videography on selects Short-form; turning both formats off turns Videography off; twilight needs Photography; night or day + night long-form (apartments/villas) forces the Evening slot and disables the others; changing type resets size to that type's default (1 Bed, 2 Bed, Essential).
+- **Default state:** one 1 Bed apartment with Photography only (AED 500) and an empty location with example placeholders. The mockup's demo pre-filled Marina Heights and video; pre-filled values would get sent by people who don't notice them, and a preselected AED 1,400 first estimate undercuts "from AED 450".
+- **Validation on send:** each property needs a service, a community/area and a building (unit optional). The first invalid card opens and its field gets focus; errors clear as they're fixed.
+- **Dates:** next 5 dates (settings `booking.daysAhead`) from tomorrow in Dubai time, skipping Sundays (as in the mockup). Computed on the server; the builder pages revalidate hourly.
+- **Reference:** the preview shows "Ref #MW-···· (added when you send)". Sending uses a provisional client-side `MW-####` until Phase 6 saves the lead and returns the server ref. The on-page confirmation keeps a "WhatsApp didn't open? Open it here" link and disappears if the booking is edited.
+- **Message wording:** summary lists the unit as "1205, Marina Heights, Dubai Marina"; the WhatsApp message says "Unit 1205, …" (guide §8.4). Dates use the real calendar (the guide's "Thu 2 Oct" example is 2025's).
+- **Samples tabs** only show tabs with content; the 360° tour tab appears once 360 samples are placed.
+- **Accessibility:** the "Most popular" badge now follows the tier name in the DOM so the card's accessible name starts with "Essential" (found by the e2e tests).
+- **Tests:** Playwright 1.63 using the installed Google Chrome (`channel: "chrome"`, no browser download). `npm test` builds and runs everything; `npm run test:logic` runs the 15 rule tests without a server (every price cell in §8.3, twilight, evening lock, Basic lock, multi-property, exact §8.4 message, dates). 34 tests pass, desktop and Pixel 7.
+- **Styleguide** now renders the live `BookingBuilder`; the static `BookingDemo` is gone.
+- **Measured on staging (Lighthouse mobile ×2):** Home 98–99 / LCP 2.0–2.4 s, Production 99 / 2.3 s, Property shoots 98 / 2.3 s; CLS 0 everywhere. Our JS per route: Home 18.3 KB, Production 17.5 KB, Property shoots 22.5 KB (framework ~131 KB). Home's transfer total (158 KB) includes Next prefetching the Production route's chunk in the background.

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { BookingDemo } from "./BookingDemo";
+import { BookingBuilder } from "@/components/booking/BookingBuilder";
 import { AiTiers } from "@/components/blocks/AiTiers";
 import { BeforeAfterGallery } from "@/components/blocks/BeforeAfterGallery";
 import { CompareTable } from "@/components/blocks/CompareTable";
@@ -51,9 +51,13 @@ import {
   getSiteSettings,
   getStats,
 } from "@/lib/data";
+import { nextShootDates } from "@/lib/booking";
 import { formatNumber, formatUSD } from "@/lib/format";
 import { ToneToggle } from "./ToneToggle";
 import "./styleguide.css";
+
+// The live booking builder shows real date chips; refresh them hourly.
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Styleguide",
@@ -736,11 +740,17 @@ export default async function StyleguidePage() {
       <Both
         id="booking"
         title="Booking builder"
-        note="Static look only; open and close the cards. Prices, locks and the message builder are Phase 3."
+        note="The live builder (guide §8): prices, commercial locks, twilight, the evening lock and the WhatsApp message."
       >
         {() => (
           <div className="w">
-            <BookingDemo pricing={property} />
+            <BookingBuilder
+              pricing={property}
+              dates={nextShootDates(new Date(), site.booking.daysAhead)}
+              slots={site.booking.slots}
+              multiPropertyNote={site.booking.multiPropertyNote}
+              whatsappNumber={site.whatsapp.number}
+            />
           </div>
         )}
       </Both>

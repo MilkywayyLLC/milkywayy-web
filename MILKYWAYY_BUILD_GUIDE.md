@@ -367,7 +367,7 @@ Default: `SupabaseLeadStore` (writes to the `leads` table) plus an optional noti
 - **Staging lock**: when `NEXT_PUBLIC_SITE_ENV !== "production"`, robots disallow all and every page is `noindex, nofollow`.
 - `public/llms.txt`: plain summary of Milkywayy, the three services, starting prices, service areas and contact.
 - Real alt text on every image.
-- Performance (mobile Lighthouse): Performance ≥ 90, Accessibility ≥ 95, Best Practices ≥ 95, SEO 100. LCP < 2.5 s, CLS < 0.1, JS < 150 KB gzipped per page.
+- Performance (mobile Lighthouse): Performance ≥ 90, Accessibility ≥ 95, Best Practices ≥ 95, SEO 100. LCP < 2.5 s, CLS < 0.1. JavaScript per page (gzipped): our own code < 35 KB and total (including the Next.js/React framework, ~131 KB) < 175 KB. *(Updated 30 Sep 2026: the original 150 KB total left no room above the framework baseline.)*
 
 ---
 

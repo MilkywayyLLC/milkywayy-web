@@ -29,6 +29,7 @@ import {
   showsProofStrip,
 } from "@/lib/data";
 import { formatNumber, formatUSD } from "@/lib/format";
+import { lowestShootPrice } from "@/lib/pricing";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 
 export const metadata: Metadata = {
@@ -107,11 +108,7 @@ export default async function HomePage() {
     getOtherPricing(),
   ]);
 
-  const shootsFrom = Math.min(
-    ...property.apartment.sizes.map((s) => s.photo),
-    ...property.villa.sizes.map((s) => s.photo),
-    ...property.commercial.tiers.map((t) => t.photo),
-  );
+  const shootsFrom = lowestShootPrice(property);
   const photoRate = other.postProduction.rates.find((r) => r.key === "photo");
   const whatsapp = pageWhatsappLink("Home");
   const showreelIsSample = !site.showreel.video;

@@ -493,6 +493,26 @@
     }
   }
 
+  /* ---------- service page hero (Production, Property shoots) ---------- */
+  .p-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: clamp(28px, 4vw, 64px);
+    align-items: center;
+    padding-block: clamp(40px, 6vw, 72px);
+  }
+  .p-hero > * {
+    min-width: 0;
+  }
+  .p-hero .stack {
+    gap: 24px;
+  }
+  @media (max-width: 900px) {
+    .p-hero {
+      grid-template-columns: 1fr;
+    }
+  }
+
   /* ---------- proof strip ---------- */
   .proof {
     border-block: 1px solid var(--line);
@@ -1649,6 +1669,27 @@
     .prop-h .chev {
       display: none;
     }
+  }
+
+  .bk-err {
+    color: var(--fg);
+    font-weight: 500;
+    font-size: 13px;
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    margin: 0;
+  }
+  .bk-err::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: var(--rec);
+    flex: 0 0 auto;
+    transform: translateY(-1px);
+  }
+  .prop.invalid {
+    border-color: var(--rec);
   }
 
   /* ---------- tabs + gallery ---------- */

@@ -6,6 +6,7 @@ Everything here ships as a clearly marked sample or placeholder until replaced. 
 - [ ] **Google reviews:** 3+ real reviews with name, role, company (`content/reviews.ts`, currently "sample").
 - [ ] **Google rating:** review count and profile link, needed for aggregateRating JSON-LD (`content/site.ts`).
 - [ ] **Showreel:** video (Bunny/YouTube/Vimeo link) + poster (`content/site.ts`). Home shows a labelled placeholder until then.
+- [ ] **Property shoot samples:** photos, videos and 360° tours for the "What you'll get" tabs (the 360° tab stays hidden until one exists).
 - [ ] **Portfolio media:** reels, photos, long-form for Home, Production, Property shoots, Post-production and Work (`content/portfolio.ts`).
 - [ ] **Before/after pairs:** Sky, Twilight, HDR (`content/beforeAfter.ts`).
 - [ ] **AI avatar examples:** Adam hero video, Clinic host, Finance explainer, Coach (`content/avatars.ts`).
