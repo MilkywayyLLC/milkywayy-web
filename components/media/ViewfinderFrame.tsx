@@ -1,0 +1,82 @@
+import Image from "next/image";
+import type { CSSProperties, ReactNode } from "react";
+import type { Media } from "@/content/types";
+import { cx } from "@/lib/cx";
+
+/**
+ * Media wrapper with the camera look: corner brackets, optional timecode (top right), top-left
+ * meta, bottom tag and a square play button (guide §4.5). Shows a placeholder swatch until real
+ * media exists. Video playback (poster first, player on click) arrives with LiteVideo in Phase 2.
+ */
+export function ViewfinderFrame({
+  media,
+  corners = true,
+  timecode,
+  topLeft,
+  tag,
+  tagRight,
+  play,
+  small,
+  clean,
+  aspect,
+  priority,
+  sizes = "(max-width: 900px) 100vw, 50vw",
+  className,
+  style,
+  children,
+}: {
+  media: Media;
+  corners?: boolean;
+  /** Static text or a <Timecode /> element. */
+  timecode?: ReactNode;
+  topLeft?: string;
+  tag?: string;
+  tagRight?: string;
+  /** "button" renders a real control (needs an onClick in a client wrapper); "icon" is decorative. */
+  play?: "icon" | "button";
+  small?: boolean;
+  /** Bright images: no dark gradient, dark tag text. */
+  clean?: boolean;
+  aspect?: string;
+  priority?: boolean;
+  sizes?: string;
+  className?: string;
+  style?: CSSProperties;
+  children?: ReactNode;
+}) {
+  const placeholder = !media.src && media.placeholder ? `ph-${media.placeholder}` : undefined;
+  return (
+    <div
+      className={cx("fr", small && "sm", clean && "clean", placeholder, className)}
+      style={{ ...(aspect ? { aspectRatio: aspect } : null), ...style }}
+      role={media.src ? undefined : "img"}
+      aria-label={media.src ? undefined : media.alt}
+    >
+      {media.src && (
+        <Image src={media.src} alt={media.alt} fill sizes={sizes} priority={priority} />
+      )}
+      {corners && (
+        <span
+          className="corners"
+          aria-hidden="true"
+          style={clean ? { filter: "invert(1)" } : undefined}
+        />
+      )}
+      {topLeft && <span className="tl">{topLeft}</span>}
+      {timecode && (
+        <span className="tc" style={clean ? { color: "#111" } : undefined}>
+          <i className="rec-dot" aria-hidden="true" />
+          {timecode}
+        </span>
+      )}
+      {play === "icon" && <span className="play" aria-hidden="true" />}
+      {(tag || tagRight) && (
+        <span className="tag">
+          <span>{tag}</span>
+          {tagRight && <span>{tagRight}</span>}
+        </span>
+      )}
+      {children}
+    </div>
+  );
+}

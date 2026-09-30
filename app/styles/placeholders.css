@@ -1,0 +1,162 @@
+/*
+ * Placeholder "photography" from the mockup, used until real media is supplied (CONTENT_TODO.md).
+ * Keyed by content/types.ts PlaceholderKey: <ViewfinderFrame media={{ placeholder: "dusk" }} />.
+ */
+@layer components {
+  .ph-dusk {
+    background:
+      radial-gradient(30% 16% at 72% 64%, rgba(255, 196, 120, 0.55), transparent 70%),
+      linear-gradient(
+        180deg,
+        #1b2238 0%,
+        #48436a 34%,
+        #c98a62 58%,
+        #e7b27a 63%,
+        #2a211c 64%,
+        #15110f 100%
+      );
+  }
+  .ph-dusk::before {
+    content: "";
+    position: absolute;
+    left: 6%;
+    right: 8%;
+    bottom: 36%;
+    height: 36%;
+    z-index: 0;
+    background:
+      linear-gradient(#0f0d0c, #0f0d0c) 0 100%/7% 60% no-repeat,
+      linear-gradient(#141110, #141110) 12% 100%/5% 94% no-repeat,
+      linear-gradient(#0f0d0c, #0f0d0c) 22% 100%/8% 45% no-repeat,
+      linear-gradient(#121010, #121010) 38% 100%/4% 100% no-repeat,
+      linear-gradient(#0f0d0c, #0f0d0c) 50% 100%/9% 55% no-repeat,
+      linear-gradient(#141110, #141110) 66% 100%/6% 80% no-repeat,
+      linear-gradient(#0f0d0c, #0f0d0c) 82% 100%/8% 40% no-repeat,
+      linear-gradient(#121010, #121010) 100% 100%/5% 66% no-repeat;
+  }
+  .ph-interior {
+    background:
+      radial-gradient(45% 55% at 78% 30%, rgba(255, 240, 214, 0.95), transparent 62%),
+      linear-gradient(
+        90deg,
+        transparent 58%,
+        rgba(255, 246, 228, 0.35) 58% 61%,
+        transparent 61% 76%,
+        rgba(255, 246, 228, 0.35) 76% 79%,
+        transparent 79%
+      ),
+      linear-gradient(170deg, #d8c19e 0%, #b39068 50%, #6e5238 78%, #3b2c20 100%);
+  }
+  .ph-villa {
+    background:
+      radial-gradient(60% 30% at 50% 0%, rgba(255, 255, 255, 0.7), transparent 70%),
+      linear-gradient(
+        180deg,
+        #8fb8d0 0%,
+        #cfe0e8 42%,
+        #efe7da 43%,
+        #e4d7c1 58%,
+        #5aa7c4 59%,
+        #3f8fb0 78%,
+        #d9ccb4 79%,
+        #bfae8e 100%
+      );
+  }
+  .ph-villa-dusk {
+    background:
+      radial-gradient(40% 20% at 50% 62%, rgba(255, 200, 130, 0.6), transparent 70%),
+      linear-gradient(
+        180deg,
+        #1c2442 0%,
+        #5b4a78 36%,
+        #e39a6a 42%,
+        #3c3140 43%,
+        #57495a 58%,
+        #2f6f8f 59%,
+        #1f4e66 78%,
+        #3a3230 79%,
+        #241f1d 100%
+      );
+  }
+  .ph-villa-grey {
+    background: linear-gradient(
+      180deg,
+      #b9bcbf 0%,
+      #d4d5d5 42%,
+      #e9e3d8 43%,
+      #ddd1bd 58%,
+      #7ea0ad 59%,
+      #6b8f9d 78%,
+      #d3c7b0 79%,
+      #b8a88a 100%
+    );
+  }
+  .ph-night {
+    background:
+      radial-gradient(28% 34% at 26% 44%, rgba(255, 180, 110, 0.75), transparent 70%),
+      radial-gradient(22% 26% at 70% 38%, rgba(255, 210, 150, 0.45), transparent 70%),
+      linear-gradient(180deg, #1d1915 0%, #2d251e 70%, #15120f 100%);
+  }
+  .ph-kitchen {
+    background:
+      linear-gradient(180deg, transparent 62%, #2b2724 62% 64%, transparent 64%),
+      radial-gradient(50% 40% at 30% 20%, rgba(255, 250, 240, 0.9), transparent 70%),
+      linear-gradient(90deg, #e8e2d8 0 40%, #cfc5b6 40% 42%, #e8e2d8 42%),
+      linear-gradient(180deg, #efeae2, #b9ad9b);
+  }
+  .ph-bath {
+    background:
+      radial-gradient(35% 45% at 70% 35%, rgba(255, 255, 255, 0.9), transparent 70%),
+      linear-gradient(90deg, #d9d4cc 0 55%, #c2b8aa 55% 56%, #e2ddd5 56%),
+      linear-gradient(180deg, #ece8e1, #a89c8a);
+  }
+  .ph-aerial {
+    background:
+      radial-gradient(18% 14% at 40% 55%, #3f8fb0 96%, transparent),
+      linear-gradient(135deg, transparent 45%, #d8cfbf 45% 48%, transparent 48%),
+      linear-gradient(45deg, transparent 60%, #d8cfbf 60% 62%, transparent 62%),
+      linear-gradient(160deg, #7c8a5c, #a9a079 50%, #c9b98f);
+  }
+  .ph-clinic {
+    background:
+      radial-gradient(35% 45% at 30% 40%, rgba(255, 255, 255, 0.85), transparent 70%),
+      linear-gradient(180deg, #e9eef0 0%, #d3dde0 55%, #b9c7cb 56%, #9fb0b5 100%);
+  }
+  .ph-salon {
+    background:
+      radial-gradient(30% 40% at 65% 35%, rgba(255, 210, 160, 0.7), transparent 70%),
+      linear-gradient(90deg, #2a2420 0 30%, #3b322b 30% 70%, #2a2420 70%),
+      linear-gradient(180deg, #3a302a, #1a1512);
+  }
+  .ph-adam {
+    background:
+      radial-gradient(9% 12% at 50% 34%, #7a604c 96%, transparent 100%),
+      radial-gradient(10.5% 5% at 50% 23%, #2b2622 96%, transparent 100%),
+      radial-gradient(24% 22% at 50% 84%, #3e4a45 96%, transparent 100%),
+      radial-gradient(14% 20% at 50% 80%, #e9dfcf 96%, transparent 100%),
+      radial-gradient(50% 55% at 50% 45%, #f4ecdd, transparent 75%),
+      linear-gradient(90deg, #8aa07e 0 12%, transparent 12% 88%, #7f9873 88%),
+      linear-gradient(180deg, #f6f2ea, #ddd4c4);
+  }
+  .ph-avatar-clinic {
+    background:
+      radial-gradient(9% 12% at 50% 36%, #c89b7b 96%, transparent 100%),
+      radial-gradient(12% 9% at 50% 27%, #3a2a22 96%, transparent 100%),
+      radial-gradient(24% 22% at 50% 86%, #f1efe9 96%, transparent 100%),
+      linear-gradient(180deg, #dfe7ea, #b8c6cc);
+  }
+  .ph-avatar-finance {
+    background:
+      radial-gradient(9% 12% at 50% 36%, #8d6a52 96%, transparent 100%),
+      radial-gradient(11% 6% at 50% 25%, #1d1a18 96%, transparent 100%),
+      radial-gradient(24% 22% at 50% 86%, #1f2a3a 96%, transparent 100%),
+      linear-gradient(180deg, #2c2a27, #4a4540);
+  }
+  .ph-avatar-coach {
+    background:
+      radial-gradient(9% 12% at 50% 36%, #e0b89a 96%, transparent 100%),
+      radial-gradient(13% 12% at 50% 30%, #6b4a2f 96%, transparent 100%),
+      radial-gradient(24% 22% at 50% 86%, #b5523b 96%, transparent 100%),
+      linear-gradient(180deg, #f3e3cf, #e2c9a8);
+  }
+}

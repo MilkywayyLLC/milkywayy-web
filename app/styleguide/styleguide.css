@@ -1,0 +1,138 @@
+/* Review-page chrome only. Not used by the site. */
+.sg {
+  background: var(--bg);
+  color: var(--fg);
+}
+.sg-intro {
+  padding-block: 56px 40px;
+  border-bottom: 1px solid var(--line);
+}
+.sg-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font: 500 12px/1.6 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.sg-toc a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.sg-toc a:hover {
+  color: var(--fg);
+}
+.sg-block {
+  scroll-margin-top: 16px;
+}
+.sg-label {
+  padding-block: 40px 16px;
+  background: #0b0b0b;
+  color: #ededea;
+}
+.sg-label h2 {
+  margin: 0;
+  font: 500 13px/1.2 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #e6d3a3;
+}
+.sg-label p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #8e8c87;
+  max-width: 80ch;
+}
+.sg-panel {
+  background: var(--bg);
+  color: var(--fg);
+  padding-block: 28px 56px;
+}
+.sg-tone {
+  display: block;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+.sg[data-show="dark"] [data-panel="light"],
+.sg[data-show="light"] [data-panel="dark"] {
+  display: none;
+}
+.sg-meta {
+  font: 500 11px/1.4 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sg-quote {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variation-settings: "wdth" 86;
+  font-size: clamp(1.4rem, 2.5vw, 2.1rem);
+  line-height: 1.22;
+}
+.sg-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.sg-swatch {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+.sg-swatch i {
+  height: 56px;
+  border: 1px solid var(--line);
+}
+.sg-swatch span {
+  font: 400 12px/1.3 var(--font-mono);
+  color: var(--muted);
+}
+.sg-heroes {
+  display: grid;
+  gap: 40px;
+}
+.sg-half {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 32px;
+}
+@media (max-width: 900px) {
+  .sg-half {
+    grid-template-columns: 1fr;
+  }
+}
+.sg-media {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 16px;
+  align-items: start;
+}
+.sg-media .trio {
+  grid-column: 1 / -1;
+  max-width: 560px;
+}
+@media (max-width: 760px) {
+  .sg-media {
+    grid-template-columns: 1fr;
+  }
+}
+.sg-avs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 860px) {
+  .sg-avs {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* A .w inside a grid gets auto margins and would shrink to its content. */
+.sg .stack > .w {
+  width: 100%;
+}

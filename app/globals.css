@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./styles/components.css";
+@import "./styles/placeholders.css";
 
 /*
  * Milkywayy "Viewfinder" tokens (guide §4.1, values copied from reference/site-mockup.html).
@@ -100,6 +102,9 @@
   button {
     font: inherit;
     color: inherit;
+  }
+  [hidden] {
+    display: none !important;
   }
   :focus-visible {
     outline: 2px solid var(--acc);
