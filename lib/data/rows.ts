@@ -154,7 +154,7 @@ export function propertyPricing(
   const tiers: CommercialTier[] = tierRows.map((t) => ({
     label: t.label,
     description: t.description,
-    popular: !!t.popular,
+    popular: t.popular ? true : undefined,
     photo: t.photo,
     short: t.short,
     long: t.long,

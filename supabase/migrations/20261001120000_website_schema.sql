@@ -4,7 +4,7 @@
 
 -- ---------- helpers ----------
 create or replace function public.set_updated_at() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   new.updated_at = now();
   return new;
@@ -22,9 +22,9 @@ language sql stable security definer set search_path = public as $$
   select role from public.admins where email = lower(auth.jwt() ->> 'email')
 $$;
 create or replace function public.is_admin() returns boolean
-language sql stable as $$ select public.admin_role() is not null $$;
+language sql stable set search_path = public as $$ select public.admin_role() is not null $$;
 create or replace function public.is_owner() returns boolean
-language sql stable as $$ select public.admin_role() = 'owner' $$;
+language sql stable set search_path = public as $$ select public.admin_role() = 'owner' $$;
 
 -- ---------- content ----------
 create table public.portfolio_items (
