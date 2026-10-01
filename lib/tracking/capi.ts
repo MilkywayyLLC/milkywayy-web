@@ -53,9 +53,18 @@ function settings() {
   return { pixel, token, testCode: mode === "test" || testCode ? testCode : undefined };
 }
 
-export async function sendCapi(i: CapiInput) {
+/** Meta's answer, without anything secret: what test mode shows in the /api/lead response. */
+export type CapiResult =
+  | { sent: false; reason: string }
+  | { sent: true; ok: boolean; status: number; events_received?: number; error?: string };
+
+export const trackingMode = () =>
+  process.env.NEXT_PUBLIC_TRACKING ||
+  (process.env.NEXT_PUBLIC_SITE_ENV === "production" ? "on" : "off");
+
+export async function sendCapi(i: CapiInput): Promise<CapiResult> {
   const s = settings();
-  if (!s) return;
+  if (!s) return { sent: false, reason: "tracking off, or pixel/token/test code missing" };
   try {
     const res = await fetch(
       `https://graph.facebook.com/v21.0/${s.pixel}/events?access_token=${encodeURIComponent(s.token)}`,
@@ -68,8 +77,21 @@ export async function sendCapi(i: CapiInput) {
         }),
       },
     );
-    if (!res.ok) console.error(`[capi] ${i.event} ${i.eventId}: ${res.status} ${await res.text()}`);
+    const body = (await res.json().catch(() => ({}))) as {
+      events_received?: number;
+      error?: { message?: string };
+    };
+    if (!res.ok)
+      console.error(`[capi] ${i.event} ${i.eventId}: ${res.status} ${body.error?.message ?? ""}`);
+    return {
+      sent: true,
+      ok: res.ok,
+      status: res.status,
+      events_received: body.events_received,
+      error: body.error?.message,
+    };
   } catch (err) {
     console.error(`[capi] ${i.event} ${i.eventId}: failed`, err);
+    return { sent: true, ok: false, status: 0, error: "request failed" };
   }
 }

@@ -14,7 +14,7 @@ import { addDays, dubaiToday, weekday } from "@/lib/booking/dates";
 import { getPropertyPricing, getSiteSettings } from "@/lib/data";
 import { e2eKey } from "@/lib/leads/e2e";
 import { notifyLead } from "@/lib/leads/notify";
-import { sendCapi } from "@/lib/tracking/capi";
+import { sendCapi, trackingMode, type CapiResult } from "@/lib/tracking/capi";
 import { DEFAULT_COUNTRY, toE164 } from "@/lib/phone";
 import { COUNTRIES } from "@/lib/phone/countries";
 import { checkLead, type LeadValues } from "@/lib/leads/rules";
@@ -195,29 +195,38 @@ export async function POST(req: NextRequest) {
     message = data.message.replace("{{REF}}", saved.ref);
     data.message = message;
   }
-  if (!saved.duplicate && !isTest) {
+  const testMode = trackingMode() === "test";
+  let capi: CapiResult | undefined;
+  if (!saved.duplicate) {
     const origin = req.nextUrl.origin;
-    after(() => notifyLead(lead, saved.ref, origin));
-    if (r.consent)
-      after(() =>
-        sendCapi({
-          event: "Lead",
-          eventId: saved.ref,
-          url: `${origin}${r.page}`,
-          email: lead.email,
-          phone: lead.phone,
-          ip: ip === "unknown" ? undefined : ip,
-          userAgent: req.headers.get("user-agent") ?? undefined,
-          fbp: r.fbp,
-          fbc: r.fbc,
-          custom: {
-            lead_type: r.type,
-            ...(r.type === "property"
-              ? { currency: "AED", value: (data.estimate as { total: number }).total }
-              : {}),
-          },
-        }),
-      );
+    if (!isTest) after(() => notifyLead(lead, saved.ref, origin));
+    // Test mode: also for automated test leads, and the answer from Meta comes back in the
+    // response so the setup can be checked without reading logs. Otherwise after the response.
+    const event = () =>
+      sendCapi({
+        event: "Lead",
+        eventId: saved.ref,
+        url: `${origin}${r.page}`,
+        email: lead.email,
+        phone: lead.phone,
+        ip: ip === "unknown" ? undefined : ip,
+        userAgent: req.headers.get("user-agent") ?? undefined,
+        fbp: r.fbp,
+        fbc: r.fbc,
+        custom: {
+          lead_type: r.type,
+          ...(r.type === "property"
+            ? { currency: "AED", value: (data.estimate as { total: number }).total }
+            : {}),
+        },
+      });
+    if (r.consent && testMode) capi = await event();
+    else if (r.consent && !isTest) after(event);
   }
-  return json({ ref: saved.ref, eventId: r.eventId, message });
+  return json({
+    ref: saved.ref,
+    eventId: r.eventId,
+    message,
+    ...(testMode && capi ? { capi } : {}),
+  });
 }
