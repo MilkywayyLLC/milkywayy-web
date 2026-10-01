@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { publicDb } from "@/lib/supabase/public";
 
 /**
@@ -9,6 +8,15 @@ import { publicDb } from "@/lib/supabase/public";
  *   ALERT_EMAIL_TO   who gets alerts (default LEAD_EMAIL_TO, then hello@milkywayy.com)
  */
 export type Alert = { kind: string; message: string; where?: string; detail?: string };
+
+/** Web Crypto, so this also loads where Node's crypto module doesn't (Edge). */
+async function sha256(s: string) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 40);
+}
 
 const enabled = () =>
   process.env.NEXT_PUBLIC_SITE_ENV === "production" || process.env.ALERTS === "on";
@@ -27,10 +35,7 @@ async function firstTime(fingerprint: string, minutes = 60) {
 export async function alert(a: Alert, opts: { force?: boolean; throttle?: string } = {}) {
   try {
     if ((!enabled() && !opts.force) || !process.env.RESEND_API_KEY) return false;
-    const fp = createHash("sha256")
-      .update(`${a.kind}|${a.where ?? ""}|${a.message.split("\n")[0].slice(0, 200)}`)
-      .digest("hex")
-      .slice(0, 40);
+    const fp = await sha256(`${a.kind}|${a.where ?? ""}|${a.message.split("\n")[0].slice(0, 200)}`);
     if (!opts.force && !(await firstTime(fp))) return false;
     // A shared cap (e.g. browser errors) so a flood of different messages can't flood the inbox.
     if (!opts.force && opts.throttle && !(await firstTime(opts.throttle, 10))) return false;

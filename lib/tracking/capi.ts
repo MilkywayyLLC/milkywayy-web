@@ -50,7 +50,8 @@ function settings() {
   const testCode = process.env.META_TEST_EVENT_CODE;
   if (mode === "off" || !pixel || !token) return null;
   if (mode === "test" && !testCode) return null;
-  return { pixel, token, testCode: mode === "test" || testCode ? testCode : undefined };
+  // The test code only in test mode: live events must never be routed to Test events.
+  return { pixel, token, testCode: mode === "test" ? testCode : undefined };
 }
 
 /** Meta's answer, without anything secret: what test mode shows in the /api/lead response. */

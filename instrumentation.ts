@@ -2,6 +2,7 @@ import type { Instrumentation } from "next";
 
 /** Any unhandled server error (pages, route handlers, server actions) → an email alert. */
 export const onRequestError: Instrumentation.onRequestError = async (err, request, context) => {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
   const { alert } = await import("@/lib/monitoring/alert");
   const e = err as Error & { digest?: string };
   await alert({
