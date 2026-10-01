@@ -2,6 +2,7 @@ import { AppLink as Link } from "@/components/ui/AppLink";
 import type { SiteSettings } from "@/content/types";
 import { env } from "@/lib/env";
 import { Logo } from "./Logo";
+import { CookieSettings } from "@/components/tracking/CookieSettings";
 
 /** Always dark, whatever the page tone (guide §4.1). */
 export function Footer({ site }: { site: SiteSettings }) {
@@ -71,6 +72,7 @@ export function Footer({ site }: { site: SiteSettings }) {
           <span style={{ display: "flex", gap: 16 }}>
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
+            <CookieSettings />
           </span>
         </div>
       </div>

@@ -38,6 +38,7 @@ import { bookingWindow, firstBookable, type BookingWindow } from "@/lib/booking/
 import { MENU_OPEN_EVENT } from "@/lib/events";
 import { formatAED } from "@/lib/format";
 import { sendLead } from "@/lib/leads/client";
+import { track } from "@/lib/tracking/events";
 import { whatsappLink } from "@/lib/whatsapp";
 import { CloseIcon } from "@/components/ui/Icons";
 import { Seg } from "@/components/ui/Seg";
@@ -178,6 +179,11 @@ export function BookingBuilder({
     ).then((r) => {
       setSending(false);
       if (r.ok) {
+        track(
+          "Lead",
+          { content_name: "property", lead_type: "property", currency: "AED", value: grandTotal },
+          r.ref,
+        );
         const message = buildMessage(state, pricing, r.ref);
         const url = whatsappLink(r.message ?? message, whatsappNumber);
         setSent({ ref: r.ref, url, message });

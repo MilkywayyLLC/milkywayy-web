@@ -62,37 +62,39 @@ export function businessLd(site: SiteSettings) {
 }
 
 /** Service with its starting price, for each service page. */
-export function serviceLd(key: string, prices: { property: PropertyPricing; other: OtherPricing }) {
+export function serviceLd(
+  key: string,
+  prices: { property?: PropertyPricing; other?: OtherPricing },
+) {
   const p = seoPage(key)!;
-  const minAed = Math.min(
-    ...[...prices.property.apartment.sizes, ...prices.property.villa.sizes].map((s) => s.photo),
-    ...prices.property.commercial.tiers.map((t) => t.photo),
-  );
-  const minUsd = Math.min(...prices.other.postProduction.rates.map((r) => r.amount));
+  const { property, other } = prices;
   const offers: Record<string, object | undefined> = {
-    production: {
+    production: other && {
       "@type": "Offer",
       priceCurrency: "AED",
-      price: prices.other.production.fromMonthly,
+      price: other.production.fromMonthly,
       priceSpecification: {
         "@type": "UnitPriceSpecification",
-        price: prices.other.production.fromMonthly,
+        price: other.production.fromMonthly,
         priceCurrency: "AED",
         unitText: "MONTH",
         referenceQuantity: { "@type": "QuantitativeValue", value: 1, unitCode: "MON" },
       },
       description: "Monthly content packages, starting price",
     },
-    "property-shoots": {
+    "property-shoots": property && {
       "@type": "Offer",
       priceCurrency: "AED",
-      price: minAed,
+      price: Math.min(
+        ...[...property.apartment.sizes, ...property.villa.sizes].map((s) => s.photo),
+        ...property.commercial.tiers.map((t) => t.photo),
+      ),
       description: "Property photography, starting price",
     },
-    "post-production": {
+    "post-production": other && {
       "@type": "Offer",
       priceCurrency: "USD",
-      price: minUsd,
+      price: Math.min(...other.postProduction.rates.map((r) => r.amount)),
       description: "Photo edits, starting price per image",
     },
   };

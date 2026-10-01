@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Attribution } from "@/components/forms/Attribution";
+import { Tracking } from "@/components/tracking/Tracking";
 import { AnchorScroll } from "@/components/layout/AnchorScroll";
 import { PreviewBanner } from "@/components/layout/PreviewBanner";
 import { env, isIndexable } from "@/lib/env";
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         <AnchorScroll />
         <Attribution />
+        <Tracking />
       </body>
     </html>
   );

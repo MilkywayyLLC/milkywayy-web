@@ -9,6 +9,7 @@ import {
   type LeadType,
   type LeadValues,
 } from "@/lib/leads/rules";
+import { track } from "@/lib/tracking/events";
 import { whatsappLink } from "@/lib/whatsapp";
 
 export type Sent = { ref: string; eventId: string; waUrl?: string; values: LeadValues };
@@ -76,6 +77,8 @@ export function useLeadForm(type: LeadType, whatsappNumber: string) {
       ? whatsappLink(r.message ?? formMessage(type, r.ref, values), whatsappNumber)
       : undefined;
     if (tab && waUrl) tab.location.href = waUrl;
+    // Same id as the server's Conversions API event (the MW ref), so Meta counts it once.
+    track("Lead", { content_name: type, lead_type: type }, r.ref);
     const sent = { ref: r.ref, eventId: r.eventId, waUrl, values };
     setStatus({ kind: "done", sent });
     return sent;

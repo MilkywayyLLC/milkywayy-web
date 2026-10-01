@@ -24,9 +24,14 @@ export async function PageLd({
   const isService = ["production", "property-shoots", "post-production", "ai-avatars"].includes(
     page,
   );
-  const prices = isService
-    ? { property: await getPropertyPricing(), other: await getOtherPricing() }
-    : null;
+  // Load only the price list this service uses.
+  const prices = !isService
+    ? null
+    : page === "property-shoots"
+      ? { property: await getPropertyPricing() }
+      : page === "ai-avatars"
+        ? {}
+        : { other: await getOtherPricing() };
   return (
     <>
       {(page !== "home" || extra) && <JsonLd data={breadcrumbLd(trailFor(p, extra))} />}

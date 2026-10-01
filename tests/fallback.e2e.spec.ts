@@ -27,6 +27,7 @@ const mode: Mode = { fail: false, version: "v1" };
 
 /** Markers: a Home FAQ (faqs), the footer line (site settings) and the 1 Bed photo price (pricing). */
 const PRICE = { v1: 512, v2: 524 } as Record<string, number>;
+const MONTHLY = { v1: 4100, v2: 4200 } as Record<string, number>;
 function mark(body: string, v: string) {
   return body
     .replaceAll('"Where do you work?"', `"Where do you work? (${v})"`)
@@ -34,7 +35,8 @@ function mark(body: string, v: string) {
     .replace(
       /("size_label":\s*"1 Bed",\s*"service":\s*"photo",\s*"price":\s*)500/g,
       `$1${PRICE[v]}`,
-    );
+    )
+    .replace(/("fromMonthly":\s*)4000/g, `$1${MONTHLY[v]}`);
 }
 
 function startProxy() {
@@ -100,7 +102,7 @@ test("a database failure keeps the last good version (never seed, never an error
   const base = `http://localhost:${PORT}`;
   const get = async (path: string) => {
     const res = await fetch(base + path, { cache: "no-store" });
-    return { status: res.status, html: await res.text() };
+    return { status: res.status, html: await res.text(), cache: res.headers.get("x-nextjs-cache") };
   };
   const revalidate = () =>
     fetch(`${base}/api/revalidate`, { method: "POST", headers: { "x-revalidate-secret": secret } });
@@ -108,13 +110,17 @@ test("a database failure keeps the last good version (never seed, never an error
   const shows = async (v: string) => {
     const home = await get("/");
     const shoots = await get("/property-shoots");
+    const production = await get("/production");
     const seen = {
       faq: home.html.includes(`Where do you work? (${v})`),
       footer: home.html.includes(`A Dubai content studio (${v}).`),
       price: shoots.html.includes(`AED ${PRICE[v]}`),
+      monthly: production.html
+        .replaceAll("<!-- -->", "")
+        .includes(`AED ${MONTHLY[v].toLocaleString("en-US")}`),
     };
-    last = `${v}: ${JSON.stringify(seen)} statuses ${home.status}/${shoots.status}`;
-    return seen.faq && seen.footer && seen.price;
+    last = `${v}: ${JSON.stringify(seen)} statuses ${home.status}/${shoots.status} cache ${shoots.cache} prices ${[...new Set(shoots.html.match(/AED \d{3}\b/g) ?? [])].join(",")}`;
+    return seen.faq && seen.footer && seen.price && seen.monthly;
   };
 
   try {
@@ -156,10 +162,15 @@ test("a database failure keeps the last good version (never seed, never an error
     // 3. The database recovers; the next refresh brings the new version (v2).
     mode.fail = false;
     mode.version = "v2";
+    log += "\n=== RECOVERY ===\n";
     expect((await revalidate()).status).toBe(200);
     await until(() => shows("v2"), "v2 after recovery");
   } catch (err) {
-    console.log(last, "\n--- server log ---\n", log.slice(-3000));
+    console.log(
+      last,
+      "\n--- server log ---\n",
+      process.env.DEBUG_FALLBACK ? log : log.slice(-3000),
+    );
     throw err;
   } finally {
     server.kill("SIGTERM");

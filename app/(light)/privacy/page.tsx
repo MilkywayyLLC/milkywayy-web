@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PrivacyPage() {
   const site = await getSiteSettings();
   return (
-    <LegalPage title="Privacy" updated="1 October 2026">
+    <LegalPage title="Privacy" updated="2 October 2026">
       <PageLd page="privacy" />
       <p>
         This notice explains what {site.company} ({site.addressLine}, {site.licence} licence) does
@@ -42,15 +42,37 @@ export default async function PrivacyPage() {
         If you choose WhatsApp, the message you send is handled by WhatsApp under its own terms. We
         keep a copy of your request so we can follow up.
       </p>
-      <h2>Cookies and analytics</h2>
+      <h2 id="cookies">Cookies, analytics and advertising</h2>
       <p>
-        Essential cookies keep the site working. Analytics and advertising tags load only after you
-        accept them, and you can change your choice at any time.
+        Essential storage keeps the site working (for example, remembering your cookie choice and
+        which page you arrived on). We also use:
+      </p>
+      <ul>
+        <li>
+          <b>Meta Pixel and Meta Conversions API</b>: to measure visits and requests from our
+          Facebook and Instagram ads and to show relevant ads. When you send a request, we share an
+          encrypted (hashed) copy of your email or phone number with Meta to match it to an ad,
+          never the details in readable form.
+        </li>
+        <li>
+          <b>Google Analytics 4</b>: to count visits and see which pages and forms work.
+        </li>
+        <li>
+          <b>Microsoft Clarity</b>: anonymised heatmaps and session recordings so we can fix
+          confusing parts of the site. Form fields are masked.
+        </li>
+      </ul>
+      <p>
+        If you&apos;re in the European Economic Area, the UK or Switzerland, these load only after
+        you choose Accept in the cookie banner. Elsewhere they load by default. Either way, you can
+        change your choice at any time with <b>Cookie settings</b> at the bottom of every page, or
+        block cookies in your browser.
       </p>
       <h2>Who we share it with</h2>
       <p>
         We don&apos;t sell your details. We use trusted providers to run the site, store requests
-        and send email, only for the purposes above.
+        and send email (Vercel, Supabase, Resend), and the analytics and advertising services above,
+        only for the purposes described here.
       </p>
       <h2>How long we keep it</h2>
       <p>

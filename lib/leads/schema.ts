@@ -66,6 +66,10 @@ export const leadRequest = z.object({
   elapsed: z.number().nonnegative(),
   /** Shared with the Pixel and the Conversions API (Phase 7) so the two are de-duplicated. */
   eventId: z.string().max(64),
+  /** Tracking consent and Meta's browser cookies, for the Conversions API copy of the Lead. */
+  consent: z.boolean().optional(),
+  fbp: s(200),
+  fbc: s(300),
 });
 
 export type LeadRequest = z.infer<typeof leadRequest>;

@@ -3365,3 +3365,59 @@
     cursor: default;
   }
 }
+
+/* Consent banner (EU/EEA, UK, CH only) and the footer "Cookie settings" link. */
+@layer components {
+  .consent {
+    position: fixed;
+    z-index: 60;
+    left: 16px;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    max-width: 420px;
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    background: #111111;
+    color: #ededea;
+    border: 1px solid #2e2d2b;
+    font-size: 14px;
+    line-height: 1.45;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
+  }
+  .consent p {
+    margin: 0;
+  }
+  .consent a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .consent-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .consent .btn {
+    min-height: 44px;
+  }
+  .consent .btn-g {
+    color: #ededea;
+    border-color: #ededea;
+  }
+  @media (max-width: 900px) {
+    /* Sit above the mobile action bar / booking bar. */
+    .consent {
+      bottom: calc(88px + env(safe-area-inset-bottom));
+    }
+  }
+  .lnk-btn {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+}

@@ -49,8 +49,10 @@ test.describe("saved numbers", () => {
     test.setTimeout(150_000);
     db = await ownerDb();
   });
-  test.afterAll(async () => {
-    await db.from("leads").delete().like("name", "E2E Phone %");
+  // Each test deletes its own lead: tests in this group run on different workers.
+  const mine: string[] = [];
+  test.afterEach(async () => {
+    if (mine.length) await db.from("leads").delete().in("ref", mine.splice(0));
   });
 
   for (const [path, formName, country, typed, stored] of [
@@ -78,6 +80,7 @@ test.describe("saved numbers", () => {
       const done = page.getByRole("status").filter({ hasText: /Ref #MW-\d+/ });
       await expect(done).toBeVisible();
       const ref = (await done.textContent())!.match(/MW-\d+/)![0];
+      mine.push(ref);
       const { data } = await db.from("leads").select("phone, data").eq("ref", ref).single();
       expect(data!.phone).toBe(stored);
       expect(data!.phone).not.toMatch(/^\+971/);

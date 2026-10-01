@@ -1,3 +1,4 @@
+import { capiContext } from "@/lib/tracking/events";
 import type { LeadType, LeadValues } from "./rules";
 
 /**
@@ -58,6 +59,7 @@ export async function sendLead(
         referrer: a.referrer,
         utm: a.utm ?? {},
         eventId,
+        ...capiContext(),
       }),
     });
     const body = await res.json().catch(() => ({}));

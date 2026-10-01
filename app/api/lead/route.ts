@@ -14,6 +14,7 @@ import { addDays, dubaiToday, weekday } from "@/lib/booking/dates";
 import { getPropertyPricing, getSiteSettings } from "@/lib/data";
 import { e2eKey } from "@/lib/leads/e2e";
 import { notifyLead } from "@/lib/leads/notify";
+import { sendCapi } from "@/lib/tracking/capi";
 import { DEFAULT_COUNTRY, toE164 } from "@/lib/phone";
 import { COUNTRIES } from "@/lib/phone/countries";
 import { checkLead, type LeadValues } from "@/lib/leads/rules";
@@ -197,6 +198,26 @@ export async function POST(req: NextRequest) {
   if (!saved.duplicate && !isTest) {
     const origin = req.nextUrl.origin;
     after(() => notifyLead(lead, saved.ref, origin));
+    if (r.consent)
+      after(() =>
+        sendCapi({
+          event: "Lead",
+          eventId: saved.ref,
+          url: `${origin}${r.page}`,
+          email: lead.email,
+          phone: lead.phone,
+          ip: ip === "unknown" ? undefined : ip,
+          userAgent: req.headers.get("user-agent") ?? undefined,
+          fbp: r.fbp,
+          fbc: r.fbc,
+          custom: {
+            lead_type: r.type,
+            ...(r.type === "property"
+              ? { currency: "AED", value: (data.estimate as { total: number }).total }
+              : {}),
+          },
+        }),
+      );
   }
   return json({ ref: saved.ref, eventId: r.eventId, message });
 }

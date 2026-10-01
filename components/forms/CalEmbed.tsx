@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { calUrl } from "@/lib/leads/client";
+import { capiContext, track } from "@/lib/tracking/events";
 
 /**
  * The 15-minute call calendar (Cal.com, NEXT_PUBLIC_CAL_LINK), prefilled with the visitor's name,
@@ -26,9 +27,11 @@ export function CalEmbed({
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== origin && !/(^|\.)cal\.com$/.test(new URL(e.origin).hostname)) return;
       if (!JSON.stringify(e.data ?? "").includes("bookingSuccessful")) return;
-      fetch("/api/lead/booked", { method: "POST", body: JSON.stringify({ ref: reference }) }).catch(
-        () => {},
-      );
+      track("Schedule", { content_name: "call" }, reference);
+      fetch("/api/lead/booked", {
+        method: "POST",
+        body: JSON.stringify({ ref: reference, ...capiContext() }),
+      }).catch(() => {});
       onBooked?.();
     };
     window.addEventListener("message", onMessage);

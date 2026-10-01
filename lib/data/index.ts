@@ -78,10 +78,12 @@ function source<T>(
     ["data", key],
     { tags, revalidate: HOUR },
   );
-  return async (): Promise<T> => {
+  // One result per render: every component on a page that reads this source gets the same
+  // promise, so a refresh can never leave one part of the page on older data than another.
+  return cache(async (): Promise<T> => {
     const preview = await previewDb();
     return preview ? load(preview.db, await preview.drafts()) : cached();
-  };
+  });
 }
 
 /** The admin's session client when Draft Mode is on, else null (also outside a request). */
