@@ -30,6 +30,11 @@ export const leadRequest = z.object({
   name: s(200),
   company: s(200),
   phone: s(60),
+  /** ISO country of the phone field (its dialling code is looked up on the server). */
+  phone_country: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .optional(),
   email: s(300),
   preferred_reply: z.enum(["WhatsApp", "Email", "Call"]).optional(),
   fields: z

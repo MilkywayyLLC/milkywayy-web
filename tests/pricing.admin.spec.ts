@@ -18,6 +18,7 @@ type Snap = {
 };
 let snap: Snap;
 test.beforeAll(async () => {
+  test.setTimeout(150_000);
   const db = await ownerDb();
   const [settings, other, prices] = await Promise.all([
     db.from("site_settings").select("key, value"),
@@ -27,6 +28,7 @@ test.beforeAll(async () => {
   snap = { settings: settings.data!, other: other.data!, prices: prices.data! };
 });
 test.afterAll(async ({ baseURL }) => {
+  test.setTimeout(150_000);
   const db = await ownerDb();
   const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
   let restored = false;

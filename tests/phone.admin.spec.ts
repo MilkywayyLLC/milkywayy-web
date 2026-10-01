@@ -47,6 +47,7 @@ test("menu, add and delete an FAQ, and no page scrolls sideways @phone", async (
 });
 
 test.afterAll(async () => {
+  test.setTimeout(150_000);
   const db = await ownerDb();
   await db.from("faqs").delete().like("question", `${RUN}%`);
 });

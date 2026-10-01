@@ -14,7 +14,8 @@ import { addDays, dubaiToday, weekday } from "@/lib/booking/dates";
 import { getPropertyPricing, getSiteSettings } from "@/lib/data";
 import { e2eKey } from "@/lib/leads/e2e";
 import { notifyLead } from "@/lib/leads/notify";
-import { toE164 } from "@/lib/leads/phone";
+import { DEFAULT_COUNTRY, toE164 } from "@/lib/phone";
+import { COUNTRIES } from "@/lib/phone/countries";
 import { checkLead, type LeadValues } from "@/lib/leads/rules";
 import { leadRequest } from "@/lib/leads/schema";
 import { leadStore, type Lead } from "@/lib/leads/store";
@@ -51,10 +52,14 @@ export async function POST(req: NextRequest) {
     return json({ ref: decoyRef(), eventId: r.eventId });
   }
 
+  // The dialling code comes from our own list, never from the browser.
+  const country = COUNTRIES.find((c) => c.iso === r.phone_country) ?? DEFAULT_COUNTRY;
   const values: LeadValues = {
     name: r.name,
     company: r.company,
     phone: r.phone,
+    phone_country: country.iso,
+    phone_dial: country.dial,
     email: r.email,
     preferred_reply: r.preferred_reply,
     fields: r.fields as LeadValues["fields"],
@@ -68,7 +73,7 @@ export async function POST(req: NextRequest) {
     !!process.env.LEAD_SECRET && req.headers.get("x-e2e-key") === e2eKey(process.env.LEAD_SECRET);
   let lines: Record<string, unknown>[] | undefined;
   // Stored in E.164 (CLIENT_PORTAL_GUIDE §12); what they typed is kept alongside if different.
-  const phone = r.phone?.trim() ? toE164(r.phone) : null;
+  const phone = r.phone?.trim() ? toE164(r.phone, country) : null;
   const data: Record<string, unknown> = {
     ...r.fields,
     eventId: r.eventId,
@@ -161,7 +166,10 @@ export async function POST(req: NextRequest) {
     referrer: r.referrer || undefined,
     lines,
   };
-  if (phone && r.phone!.trim() !== phone) data.phone_entered = r.phone!.trim();
+  if (phone) {
+    data.phone_country = country.iso;
+    if (r.phone!.trim() !== phone) data.phone_entered = r.phone!.trim();
+  }
 
   const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
   const ipHash = createHmac("sha256", process.env.LEAD_SECRET ?? "dev")

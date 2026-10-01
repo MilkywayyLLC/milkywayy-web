@@ -17,19 +17,23 @@ test.describe.configure({ mode: "serial" });
 
 const RUN = `E2E L${Date.now().toString(36).slice(-4).toUpperCase()}`;
 let db: SupabaseClient;
+const refs: string[] = [];
 
 test.beforeAll(async () => {
+  test.setTimeout(150_000);
   db = await ownerDb();
 });
 test.afterAll(async () => {
-  await db.from("leads").delete().eq("data->>test", "true");
-  await db.from("leads").delete().like("email", "%@example.com");
+  // Only this file's leads (other files run in parallel).
+  await db.from("leads").delete().in("ref", refs);
+  await db.from("leads").delete().like("name", `${RUN}%`);
 });
 
 /** Forms ignore anything sent faster than a person could fill them in. */
 const humanPause = (page: Page) => page.waitForTimeout(2700);
 
 async function lead(ref: string) {
+  refs.push(ref);
   const { data } = await db.from("leads").select("*").eq("ref", ref).single();
   return data!;
 }

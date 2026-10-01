@@ -33,6 +33,7 @@ test.beforeAll(async ({ request }) => {
   expect(ref).toMatch(/^MW-\d+$/);
 });
 test.afterAll(async () => {
+  test.setTimeout(150_000);
   const db = await ownerDb();
   await db.from("leads").delete().eq("ref", ref);
 });

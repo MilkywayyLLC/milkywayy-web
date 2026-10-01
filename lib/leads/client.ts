@@ -80,13 +80,26 @@ export function readForm(form: HTMLFormElement, multi: string[] = []) {
   const get = (k: string) => String(fd.get(k) ?? "").trim();
   const fields: Record<string, string | string[]> = {};
   for (const k of new Set(fd.keys()))
-    if (!["name", "company", "phone", "email", "pref", "company_website"].includes(k))
+    if (
+      ![
+        "name",
+        "company",
+        "phone",
+        "phone_country",
+        "phone_dial",
+        "email",
+        "pref",
+        "company_website",
+      ].includes(k)
+    )
       fields[k] = multi.includes(k) ? fd.getAll(k).map(String) : get(k);
   for (const k of multi) fields[k] ??= [];
   const values: LeadValues = {
     name: get("name") || undefined,
     company: get("company") || undefined,
     phone: get("phone") || undefined,
+    phone_country: get("phone_country") || undefined,
+    phone_dial: get("phone_dial") || undefined,
     email: get("email") || undefined,
     preferred_reply: (get("pref") || undefined) as LeadValues["preferred_reply"],
     fields,

@@ -7,6 +7,7 @@ import { readForm } from "@/lib/leads/client";
 import { whatsappLink } from "@/lib/whatsapp";
 import { FormDone, FormError } from "./FormDone";
 import { Honeypot } from "./Honeypot";
+import { PhoneField } from "./PhoneField";
 import { useLeadForm } from "./useLeadForm";
 
 export { FormDone } from "./FormDone";
@@ -108,15 +109,11 @@ export function LeadForm({
         </Field>
       </div>
       <div className="row2">
-        <Field label={pref === "Call" ? "Phone" : "Phone (or email)"} error={errors.phone}>
-          <input
-            name="phone"
-            type="tel"
-            autoComplete="tel"
-            placeholder="+971"
-            aria-invalid={!!errors.phone || undefined}
-          />
-        </Field>
+        <PhoneField
+          label={pref === "Call" ? "Phone" : "Phone (or email)"}
+          error={errors.phone}
+          invalid={!!errors.phone}
+        />
         <Field label={pref === "Email" ? "Email" : "Email (or phone)"} error={errors.email}>
           <input
             name="email"

@@ -2,7 +2,7 @@
  * Lead rules shared by the forms (instant inline errors) and /api/lead (the real gate), with no
  * dependencies so the browser bundle stays small. Messages say how to fix the problem (§9.4).
  */
-import { toE164 } from "./phone";
+import { DEFAULT_COUNTRY, toE164 } from "@/lib/phone";
 
 export type LeadType = "production" | "property" | "post" | "avatars" | "contact" | "free-test";
 export type Reply = "WhatsApp" | "Email" | "Call";
@@ -14,6 +14,9 @@ export interface LeadValues {
   company?: string;
   phone?: string;
   email?: string;
+  /** Phone field's country (ISO code) and its dialling code. */
+  phone_country?: string;
+  phone_dial?: string;
   preferred_reply?: Reply;
   fields: Record<string, string | string[]>;
 }
@@ -34,7 +37,8 @@ export const EDIT_KINDS: Record<string, string> = {
 export const EDITORS_NOW = ["In-house", "Freelancer", "Nobody yet"] as const;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-export const isPhone = (s: string) => toE164(s) !== null;
+export const isPhone = (s: string, country: { iso: string; dial: string } = DEFAULT_COUNTRY) =>
+  toE164(s, country) !== null;
 export const isEmail = (s: string) => EMAIL.test(s.trim());
 const isUrl = (s: string) => {
   try {
@@ -62,8 +66,12 @@ export function checkLead(type: LeadType, v: LeadValues): LeadErrors {
   const email = (v.email ?? "").trim();
   const reply = v.preferred_reply;
 
-  if (phone && !isPhone(phone))
-    e.phone = "Check the number: digits only, with the country code (e.g. +971 50 123 4567).";
+  const country = {
+    iso: v.phone_country ?? DEFAULT_COUNTRY.iso,
+    dial: v.phone_dial ?? DEFAULT_COUNTRY.dial,
+  };
+  if (phone && !isPhone(phone, country))
+    e.phone = "Check the number and the country code next to it (e.g. 50 123 4567 for the UAE).";
   if (email && !isEmail(email))
     e.email = "That email looks incomplete. Check for a typo (e.g. name@company.com).";
 

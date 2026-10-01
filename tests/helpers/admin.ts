@@ -1,5 +1,14 @@
 import { expect, type Page } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readFileSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { env } from "./env";
 import { nextWindow, savedSecret, totp } from "./totp";
 
@@ -23,18 +32,66 @@ export async function dbAs(who: "OWNER" | "EDITOR" | "STRANGER"): Promise<Supaba
   return db;
 }
 
-/** The e2e Owner with two-factor done (aal2): what the admin acts as. */
-export async function ownerDb(): Promise<SupabaseClient> {
-  const db = await dbAs("OWNER");
-  const { data } = await db.auth.mfa.listFactors();
-  const factorId = data!.totp.find((f) => f.status === "verified")!.id;
-  let { error } = await db.auth.mfa.challengeAndVerify({ factorId, code: totp(savedSecret()) });
-  if (error) {
-    await nextWindow();
-    ({ error } = await db.auth.mfa.challengeAndVerify({ factorId, code: totp(savedSecret()) }));
+const SESSION = "tests/.auth/owner-session.json";
+const LOCK = "tests/.auth/owner-session.lock";
+
+/** Supabase as the e2e Owner with two-factor done (aal2): what the admin acts as. */
+async function freshOwner(): Promise<{ db: SupabaseClient; token: string; expiresAt: number }> {
+  let last: unknown;
+  // A code works once: if another sign-in just used it, wait for the next one (fresh sign-in,
+  // since a failed check also ends the session).
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt) await nextWindow();
+    const db = await dbAs("OWNER");
+    const { data } = await db.auth.mfa.listFactors();
+    const factorId = data?.totp.find((f) => f.status === "verified")?.id;
+    if (!factorId)
+      throw new Error("The e2e Owner has no authenticator; run the admin setup first.");
+    const { error } = await db.auth.mfa.challengeAndVerify({ factorId, code: totp(savedSecret()) });
+    if (!error) {
+      const { data: s } = await db.auth.getSession();
+      return { db, token: s.session!.access_token, expiresAt: s.session!.expires_at! * 1000 };
+    }
+    last = error;
   }
-  if (error) throw error;
-  return db;
+  throw last;
+}
+
+const withToken = (token: string) =>
+  createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+
+/**
+ * The e2e Owner, shared by every test worker: the first one signs in (password + code) and saves
+ * the session in tests/.auth/ (gitignored); the others reuse it, so parallel files never compete
+ * for the same 30-second code.
+ */
+export async function ownerDb(): Promise<SupabaseClient> {
+  for (let i = 0; i < 180; i++) {
+    try {
+      const s = JSON.parse(readFileSync(SESSION, "utf8")) as { token: string; expiresAt: number };
+      if (s.expiresAt > Date.now() + 10 * 60_000) return withToken(s.token);
+    } catch {}
+    let fd: number;
+    try {
+      if (existsSync(LOCK) && Date.now() - statSync(LOCK).mtimeMs > 150_000) unlinkSync(LOCK);
+      fd = openSync(LOCK, "wx");
+    } catch {
+      await new Promise((r) => setTimeout(r, 1000)); // another worker is signing in
+      continue;
+    }
+    try {
+      const { token, expiresAt } = await freshOwner();
+      writeFileSync(SESSION, JSON.stringify({ token, expiresAt }));
+      return withToken(token);
+    } finally {
+      closeSync(fd);
+      unlinkSync(LOCK);
+    }
+  }
+  throw new Error("Timed out waiting for the e2e Owner session.");
 }
 
 /** Types the current code; if it was just used (or the window rolled over), waits and retries. */

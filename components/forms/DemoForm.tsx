@@ -9,6 +9,7 @@ import { whatsappLink } from "@/lib/whatsapp";
 import { CalEmbed } from "./CalEmbed";
 import { FormDone, FormError } from "./FormDone";
 import { Honeypot } from "./Honeypot";
+import { PhoneField } from "./PhoneField";
 import { useLeadForm } from "./useLeadForm";
 
 /**
@@ -105,15 +106,7 @@ export function DemoForm({
             aria-invalid={!!errors.email || undefined}
           />
         </Field>
-        <Field label="Phone" error={errors.phone}>
-          <input
-            name="phone"
-            type="tel"
-            autoComplete="tel"
-            placeholder="+971"
-            aria-invalid={!!errors.phone || undefined}
-          />
-        </Field>
+        <PhoneField label="Phone" error={errors.phone} invalid={!!errors.phone} />
       </div>
       <OptionGroup legend="What's it for?" error={errors.use}>
         {AVATAR_USES.map((u) => (

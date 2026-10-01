@@ -34,6 +34,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  test.setTimeout(150_000);
   const db = await ownerDb();
   for (const [table, col] of [
     ["faqs", "question"],
