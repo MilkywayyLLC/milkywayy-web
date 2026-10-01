@@ -19,7 +19,9 @@ export function refresh(tags: readonly Tag[], origin: string) {
     const work = (await getCaseStudies().catch(() => [])).map((c) => `/work/${c.slug}`);
     const paths = [...Object.keys(pageNames), "/privacy", "/terms", ...work];
     await Promise.allSettled(
-      paths.map((p) => fetch(new URL(p, origin), { cache: "no-store", headers: { "x-warm": "1" } })),
+      paths.map((p) =>
+        fetch(new URL(p, origin), { cache: "no-store", headers: { "x-warm": "1" } }),
+      ),
     );
   });
 }

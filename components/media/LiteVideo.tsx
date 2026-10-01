@@ -1,21 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-/**
- * Turn a stored video reference into an embeddable player URL that autoplays after the click.
- * Accepts YouTube and Vimeo links, Bunny Stream embed URLs, or "bunny:<libraryId>/<videoId>".
- */
-export function embedUrl(video: string): string | null {
-  const yt = video.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/);
-  if (yt) return `https://www.youtube-nocookie.com/embed/${yt[1]}?autoplay=1&rel=0&playsinline=1`;
-  const vimeo = video.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}?autoplay=1&dnt=1`;
-  const bunny = video.match(/^bunny:(\d+)\/([\w-]+)$/);
-  if (bunny) return `https://iframe.mediadelivery.net/embed/${bunny[1]}/${bunny[2]}?autoplay=true`;
-  if (video.startsWith("https://iframe.mediadelivery.net/embed/")) return video;
-  return null;
-}
+import { embedUrl } from "@/lib/video";
 
 /**
  * Click-to-play: renders a square play button over the poster; the player loads only on click

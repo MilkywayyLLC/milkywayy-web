@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   images: {
     formats: ["image/avif", "image/webp"],
+    // Images uploaded in the admin (Supabase Storage, public `media` bucket).
+    remotePatterns: process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? [new URL(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/**`)]
+      : [],
   },
   async redirects() {
     // Property shoots and the booking builder merged into /property-shoots (owner, 1 Oct 2026).

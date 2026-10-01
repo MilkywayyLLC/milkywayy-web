@@ -81,15 +81,19 @@ test("a database failure keeps the last good version (never seed, never an error
   cpSync(".next", DIST, { recursive: true });
 
   let log = "";
-  const server: ChildProcess = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "-p", String(PORT)], {
-    env: {
-      ...process.env,
-      NEXT_DIST_DIR: DIST,
-      SUPABASE_SERVER_URL: `http://127.0.0.1:${(proxy.address() as AddressInfo).port}`,
-      REVALIDATE_SECRET: secret,
+  const server: ChildProcess = spawn(
+    process.execPath,
+    ["node_modules/next/dist/bin/next", "start", "-p", String(PORT)],
+    {
+      env: {
+        ...process.env,
+        NEXT_DIST_DIR: DIST,
+        SUPABASE_SERVER_URL: `http://127.0.0.1:${(proxy.address() as AddressInfo).port}`,
+        REVALIDATE_SECRET: secret,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
     },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  );
   server.stdout!.on("data", (d) => (log += d));
   server.stderr!.on("data", (d) => (log += d));
 
@@ -125,7 +129,13 @@ test("a database failure keeps the last good version (never seed, never an error
     log = "";
     expect((await revalidate()).status).toBe(200);
     for (let i = 0; i < 8; i++) {
-      for (const path of ["/", "/property-shoots", "/production", "/post-production", "/ai-avatars"]) {
+      for (const path of [
+        "/",
+        "/property-shoots",
+        "/production",
+        "/post-production",
+        "/ai-avatars",
+      ]) {
         const page = await get(path);
         expect(page.status, path).toBe(200);
       }

@@ -18,9 +18,13 @@ import { siteSettings } from "../content/site.ts";
 import { stats } from "../content/stats.ts";
 import * as map from "../lib/data/rows.ts";
 
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-  auth: { persistSession: false },
-});
+const db = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    auth: { persistSession: false },
+  },
+);
 const rows = async (table: string, select = "*", order = "sort_order") => {
   const { data, error } = await db.from(table).select(select).order(order);
   if (error) throw new Error(`${table}: ${error.message}`);
@@ -53,20 +57,34 @@ const check = (name: string, got: unknown, want: unknown) => {
 };
 
 check("clients", (await rows("clients")).map(map.client), live(clients));
-check("stats", (await rows("stats")).map(map.stat), live(stats).map((s) => ({ labelByPlacement: {}, placementOrder: {}, ...s })));
+check(
+  "stats",
+  (await rows("stats")).map(map.stat),
+  live(stats).map((s) => ({ labelByPlacement: {}, placementOrder: {}, ...s })),
+);
 check("faqs", (await rows("faqs")).map(map.faq), live(faqs));
 check("reviews", (await rows("reviews")).map(map.review), live(reviews));
-check("before-after", (await rows("before_after")).map(map.beforeAfter), live(beforeAfter).map((b) => ({ ...b, inHero: !!b.inHero })));
+check(
+  "before-after",
+  (await rows("before_after")).map(map.beforeAfter),
+  live(beforeAfter).map((b) => ({ ...b, inHero: !!b.inHero })),
+);
 check("avatars", (await rows("avatars")).map(map.avatar), live(avatars));
 check("case-studies", (await rows("case_studies")).map(map.caseStudy), live(caseStudies));
 check(
   "portfolio",
-  placementsSorted((await rows("portfolio_items", "*, portfolio_placements(placement, sort_order)")).map(map.portfolioItem)),
+  placementsSorted(
+    (await rows("portfolio_items", "*, portfolio_placements(placement, sort_order)")).map(
+      map.portfolioItem,
+    ),
+  ),
   placementsSorted(
     live(portfolio).map((p) => ({
       ...p,
       featured: !!p.featured,
-      placementOrder: Object.fromEntries(p.placements.map((pl) => [pl, p.placementOrder?.[pl] ?? p.sortOrder])),
+      placementOrder: Object.fromEntries(
+        p.placements.map((pl) => [pl, p.placementOrder?.[pl] ?? p.sortOrder]),
+      ),
     })),
   ),
 );
@@ -94,7 +112,14 @@ const settings = await rows("site_settings", "*", "key");
 check("site", settings.find((r) => r.key === "site")?.value, siteSettings);
 check("avatar-hero", settings.find((r) => r.key === "avatar_hero")?.value, avatarHero);
 const proof = await rows("proof_strip_pages", "*", "page");
-check("proof-strip", proof.filter((p) => p.enabled).map((p) => p.page).sort(), [...siteSettings.proofStripPages].sort());
+check(
+  "proof-strip",
+  proof
+    .filter((p) => p.enabled)
+    .map((p) => p.page)
+    .sort(),
+  [...siteSettings.proofStripPages].sort(),
+);
 
 if (failed) {
   console.log(`\n${failed} mismatch(es)`);

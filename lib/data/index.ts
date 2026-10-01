@@ -39,19 +39,34 @@ import type {
   Stat,
   StatPlacement,
 } from "@/content/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { draftMode } from "next/headers";
+import { cache } from "react";
 import { publicDb } from "@/lib/supabase/public";
 import { TAGS, type Tag } from "./tags";
 import * as map from "./rows";
 
 const HOUR = 3600;
 
-/** Cached read. Seed only without a database; errors propagate so the last good version stays. */
-function source<T>(key: string, tags: Tag[], load: () => Promise<T>, seed: () => T) {
-  return unstable_cache(
+/** Unsaved-to-the-site versions of the single documents, edited in the admin (table `drafts`). */
+type Drafts = Map<string, unknown>;
+
+/**
+ * A data source: a cached public read, or, in preview (Next.js Draft Mode, switched on from the
+ * admin), an uncached read as the signed-in admin, so unpublished rows and drafts show.
+ */
+function source<T>(
+  key: string,
+  tags: Tag[],
+  load: (db: SupabaseClient, drafts: Drafts) => Promise<T>,
+  seed: () => T,
+) {
+  const cached = unstable_cache(
     async (): Promise<T> => {
-      if (!publicDb()) return seed();
+      const db = publicDb();
+      if (!db) return seed();
       try {
-        return await load();
+        return await load(db, new Map());
       } catch (err) {
         console.error(
           `[data] ${key}: database read failed; still serving the last version that loaded`,
@@ -63,14 +78,35 @@ function source<T>(key: string, tags: Tag[], load: () => Promise<T>, seed: () =>
     ["data", key],
     { tags, revalidate: HOUR },
   );
+  return async (): Promise<T> => {
+    const preview = await previewDb();
+    return preview ? load(preview.db, await preview.drafts()) : cached();
+  };
 }
+
+/** The admin's session client when Draft Mode is on, else null (also outside a request). */
+const previewDb = cache(async () => {
+  try {
+    if (!(await draftMode()).isEnabled) return null;
+  } catch {
+    return null;
+  }
+  const { sessionDb } = await import("@/lib/supabase/server");
+  const db = await sessionDb();
+  if (!db) return null;
+  const drafts = cache(async (): Promise<Drafts> => {
+    const { data } = await db.from("drafts").select("key, value");
+    return new Map((data ?? []).map((d) => [d.key, d.value]));
+  });
+  return { db, drafts };
+});
 
 const live = <T extends Publishable>(rows: T[]) =>
   rows.filter((r) => r.published).sort((a, b) => a.sortOrder - b.sortOrder);
 
-/** Select all rows of a table (RLS already limits anon reads to published rows). */
-async function rows(table: string, order = "sort_order") {
-  const { data, error } = await publicDb()!.from(table).select("*").order(order);
+/** Select all rows of a table (for the public client RLS limits this to published rows). */
+async function rows(db: SupabaseClient, table: string, order = "sort_order") {
+  const { data, error } = await db.from(table).select("*").order(order);
   if (error) throw new Error(`${table}: ${error.message}`);
   return data ?? [];
 }
@@ -87,12 +123,14 @@ function required<T>(table: string, all: { key: string; value: unknown }[], key:
 const loadSite = source<SiteSettings>(
   "site",
   [TAGS.site],
-  async () => {
+  async (db, drafts) => {
     const [settings, proof] = await Promise.all([
-      rows("site_settings", "key"),
-      rows("proof_strip_pages", "page"),
+      rows(db, "site_settings", "key"),
+      rows(db, "proof_strip_pages", "page"),
     ]);
-    const site = required<SiteSettings>("site_settings", settings, "site");
+    const site =
+      (drafts.get("site") as SiteSettings | undefined) ??
+      required<SiteSettings>("site_settings", settings, "site");
     return {
       ...site,
       proofStripPages: proof.filter((p) => p.enabled).map((p) => p.page) as PageKey[],
@@ -104,64 +142,64 @@ const loadSite = source<SiteSettings>(
 const loadAvatarHero = source<AvatarHero>(
   "avatar-hero",
   [TAGS.avatars],
-  async () => {
-    return required<AvatarHero>("site_settings", await rows("site_settings", "key"), "avatar_hero");
-  },
+  async (db, drafts) =>
+    (drafts.get("avatar_hero") as AvatarHero | undefined) ??
+    required<AvatarHero>("site_settings", await rows(db, "site_settings", "key"), "avatar_hero"),
   () => seedAvatarHero,
 );
 
 const loadClients = source<Client[]>(
   "clients",
   [TAGS.clients],
-  async () => (await rows("clients")).map(map.client),
+  async (db) => (await rows(db, "clients")).map(map.client),
   () => live(seedClients),
 );
 const loadStats = source<Stat[]>(
   "stats",
   [TAGS.stats],
-  async () => (await rows("stats")).map(map.stat),
+  async (db) => (await rows(db, "stats")).map(map.stat),
   () => live(seedStats),
 );
 const loadFaqs = source<Faq[]>(
   "faqs",
   [TAGS.faqs],
-  async () => (await rows("faqs")).map(map.faq),
+  async (db) => (await rows(db, "faqs")).map(map.faq),
   () => live(seedFaqs),
 );
 const loadReviews = source<Review[]>(
   "reviews",
   [TAGS.reviews],
-  async () => (await rows("reviews")).map(map.review),
+  async (db) => (await rows(db, "reviews")).map(map.review),
   () => live(seedReviews),
 );
 const loadBeforeAfter = source<BeforeAfterPair[]>(
   "before-after",
   [TAGS.beforeAfter],
-  async () => (await rows("before_after")).map(map.beforeAfter),
+  async (db) => (await rows(db, "before_after")).map(map.beforeAfter),
   () => live(seedBeforeAfter),
 );
 const loadAvatars = source<AvatarExample[]>(
   "avatars",
   [TAGS.avatars],
-  async () => (await rows("avatars")).map(map.avatar),
+  async (db) => (await rows(db, "avatars")).map(map.avatar),
   () => live(seedAvatars),
 );
 const loadCaseStudies = source<CaseStudy[]>(
   "case-studies",
   [TAGS.caseStudies],
-  async () => (await rows("case_studies")).map(map.caseStudy),
+  async (db) => (await rows(db, "case_studies")).map(map.caseStudy),
   () => live(seedCaseStudies),
 );
 
 const loadPortfolio = source<PortfolioItem[]>(
   "portfolio",
   [TAGS.portfolio],
-  async () => {
-    const { data, error } = await publicDb()!
+  async (db) => {
+    const { data, error } = await db
       .from("portfolio_items")
       .select("*, portfolio_placements(placement, sort_order)")
       .order("sort_order");
-    if (error) throw error;
+    if (error) throw new Error(`portfolio_items: ${error.message}`);
     return (data ?? []).map(map.portfolioItem);
   },
   () => live(seedPortfolio),
@@ -170,12 +208,14 @@ const loadPortfolio = source<PortfolioItem[]>(
 const loadPropertyPricing = source<PropertyPricing>(
   "pricing-property",
   [TAGS.pricing],
-  async () => {
+  async (db, drafts) => {
+    const draft = drafts.get("pricing_property") as PropertyPricing | undefined;
+    if (draft) return draft;
     const [sizes, tiers, twilight, other] = await Promise.all([
-      rows("pricing_property", "size_index"),
-      rows("pricing_commercial_tiers", "tier_index"),
-      rows("pricing_twilight", "qty"),
-      rows("pricing_other", "key"),
+      rows(db, "pricing_property", "size_index"),
+      rows(db, "pricing_commercial_tiers", "tier_index"),
+      rows(db, "pricing_twilight", "qty"),
+      rows(db, "pricing_other", "key"),
     ]);
     if (!sizes.length || !tiers.length || !twilight.length)
       throw new Error("pricing: property, commercial or twilight table is empty");
@@ -188,11 +228,17 @@ const loadPropertyPricing = source<PropertyPricing>(
 const loadOtherPricing = source<OtherPricing>(
   "pricing-other",
   [TAGS.pricing],
-  async () => {
-    const other = await rows("pricing_other", "key");
+  async (db, drafts) => {
+    const draft = drafts.get("pricing_other") as OtherPricing | undefined;
+    if (draft) return draft;
+    const other = await rows(db, "pricing_other", "key");
     return {
       production: required<OtherPricing["production"]>("pricing_other", other, "production"),
-      postProduction: required<OtherPricing["postProduction"]>("pricing_other", other, "post_production"),
+      postProduction: required<OtherPricing["postProduction"]>(
+        "pricing_other",
+        other,
+        "post_production",
+      ),
       aiAvatars: required<OtherPricing["aiAvatars"]>("pricing_other", other, "ai_avatars"),
     };
   },

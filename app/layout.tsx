@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AnchorScroll } from "@/components/layout/AnchorScroll";
+import { PreviewBanner } from "@/components/layout/PreviewBanner";
 import { env, isIndexable } from "@/lib/env";
 import { archivo, dmMono } from "./fonts";
 import "./globals.css";
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <a className="skip-link" href="#main">
           Skip to content
         </a>
+        <PreviewBanner />
         {children}
         <AnchorScroll />
       </body>

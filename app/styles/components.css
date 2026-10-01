@@ -3188,3 +3188,40 @@
     }
   }
 }
+
+/* Preview bar: admin is viewing drafts (Draft Mode). Above the header, scrolls away. */
+@layer components {
+  .preview-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 16px;
+    padding: 8px 16px;
+    background: var(--champagne);
+    color: var(--ink);
+    font: 500 12px/1.4 var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .preview-bar .rec-dot {
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .preview-bar-actions {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  .preview-bar a,
+  .preview-bar button {
+    color: inherit;
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+}
