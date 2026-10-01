@@ -4,13 +4,12 @@ import { HeroTitle } from "@/components/type/HeroTitle";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { getSiteSettings } from "@/lib/data";
 import { pageWhatsappLink } from "@/lib/whatsapp";
+import { pageMetadata } from "@/lib/seo/meta";
+import { PageLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: "Contact",
-  description:
-    "Contact Milkywayy for property shoots, monthly content, remote editing or AI avatars. One form for everything; we reply within 15 minutes during working hours.",
-  alternates: { canonical: "/contact" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("contact");
+}
 
 /** Contact (guide §6.6, mockup): one section, title and direct details beside the form. */
 export default async function ContactPage() {
@@ -18,6 +17,7 @@ export default async function ContactPage() {
   const whatsapp = pageWhatsappLink("Contact");
   return (
     <section className="sec" id="contact-form" aria-labelledby="contact-title">
+      <PageLd page="contact" />
       <div className="w formwrap">
         <div className="stack" style={{ gap: 24 }}>
           <Eyebrow>Contact</Eyebrow>

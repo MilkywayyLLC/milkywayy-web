@@ -38,6 +38,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "Settings",
     items: [
       { href: "/admin/settings", label: "Site settings", owner: true },
+      { href: "/admin/seo", label: "SEO" },
       { href: "/admin/admins", label: "Admins", owner: true },
     ],
   },

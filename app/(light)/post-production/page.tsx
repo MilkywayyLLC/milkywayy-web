@@ -27,13 +27,12 @@ import {
   showsProofStrip,
 } from "@/lib/data";
 import { formatUSD } from "@/lib/format";
+import { pageMetadata } from "@/lib/seo/meta";
+import { PageLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: { absolute: "Photo & Video Editing Services for Agencies | Milkywayy" },
-  description:
-    "Remote photo editing, short-form reels, long-form video and white-label AI avatars for media companies, agencies and creators. Edits from $0.80. Free test edit.",
-  alternates: { canonical: "/post-production" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("post-production");
+}
 
 const WHY = [
   {
@@ -136,6 +135,7 @@ export default async function PostProductionPage() {
 
   return (
     <>
+      <PageLd page="post-production" />
       <div className="w">
         <section className="pp-hero" aria-labelledby="post-title">
           <div className="stack">

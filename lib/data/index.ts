@@ -245,6 +245,24 @@ const loadOtherPricing = source<OtherPricing>(
   () => seedOther,
 );
 
+export type SeoOverride = { title?: string; description?: string; ogImage?: string };
+const loadSeo = source<Record<string, SeoOverride>>(
+  "seo",
+  [TAGS.seo],
+  async (db) =>
+    Object.fromEntries(
+      (await rows(db, "seo_pages", "page")).map((r) => [
+        r.page,
+        {
+          title: r.title || undefined,
+          description: r.description || undefined,
+          ogImage: r.og_image || undefined,
+        },
+      ]),
+    ),
+  () => ({}),
+);
+
 /* ---------- public getters (signatures unchanged since Phase 0) ---------- */
 
 export async function getSiteSettings() {
@@ -311,4 +329,9 @@ export async function getCaseStudies() {
 
 export async function getCaseStudy(slug: string) {
   return (await loadCaseStudies()).find((c) => c.slug === slug) ?? null;
+}
+
+/** Admin overrides for a page's title, description and share image (seo_pages). */
+export async function getSeoOverride(key: string): Promise<SeoOverride> {
+  return (await loadSeo())[key] ?? {};
 }

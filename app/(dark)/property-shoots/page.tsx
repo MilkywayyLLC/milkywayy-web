@@ -16,16 +16,15 @@ import { env } from "@/lib/env";
 import { formatNumber } from "@/lib/format";
 import { lowestShootPrice } from "@/lib/pricing";
 import { pageWhatsappLink } from "@/lib/whatsapp";
+import { pageMetadata } from "@/lib/seo/meta";
+import { PageLd } from "@/components/seo/JsonLd";
 
 // The booking calendar's first bookable day is computed on the server (Dubai time); refresh hourly.
 export const revalidate = 3600;
 
-export const metadata: Metadata = {
-  title: { absolute: "Real Estate Photography & Video in Dubai | Property Shoots | Milkywayy" },
-  description:
-    "Property photography, video and 360 tours for Dubai listings. See your price in a minute, pick a date and send the booking on WhatsApp. Photos in 24 hours.",
-  alternates: { canonical: "/property-shoots" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("property-shoots");
+}
 
 /**
  * Property shoots, one page (owner, 1 Oct 2026): short hero → booking builder → samples →
@@ -45,6 +44,7 @@ export default async function PropertyShootsPage() {
 
   return (
     <>
+      <PageLd page="property-shoots" />
       <div className="w">
         <section className="p-hero p-hero-short" aria-labelledby="property-title">
           <div className="stack">

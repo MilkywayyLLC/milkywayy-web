@@ -31,13 +31,12 @@ import {
 import { formatNumber, formatUSD } from "@/lib/format";
 import { lowestShootPrice } from "@/lib/pricing";
 import { pageWhatsappLink } from "@/lib/whatsapp";
+import { pageMetadata } from "@/lib/seo/meta";
+import { PageLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: { absolute: "Milkywayy | Content Production Studio in Dubai" },
-  description:
-    "Dubai content studio: property and brand shoots in the UAE, remote photo and video editing worldwide, and AI presenters. Property photos delivered in 24 hours.",
-  alternates: { canonical: "/" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("home");
+}
 
 const NEEDS: Need[] = [
   {
@@ -115,6 +114,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <PageLd page="home" />
       <div className="w">
         <section className="hero" aria-labelledby="home-title">
           <div className="hero-copy">

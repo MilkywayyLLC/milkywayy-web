@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/layout/LegalPage";
 import { getSiteSettings } from "@/lib/data";
+import { pageMetadata } from "@/lib/seo/meta";
+import { PageLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: "Privacy",
-  description:
-    "How Milkywayy LLC collects, uses and protects the details you share through this website.",
-  alternates: { canonical: "/privacy" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("privacy");
+}
 
 export default async function PrivacyPage() {
   const site = await getSiteSettings();
   return (
     <LegalPage title="Privacy" updated="1 October 2026">
+      <PageLd page="privacy" />
       <p>
         This notice explains what {site.company} ({site.addressLine}, {site.licence} licence) does
         with the details you share through milkywayy.com.

@@ -11,13 +11,12 @@ import { SampleLabel } from "@/components/ui/SampleLabel";
 import { Hl, SectionHead } from "@/components/ui/Section";
 import { getClients, getSiteSettings } from "@/lib/data";
 import { pageWhatsappLink } from "@/lib/whatsapp";
+import { pageMetadata } from "@/lib/seo/meta";
+import { PageLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: "About",
-  description:
-    "Milkywayy is a Dubai content studio creating content since 2020: property and brand production in the UAE, remote editing and AI presenters. Founded by Akash Praseed.",
-  alternates: { canonical: "/about" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("about");
+}
 
 // TODO(owner): confirm the story wording; add team photos/roles if wanted (CONTENT_TODO.md).
 const STORY = [
@@ -67,6 +66,7 @@ export default async function AboutPage() {
 
   return (
     <>
+      <PageLd page="about" />
       <div className="w">
         <section className="hero about-hero" aria-labelledby="about-title">
           <div className="hero-copy">

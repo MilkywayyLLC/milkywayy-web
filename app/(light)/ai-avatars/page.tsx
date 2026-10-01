@@ -15,13 +15,12 @@ import { SampleLabel } from "@/components/ui/SampleLabel";
 import { Hl, SectionHead } from "@/components/ui/Section";
 import { getAvatarHero, getAvatars, getFaqs, getOtherPricing, getSiteSettings } from "@/lib/data";
 import { pageWhatsappLink } from "@/lib/whatsapp";
+import { pageMetadata } from "@/lib/seo/meta";
+import { PageLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: { absolute: "Custom AI Avatar Videos for Brands | Milkywayy" },
-  description:
-    "A custom AI presenter with its own face and voice, scripted and edited into videos every month. For founders, agents, clinics and brands. Book a demo call.",
-  alternates: { canonical: "/ai-avatars" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("ai-avatars");
+}
 
 const PROBLEMS = [
   {
@@ -69,6 +68,7 @@ export default async function AiAvatarsPage() {
 
   return (
     <>
+      <PageLd page="ai-avatars" />
       <div className="w">
         <RevealProvider>
           <section className="av-hero" aria-labelledby="avatars-title">

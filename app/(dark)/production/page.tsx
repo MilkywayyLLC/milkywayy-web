@@ -25,13 +25,12 @@ import {
 import { formatNumber } from "@/lib/format";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { lowestShootPrice } from "@/lib/pricing";
+import { pageMetadata } from "@/lib/seo/meta";
+import { PageLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: { absolute: "Content Production Packages in Dubai | Milkywayy" },
-  description:
-    "Monthly shoot days, edited reels and long-form video for UAE agencies, developers and brands. One Dubai team films, edits and delivers. Packages from AED 4,000.",
-  alternates: { canonical: "/production" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("production");
+}
 
 const INCLUDED: Included[] = [
   {
@@ -104,6 +103,7 @@ export default async function ProductionPage() {
 
   return (
     <>
+      <PageLd page="production" />
       <div className="w">
         <section className="p-hero" aria-labelledby="production-title">
           <div className="stack">

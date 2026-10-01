@@ -9,6 +9,8 @@ import { SampleLabel } from "@/components/ui/SampleLabel";
 import { SectionHead } from "@/components/ui/Section";
 import { getCaseStudies, getCaseStudy, getPortfolio } from "@/lib/data";
 import { pageWhatsappLink } from "@/lib/whatsapp";
+import { build } from "@/lib/seo/meta";
+import { PageLd } from "@/components/seo/JsonLd";
 
 export async function generateStaticParams() {
   return (await getCaseStudies()).map((c) => ({ slug: c.slug }));
@@ -18,11 +20,12 @@ export async function generateMetadata({ params }: PageProps<"/work/[slug]">): P
   const { slug } = await params;
   const cs = await getCaseStudy(slug);
   if (!cs) return {};
-  return {
-    title: `${cs.title} | Work`,
+  return build({
+    title: `${cs.title} | Work | Milkywayy`,
     description: `${cs.summary} A Milkywayy case study.`,
-    alternates: { canonical: `/work/${cs.slug}` },
-  };
+    path: `/work/${cs.slug}`,
+    image: `/og/work/${cs.slug}`,
+  });
 }
 
 /** Split a title into two balanced lines for the two-line hero rule (guide §4.3). */
@@ -53,6 +56,7 @@ export default async function CaseStudyPage({ params }: PageProps<"/work/[slug]"
 
   return (
     <>
+      <PageLd page="work" extra={{ name: cs.title, path: `/work/${cs.slug}` }} />
       <div className="w">
         <section className="p-hero p-hero-short" aria-labelledby="cs-title">
           <div className="stack">

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { Tone } from "@/content/types";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { getSiteSettings } from "@/lib/data";
+import { businessLd } from "@/lib/seo/schema";
 import { Footer } from "./Footer";
 import { Header } from "./Header";
 import { PageMobileBar } from "./PageMobileBar";
@@ -19,6 +21,7 @@ export async function SiteShell({ tone, children }: { tone: Tone; children: Reac
       </main>
       <Footer site={site} />
       <PageMobileBar />
+      <JsonLd data={businessLd(site)} />
     </div>
   );
 }

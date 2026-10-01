@@ -9,13 +9,12 @@ import { SampleLabel } from "@/components/ui/SampleLabel";
 import { Hl, SectionHead } from "@/components/ui/Section";
 import { getCaseStudies, getPortfolio } from "@/lib/data";
 import { pageWhatsappLink } from "@/lib/whatsapp";
+import { pageMetadata } from "@/lib/seo/meta";
+import { PageLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: "Work",
-  description:
-    "Property shoots, brand reels, long-form walkthroughs, photo edits and AI presenters by Milkywayy, a Dubai content studio. Filter by the work you need.",
-  alternates: { canonical: "/work" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("work");
+}
 
 /** Work (guide §6.7): title + filters → grid from the portfolio → case study cards. */
 export default async function WorkPage() {
@@ -24,6 +23,7 @@ export default async function WorkPage() {
 
   return (
     <>
+      <PageLd page="work" />
       <div className="w">
         <section className="p-hero p-hero-short" aria-labelledby="work-title">
           <div className="stack">

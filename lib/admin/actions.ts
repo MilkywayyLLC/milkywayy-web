@@ -480,3 +480,42 @@ export async function updateLead(
     return fail(err);
   }
 }
+
+/* ---------- SEO ---------- */
+
+export async function saveSeo(
+  page: string,
+  input: { title?: string; description?: string; og_image?: string },
+): Promise<Result> {
+  try {
+    const { db } = await adminOrThrow();
+    const { seoPage } = await import("@/lib/seo/pages");
+    if (!seoPage(page)) return { ok: false, error: "Unknown page." };
+    const title = input.title?.trim() || null;
+    const description = input.description?.trim() || null;
+    const og = input.og_image?.trim() || null;
+    const errors: Errors = {};
+    if (title && title.length > 70)
+      errors.title = "Keep titles under 70 characters so Google shows them whole.";
+    if (description && (description.length < 70 || description.length > 170))
+      errors.description = "Aim for 140–160 characters (between 70 and 170 at most).";
+    if (
+      og &&
+      !og.startsWith(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/media/`)
+    )
+      errors.og_image = "Upload the image here.";
+    if (Object.keys(errors).length) return { ok: false, errors };
+    const { error } = await db.from("seo_pages").upsert({ page, title, description, og_image: og });
+    if (error) return { ok: false, error: friendly(error) };
+    await log(db, {
+      entity: "seo",
+      entity_id: page,
+      action: "update",
+      summary: `SEO updated for ${page}`,
+    });
+    refresh(["seo"], await origin());
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}

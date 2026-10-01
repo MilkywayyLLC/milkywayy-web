@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/layout/LegalPage";
 import { getSiteSettings } from "@/lib/data";
+import { pageMetadata } from "@/lib/seo/meta";
+import { PageLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: "Terms",
-  description:
-    "Terms for using milkywayy.com and requesting shoots, edits and AI avatar work from Milkywayy LLC.",
-  alternates: { canonical: "/terms" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("terms");
+}
 
 export default async function TermsPage() {
   const site = await getSiteSettings();
   return (
     <LegalPage title="Terms" updated="1 October 2026">
+      <PageLd page="terms" />
       <p>
         These terms cover your use of milkywayy.com, run by {site.company} ({site.addressLine},{" "}
         {site.licence} licence).
