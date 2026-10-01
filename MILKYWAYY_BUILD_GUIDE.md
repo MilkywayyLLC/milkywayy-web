@@ -454,7 +454,7 @@ NEXT_PUBLIC_CLARITY_ID=
 - **Design:** clean dark admin UI, same fonts as the site, sidebar layout like the owner's current booking-portal admin (Workspace · Content · Pricing · Settings). Functional over flashy. Must work on a phone (the owner will update "on the go").
 - **Saving** writes to Supabase and calls the revalidation route (`/api/revalidate` with `REVALIDATE_SECRET`) for the affected tags (e.g. `portfolio`, `faqs:post-production`, `pricing`). Change is live on the next page load.
 - **Every list** supports: add, edit, delete (with confirmation inside the UI), **drag to reorder**, **Published / Draft** toggle, and a **"Where it shows"** field (placements, below). A **Preview** button opens the affected page.
-- **Uploads:** images go to Supabase Storage (auto-converted/resized for web by `next/image` on the site; reject files over 15 MB; require alt text). Videos upload to Bunny Stream (direct upload from the browser via a signed URL) or accept a YouTube/Vimeo link; always require a poster image. Show upload progress.
+- **Uploads:** images go to Supabase Storage (auto-converted/resized for web by `next/image` on the site; reject files over 15 MB; require alt text; let the uploader set a **focal point** — stored as the image's object-position — so crops at any ratio never cut faces). Videos upload to Bunny Stream (direct upload from the browser via a signed URL) or accept a YouTube/Vimeo link; always require a poster image. Show upload progress.
 
 ### 18.2 Sidebar sections (each maps to where it appears on the site)
 

@@ -480,10 +480,12 @@ function PropertyEditor({
               active={active === "photo"}
             >
               <label className="chk">
-                <input type="checkbox" checked={p.twilight} onChange={() => tog("twilight")} /> Add
-                twilight images{" "}
-                <span className="muted" style={{ fontSize: 13 }}>
-                  (edited from your daylight shots)
+                <input type="checkbox" checked={p.twilight} onChange={() => tog("twilight")} />
+                <span>
+                  Add twilight images{" "}
+                  <span className="muted" style={{ fontSize: 13 }}>
+                    (edited from your daylight shots)
+                  </span>
                 </span>
               </label>
               {p.twilight && (

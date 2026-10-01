@@ -10,11 +10,7 @@ test.describe("post-production", () => {
     await page.goto("/post-production");
     const hero = page.locator(".pp-hero");
     await expect(hero.locator(".trio .fr")).toHaveCount(3);
-    await expect(hero.locator(".trio .tag")).toHaveText([
-      "HDR photo edit",
-      "Vertical reel",
-      "Long-form still",
-    ]);
+    await expect(hero.locator(".trio .tag")).toHaveText(["HDR edit", "Reel", "Long-form"]);
     await expect(hero.getByRole("slider")).toHaveCount(0);
 
     // "See our work" goes to the before/after gallery, where the slider works by keyboard.
