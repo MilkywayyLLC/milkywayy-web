@@ -1,3 +1,4 @@
+import { getSiteSettings } from "@/lib/data";
 import { FreeTestForm } from "./FreeTestForm";
 
 /**
@@ -5,7 +6,7 @@ import { FreeTestForm } from "./FreeTestForm";
  * /post-production (h2) and on its own at /post-production/free-test (h1).
  * No turnaround promise here (guide §6.4 tone rules).
  */
-export function FreeTestSection({
+export async function FreeTestSection({
   headingLevel = 2,
   alt = true,
 }: {
@@ -14,6 +15,7 @@ export function FreeTestSection({
   alt?: boolean;
 }) {
   const Heading = headingLevel === 1 ? "h1" : "h2";
+  const site = await getSiteSettings();
   return (
     <section className={alt ? "sec alt" : "sec"} id="free-test" aria-labelledby="free-test-title">
       <div className="w formwrap">
@@ -35,7 +37,7 @@ export function FreeTestSection({
             </div>
           </div>
         </div>
-        <FreeTestForm />
+        <FreeTestForm whatsappNumber={site.whatsapp.number} email={site.email} />
       </div>
     </section>
   );

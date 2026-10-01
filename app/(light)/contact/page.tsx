@@ -47,7 +47,12 @@ export default async function ContactPage() {
             </div>
           </div>
         </div>
-        <LeadForm showServices briefLabel="Anything we should know?" />
+        <LeadForm
+          showServices
+          briefLabel="Anything we should know?"
+          whatsappNumber={site.whatsapp.number}
+          email={site.email}
+        />
       </div>
     </section>
   );

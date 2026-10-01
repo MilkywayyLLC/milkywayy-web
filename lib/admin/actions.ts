@@ -445,3 +445,38 @@ export async function refreshWholeSite(): Promise<Result> {
     return fail(err);
   }
 }
+
+/* ---------- leads ---------- */
+
+export async function updateLead(
+  ref: string,
+  patch: { status?: string; notes?: string },
+): Promise<Result> {
+  try {
+    const { db } = await adminOrThrow({ owner: true });
+    const { LEAD_STATUSES } = await import("./leads");
+    const row: Record<string, unknown> = {};
+    if (patch.status !== undefined) {
+      if (!(LEAD_STATUSES as readonly string[]).includes(patch.status))
+        return { ok: false, error: "Unknown status." };
+      row.status = patch.status;
+    }
+    if (patch.notes !== undefined) {
+      if (patch.notes.length > 4000)
+        return { ok: false, error: "Keep notes under 4,000 characters." };
+      row.notes = patch.notes.trim() || null;
+    }
+    const { data, error } = await db.from("leads").update(row).eq("ref", ref).select("ref");
+    if (error) return { ok: false, error: friendly(error) };
+    if (!data?.length) return { ok: false, error: "Lead not found." };
+    await log(db, {
+      entity: "lead",
+      entity_id: ref,
+      action: "update",
+      summary: patch.status ? `Lead ${ref} marked ${patch.status}` : `Notes updated on lead ${ref}`,
+    });
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}

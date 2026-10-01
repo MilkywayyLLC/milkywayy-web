@@ -13,7 +13,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { SampleLabel } from "@/components/ui/SampleLabel";
 import { Hl, SectionHead } from "@/components/ui/Section";
-import { getAvatarHero, getAvatars, getFaqs, getOtherPricing } from "@/lib/data";
+import { getAvatarHero, getAvatars, getFaqs, getOtherPricing, getSiteSettings } from "@/lib/data";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 
 export const metadata: Metadata = {
@@ -57,11 +57,12 @@ const USES = [
 ];
 
 export default async function AiAvatarsPage() {
-  const [hero, avatars, faqs, other] = await Promise.all([
+  const [hero, avatars, faqs, other, site] = await Promise.all([
     getAvatarHero(),
     getAvatars(),
     getFaqs("ai-avatars"),
     getOtherPricing(),
+    getSiteSettings(),
   ]);
   const whatsapp = pageWhatsappLink("AI avatars");
   const ai = other.aiAvatars;
@@ -213,7 +214,7 @@ export default async function AiAvatarsPage() {
               like.
             </p>
           </div>
-          <DemoForm />
+          <DemoForm whatsappNumber={site.whatsapp.number} email={site.email} />
         </div>
       </section>
 

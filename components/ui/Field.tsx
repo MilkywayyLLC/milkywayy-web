@@ -10,16 +10,20 @@ export function Field({
   error?: string;
   children: ReactNode;
 }) {
+  // The error sits outside the <label> so it isn't read as part of the field's name; the label
+  // uses display: contents so the grid layout is unchanged.
   return (
-    <label className="fld">
-      {label}
-      {children}
+    <div className="fld">
+      <label className="fld-in">
+        {label}
+        {children}
+      </label>
       {error && (
         <span className="err" role="alert">
           {error}
         </span>
       )}
-    </label>
+    </div>
   );
 }
 
@@ -91,18 +95,25 @@ export function Option({
 export function OptionGroup({
   legend,
   cards,
+  error,
   children,
 }: {
   legend: string;
   cards?: boolean;
+  error?: string;
   children: ReactNode;
 }) {
   const n = Children.count(children);
   const cls = ["opts", cards ? "opts-cards" : `opts-n${n}`].join(" ");
   return (
-    <fieldset>
+    <fieldset aria-invalid={error ? true : undefined}>
       <legend>{legend}</legend>
       <div className={cls}>{children}</div>
+      {error && (
+        <span className="err" role="alert">
+          {error}
+        </span>
+      )}
     </fieldset>
   );
 }

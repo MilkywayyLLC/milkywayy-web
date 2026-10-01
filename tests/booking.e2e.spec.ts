@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { siteSettings } from "@/content/site";
+import { markTestLeads } from "./helpers/leads";
 import {
   addDays,
   bookingWindow,
@@ -20,11 +21,24 @@ const URL = "/property-shoots";
 async function open(page: Page) {
   await page.addInitScript(() => {
     (window as unknown as { __opened: string[] }).__opened = [];
-    window.open = ((url: string) => {
-      (window as unknown as { __opened: string[] }).__opened.push(String(url));
+    const log = (u: string) => (window as unknown as { __opened: string[] }).__opened.push(u);
+    // The builder reserves a blank tab during the tap and points it at WhatsApp once the lead is
+    // saved; record where it ends up.
+    window.open = ((url?: string) => {
+      if (!url)
+        return {
+          close() {},
+          location: {
+            set href(v: string) {
+              log(String(v));
+            },
+          },
+        };
+      log(String(url));
       return null;
-    }) as typeof window.open;
+    }) as unknown as typeof window.open;
   });
+  await markTestLeads(page);
   await page.goto(URL);
   return page.locator("#booking");
 }
@@ -246,8 +260,9 @@ test.describe("desktop builder", () => {
     await b.getByLabel("Unit number").fill("804");
     await send.click();
 
+    // The lead is saved first, then WhatsApp opens with the ref the server issued.
+    await expect.poll(() => opened(page)).toHaveLength(1);
     const urls = await opened(page);
-    expect(urls).toHaveLength(1);
     const url = new globalThis.URL(urls[0]);
     expect(url.origin + url.pathname).toBe("https://wa.me/971507263306");
     const text = url.searchParams.get("text") ?? "";
@@ -335,7 +350,7 @@ test.describe("phone layout @mobile-only", () => {
     await b.getByLabel("Building / tower").fill("Barsha Heights Tower");
     await bar.getByRole("button", { name: "Review & send" }).click();
     await sheet.getByRole("button", { name: "Send request on WhatsApp" }).click();
-    expect(await opened(page)).toHaveLength(1);
+    await expect.poll(() => opened(page)).toHaveLength(1);
     await expect(sheet.getByRole("status")).toContainText("Request ready.");
     await sheet.getByRole("button", { name: "Close summary" }).click();
     await expect(sheet).toBeHidden();

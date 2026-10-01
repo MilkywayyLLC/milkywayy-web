@@ -22,9 +22,17 @@ export type AdminState =
 export const getAdmin = cache(async (): Promise<AdminState> => {
   const db = await sessionDb();
   if (!db) return { state: "signed-out" };
-  const {
-    data: { user },
-  } = await db.auth.getUser();
+  let { data, error } = await db.auth.getUser();
+  // A network blip or rate limit isn't "signed out": retry once before sending them to sign in.
+  if (
+    error &&
+    error.name !== "AuthSessionMissingError" &&
+    !/session|jwt|token/i.test(error.message)
+  ) {
+    console.warn("[admin] getUser failed, retrying:", error.status, error.message);
+    ({ data, error } = await db.auth.getUser());
+  }
+  const user = data.user;
   if (!user?.email) return { state: "signed-out" };
   const email = user.email.toLowerCase();
   const { data: row } = await db.from("admins").select("role").eq("email", email).maybeSingle();

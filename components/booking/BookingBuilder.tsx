@@ -37,6 +37,7 @@ import {
 import { bookingWindow, firstBookable, type BookingWindow } from "@/lib/booking/dates";
 import { MENU_OPEN_EVENT } from "@/lib/events";
 import { formatAED } from "@/lib/format";
+import { sendLead } from "@/lib/leads/client";
 import { whatsappLink } from "@/lib/whatsapp";
 import { CloseIcon } from "@/components/ui/Icons";
 import { Seg } from "@/components/ui/Seg";
@@ -96,6 +97,12 @@ export function BookingBuilder({
   const [openId, setOpenId] = useState<number | null>(1);
   const [errors, setErrors] = useState<BookingErrors>({});
   const [sent, setSent] = useState<{ ref: string; url: string; message: string } | null>(null);
+  const [sending, setSending] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const started = useRef(0);
+  useEffect(() => {
+    started.current = Date.now();
+  }, []);
   const focusField = useRef<string | null>(null);
   const sheet = useRef<HTMLDialogElement>(null);
 
@@ -154,12 +161,39 @@ export function BookingBuilder({
           : `bk-${firstBad.id}-building`;
       return;
     }
-    // Provisional reference until /api/lead issues the real one (Phase 6).
-    const ref = `MW-${Math.floor(1000 + Math.random() * 9000)}`;
-    const message = buildMessage(state, pricing, ref);
-    const url = whatsappLink(message, whatsappNumber);
-    setSent({ ref, url, message });
-    window.open(url, "_blank", "noopener,noreferrer");
+    // Already sent and unchanged: just reopen WhatsApp.
+    if (current) {
+      window.open(current.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    // Reserve the tab during the tap (pop-up blockers), save the lead, then point it at WhatsApp
+    // with the message that starts with the reference the server issued.
+    const tab = window.open("", "_blank");
+    setSending(true);
+    setSaveFailed(false);
+    sendLead(
+      "property",
+      { fields: {} },
+      { hp: "", elapsed: Date.now() - started.current, booking: state },
+    ).then((r) => {
+      setSending(false);
+      if (r.ok) {
+        const message = buildMessage(state, pricing, r.ref);
+        const url = whatsappLink(r.message ?? message, whatsappNumber);
+        setSent({ ref: r.ref, url, message });
+        if (tab) tab.location.href = url;
+        else window.open(url, "_blank", "noopener,noreferrer");
+        return;
+      }
+      // Couldn't save on our side: still let the visitor send the booking, minus the ref line.
+      const url = whatsappLink(
+        buildMessage(state, pricing, null).split("\n").slice(1).join("\n"),
+        whatsappNumber,
+      );
+      setSaveFailed(true);
+      if (tab) tab.location.href = url;
+      else window.open(url, "_blank", "noopener,noreferrer");
+    });
   }
 
   const count = state.properties.length;
@@ -191,8 +225,14 @@ export function BookingBuilder({
               </p>
             </div>
           )}
-          <button type="button" className="btn btn-p" onClick={send}>
-            Send request on WhatsApp
+          {saveFailed && !current && (
+            <p className="fine" role="status">
+              We couldn&apos;t save a copy on our side, but WhatsApp has your full booking. Just
+              send it.
+            </p>
+          )}
+          <button type="button" className="btn btn-p" onClick={send} disabled={sending}>
+            {sending ? "Sending…" : "Send request on WhatsApp"}
           </button>
         </div>
       }

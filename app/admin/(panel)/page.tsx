@@ -81,7 +81,7 @@ export default async function Dashboard({
             <h2 className="ad-h2">Latest leads</h2>
             {latest?.data?.length ? (
               latest.data.map((l) => (
-                <Link key={l.ref} href="/admin/leads" className="ad-row-main">
+                <Link key={l.ref} href={`/admin/leads/${l.ref}`} className="ad-row-main">
                   <div>
                     <div className="ad-row-title">
                       {l.name || "No name"} · {l.type}

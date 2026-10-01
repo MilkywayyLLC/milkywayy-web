@@ -1273,6 +1273,9 @@
     color: var(--muted);
     min-width: 0;
   }
+  .fld-in {
+    display: contents;
+  }
   .fld input,
   .fld select,
   .fld textarea {
@@ -1297,7 +1300,8 @@
   .fld [aria-invalid="true"] {
     border-color: var(--rec);
   }
-  .fld .err {
+  .fld .err,
+  fieldset > .err {
     color: var(--fg);
     font-weight: 500;
     font-size: 13px;
@@ -1305,7 +1309,11 @@
     gap: 8px;
     align-items: baseline;
   }
-  .fld .err::before {
+  fieldset > .err {
+    margin-top: 8px;
+  }
+  .fld .err::before,
+  fieldset > .err::before {
     content: "";
     width: 6px;
     height: 6px;
@@ -3223,5 +3231,29 @@
     border: 0;
     padding: 0;
     cursor: pointer;
+  }
+}
+
+/* Lead forms (Phase 6): the spam trap no person sees, and the sending/error states. */
+@layer components {
+  .hp {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .form-error {
+    display: grid;
+    gap: 6px;
+    padding: 14px 16px;
+    border: 1px solid var(--rec);
+    font-size: 14px;
+  }
+  .cal-frame {
+    width: 100%;
+    height: 680px;
+    border: 1px solid var(--line);
+    background: var(--surface);
   }
 }

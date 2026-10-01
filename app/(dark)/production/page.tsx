@@ -252,6 +252,8 @@ export default async function ProductionPage() {
           </div>
           <LeadForm
             service="production"
+            whatsappNumber={site.whatsapp.number}
+            email={site.email}
             briefPlaceholder="e.g. about 10 listings a month in Marina and JLT, plus brand content"
           />
         </div>

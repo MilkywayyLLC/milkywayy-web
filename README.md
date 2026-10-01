@@ -22,6 +22,12 @@ After changing content directly in the database, refresh the site with `POST /ap
 - `app/(dark)` / `app/(light)` — page tone per route (guide §3).
 - `DECISIONS.md` — choices not covered by the guide. `CONTENT_TODO.md` — content still to supply.
 
+## Leads
+
+Forms and the booking builder POST to `/api/lead`, which saves through the database function
+`submit_lead()` (needs `LEAD_SECRET`; no service-role key) and emails new leads via Resend when
+`RESEND_API_KEY` is set. Leads appear in `/admin/leads`. See DECISIONS.md "Phase 6".
+
 ## Admin
 
 `/admin` (Supabase Auth, password + authenticator code for Owners). Saving refreshes the site by
