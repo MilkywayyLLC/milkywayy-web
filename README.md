@@ -22,4 +22,13 @@ After changing content directly in the database, refresh the site with `POST /ap
 - `app/(dark)` / `app/(light)` — page tone per route (guide §3).
 - `DECISIONS.md` — choices not covered by the guide. `CONTENT_TODO.md` — content still to supply.
 
+## Admin
+
+`/admin` (Supabase Auth, password + authenticator code for Owners). Saving refreshes the site by
+itself; Preview shows drafts on the real pages. See DECISIONS.md "Phase 5B".
+
+Tests: `npm test` runs everything locally (public pages, the database-failure fallback, then the
+admin as three test accounts whose credentials live only in `.env.local`). `npm run test:staging`
+runs the same against staging.
+
 Full handover docs (editing content, env vars, deploy) come in Phase 8.
