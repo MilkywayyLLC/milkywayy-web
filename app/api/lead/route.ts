@@ -14,6 +14,7 @@ import { addDays, dubaiToday, weekday } from "@/lib/booking/dates";
 import { getPropertyPricing, getSiteSettings } from "@/lib/data";
 import { e2eKey } from "@/lib/leads/e2e";
 import { notifyLead } from "@/lib/leads/notify";
+import { toE164 } from "@/lib/leads/phone";
 import { checkLead, type LeadValues } from "@/lib/leads/rules";
 import { leadRequest } from "@/lib/leads/schema";
 import { leadStore, type Lead } from "@/lib/leads/store";
@@ -65,6 +66,9 @@ export async function POST(req: NextRequest) {
   // skip the rate limit and never email anyone.
   const isTest =
     !!process.env.LEAD_SECRET && req.headers.get("x-e2e-key") === e2eKey(process.env.LEAD_SECRET);
+  let lines: Record<string, unknown>[] | undefined;
+  // Stored in E.164 (CLIENT_PORTAL_GUIDE §12); what they typed is kept alongside if different.
+  const phone = r.phone?.trim() ? toE164(r.phone) : null;
   const data: Record<string, unknown> = {
     ...r.fields,
     eventId: r.eventId,
@@ -116,6 +120,31 @@ export async function POST(req: NextRequest) {
         lines: priceLines(p, pricing),
       })),
     };
+    // One structured row per property (booking_properties), for the client portal later.
+    lines = state.properties.map((p, i) => ({
+      line_no: i + 1,
+      property_type: p.type,
+      size_index: p.size,
+      size_label:
+        p.type === "commercial"
+          ? pricing.commercial.tiers[p.size].label
+          : pricing[p.type].sizes[p.size].label,
+      services: [
+        p.photo && "photo",
+        p.video && p.short && "short",
+        p.video && p.long && "long",
+        p.tour && "tour",
+      ].filter(Boolean),
+      long_lighting: p.video && p.long ? p.lighting : null,
+      add_ons: p.photo && p.twilight ? [{ key: "twilight", qty: p.twilightQty }] : [],
+      area: p.area.trim(),
+      building: p.building.trim(),
+      unit: p.unit.trim() || null,
+      shoot_date: p.date,
+      slot: p.slot,
+      subtotal: subtotal(p, pricing),
+      price_lines: priceLines(p, pricing),
+    }));
   }
 
   let message: string | undefined;
@@ -123,14 +152,16 @@ export async function POST(req: NextRequest) {
     type: r.type,
     name: r.name?.trim() || undefined,
     company: r.company?.trim() || undefined,
-    phone: r.phone?.trim() || undefined,
+    phone: phone ?? undefined,
     email: r.email?.trim().toLowerCase() || undefined,
     preferred_reply: r.type === "property" ? "WhatsApp" : r.preferred_reply,
     data,
     page: r.page,
     utm: r.utm,
     referrer: r.referrer || undefined,
+    lines,
   };
+  if (phone && r.phone!.trim() !== phone) data.phone_entered = r.phone!.trim();
 
   const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
   const ipHash = createHmac("sha256", process.env.LEAD_SECRET ?? "dev")

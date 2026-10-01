@@ -2,6 +2,8 @@
  * Lead rules shared by the forms (instant inline errors) and /api/lead (the real gate), with no
  * dependencies so the browser bundle stays small. Messages say how to fix the problem (§9.4).
  */
+import { toE164 } from "./phone";
+
 export type LeadType = "production" | "property" | "post" | "avatars" | "contact" | "free-test";
 export type Reply = "WhatsApp" | "Email" | "Call";
 export const REPLIES: Reply[] = ["WhatsApp", "Email", "Call"];
@@ -32,8 +34,7 @@ export const EDIT_KINDS: Record<string, string> = {
 export const EDITORS_NOW = ["In-house", "Freelancer", "Nobody yet"] as const;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const digits = (s: string) => s.replace(/[\s()+.-]/g, "");
-export const isPhone = (s: string) => /^\d{7,15}$/.test(digits(s)) && !/[^\d\s()+.-]/.test(s);
+export const isPhone = (s: string) => toE164(s) !== null;
 export const isEmail = (s: string) => EMAIL.test(s.trim());
 const isUrl = (s: string) => {
   try {

@@ -13,6 +13,8 @@ export interface Lead {
   page: string;
   utm: Record<string, string>;
   referrer?: string;
+  /** Bookings: one structured row per property (saved to booking_properties). */
+  lines?: Record<string, unknown>[];
 }
 
 export type SaveResult = { ref: string; duplicate?: boolean } | { rateLimited: true };

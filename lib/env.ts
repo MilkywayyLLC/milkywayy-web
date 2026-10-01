@@ -3,7 +3,8 @@ export const env = {
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   siteEnv: process.env.NEXT_PUBLIC_SITE_ENV ?? "development",
   whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "971507263306",
-  clientLoginUrl: process.env.NEXT_PUBLIC_CLIENT_LOGIN_URL ?? "https://milkywayy.com/dashboard",
+  // "/client-login" until the new client portal exists (CLIENT_PORTAL_GUIDE.md §11).
+  clientLoginUrl: process.env.NEXT_PUBLIC_CLIENT_LOGIN_URL || "/client-login",
   calLink: process.env.NEXT_PUBLIC_CAL_LINK ?? "",
 } as const;
 

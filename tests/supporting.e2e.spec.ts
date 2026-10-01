@@ -65,3 +65,16 @@ test("legal pages are marked as drafts until reviewed", async ({ page }) => {
     await expect(page.getByRole("link", { name: "hello@milkywayy.com" })).toBeVisible();
   }
 });
+
+test("Client login opens the “portal is moving” page with WhatsApp for files @mobile", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const login = page.locator('a[href="/client-login"]').first();
+  await expect(login).toHaveCount(1);
+  await page.goto("/client-login");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Your portal");
+  const wa = page.getByRole("link", { name: "WhatsApp us for files" });
+  await expect(wa).toHaveAttribute("href", /^https:\/\/wa\.me\/971507263306\?text=/);
+  expect(await page.locator('meta[name="robots"]').getAttribute("content")).toContain("noindex");
+});

@@ -182,3 +182,8 @@ Choices not spelled out in `MILKYWAYY_BUILD_GUIDE.md` (v3), or owner answers tha
 - **Admin Leads inbox:** search (name, email, phone, ref), filter by type and status, detail page (answers, booking and estimate, source), status and private notes, WhatsApp/email/call shortcuts, CSV export of the current filter (formula-safe). Owner only.
 - **Accessibility fix found by the tests:** field errors were inside the `<label>`, so screen readers read them as part of the field name; they now sit after the label.
 - **Tests and real leads:** tests prove they hold `LEAD_SECRET` with an `x-e2e-key` header (an HMAC of it); those leads are flagged `test`, skip the rate limit, never email anyone and are deleted afterwards. Phase 7 hooks: every lead carries an `eventId` for Pixel/CAPI de-duplication.
+- **Ready for the client portal (CLIENT_PORTAL_GUIDE.md §12, added 2 Oct 2026):**
+  - Phones are stored in E.164 (`lib/leads/phone.ts`; numbers without a country code are read as UAE) and emails lower-case. The database enforces both with check constraints. What the visitor typed is kept as `data.phone_entered`.
+  - Refs are issued by the database from a sequence, and `leads.ref` is unique.
+  - Every booking also writes one row per property to `booking_properties`: type, size, services, add-ons (twilight qty), long-form lighting, area/building/unit, date, slot, subtotal and price lines, linked to the lead. Owner-read only; written only by `submit_lead()`.
+- **Client login → `/client-login`** ("Your portal is moving. WhatsApp us for files", noindex) until the portal exists. This is the §11 fallback; if the old portal moves to a subdomain, point `NEXT_PUBLIC_CLIENT_LOGIN_URL` there instead.

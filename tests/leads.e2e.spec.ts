@@ -77,7 +77,7 @@ test("Production: errors say how to fix; WhatsApp opens with the ref; the lead i
   expect(row).toMatchObject({
     type: "production",
     name: `${RUN} Production`,
-    phone: "+971 50 000 0000",
+    phone: "+971500000000", // stored in E.164
     preferred_reply: "WhatsApp",
     page: "/production",
     status: "new",
@@ -85,6 +85,7 @@ test("Production: errors say how to fix; WhatsApp opens with the ref; the lead i
   expect(row.data).toMatchObject({
     service: "production",
     brief: "Ten listings a month in Marina.",
+    phone_entered: "+971 50 000 0000",
     test: true,
   });
 });
@@ -203,6 +204,22 @@ test("Booking: saved with the server's estimate and the exact WhatsApp message",
     area: "JVC",
     building: `${RUN} Tower`,
     size: 1,
+  });
+
+  // One structured row per property, for the client portal (CLIENT_PORTAL_GUIDE §12).
+  const { data: lines } = await db.from("booking_properties").select("*").eq("lead_id", row.id);
+  expect(lines).toHaveLength(1);
+  expect(lines![0]).toMatchObject({
+    line_no: 1,
+    property_type: "apartment",
+    size_label: "1 Bed",
+    services: ["photo"],
+    add_ons: [],
+    area: "JVC",
+    building: `${RUN} Tower`,
+    shoot_date: row.data.booking.properties[0].date,
+    slot: row.data.booking.properties[0].slot,
+    subtotal: 500,
   });
 });
 
