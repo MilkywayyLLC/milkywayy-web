@@ -155,6 +155,8 @@ export interface Stat extends Publishable {
   label: string;
   /** Per-placement label override (e.g. "Properties produced" on post-production). */
   labelByPlacement?: Partial<Record<StatPlacement, string>>;
+  /** Position within a placement; falls back to sortOrder. */
+  placementOrder?: Partial<Record<StatPlacement, number>>;
   placements: StatPlacement[];
 }
 

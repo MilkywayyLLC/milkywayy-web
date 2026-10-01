@@ -12,9 +12,11 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "playwright test",
     "test:logic": "PW_NO_SERVER=1 playwright test --project=logic",
-    "test:staging": "BASE_URL=https://milkywayy-web.vercel.app playwright test --project=desktop --project=mobile"
+    "test:staging": "BASE_URL=https://milkywayy-web.vercel.app playwright test --project=desktop --project=mobile",
+    "db:seed:sql": "node scripts/seed.mts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8"

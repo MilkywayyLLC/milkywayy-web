@@ -4,6 +4,7 @@ import type { Stat } from "./types";
 export const stats: Stat[] = [
   {
     id: "since",
+    placementOrder: { "post-production": 4 },
     value: "2020",
     label: "Creating content since",
     placements: ["home", "post-production"],
@@ -12,6 +13,7 @@ export const stats: Stat[] = [
   },
   {
     id: "properties",
+    placementOrder: { "post-production": 2 },
     value: "1,000+",
     label: "Properties shot in Dubai",
     labelByPlacement: { "post-production": "Properties produced" },
@@ -21,6 +23,7 @@ export const stats: Stat[] = [
   },
   {
     id: "brands",
+    placementOrder: { "post-production": 3 },
     value: "100+",
     label: "Brands worked with",
     placements: ["home", "post-production"],
@@ -29,6 +32,7 @@ export const stats: Stat[] = [
   },
   {
     id: "videos",
+    placementOrder: { "post-production": 1 },
     value: "5,000+",
     label: "Videos edited",
     placements: ["home", "post-production"],
@@ -36,9 +40,3 @@ export const stats: Stat[] = [
     sortOrder: 4,
   },
 ];
-
-/** Post-production shows the same stats in a different order (mockup). */
-export const statOrderByPlacement: Record<"home" | "post-production", string[]> = {
-  home: ["since", "properties", "brands", "videos"],
-  "post-production": ["videos", "properties", "brands", "since"],
-};
