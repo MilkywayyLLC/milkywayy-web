@@ -17,10 +17,11 @@ import { useLeadForm } from "./useLeadForm";
  * default) shows the call calendar after saving; WhatsApp and Email hand off like the LeadForm.
  */
 export function DemoForm({
-  whatsappNumber = env.whatsappNumber,
+  whatsappNumber,
   email = "hello@milkywayy.com",
 }: {
-  whatsappNumber?: string;
+  /** Business chat number from Site settings. */
+  whatsappNumber: string;
   email?: string;
 }) {
   const [use, setUse] = useState<(typeof AVATAR_USES)[number]>("Real estate");

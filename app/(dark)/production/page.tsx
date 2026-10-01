@@ -98,7 +98,7 @@ export default async function ProductionPage() {
     getOtherPricing(),
     getPropertyPricing(),
   ]);
-  const whatsapp = pageWhatsappLink("Production");
+  const whatsapp = pageWhatsappLink("Production", site.whatsapp.number);
   const from = formatNumber(other.production.fromMonthly);
 
   return (

@@ -42,6 +42,7 @@ import type {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { draftMode } from "next/headers";
 import { cache } from "react";
+import { alert } from "@/lib/monitoring/alert";
 import { publicDb } from "@/lib/supabase/public";
 import { TAGS, type Tag } from "./tags";
 import * as map from "./rows";
@@ -72,6 +73,11 @@ function source<T>(
           `[data] ${key}: database read failed; still serving the last version that loaded`,
           err,
         );
+        void alert({
+          kind: "database read failed",
+          message: `${key}: ${err instanceof Error ? err.message : String(err)}`,
+          where: "site data (the site keeps showing the last good version)",
+        });
         throw err;
       }
     },

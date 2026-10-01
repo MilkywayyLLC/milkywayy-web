@@ -63,7 +63,7 @@ export default async function AiAvatarsPage() {
     getOtherPricing(),
     getSiteSettings(),
   ]);
-  const whatsapp = pageWhatsappLink("AI avatars");
+  const whatsapp = pageWhatsappLink("AI avatars", site.whatsapp.number);
   const ai = other.aiAvatars;
 
   return (

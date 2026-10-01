@@ -7,7 +7,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { SampleLabel } from "@/components/ui/SampleLabel";
 import { SectionHead } from "@/components/ui/Section";
-import { getCaseStudies, getCaseStudy, getPortfolio } from "@/lib/data";
+import { getCaseStudies, getCaseStudy, getPortfolio, getSiteSettings } from "@/lib/data";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { build } from "@/lib/seo/meta";
 import { PageLd } from "@/components/seo/JsonLd";
@@ -47,12 +47,13 @@ function twoLines(title: string): [string, string] {
 
 /** Case study (guide §6.7): client + brief → what we did → media → results → quote → related. */
 export default async function CaseStudyPage({ params }: PageProps<"/work/[slug]">) {
+  const site = await getSiteSettings();
   const { slug } = await params;
   const cs = await getCaseStudy(slug);
   if (!cs) notFound();
   const related = (await getPortfolio("work")).filter((p) => cs.related.includes(p.id));
   const [l1, l2] = cs.heroLines ?? twoLines(cs.title);
-  const whatsapp = pageWhatsappLink("Work");
+  const whatsapp = pageWhatsappLink("Work", site.whatsapp.number);
 
   return (
     <>

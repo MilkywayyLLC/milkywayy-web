@@ -11,7 +11,7 @@ import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Hl, SectionHead } from "@/components/ui/Section";
-import { getFaqs, getPortfolio, getPropertyPricing } from "@/lib/data";
+import { getFaqs, getPortfolio, getPropertyPricing, getSiteSettings } from "@/lib/data";
 import { env } from "@/lib/env";
 import { formatNumber } from "@/lib/format";
 import { lowestShootPrice } from "@/lib/pricing";
@@ -31,6 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
  * dashboard → "No more chasing" → FAQ → CTA band. Replaces /production/property-shoots and /book.
  */
 export default async function PropertyShootsPage() {
+  const site = await getSiteSettings();
   const [faqs, hero, photos, videos, tours, pricing] = await Promise.all([
     getFaqs("property-shoots"),
     getPortfolio("property-hero"),
@@ -39,7 +40,7 @@ export default async function PropertyShootsPage() {
     getPortfolio("property-gallery-360"),
     getPropertyPricing(),
   ]);
-  const whatsapp = pageWhatsappLink("Property shoots");
+  const whatsapp = pageWhatsappLink("Property shoots", site.whatsapp.number);
   const heroItem = hero[0];
 
   return (

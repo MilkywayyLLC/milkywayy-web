@@ -355,13 +355,14 @@ export default async function StyleguidePage() {
       >
         {() => (
           <div className="stack" style={{ gap: 24 }}>
-            <Header path="/production" sticky={false} />
+            <Header path="/production" sticky={false} whatsapp={site.whatsapp.number} />
             <div className="w" style={{ width: "100%" }}>
               <MobileActionBar
                 pageName="Production"
                 label="Get your package"
                 href="#header"
                 inline
+                whatsapp={site.whatsapp.number}
               />
             </div>
           </div>
@@ -876,7 +877,10 @@ export default async function StyleguidePage() {
                   </div>
                 </div>
               </div>
-              <LeadForm briefPlaceholder="e.g. about 10 listings a month in Marina and JLT, plus brand content" />
+              <LeadForm
+                whatsappNumber={site.whatsapp.number}
+                briefPlaceholder="e.g. about 10 listings a month in Marina and JLT, plus brand content"
+              />
             </div>
             <div className="formwrap">
               <div className="stack">
@@ -893,7 +897,11 @@ export default async function StyleguidePage() {
                   <span className="err">Add the part after the @, like sara@harbour.ae</span>
                 </label>
               </div>
-              <LeadForm showServices briefLabel="Anything we should know?" />
+              <LeadForm
+                showServices
+                briefLabel="Anything we should know?"
+                whatsappNumber={site.whatsapp.number}
+              />
             </div>
             <div className="formwrap">
               <div className="stack">
@@ -902,7 +910,7 @@ export default async function StyleguidePage() {
                   Pick “Other” to reveal the text field.
                 </p>
               </div>
-              <DemoForm />
+              <DemoForm whatsappNumber={site.whatsapp.number} />
             </div>
             <div className="formwrap">
               <div className="stack">
@@ -916,7 +924,7 @@ export default async function StyleguidePage() {
                   </div>
                 </div>
               </div>
-              <FreeTestForm />
+              <FreeTestForm whatsappNumber={site.whatsapp.number} />
             </div>
           </div>
         )}

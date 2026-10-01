@@ -49,10 +49,29 @@ export function HeroTitle({
       h.style.fontSize = `${Math.max(34, Math.min(cap, (100 * width * 0.98) / widest))}px`;
     };
 
-    document.fonts?.ready.then(fit);
-    const ro = new ResizeObserver(fit);
+    // Refit only when the width changes, on the next frame. Resizing the title changes the
+    // wrapper's height, and refitting inside that same observer callback makes Safari report a
+    // "ResizeObserver loop" error.
+    let lastWidth = -1;
+    let frame = 0;
+    const onResize = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (box.clientWidth === lastWidth) return;
+        lastWidth = box.clientWidth;
+        fit();
+      });
+    };
+    document.fonts?.ready.then(() => {
+      lastWidth = box.clientWidth;
+      fit();
+    });
+    const ro = new ResizeObserver(onResize);
     ro.observe(box);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(frame);
+    };
   }, []);
 
   const d = Math.max(widthEm(line1, 0), widthEm(line2, 0));

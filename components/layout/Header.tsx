@@ -19,7 +19,16 @@ import { Logo } from "./Logo";
  * (html[data-menu-open] in CSS) and the header is lifted above everything. Following a link unlocks
  * scroll first, so the next page can open at the top (see ScrollManager).
  */
-export function Header({ path: pathProp, sticky = true }: { path?: string; sticky?: boolean }) {
+export function Header({
+  path: pathProp,
+  sticky = true,
+  whatsapp,
+}: {
+  path?: string;
+  sticky?: boolean;
+  /** Business chat number from Site settings. */
+  whatsapp: string;
+}) {
   const pathname = usePathname();
   const path = pathProp ?? pathname;
   const [open, setOpen] = useState(false);
@@ -53,7 +62,7 @@ export function Header({ path: pathProp, sticky = true }: { path?: string; stick
     setOpen(false);
   };
 
-  const wa = pageWhatsappLink(pageNameFor(path));
+  const wa = pageWhatsappLink(pageNameFor(path), whatsapp);
 
   return (
     <header

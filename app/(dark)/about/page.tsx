@@ -62,7 +62,7 @@ const STEPS: Step[] = [
 /** About (guide §6.7): founder story, photo, team, how we work, licence, clients, CTA. */
 export default async function AboutPage() {
   const [site, clients] = await Promise.all([getSiteSettings(), getClients()]);
-  const whatsapp = pageWhatsappLink("About");
+  const whatsapp = pageWhatsappLink("About", site.whatsapp.number);
 
   return (
     <>

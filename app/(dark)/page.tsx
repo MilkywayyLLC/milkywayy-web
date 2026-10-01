@@ -109,7 +109,7 @@ export default async function HomePage() {
 
   const shootsFrom = lowestShootPrice(property);
   const photoRate = other.postProduction.rates.find((r) => r.key === "photo");
-  const whatsapp = pageWhatsappLink("Home");
+  const whatsapp = pageWhatsappLink("Home", site.whatsapp.number);
   const showreelIsSample = !site.showreel.video;
 
   return (

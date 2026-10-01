@@ -11,7 +11,9 @@ export function MobileActionBar({
   label,
   href,
   inline,
+  whatsapp,
 }: {
+  whatsapp: string;
   pageName: string;
   label: string;
   href: string;
@@ -21,7 +23,7 @@ export function MobileActionBar({
     <div className={inline ? "mbar-inline" : "mbar"}>
       <a
         className="icon-btn"
-        href={pageWhatsappLink(pageName)}
+        href={pageWhatsappLink(pageName, whatsapp)}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="WhatsApp us"

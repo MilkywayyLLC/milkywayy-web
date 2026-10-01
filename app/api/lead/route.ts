@@ -14,6 +14,7 @@ import { addDays, dubaiToday, weekday } from "@/lib/booking/dates";
 import { getPropertyPricing, getSiteSettings } from "@/lib/data";
 import { e2eKey } from "@/lib/leads/e2e";
 import { notifyLead } from "@/lib/leads/notify";
+import { alert } from "@/lib/monitoring/alert";
 import { sendCapi, trackingMode, type CapiResult } from "@/lib/tracking/capi";
 import { DEFAULT_COUNTRY, toE164 } from "@/lib/phone";
 import { COUNTRIES } from "@/lib/phone/countries";
@@ -183,6 +184,14 @@ export async function POST(req: NextRequest) {
     saved = await leadStore().save(lead, ipHash, isTest ? 1000 : undefined);
   } catch (err) {
     console.error("[lead] save failed", err);
+    after(() =>
+      alert({
+        kind: "lead not saved",
+        message: err instanceof Error ? err.message : String(err),
+        where: `/api/lead (${r.type} from ${r.page})`,
+        detail: "The visitor saw an error and was offered WhatsApp/email instead.",
+      }),
+    );
     return json({ error: "We couldn't save that just now." }, 503);
   }
   if ("rateLimited" in saved)

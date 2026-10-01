@@ -9,6 +9,7 @@ import { adminOrThrow } from "./auth";
 import { getRow, liveDoc, livePricing } from "./data";
 import { docByKey, docFields, PRICING_OTHER_KEYS } from "./docs";
 import { diff, getPath, setPath, type Change } from "./fields";
+import { chatNumberProblem } from "@/lib/whatsapp";
 import { checkPricing, pricingChanges, pricingRows } from "./pricing";
 import { sectionByKey, type Row } from "./sections";
 import { validate, type Errors } from "./validate";
@@ -269,6 +270,11 @@ async function prepareDoc(db: SupabaseClient, key: string, input: unknown, isOwn
     live,
   );
   const { value, errors } = validate(fields, merged, { emptyAs: undefined, isOwner });
+  if (doc.key === "site") {
+    // The chat number on every WhatsApp button; never the Twilio notifications number.
+    const problem = chatNumberProblem(String(getPath(value, "whatsapp.number") ?? ""));
+    if (problem) errors["whatsapp.number"] = problem;
+  }
   return { doc, live, value, errors, changes: diff(fields, live, value) };
 }
 

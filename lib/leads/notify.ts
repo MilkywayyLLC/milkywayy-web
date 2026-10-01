@@ -1,3 +1,4 @@
+import { getSiteSettings } from "@/lib/data";
 import type { Lead } from "./store";
 
 /**
@@ -80,6 +81,7 @@ async function resend(body: Record<string, unknown>) {
 
 export async function notifyLead(l: Lead, ref: string, origin: string) {
   if (isTestLead(l)) return;
+  const site = await getSiteSettings();
   const adminUrl = `${origin}/admin/leads/${ref}`;
   const text = summary(l, ref, adminUrl);
   const jobs: Promise<unknown>[] = [];
@@ -110,7 +112,7 @@ export async function notifyLead(l: Lead, ref: string, origin: string) {
             "",
             `Thanks for getting in touch with Milkywayy. We've received your request (Ref ${ref}) and will reply to this email shortly.`,
             "",
-            "If it's urgent, WhatsApp us on +971 50 726 3306 and quote the ref.",
+            `If it's urgent, WhatsApp us on ${site.whatsapp.display} and quote the ref.`,
             "",
             "Milkywayy",
             "milkywayy.com",

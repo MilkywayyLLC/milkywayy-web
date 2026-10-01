@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from "react";
 import { Field, Option, OptionGroup } from "@/components/ui/Field";
-import { env } from "@/lib/env";
 import { readForm } from "@/lib/leads/client";
 import { whatsappLink } from "@/lib/whatsapp";
 import { FormDone, FormError } from "./FormDone";
@@ -30,14 +29,15 @@ export function LeadForm({
   showServices,
   briefLabel = "What do you need?",
   briefPlaceholder,
-  whatsappNumber = env.whatsappNumber,
+  whatsappNumber,
   email = "hello@milkywayy.com",
 }: {
   service?: LeadService;
   showServices?: boolean;
   briefLabel?: string;
   briefPlaceholder?: string;
-  whatsappNumber?: string;
+  /** Business chat number from Site settings. */
+  whatsappNumber: string;
   email?: string;
 }) {
   const { errors, status, send, onInput } = useLeadForm(

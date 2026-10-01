@@ -15,12 +15,12 @@ export async function SiteShell({ tone, children }: { tone: Tone; children: Reac
   const site = await getSiteSettings();
   return (
     <div data-tone={tone} className="tone-root">
-      <Header />
+      <Header whatsapp={site.whatsapp.number} />
       <main id="main" tabIndex={-1}>
         {children}
       </main>
       <Footer site={site} />
-      <PageMobileBar />
+      <PageMobileBar whatsapp={site.whatsapp.number} />
       <JsonLd data={businessLd(site)} />
     </div>
   );

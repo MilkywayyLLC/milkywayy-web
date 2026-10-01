@@ -14,11 +14,10 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     baseURL: BASE_URL ?? `http://localhost:${PORT}`,
-    channel: "chrome",
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "logic", testMatch: /.*\.logic\.spec\.ts/ },
+    { name: "logic", testMatch: /.*\.logic\.spec\.ts/, use: { channel: "chrome" } },
     {
       name: "desktop",
       testMatch: /.*\.e2e\.spec\.ts/,
@@ -30,6 +29,13 @@ export default defineConfig({
       testMatch: /.*\.e2e\.spec\.ts/,
       grep: /@mobile/,
       use: { ...devices["Pixel 7"], channel: "chrome" },
+    },
+    // Safari on iPhone (WebKit). Run on its own: npm run test:ios (needs `npx playwright install webkit`).
+    {
+      name: "ios-safari",
+      testMatch: /.*\.e2e\.spec\.ts/,
+      grep: /@mobile/,
+      use: { ...devices["iPhone 14"] },
     },
     // Admin: runs after the public tests (it publishes and deletes test content on the shared
     // database), signs in once, then edits as the e2e Owner / Editor / non-admin accounts.

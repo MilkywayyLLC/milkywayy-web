@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 /** Contact (guide §6.6, mockup): one section, title and direct details beside the form. */
 export default async function ContactPage() {
   const site = await getSiteSettings();
-  const whatsapp = pageWhatsappLink("Contact");
+  const whatsapp = pageWhatsappLink("Contact", site.whatsapp.number);
   return (
     <section className="sec" id="contact-form" aria-labelledby="contact-title">
       <PageLd page="contact" />

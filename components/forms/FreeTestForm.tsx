@@ -23,11 +23,12 @@ const STEP1 = ["what", "volume", "now"];
  */
 export function FreeTestForm({
   initialStep = 1,
-  whatsappNumber = env.whatsappNumber,
+  whatsappNumber,
   email = "hello@milkywayy.com",
 }: {
   initialStep?: 1 | 2 | 3;
-  whatsappNumber?: string;
+  /** Business chat number from Site settings. */
+  whatsappNumber: string;
   email?: string;
 }) {
   const [step, setStep] = useState<1 | 2 | 3>(initialStep);
