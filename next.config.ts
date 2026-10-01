@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const indexable = process.env.NEXT_PUBLIC_SITE_ENV === "production";
 
 const nextConfig: NextConfig = {
+  // Only the fallback test sets this, to run a second server on its own copy of the build.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   images: {
     formats: ["image/avif", "image/webp"],
   },

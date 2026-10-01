@@ -129,8 +129,7 @@ export function propertyPricing(
   sizeRows: Row[],
   tierRows: Row[],
   twilightRows: Row[],
-  meta: Row | undefined,
-  seed: PropertyPricing,
+  meta: Row,
 ): PropertyPricing {
   const sizes = (type: "apartment" | "villa"): ResidentialSize[] => {
     const byIndex = new Map<number, ResidentialSize>();
@@ -176,27 +175,21 @@ export function propertyPricing(
   return {
     currency: "AED",
     apartment: {
-      label: meta?.apartment?.label ?? seed.apartment.label,
-      defaultSize: Math.min(
-        meta?.apartment?.defaultSize ?? seed.apartment.defaultSize,
-        apartment.length - 1,
-      ),
+      label: meta.apartment.label,
+      defaultSize: Math.min(meta.apartment.defaultSize, apartment.length - 1),
       sizes: apartment,
     },
     villa: {
-      label: meta?.villa?.label ?? seed.villa.label,
-      defaultSize: Math.min(meta?.villa?.defaultSize ?? seed.villa.defaultSize, villa.length - 1),
+      label: meta.villa.label,
+      defaultSize: Math.min(meta.villa.defaultSize, villa.length - 1),
       sizes: villa,
     },
     commercial: {
-      label: meta?.commercial?.label ?? seed.commercial.label,
-      defaultTier: Math.min(
-        meta?.commercial?.defaultTier ?? seed.commercial.defaultTier,
-        tiers.length - 1,
-      ),
+      label: meta.commercial.label,
+      defaultTier: Math.min(meta.commercial.defaultTier, tiers.length - 1),
       tiers,
     },
     twilight: { standard: twilight("standard"), villa: twilight("villa") },
-    delivery: { ...seed.delivery, ...meta?.delivery },
+    delivery: meta.delivery,
   };
 }

@@ -2,9 +2,13 @@
  * The only way pages and components get editable content (guide §0, §18).
  *
  * Each getter reads Supabase through `unstable_cache` with a tag (lib/data/tags.ts). Saving in the
- * admin calls revalidateTag for the affected tags, so the next page load shows the change; no
- * redeploy. If Supabase isn't configured or a read fails, the seed in content/ is served instead,
- * so the site never breaks (guide §18.3). Cached results also refresh hourly as a safety net.
+ * admin marks those tags stale (lib/data/refresh.ts) and re-renders the affected pages, so the change
+ * is live in seconds with no redeploy. Cached results also refresh hourly as a safety net.
+ *
+ * When a read fails, the loader logs it and throws. Because tags are marked stale (never expired),
+ * Next.js then keeps serving the last version that loaded successfully and retries on the next
+ * request (tests/fallback.e2e.spec.ts proves this). The seed in content/ is only used when no
+ * database is configured at all (local development without .env.local). Never on an error.
  */
 import { unstable_cache } from "next/cache";
 import { avatarHero as seedAvatarHero, avatars as seedAvatars } from "@/content/avatars";
@@ -41,16 +45,19 @@ import * as map from "./rows";
 
 const HOUR = 3600;
 
-/** Cached read with a seed fallback. */
-function source<T>(key: string, tags: Tag[], load: () => Promise<T | null>, seed: () => T) {
+/** Cached read. Seed only without a database; errors propagate so the last good version stays. */
+function source<T>(key: string, tags: Tag[], load: () => Promise<T>, seed: () => T) {
   return unstable_cache(
     async (): Promise<T> => {
       if (!publicDb()) return seed();
       try {
-        return (await load()) ?? seed();
+        return await load();
       } catch (err) {
-        console.warn(`[data] ${key}: falling back to seed content`, err);
-        return seed();
+        console.error(
+          `[data] ${key}: database read failed; still serving the last version that loaded`,
+          err,
+        );
+        throw err;
       }
     },
     ["data", key],
@@ -64,8 +71,15 @@ const live = <T extends Publishable>(rows: T[]) =>
 /** Select all rows of a table (RLS already limits anon reads to published rows). */
 async function rows(table: string, order = "sort_order") {
   const { data, error } = await publicDb()!.from(table).select("*").order(order);
-  if (error) throw error;
+  if (error) throw new Error(`${table}: ${error.message}`);
   return data ?? [];
+}
+
+/** A required key/value row. Missing means the database is broken, not "use the seed". */
+function required<T>(table: string, all: { key: string; value: unknown }[], key: string): T {
+  const row = all.find((r) => r.key === key);
+  if (!row) throw new Error(`${table}: missing "${key}"`);
+  return row.value as T;
 }
 
 /* ---------- loaders ---------- */
@@ -78,15 +92,10 @@ const loadSite = source<SiteSettings>(
       rows("site_settings", "key"),
       rows("proof_strip_pages", "page"),
     ]);
-    const site = settings.find((r) => r.key === "site")?.value as Partial<SiteSettings> | undefined;
-    if (!site && !proof.length) return null;
+    const site = required<SiteSettings>("site_settings", settings, "site");
     return {
-      ...seedSite,
       ...site,
-      booking: { ...seedSite.booking, ...site?.booking },
-      proofStripPages: proof.length
-        ? (proof.filter((p) => p.enabled).map((p) => p.page) as PageKey[])
-        : (site?.proofStripPages ?? seedSite.proofStripPages),
+      proofStripPages: proof.filter((p) => p.enabled).map((p) => p.page) as PageKey[],
     };
   },
   () => seedSite,
@@ -96,9 +105,7 @@ const loadAvatarHero = source<AvatarHero>(
   "avatar-hero",
   [TAGS.avatars],
   async () => {
-    const settings = await rows("site_settings", "key");
-    const v = settings.find((r) => r.key === "avatar_hero")?.value as AvatarHero | undefined;
-    return v ? { ...seedAvatarHero, ...v } : null;
+    return required<AvatarHero>("site_settings", await rows("site_settings", "key"), "avatar_hero");
   },
   () => seedAvatarHero,
 );
@@ -170,9 +177,10 @@ const loadPropertyPricing = source<PropertyPricing>(
       rows("pricing_twilight", "qty"),
       rows("pricing_other", "key"),
     ]);
-    if (!sizes.length || !tiers.length || !twilight.length) return null;
-    const meta = other.find((r) => r.key === "property_meta")?.value;
-    return map.propertyPricing(sizes, tiers, twilight, meta, seedProperty);
+    if (!sizes.length || !tiers.length || !twilight.length)
+      throw new Error("pricing: property, commercial or twilight table is empty");
+    const meta = required<Record<string, unknown>>("pricing_other", other, "property_meta");
+    return map.propertyPricing(sizes, tiers, twilight, meta);
   },
   () => seedProperty,
 );
@@ -182,12 +190,10 @@ const loadOtherPricing = source<OtherPricing>(
   [TAGS.pricing],
   async () => {
     const other = await rows("pricing_other", "key");
-    const get = (k: string) => other.find((r) => r.key === k)?.value;
-    if (!other.length) return null;
     return {
-      production: get("production") ?? seedOther.production,
-      postProduction: get("post_production") ?? seedOther.postProduction,
-      aiAvatars: get("ai_avatars") ?? seedOther.aiAvatars,
+      production: required<OtherPricing["production"]>("pricing_other", other, "production"),
+      postProduction: required<OtherPricing["postProduction"]>("pricing_other", other, "post_production"),
+      aiAvatars: required<OtherPricing["aiAvatars"]>("pricing_other", other, "ai_avatars"),
     };
   },
   () => seedOther,

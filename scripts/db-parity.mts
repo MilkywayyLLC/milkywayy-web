@@ -78,7 +78,6 @@ check(
     await rows("pricing_commercial_tiers", "*", "tier_index"),
     await rows("pricing_twilight", "*", "qty"),
     other.find((r) => r.key === "property_meta")?.value,
-    propertyPricing,
   ),
   propertyPricing,
 );
