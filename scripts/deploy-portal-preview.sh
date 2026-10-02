@@ -9,10 +9,12 @@ get() { grep -E "^$1=" .env.local | head -1 | cut -d= -f2-; }
 URL=$(get NEXT_PUBLIC_PORTAL_SUPABASE_URL)
 KEY=$(get NEXT_PUBLIC_PORTAL_SUPABASE_ANON_KEY)
 ADMIN=$(get PORTAL_ADMIN_SECRET)
-[ -n "$URL" ] && [ -n "$KEY" ] && [ -n "$ADMIN" ] || { echo "Portal values missing from .env.local" >&2; exit 1; }
+HOOK=$(get PORTAL_HOOK_SECRET)
+[ -n "$URL" ] && [ -n "$KEY" ] && [ -n "$ADMIN" ] && [ -n "$HOOK" ] || { echo "Portal values missing from .env.local" >&2; exit 1; }
 exec npx vercel deploy --yes \
   --build-env NEXT_PUBLIC_PORTAL_SUPABASE_URL="$URL" \
   --build-env NEXT_PUBLIC_PORTAL_SUPABASE_ANON_KEY="$KEY" \
   --env NEXT_PUBLIC_PORTAL_SUPABASE_URL="$URL" \
   --env NEXT_PUBLIC_PORTAL_SUPABASE_ANON_KEY="$KEY" \
-  --env PORTAL_ADMIN_SECRET="$ADMIN"
+  --env PORTAL_ADMIN_SECRET="$ADMIN" \
+  --env PORTAL_HOOK_SECRET="$HOOK"

@@ -17,7 +17,7 @@ Things to do or undo when the portal moves from the `portal` branch and the dev 
 ## Supabase, production project (`milkywayy-web`)
 - [ ] Apply the portal migrations in order: `20261002200000_portal_accounts.sql`, `20261003090000_portal_phone_claims.sql`, `20261004090000_portal_shell_admin.sql` (and any later ones). **Never** apply `supabase/dev/*`.
 - [ ] Admin Client accounts: a new `PORTAL_ADMIN_SECRET` in Vercel (Production, Sensitive) and its SHA-256 in `private.app_secrets` under `portal_admin`. (Once admin and clients share one project, these gated functions could become plain RLS for the Owner; not required.)
-- [ ] Phone provider: Twilio Verify with the same Account SID, Auth Token and Verify Service SID.
+- [ ] Phone provider: Twilio Verify with the same Account SID, Auth Token and Verify Service SID, **plus** the English sign-in codes: deploy Edge Functions `send-sms` and `otp-feedback` (from `supabase/functions/`, JWT checks off), add their secrets (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`, `PORTAL_HOOK_SECRET`, `SEND_SMS_HOOK_SECRET`), turn on the Send SMS hook, apply `20261005090000_portal_otp_english.sql`, and add `PORTAL_HOOK_SECRET` to Vercel Production.
 - [ ] **No test phone numbers** in production (the dev project has `971500000001=123456`).
 - [ ] Raise "Rate limit for sending SMS messages" from 30/hour to what real sign-ins need.
 - [ ] Decide on a CAPTCHA for the code request (Cloudflare Turnstile is free; it's a new service, so owner's call). Until then the SMS rate limit, Twilio Fraud Guard and geo permissions are the protection against SMS fraud.

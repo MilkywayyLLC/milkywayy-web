@@ -1,10 +1,11 @@
 "use server";
 
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { DEFAULT_COUNTRY, toE164 } from "@/lib/phone";
 import { COUNTRIES } from "@/lib/phone/countries";
 import { safeNext } from "./auth";
-import { portalDb } from "./supabase";
+import { portalDb, portalKey, portalUrl } from "./supabase";
 import { syncAfterSignIn } from "./sync";
 
 /**
@@ -50,6 +51,42 @@ function sendError(e: { code?: string; message: string }, channel: Channel): str
   return "Something went wrong on our side. Try again in a minute.";
 }
 
+/**
+ * Codes go out through Supabase's Send SMS hook (supabase/functions/send-sms), which sends them
+ * in English via Twilio Verify. The hook isn't told WhatsApp or SMS, so record the choice first.
+ * Without PORTAL_HOOK_SECRET (or if this fails) the hook defaults to WhatsApp.
+ */
+async function recordChannel(phone: string, channel: Channel) {
+  if (!process.env.PORTAL_HOOK_SECRET) return;
+  const r = await fetch(`${portalUrl}/rest/v1/rpc/portal_otp_intent`, {
+    method: "POST",
+    headers: { apikey: portalKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      p_secret: process.env.PORTAL_HOOK_SECRET,
+      p_phone: phone,
+      p_channel: channel,
+    }),
+  }).catch((e: Error) => e);
+  if (r instanceof Error || !r.ok)
+    console.error(
+      "[portal] couldn't record the code channel",
+      r instanceof Error ? r.message : r.status,
+    );
+}
+
+/** Tells Twilio the code was used (required for Verify custom codes); never blocks sign-in. */
+async function reportCodeUsed(phone: string) {
+  if (!process.env.PORTAL_HOOK_SECRET) return;
+  await fetch(`${portalUrl}/functions/v1/otp-feedback`, {
+    method: "POST",
+    headers: {
+      "x-portal-hook-secret": process.env.PORTAL_HOOK_SECRET,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ phone }),
+  }).catch((e: Error) => console.error("[portal] otp feedback failed", e.message));
+}
+
 export async function sendPhoneCode(prev: PhoneState, form: FormData): Promise<PhoneState> {
   const db = await portalDb();
   const at = Date.now();
@@ -63,6 +100,7 @@ export async function sendPhoneCode(prev: PhoneState, form: FormData): Promise<P
   }
   if (!phone)
     return { step: "phone", error: "Enter your WhatsApp number, with the right country code.", at };
+  await recordChannel(phone, channel);
   const { error } = await db.auth.signInWithOtp({ phone, options: { channel } });
   if (error)
     return {
@@ -109,6 +147,7 @@ export async function verifyPhoneCode(_: PhoneState, form: FormData): Promise<Ph
       at,
     };
   }
+  after(() => reportCodeUsed(phone));
   const claimed = await syncAfterSignIn(db);
   const next = safeNext(form.get("next"));
   redirect(claimed ? `${next}${next.includes("?") ? "&" : "?"}claimed=${claimed}` : next);
