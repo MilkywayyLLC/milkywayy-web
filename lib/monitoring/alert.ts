@@ -21,7 +21,8 @@ async function sha256(s: string) {
 const enabled = () =>
   process.env.NEXT_PUBLIC_SITE_ENV === "production" || process.env.ALERTS === "on";
 
-async function firstTime(fingerprint: string, minutes = 60) {
+/** True the first time `fingerprint` is seen within `minutes` (record_alert); true if unsure. */
+export async function firstTime(fingerprint: string, minutes = 60) {
   const db = publicDb();
   if (!db || !process.env.LEAD_SECRET) return true;
   const { data, error } = await db.rpc("record_alert", {

@@ -65,6 +65,9 @@ authenticator app on first sign-in.
 - **WhatsApp numbers:** every WhatsApp button uses **+971 50 726 3306** from Site settings. The
   Twilio number **+971 50 830 5678** is for notifications only; the admin refuses it as the chat
   number and a test checks every page.
+- **Messages to +971 50 830 5678:** the sender gets one automatic reply a day pointing to the chat
+  number, and every message is emailed to you ("WhatsApp to the updates number from …") with a
+  link to reply from your phone.
 
 ## 4. Where every account and key lives (names only)
 
@@ -80,14 +83,14 @@ authenticator app on first sign-in.
 | **Cloudflare** | DNS for milkywayy.com | Akash | — |
 | **Cal.com** | 15-minute call booking (pending) | to create | `NEXT_PUBLIC_CAL_LINK` |
 | **UptimeRobot** | Uptime checks | to create (`LAUNCH.md`) | — |
-| **Twilio** | WhatsApp API for notifications (portal, later) | Akash | not used by the website |
+| **Twilio** | WhatsApp notifications number: auto-reply + forwarding (and portal sign-in codes, later) | Akash | `TWILIO_AUTH_TOKEN` in Vercel |
 
 **Environment variables** (Vercel → Settings → Environment Variables; a copy for development lives
 in Claude Code's `.env.local`, never committed):
 
 - **Public settings:** `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SITE_ENV` (`staging` = noindex lock, `production` = live), `NEXT_PUBLIC_CLIENT_LOGIN_URL`, `NEXT_PUBLIC_CAL_LINK`, `NEXT_PUBLIC_TRACKING` (`on`/`test`/`off`), `NEXT_PUBLIC_META_PIXEL_ID`, `NEXT_PUBLIC_GA4_ID`, `NEXT_PUBLIC_CLARITY_ID`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the public key).
-- **Secrets** (marked Sensitive in Vercel): `LEAD_SECRET` (saving leads, alert de-duplication), `REPORT_SECRET` (weekly leads read), `CRON_SECRET` (Vercel Cron, test alert), `REVALIDATE_SECRET` (outside refresh calls), `RESEND_API_KEY`, `META_CAPI_TOKEN`.
-- **Email:** `LEAD_EMAIL_TO`, `LEAD_EMAIL_FROM`, `ALERT_EMAIL_TO`.
+- **Secrets** (marked Sensitive in Vercel): `LEAD_SECRET` (saving leads, alert de-duplication), `REPORT_SECRET` (weekly leads read), `CRON_SECRET` (Vercel Cron, test alert), `REVALIDATE_SECRET` (outside refresh calls), `RESEND_API_KEY`, `META_CAPI_TOKEN`, `TWILIO_AUTH_TOKEN` (checks WhatsApp webhooks come from Twilio).
+- **Email:** `LEAD_EMAIL_TO`, `LEAD_EMAIL_FROM`, `ALERT_EMAIL_TO`, `WHATSAPP_FORWARD_TO` (optional; messages to the notifications number, default `LEAD_EMAIL_TO`).
 - **Behaviour:** `LEAD_STORE` (`supabase`), `LEAD_RATE_LIMIT`, `ALERTS`, `META_TEST_EVENT_CODE`.
 
 No service-role (master) key is used anywhere.
@@ -117,11 +120,6 @@ See `CLIENT_PORTAL_GUIDE.md`. Already in place for it: leads with E.164 phones a
 emails, server-issued unique refs, and one structured row per booked property
 (`booking_properties`).
 
-**Planned for Phase 10:** an automatic reply on the Twilio notifications number
-(+971 50 830 5678). Anyone who messages it gets one short reply pointing them to the chat
-number:
-
-> This number only sends updates. Chat with us on WhatsApp: wa.me/971507263306
-
-It's a Twilio incoming-message webhook to a small route on the site, rate-limited to one reply
-per sender per day.
+**Done (3 Oct 2026):** the automatic reply and email forwarding on the notifications number
+(see §3). Twilio's incoming-message webhook for Messaging Service "whatsapp_notifications_service"
+points at `/api/whatsapp/inbound`; it needs `TWILIO_AUTH_TOKEN` in Vercel.
