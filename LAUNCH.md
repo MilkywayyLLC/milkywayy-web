@@ -59,6 +59,7 @@ The alternatives:
 | B11 | **Search Console.** Add a Domain property for `milkywayy.com` (verify with the TXT record it gives you, in Cloudflare). Then Sitemaps → submit `https://milkywayy.com/sitemap.xml`, and URL inspection → request indexing for `/`. Optionally import into Bing Webmaster Tools. | Akash |
 | B12 | **Meta domain verification.** Business settings → Brand safety → Domains → add `milkywayy.com`, verify with its DNS TXT record. | Akash |
 | B13 | **Supabase Auth URLs.** Authentication → URL Configuration → Site URL `https://milkywayy.com`. | Akash |
+| B13a | **WhatsApp webhook.** Twilio → Messaging → Services → whatsapp_notifications_service → Integration → Incoming messages → Request URL `https://milkywayy.com/api/whatsapp/inbound` (POST). Then message +971 50 830 5678 from another phone: the auto-reply arrives and the message is emailed to you. | Akash, Claude checks |
 | B14 | **Test alert.** Claude sends one (`/api/health?test-alert=1` with the cron secret) to confirm alerts reach you from production. | Claude |
 
 ## C. The week after
