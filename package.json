@@ -17,7 +17,7 @@
     "db:parity": "node --env-file=.env.local scripts/db-parity.mts",
     "test:ios": "playwright test --project=ios-safari",
     "test:portal": "playwright test --project=portal",
-    "deploy:portal-preview": "vercel deploy --yes --build-env NEXT_PUBLIC_PORTAL_SUPABASE_URL=https://kebewumaxywroewopssd.supabase.co --build-env NEXT_PUBLIC_PORTAL_SUPABASE_ANON_KEY=sb_publishable_U0TEYktqUBHkWAKTS2AowQ_Y_Dh8C4J"
+    "deploy:portal-preview": "npx vercel deploy --yes --build-env NEXT_PUBLIC_PORTAL_SUPABASE_URL=https://kebewumaxywroewopssd.supabase.co --build-env NEXT_PUBLIC_PORTAL_SUPABASE_ANON_KEY=sb_publishable_U0TEYktqUBHkWAKTS2AowQ_Y_Dh8C4J"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
