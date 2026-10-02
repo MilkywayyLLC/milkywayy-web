@@ -8,6 +8,12 @@ Things to do or undo when the portal moves from the `portal` branch and the dev 
 - [ ] Top up the balance and turn on auto-recharge. A zero balance stops sign-in codes **and** today's notifications.
 - [ ] Optional: delete the empty duplicate Messaging Service also named "whatsapp_notifications_service" (`MG594f0b…`). The live one is `MG364b…`.
 
+## Cloudflare R2 (Akash, then Claude checks)
+- [ ] Production files: bucket `milkywayy-deliverables` (exists) with **its own API token** (Object Read & Write, that bucket only). The preview token covers `milkywayy-portal-dev` only (checked 3 Oct 2026: it gets 403 on `milkywayy-deliverables`); keep it that way.
+- [ ] In Vercel → Production: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (Secret) for that token, and `R2_BUCKET=milkywayy-deliverables`. The four `R2_` variables in Preview stay on `milkywayy-portal-dev`.
+- [ ] Same CORS rules on `milkywayy-deliverables` as on the dev bucket; Public Development URL stays disabled (downloads use short-lived signed links).
+- [ ] Optional: empty and delete `milkywayy-portal-dev` once the dev Supabase project is retired.
+
 ## Supabase, production project (`milkywayy-web`)
 - [ ] Apply the portal migrations in order: `20261002200000_portal_accounts.sql`, `20261003090000_portal_phone_claims.sql`, `20261004090000_portal_shell_admin.sql` (and any later ones). **Never** apply `supabase/dev/*`.
 - [ ] Admin Client accounts: a new `PORTAL_ADMIN_SECRET` in Vercel (Production, Sensitive) and its SHA-256 in `private.app_secrets` under `portal_admin`. (Once admin and clients share one project, these gated functions could become plain RLS for the Owner; not required.)
