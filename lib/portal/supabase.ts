@@ -30,3 +30,21 @@ export async function portalDb(): Promise<SupabaseClient | null> {
     },
   });
 }
+
+/**
+ * Whether the portal's project has phone sign-in switched on (a phone provider set up in
+ * Supabase). The login page hides WhatsApp when it isn't, e.g. on a project without Twilio.
+ */
+export async function phoneSignInEnabled(): Promise<boolean> {
+  if (!portalUrl || !portalKey) return false;
+  try {
+    const r = await fetch(`${portalUrl}/auth/v1/settings`, {
+      headers: { apikey: portalKey },
+      next: { revalidate: 300 },
+    });
+    if (!r.ok) return false;
+    return Boolean(((await r.json()) as { external?: { phone?: boolean } }).external?.phone);
+  } catch {
+    return false;
+  }
+}

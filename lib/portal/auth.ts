@@ -72,3 +72,12 @@ export function safeNext(next: unknown, fallback = "/portal") {
   const s = typeof next === "string" ? next : "";
   return /^\/portal(\/[\w\-./?=&%]*)?$/.test(s) && !s.startsWith("//") ? s : fallback;
 }
+
+/** How we refer to the signed-in person: their email, else their number (+971 50 123 4567). */
+export function contactOf(user: User) {
+  if (user.email) return user.email;
+  const p = user.phone ? `+${user.phone}` : "";
+  return p.startsWith("+971") && p.length === 13
+    ? `+971 ${p.slice(4, 6)} ${p.slice(6, 9)} ${p.slice(9)}`
+    : p;
+}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireAccount } from "@/lib/portal/auth";
+import { contactOf, requireAccount } from "@/lib/portal/auth";
 import { signOut } from "@/lib/portal/actions";
 import { industryLabel, serviceLabel } from "@/lib/portal/options";
 
@@ -78,7 +78,7 @@ export default async function PortalHome({
       <main className="pt-content" id="main" style={{ paddingBottom: 48 }}>
         <div className="pt-head">
           <div>
-            <span className="pt-eb">{user.email}</span>
+            <span className="pt-eb">{contactOf(user)}</span>
             <h1 className="pt-h1">Home</h1>
           </div>
           {a.services_interest.includes("shoots") || a.services_interest.length === 0 ? (
@@ -129,7 +129,7 @@ export default async function PortalHome({
             <div className="pt-card">
               <span>No bookings yet.</span>
               <span className="pt-meta">
-                Bookings you make on the website with {user.email} appear here automatically.
+                Bookings you make on the website with {contactOf(user)} appear here automatically.
               </span>
             </div>
           ) : (

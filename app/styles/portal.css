@@ -1223,3 +1223,14 @@
     outline-offset: 2px;
   }
 }
+
+@layer components {
+  /* One field for the 6-digit code: works with iOS/Android code autofill and WhatsApp's Copy code. */
+  .pt input.pt-code {
+    font: 600 26px/1 var(--font-mono);
+    letter-spacing: 0.5em;
+    text-align: center;
+    padding: 12px 0 12px 0.5em;
+    min-height: 58px;
+  }
+}

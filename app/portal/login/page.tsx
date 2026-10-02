@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LoginForm } from "@/components/portal/LoginForm";
+import { SignInMethods } from "@/components/portal/SignInMethods";
 import { getPortal, safeNext } from "@/lib/portal/auth";
+import { phoneSignInEnabled } from "@/lib/portal/supabase";
 
 export const metadata = { title: "Sign in" };
 
@@ -41,7 +42,12 @@ export default async function Login({
             {notice}
           </p>
         )}
-        <LoginForm next={next} startOn={q.mode === "signup" ? "signup" : "signin"} />
+        <SignInMethods
+          next={next}
+          phone={await phoneSignInEnabled()}
+          startOn={q.method === "email" || q.mode === "signup" ? "email" : "whatsapp"}
+          emailMode={q.mode === "signup" ? "signup" : "signin"}
+        />
       </div>
     </main>
   );

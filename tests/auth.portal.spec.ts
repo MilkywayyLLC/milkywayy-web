@@ -12,7 +12,14 @@ test.afterAll(async () => {
   await cleanup(RUN);
 });
 
+/** WhatsApp is the default tab when phone sign-in is on; these tests use email. */
+async function pickEmail(page: import("@playwright/test").Page) {
+  const tab = page.getByRole("button", { name: "Email", exact: true });
+  if (await tab.isVisible()) await tab.click();
+}
+
 async function signIn(page: import("@playwright/test").Page, email: string, password = PASSWORD) {
+  await pickEmail(page);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -107,6 +114,7 @@ test("create account: checks the form, then hands over to Supabase", async ({ pa
 
 test("forgot password never reveals whether an account exists", async ({ page }) => {
   await page.goto("/portal/login");
+  await pickEmail(page);
   await page.getByLabel("Email").fill(`${RUN}-nobody@example.com`);
   await page.getByRole("button", { name: "Forgot password?" }).click();
   await expect(page.getByRole("status")).toContainText("If e2e-portal-");
@@ -124,7 +132,10 @@ test.describe("phone", () => {
     await page.goto("/portal/login");
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
-    const box = await page.getByRole("button", { name: "Sign in", exact: true }).boundingBox();
+    const box = await page
+      .getByRole("button", { name: /Send code on WhatsApp|Sign in/ })
+      .first()
+      .boundingBox();
     expect(box!.height).toBeGreaterThanOrEqual(44);
   });
 });

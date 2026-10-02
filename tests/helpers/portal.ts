@@ -65,3 +65,13 @@ export async function signedIn(email: string) {
   if (error) throw new Error(`${email}: ${error.message}`);
   return db;
 }
+
+/** Supabase test number (Authentication → Phone → Test Phone Numbers): code 123456, never sent. */
+export const TEST_PHONE = "+971500000001";
+export const TEST_CODE = "123456";
+
+export const addPhoneBooking = (phone = TEST_PHONE) =>
+  must<string>(portalClient().rpc("e2e_add_phone_booking", { p_secret: secret(), p_phone: phone }));
+
+export const cleanupPhone = (phone = TEST_PHONE) =>
+  must(portalClient().rpc("e2e_cleanup_phone", { p_secret: secret(), p_phone: phone }));

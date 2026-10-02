@@ -93,3 +93,49 @@ revoke all on function public.e2e_create_user(text, text, text, boolean), public
   public.e2e_add_booking(text, text, text), public.e2e_cleanup(text, text) from public, authenticated;
 grant execute on function public.e2e_create_user(text, text, text, boolean), public.e2e_confirm_email(text, text),
   public.e2e_add_booking(text, text, text), public.e2e_cleanup(text, text) to anon;
+
+-- ---------- phone sign-in (step 3) ----------
+-- Only Supabase's test numbers (Authentication → Phone → Test Phone Numbers and OTPs), which
+-- never reach Twilio: +971 50 000 000x.
+create or replace function private.e2e_phone_gate(p_secret text, p_phone text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  perform private.e2e_gate(p_secret, null);
+  if p_phone !~ '^\+97150000000[0-9]$' then
+    raise exception 'test numbers only' using errcode = '42501';
+  end if;
+end $$;
+revoke all on function private.e2e_phone_gate(text, text) from public, anon, authenticated;
+
+-- A website booking made with this phone number (no email). Returns its ref.
+create or replace function public.e2e_add_phone_booking(p_secret text, p_phone text) returns text
+language plpgsql security definer set search_path = '' as $$
+declare v_id uuid; v_ref text := 'MW-' || nextval('public.lead_ref_seq');
+begin
+  perform private.e2e_phone_gate(p_secret, p_phone);
+  insert into public.leads (ref, type, name, phone, data)
+    values (v_ref, 'property', 'E2E portal phone', p_phone, '{"test": true}') returning id into v_id;
+  insert into public.booking_properties (lead_id, line_no, property_type, size_index, size_label,
+    services, area, building, unit, shoot_date, slot, subtotal)
+  values (v_id, 1, 'villa', 3, '4 Bed', array['photo'], 'Arabian Ranches', 'Savannah', '17',
+    current_date + 3, 'Evening', 1400);
+  return v_ref;
+end $$;
+
+-- Removes the test number's user, its accounts and its bookings.
+create or replace function public.e2e_cleanup_phone(p_secret text, p_phone text) returns int
+language plpgsql security definer set search_path = '' as $$
+declare v_n int;
+begin
+  perform private.e2e_phone_gate(p_secret, p_phone);
+  delete from public.accounts a where a.created_by in (select id from auth.users where phone = substr(p_phone, 2));
+  delete from public.account_invites where phone_e164 = p_phone;
+  delete from public.leads where phone = p_phone;
+  delete from auth.users where phone = substr(p_phone, 2);
+  get diagnostics v_n = row_count;
+  return v_n;
+end $$;
+
+revoke all on function public.e2e_add_phone_booking(text, text), public.e2e_cleanup_phone(text, text)
+  from public, authenticated;
+grant execute on function public.e2e_add_phone_booking(text, text), public.e2e_cleanup_phone(text, text) to anon;

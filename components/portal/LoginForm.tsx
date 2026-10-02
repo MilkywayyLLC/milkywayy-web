@@ -11,7 +11,7 @@ import {
 
 type Mode = "signin" | "signup";
 
-/** Email + password sign-in and sign-up. WhatsApp sign-in arrives with Twilio Verify (step 3). */
+/** Email + password sign-in and sign-up (overseas clients, or anyone who prefers email). */
 export function LoginForm({ next, startOn }: { next: string; startOn: Mode }) {
   const [mode, setMode] = useState<Mode>(startOn);
   const [inState, inAction, inPending] = useActionState(signIn, undefined);
@@ -137,14 +137,6 @@ export function LoginForm({ next, startOn }: { next: string; startOn: Mode }) {
           )}
         </div>
       )}
-
-      <div className="pt-card" style={{ background: "var(--bg)", padding: 12, gap: 4 }}>
-        <b className="pt-small">WhatsApp sign-in is coming</b>
-        <span className="pt-meta">
-          For now, use your email. Bookings you made on the website with the same email show up once
-          it’s confirmed.
-        </span>
-      </div>
     </div>
   );
 }

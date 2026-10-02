@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/portal/OnboardingForm";
-import { requirePortalUser } from "@/lib/portal/auth";
+import { contactOf, requirePortalUser } from "@/lib/portal/auth";
 
 export const metadata = { title: "Welcome" };
 
@@ -23,7 +23,7 @@ export default async function Welcome() {
         {pending > 0 && (
           <p className="pt-note" role="status">
             <b>
-              We found {pending} earlier booking{pending === 1 ? "" : "s"} with {p.user.email}.
+              We found {pending} earlier booking{pending === 1 ? "" : "s"} with {contactOf(p.user)}.
             </b>{" "}
             {pending === 1 ? "It’ll" : "They’ll"} be in your portal when you’re done.
           </p>
