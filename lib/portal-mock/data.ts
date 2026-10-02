@@ -7,28 +7,8 @@ import type { PlaceholderKey } from "@/content/types";
 export type Persona = "all" | "shoots" | "post";
 export type Service = "shoots" | "editing" | "avatars";
 
-export const SHOOT_STEPS = [
-  "Requested",
-  "Confirmed",
-  "Shot",
-  "Editing",
-  "Delivered",
-  "Completed",
-] as const;
-export const EDIT_STEPS = [
-  "Submitted",
-  "Files received",
-  "In editing",
-  "Delivered",
-  "Completed",
-] as const;
-export const AVATAR_STEPS = [
-  "Brief received",
-  "Script ready",
-  "In production",
-  "Delivered",
-  "Completed",
-] as const;
+import { AVATAR_STEPS, EDIT_STEPS, SHOOT_STEPS } from "@/lib/portal/steps";
+export { AVATAR_STEPS, EDIT_STEPS, SHOOT_STEPS };
 
 export interface Account {
   id: Persona;

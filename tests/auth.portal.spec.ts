@@ -69,15 +69,16 @@ test("first sign-in: onboarding creates the account and attaches earlier booking
 
   await expect(page).toHaveURL(/\/portal\?claimed=1$/);
   await expect(page.getByRole("status")).toContainText("We found 1 earlier booking");
-  await expect(page.getByRole("heading", { name: "First Homes" })).toBeVisible();
-  await expect(page.getByTestId("bookings")).toContainText(ref);
-  await expect(page.getByTestId("bookings")).toContainText("Marina Gate 1");
+  await expect(page.locator(".pt-switch-name")).toHaveText("First Homes");
+  await expect(page.locator("main")).toContainText(ref);
+  await expect(page.locator("main")).toContainText("Marina Gate 1");
 
   // Welcome is only for the first time.
   await page.goto("/portal/welcome");
   await expect(page).toHaveURL(/\/portal$/);
 
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.getByRole("button", { name: /profile menu/ }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/portal\/login\?signed-out=1$/);
   await page.goto("/portal");
   await expect(page).toHaveURL(/\/portal\/login/);
@@ -85,7 +86,7 @@ test("first sign-in: onboarding creates the account and attaches earlier booking
   // Returning: straight to the portal.
   await signIn(page, email);
   await expect(page).toHaveURL(/\/portal$/);
-  await expect(page.getByTestId("bookings")).toContainText(ref);
+  await expect(page.locator("main")).toContainText(ref);
 });
 
 test("?next= only ever leads inside the portal", async ({ page }) => {

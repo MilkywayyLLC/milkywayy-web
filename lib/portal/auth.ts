@@ -12,6 +12,8 @@ export type Account = {
   industry: string | null;
   industry_other: string | null;
   volume_note: string | null;
+  trn: string | null;
+  billing_address: string | null;
   currency: "AED" | "USD";
   member_visibility: "own" | "all";
   services_interest: string[];
@@ -41,7 +43,7 @@ export const getPortal = cache(async (): Promise<PortalState> => {
   const { data: rows } = await db
     .from("account_members")
     .select(
-      "role, created_at, account:accounts(id, type, name, industry, industry_other, volume_note, currency, member_visibility, services_interest)",
+      "role, created_at, account:accounts(id, type, name, industry, industry_other, volume_note, trn, billing_address, currency, member_visibility, services_interest)",
     )
     .eq("user_id", user.id)
     .order("created_at");

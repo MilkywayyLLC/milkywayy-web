@@ -3,6 +3,10 @@
  * Archivo + DM Mono, 1px lines, 44px touch targets. Phone first. Classes prefixed `pt-`.
  */
 @layer components {
+  /* The mockup's control bar sits above the portal; the real portal has none. */
+  .pt[data-mock] {
+    --pt-bar: 31px;
+  }
   .pt {
     min-height: 100dvh;
     background: var(--bg);
@@ -87,7 +91,7 @@
   .pt-shell {
     display: grid;
     grid-template-columns: 1fr;
-    min-height: calc(100dvh - 32px);
+    min-height: calc(100dvh - var(--pt-bar, 0px));
   }
   .pt-rail {
     display: none;
@@ -97,7 +101,7 @@
   }
   .pt-top {
     position: sticky;
-    top: 31px;
+    top: var(--pt-bar, 0px);
     z-index: 20;
     display: flex;
     align-items: center;
@@ -257,8 +261,8 @@
       align-content: start;
       gap: 24px;
       position: sticky;
-      top: 31px;
-      height: calc(100dvh - 31px);
+      top: var(--pt-bar, 0px);
+      height: calc(100dvh - var(--pt-bar, 0px));
       padding: 20px 12px;
       border-right: 1px solid var(--line);
       background: var(--surface);
@@ -951,7 +955,7 @@
 
   /* ---------- auth screens ---------- */
   .pt-auth {
-    min-height: calc(100dvh - 32px);
+    min-height: calc(100dvh - var(--pt-bar, 0px));
     display: grid;
     place-items: center;
     padding: 24px 16px;

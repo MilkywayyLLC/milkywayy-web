@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { Icon } from "./Icon";
+import { Icon } from "@/components/portal/Icon";
 import { usePersona } from "./persona";
 
 const B = "/portal-preview";

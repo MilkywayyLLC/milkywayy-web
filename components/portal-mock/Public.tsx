@@ -1,7 +1,7 @@
 "use client";
 
-import { Icon } from "./Icon";
-import { useToast } from "./ui";
+import { Icon } from "@/components/portal/Icon";
+import { useToast } from "@/components/portal/ui";
 import { CONTACTS } from "@/lib/portal-mock/data";
 
 /** Agent contact block + sticky bar on public pages. Mockup: buttons don't dial the (fake) numbers. */

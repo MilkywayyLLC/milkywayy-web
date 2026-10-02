@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import type { PlaceholderKey } from "@/content/types";
 import { CONTACTS, type Shoot } from "@/lib/portal-mock/data";
-import { Icon } from "./Icon";
+import { Icon } from "@/components/portal/Icon";
 import { usePersona } from "./persona";
-import { Ph, Sheet } from "./ui";
+import { Ph, Sheet } from "@/components/portal/ui";
 
 const PHOTOS: PlaceholderKey[] = [
   "night",

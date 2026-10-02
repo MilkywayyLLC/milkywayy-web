@@ -352,6 +352,7 @@
   .ad input[type="number"],
   .ad input[type="url"],
   .ad input[type="search"],
+  .ad input[type="tel"],
   .ad input:not([type]),
   .ad textarea,
   .ad select {
@@ -483,10 +484,12 @@
     min-width: 0;
     text-decoration: none;
   }
-  .ad-row-main > div {
+  .ad-row-main > div,
+  .ad-row-main > span {
     min-width: 0;
   }
   .ad-row-title {
+    display: block;
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;

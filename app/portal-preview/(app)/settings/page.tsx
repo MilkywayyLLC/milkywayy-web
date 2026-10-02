@@ -1,7 +1,7 @@
 "use client";
 
 import { usePersona } from "@/components/portal-mock/persona";
-import { Badge, useToast } from "@/components/portal-mock/ui";
+import { Badge, useToast } from "@/components/portal/ui";
 
 const EVENTS: [string, boolean, boolean][] = [
   ["Booking confirmed", true, true],

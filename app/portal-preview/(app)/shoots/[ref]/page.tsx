@@ -2,10 +2,10 @@
 
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { Icon } from "@/components/portal-mock/Icon";
+import { Icon } from "@/components/portal/Icon";
 import { usePersona } from "@/components/portal-mock/persona";
 import { ShareSheet } from "@/components/portal-mock/ShareSheet";
-import { Back, Badge, NotFor, Ph, Sheet, Stepper, useToast } from "@/components/portal-mock/ui";
+import { Back, Badge, NotFor, Ph, Sheet, Stepper, useToast } from "@/components/portal/ui";
 import { SHOOT_STEPS, SHOOTS, waChat } from "@/lib/portal-mock/data";
 import type { PlaceholderKey } from "@/content/types";
 

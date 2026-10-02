@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Icon } from "@/components/portal-mock/Icon";
+import { Icon } from "@/components/portal/Icon";
 import { usePersona } from "@/components/portal-mock/persona";
-import { Badge, Sheet, useToast } from "@/components/portal-mock/ui";
+import { Badge, Sheet, useToast } from "@/components/portal/ui";
 import { TEAM } from "@/lib/portal-mock/data";
 
 export default function Team() {

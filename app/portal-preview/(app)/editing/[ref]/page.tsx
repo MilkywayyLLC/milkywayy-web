@@ -2,9 +2,9 @@
 
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { Icon } from "@/components/portal-mock/Icon";
+import { Icon } from "@/components/portal/Icon";
 import { usePersona } from "@/components/portal-mock/persona";
-import { Back, Badge, NotFor, Sheet, Stepper, useToast } from "@/components/portal-mock/ui";
+import { Back, Badge, NotFor, Sheet, Stepper, useToast } from "@/components/portal/ui";
 import { BATCHES, EDIT_STEPS } from "@/lib/portal-mock/data";
 
 export default function BatchPage() {

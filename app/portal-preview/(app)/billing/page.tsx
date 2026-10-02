@@ -1,8 +1,8 @@
 "use client";
 
-import { Icon } from "@/components/portal-mock/Icon";
+import { Icon } from "@/components/portal/Icon";
 import { usePersona } from "@/components/portal-mock/persona";
-import { Badge, money, useToast } from "@/components/portal-mock/ui";
+import { Badge, money, useToast } from "@/components/portal/ui";
 import { INVOICES, PAYG_LINES, SUGGESTION, waChat } from "@/lib/portal-mock/data";
 
 export default function Billing() {

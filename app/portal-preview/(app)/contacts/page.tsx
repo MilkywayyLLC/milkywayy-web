@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Icon } from "@/components/portal-mock/Icon";
+import { Icon } from "@/components/portal/Icon";
 import { useContacts } from "@/components/portal-mock/ShareSheet";
-import { Badge, Sheet, useToast } from "@/components/portal-mock/ui";
+import { Badge, Sheet, useToast } from "@/components/portal/ui";
 
 export default function Contacts() {
   const contacts = useContacts();

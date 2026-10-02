@@ -15,6 +15,10 @@ const GROUPS: { title: string; items: Item[] }[] = [
     ],
   },
   {
+    title: "Portal",
+    items: [{ href: "/admin/accounts", label: "Client accounts", owner: true }],
+  },
+  {
     title: "Content",
     items: [
       { href: "/admin/portfolio", label: "Portfolio" },

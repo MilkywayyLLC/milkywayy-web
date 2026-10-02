@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Icon } from "@/components/portal-mock/Icon";
+import { Icon } from "@/components/portal/Icon";
 import { usePersona } from "@/components/portal-mock/persona";
-import { Back, NotFor } from "@/components/portal-mock/ui";
+import { Back, NotFor } from "@/components/portal/ui";
 
 const KINDS = ["HDR photos", "Short-form", "Long-form", "Avatar edit", "Other"];
 

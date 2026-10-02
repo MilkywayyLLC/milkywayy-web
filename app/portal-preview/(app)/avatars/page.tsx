@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePersona } from "@/components/portal-mock/persona";
-import { Badge, NotFor, Ph, Stepper, useToast } from "@/components/portal-mock/ui";
+import { Badge, NotFor, Ph, Stepper, useToast } from "@/components/portal/ui";
 import { AVATAR_STEPS, AVATAR_VIDEOS, waChat } from "@/lib/portal-mock/data";
 
 export default function Avatars() {

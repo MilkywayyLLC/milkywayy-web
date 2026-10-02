@@ -82,8 +82,8 @@ test("WhatsApp code → wrong code → SMS instead → in, with the booking made
   await page.getByRole("checkbox", { name: /^Property shoots/ }).check({ force: true });
   await page.getByRole("button", { name: "Go to my portal" }).click();
   await expect(page).toHaveURL(/\/portal\?claimed=1$/);
-  await expect(page.getByTestId("bookings")).toContainText(ref);
-  await expect(page.getByTestId("bookings")).toContainText("Savannah");
+  await expect(page.locator("main")).toContainText(ref);
+  await expect(page.locator("main")).toContainText("Savannah");
   await expect(page.getByText("+971 50 000 0001").first()).toBeVisible();
 });
 

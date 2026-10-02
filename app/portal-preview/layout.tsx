@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PortalPreview({ children }: { children: React.ReactNode }) {
   return (
-    <div className="pt" data-tone="light">
+    <div className="pt" data-tone="light" data-mock>
       <PersonaProvider>
         <PreviewBar />
         {children}

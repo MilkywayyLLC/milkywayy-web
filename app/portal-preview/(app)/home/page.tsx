@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Icon } from "@/components/portal-mock/Icon";
+import { Icon } from "@/components/portal/Icon";
 import { usePersona } from "@/components/portal-mock/persona";
-import { Badge, money } from "@/components/portal-mock/ui";
+import { Badge, money } from "@/components/portal/ui";
 import { ACTIVITY, PAYG_LINES, waChat, type Persona } from "@/lib/portal-mock/data";
 
 const B = "/portal-preview";

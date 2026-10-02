@@ -139,3 +139,22 @@ end $$;
 revoke all on function public.e2e_add_phone_booking(text, text), public.e2e_cleanup_phone(text, text)
   from public, authenticated;
 grant execute on function public.e2e_add_phone_booking(text, text), public.e2e_cleanup_phone(text, text) to anon;
+
+-- ---------- step 6: admin-created clients have no creator; find them by their invites ----------
+create or replace function public.e2e_cleanup(p_secret text, p_prefix text) returns int
+language plpgsql security definer set search_path = '' as $$
+declare v_n int;
+begin
+  perform private.e2e_gate(p_secret, null);
+  if p_prefix !~ '^e2e-portal-[a-z0-9-]+$' then
+    raise exception 'test prefix only' using errcode = '42501';
+  end if;
+  delete from public.accounts a where a.created_by in (select id from auth.users where email like p_prefix || '%')
+    or exists (select 1 from public.account_invites i where i.account_id = a.id and i.email like p_prefix || '%');
+  delete from public.leads where email like p_prefix || '%';
+  delete from auth.users where email like p_prefix || '%';
+  get diagnostics v_n = row_count;
+  return v_n;
+end $$;
+revoke all on function public.e2e_cleanup(text, text) from public, authenticated;
+grant execute on function public.e2e_cleanup(text, text) to anon;

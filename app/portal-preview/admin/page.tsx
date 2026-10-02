@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Icon } from "@/components/portal-mock/Icon";
-import { Badge, Sheet, useToast } from "@/components/portal-mock/ui";
+import { Icon } from "@/components/portal/Icon";
+import { Badge, Sheet, useToast } from "@/components/portal/ui";
 import { BOARD, BOARD_COLUMNS } from "@/lib/portal-mock/data";
 
 type Item = (typeof BOARD)[number];

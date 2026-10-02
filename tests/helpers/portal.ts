@@ -75,3 +75,20 @@ export const addPhoneBooking = (phone = TEST_PHONE) =>
 
 export const cleanupPhone = (phone = TEST_PHONE) =>
   must(portalClient().rpc("e2e_cleanup_phone", { p_secret: secret(), p_phone: phone }));
+
+/** Sign in through the real login page with email + password; lands wherever the portal sends them. */
+export async function signInUI(page: import("@playwright/test").Page, email: string) {
+  await page.goto("/portal/login?method=email");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.waitForURL((u) => !u.pathname.startsWith("/portal/login"));
+}
+
+/** Admin gate for the portal_admin_* functions (dev project), as the server calls them. */
+export const adminRpc = (
+  fn: string,
+  args: Record<string, unknown>,
+  secret = env.PORTAL_ADMIN_SECRET,
+) => portalClient().rpc(fn, { p_secret: secret, p_actor: "e2e-admin@example.com", ...args });
+export const hasPortalAdmin = hasPortal && !!env.PORTAL_ADMIN_SECRET;

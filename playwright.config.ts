@@ -43,6 +43,13 @@ export default defineConfig({
       testMatch: /.*\.portal\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], channel: "chrome" },
     },
+    // Admin → Client accounts (portal, step 6): signs in like the admin tests.
+    {
+      name: "portal-admin",
+      testMatch: /.*\.portaladmin\.spec\.ts/,
+      dependencies: ["admin-setup"],
+      use: { ...devices["Desktop Chrome"], channel: "chrome" },
+    },
     // Admin: runs after the public tests (it publishes and deletes test content on the shared
     // database), signs in once, then edits as the e2e Owner / Editor / non-admin accounts.
     {

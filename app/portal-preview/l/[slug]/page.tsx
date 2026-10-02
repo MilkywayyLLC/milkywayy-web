@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AgentContact, Byline } from "@/components/portal-mock/Public";
-import { Icon } from "@/components/portal-mock/Icon";
+import { Icon } from "@/components/portal/Icon";
 import { LISTINGS } from "@/lib/portal-mock/data";
 import type { PlaceholderKey } from "@/content/types";
 

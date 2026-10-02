@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Icon } from "@/components/portal-mock/Icon";
+import { Icon } from "@/components/portal/Icon";
 import { usePersona } from "@/components/portal-mock/persona";
-import { Badge, NotFor, Sheet, Stepper, useToast } from "@/components/portal-mock/ui";
+import { Badge, NotFor, Sheet, Stepper, useToast } from "@/components/portal/ui";
 import { BATCHES, COMPLETED_BATCHES, EDIT_STEPS } from "@/lib/portal-mock/data";
 
 const B = "/portal-preview";

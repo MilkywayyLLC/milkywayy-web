@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import type { PlaceholderKey } from "@/content/types";
-import { Icon } from "./Icon";
+import { Icon } from "@/components/portal/Icon";
 
 /** Placeholder "photo" (the site's mockup photography) at any aspect ratio. */
 export function Ph({

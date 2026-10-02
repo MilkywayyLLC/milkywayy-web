@@ -13,10 +13,13 @@ export function PhoneField({
   label,
   error,
   invalid,
+  defaultE164,
 }: {
   label: string;
   error?: string;
   invalid?: boolean;
+  /** An existing number to edit: UAE numbers show as local digits, others as written (+44…). */
+  defaultE164?: string | null;
 }) {
   const id = useId();
   const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
@@ -101,6 +104,13 @@ export function PhoneField({
           aria-labelledby={`${id}-l`}
           aria-invalid={invalid || undefined}
           placeholder={country.iso === "AE" ? "50 123 4567" : "Phone number"}
+          defaultValue={
+            defaultE164
+              ? defaultE164.startsWith(`+${DEFAULT_COUNTRY.dial}`)
+                ? defaultE164.slice(DEFAULT_COUNTRY.dial.length + 1)
+                : defaultE164
+              : undefined
+          }
         />
         <input type="hidden" name="phone_country" value={country.iso} />
         <input type="hidden" name="phone_dial" value={country.dial} />
