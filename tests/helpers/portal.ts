@@ -78,7 +78,7 @@ export const cleanupPhone = (phone = TEST_PHONE) =>
 
 /** Sign in through the real login page with email + password; lands wherever the portal sends them. */
 export async function signInUI(page: import("@playwright/test").Page, email: string) {
-  await page.goto("/portal/login?method=email");
+  await page.goto("/portal/login?method=password");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -92,3 +92,10 @@ export const adminRpc = (
   secret = env.PORTAL_ADMIN_SECRET,
 ) => portalClient().rpc(fn, { p_secret: secret, p_actor: "e2e-admin@example.com", ...args });
 export const hasPortalAdmin = hasPortal && !!env.PORTAL_ADMIN_SECRET;
+
+/** Phone sign-in is behind a switch (lib/portal/flags.ts); its UI tests run only when it's on. */
+export const phoneSignInOn = env.NEXT_PUBLIC_PORTAL_PHONE_SIGNIN === "on";
+
+/** Sets a known email sign-in code for a test user (dev-only helper; no email is read). */
+export const setEmailCode = (email: string, code: string) =>
+  must(portalClient().rpc("e2e_email_code", { p_secret: secret(), p_email: email, p_code: code }));

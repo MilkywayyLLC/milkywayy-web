@@ -1,6 +1,6 @@
 # Milkywayy Client Portal: Build Guide
 
-*Version 1 · 1 Oct 2026 · Phases 9–14, which start after the website launches (Phase 8)*
+*Version 2 · 3 Oct 2026 · Phases 9–14, which start after the website launches (Phase 8). v2: sign-in and notifications are email only; WhatsApp is sent by hand from the admin (owner, 3 Oct 2026).*
 
 This guide sits next to `MILKYWAYY_BUILD_GUIDE.md`. Everything in that guide still applies here: the stack, the Viewfinder design system, the performance budget, testing, RLS-first security and the "stop for review" rhythm. This file only adds what the portal needs.
 
@@ -13,7 +13,7 @@ Clients get one login at **milkywayy.com/portal**. It's one dashboard that chang
 - **Post-production:** submit editing batches (title, notes, reference link, raw files), follow status, download, ask for revisions, and reopen any completed project with a new request.
 - **AI avatars:** follow avatar videos from brief to script approval to delivery.
 
-Everyone gets invoices, a monthly running total for pay-as-you-go work, their package (or a suggested one), saved contacts and their team. Akash runs all of it from the existing admin panel. Every status change updates the portal live and sends the client a WhatsApp message (Twilio) and an email.
+Everyone gets invoices, a monthly running total for pay-as-you-go work, their package (or a suggested one), saved contacts and their team. Akash runs all of it from the existing admin panel. Every status change updates the portal live and emails the client (Resend, from a milkywayy.com address); from the admin, Akash can also send a ready-written WhatsApp from his own phone.
 
 ---
 
@@ -24,7 +24,7 @@ Everyone gets invoices, a monthly running total for pay-as-you-go work, their pa
 | D1 | **One account per client with one dashboard; tabs appear for the services the client uses.** | One client can use shoots, post-production and avatars. Separate logins would mean juggling accounts. |
 | D2 | **An account is a client (person or company) that can have several members.** | Brokerages have many agents. This brings over the old portal's agency/agent feature. |
 | D3 | **One project engine behind every service.** Shoot, edit batch and avatar video are all *projects*, each type with its own status pipeline. | Statuses, files, revisions, requests, notifications and the admin board are built once and work everywhere. |
-| D4 | **Sign-in: WhatsApp OTP (main) or email + password.** Uses Supabase Auth phone OTP through Twilio, WhatsApp channel. | Dubai clients live on WhatsApp. Email/password is there for overseas post-production clients. |
+| D4 | **Sign-in: email.** A 6-digit code by email (Supabase email OTP) is the main way in; a password is optional. *(v2, owner 3 Oct 2026: replaces WhatsApp OTP, which is built but switched off.)* | Simpler and free: no per-code Twilio cost, no template or language issues, works the same for UAE and overseas clients. |
 | D5 | **Raw files: a link first (Drive, Dropbox, OneDrive, WeTransfer, Frame.io); direct upload as a second option.** | Raw footage runs to tens of GB. Links cost nothing and never fail mid-upload. Direct upload is for smaller jobs. |
 | D6 | **Files we host go on Cloudflare R2, not Supabase Storage.** | R2 doesn't charge for downloads. Clients downloading 4K videos and full photo sets would cost real money on any storage that charges for downloads. |
 | D7 | **No online payment in the portal.** Invoices are shown and downloadable, and marked paid by admin. | Matches the site: pay by invoice after delivery. |
@@ -37,7 +37,7 @@ Everyone gets invoices, a monthly running total for pay-as-you-go work, their pa
 
 ```
 milkywayy.com/portal              → client dashboard (signed-in)
-milkywayy.com/portal/login        → WhatsApp OTP or email/password
+milkywayy.com/portal/login        → email code (or optional password)
 milkywayy.com/portal/welcome      → first-time onboarding questions
 milkywayy.com/l/<slug>            → public listing share page (noindex)
 milkywayy.com/c/<slug>            → public collection (several listings, noindex)
@@ -65,12 +65,13 @@ The header "Client login" button goes to `/portal/login`, or to `/portal` if alr
 
 **One account setting, carried over from the old portal:** "Members see only their own projects" or "Members see all company projects". No roles matrix in v1.
 
-Invites: the owner adds a name plus WhatsApp number or email. The invitee signs in with OTP and lands straight in the account.
+Invites: the owner adds a name plus an email (or a WhatsApp number, used when phone sign-in is on). The invitee signs in and lands straight in the account. The inviter sends the ready-made invite message from their own WhatsApp or email.
 
 ### 3.3 Sign-in
-- **WhatsApp OTP:** phone in E.164 format (+971…), then a 6-digit code over WhatsApp. If the code doesn't arrive, offer a "Send by SMS instead" fallback.
-- **Email + password**, with reset by email.
-- Phone and email can both be linked to the same user later, from Settings.
+- **Email code (main):** enter your email, get a 6-digit code by email, enter it. The first time, this creates the account and verifies the email.
+- **Password (optional):** set one in Settings, then "Sign in with a password instead". Reset by email.
+- Codes and other auth emails go through Resend from a milkywayy.com address (Supabase's mail sender).
+- *WhatsApp/SMS codes (Twilio Verify) are built but switched off (`NEXT_PUBLIC_PORTAL_PHONE_SIGNIN`); see DECISIONS.md to bring them back.*
 - Sessions last 30 days on a trusted device.
 
 ### 3.4 First sign-in (onboarding, a single screen with 3 steps at most)
@@ -79,7 +80,7 @@ Invites: the owner adds a name plus WhatsApp number or email. The invitee signs 
 3. "What are you here for?": Property shoots / Production / Post-production / AI avatars (multi-select). This sets which tabs show before any projects exist.
 
 ### 3.5 Claiming earlier bookings
-Bookings and leads saved since Phase 6 carry the phone number (E.164) and the email. When someone signs in with a matching **verified** phone or email, those bookings attach to their account automatically, and the dashboard shows "We found 3 earlier bookings". Bookings made while signed in attach directly.
+Bookings and leads saved since Phase 6 carry the phone number (E.164) and the email. When someone signs in with a matching **verified** email (or phone, when phone sign-in is on), those bookings attach to their account automatically, and the dashboard shows "We found 3 earlier bookings". Bookings made while signed in attach directly.
 
 ---
 
@@ -135,7 +136,7 @@ The portal subscribes to the client's own projects with Supabase Realtime, so a 
 ### 5.2 Shoots
 - Cards with the status stepper (the old portal's stepper, restyled in Viewfinder).
 - Requested / Confirmed: date, slot, address, services, Reschedule (opens WhatsApp with the reference number) and Cancel request.
-- Delivered: **Download all** (zip), download by type (Photos / Reel / Long-form / 360 link), **Request revision**, **Create share link**.
+- Delivered: **Download all** (the full-set zip Akash uploads with each delivery; owner, 3 Oct 2026), download by type (Photos / Reel / Long-form / 360 link), **Request revision**, **Create share link**.
 - **Book another shoot** opens `/property-shoots` with contact details filled in.
 
 ### 5.3 Editing (post-production)
@@ -156,7 +157,7 @@ Same as Editing, plus **script approval**: Milkywayy posts a script, and the cli
 Saved points of contact shown as **pills**: name, role, WhatsApp, email, photo (optional), RERA/BRN number (optional). One contact is the default. When creating a share link the client just taps a pill.
 
 ### 5.7 Team, Settings
-Invite and remove members, set roles, choose the visibility setting. Notification preferences (WhatsApp / email per event). Company details for invoices.
+Invite and remove members, set roles, choose the visibility setting. **Email notifications:** each person chooses which events they get emails for; the Owner/Admins can add extra recipients per category (Projects, Billing; e.g. billing to accounts@their-company). Optional password. Company details for invoices.
 
 ---
 
@@ -201,7 +202,7 @@ Delivered photos are stored on R2 in full resolution for downloads, plus WebP ve
 ### 7.2 Projects board
 - A **board** (columns = statuses) and a **list** view. Filter by service, client and date. On a phone it's a list with one-tap status buttons.
 - Project page:
-  - status buttons (each one asks "Notify client?" with WhatsApp and email ticked)
+  - status buttons (each one asks "Notify client?" with **email** ticked, and offers **Send on WhatsApp**: opens wa.me/<client's number> with a ready-written message (client name, project ref, portal link), sent by hand from Akash's own WhatsApp)
   - upload deliverables (multi-file, resumable, straight to R2) or paste a delivery link
   - line items, a revision counter (with +1 round), the request thread with reply, internal notes
 - Bookings from the site (Phase 6) appear here as *Requested*. Confirming one sets the date and slot and notifies the client.
@@ -219,14 +220,14 @@ Delivered photos are stored on R2 in full resolution for downloads, plus WebP ve
 All share links, with views, a disable switch and a reported/flagged filter.
 
 ### 7.5 Notifications
-- Template list (§8), each with on/off, a preview and a send log showing the delivery status Twilio reports back.
+- The email notifications (§8), each with on/off and a preview, and a send log with the delivery status Resend reports.
 - Resend button.
 
 ---
 
 ## 8. Notifications
 
-**WhatsApp goes through Twilio, reusing the sender number and the approved templates the current site already uses.** Messages that Milkywayy starts need Meta-approved **Utility** templates, so the template wording has to be approved before Phase 10 goes live. Every WhatsApp message also goes out by email, and the client can turn either channel off.
+**Email only, through Resend from a milkywayy.com address** (v2, owner 3 Oct 2026). Each client chooses which events they get emails for, and the Owner/Admins can copy extra people per category. **No WhatsApp templates:** in the admin, every status change and delivery has a "Send on WhatsApp" button that opens wa.me/<client's number> with a ready-written message, sent by hand from Akash's own WhatsApp. The notifications number (+971 50 830 5678) only keeps its automatic reply.
 
 | Event | Client gets | Admin gets |
 |---|---|---|
@@ -295,9 +296,9 @@ Each phase ends the same way: a staging deploy, tests green, a short how-to, and
 ### Phase 9: Portal foundation and design pass
 1. **Clickable mockup first**, in the repo at `/portal-preview` with fake data, covering phone and desktop for Home, Shoots, Editing (incl. batch page), Billing, Listings sheet and Login/Welcome. Stop for Akash's review before building anything real.
 2. Database: accounts, members, profiles, contacts (RLS + tests).
-3. Sign-in: WhatsApp OTP via Supabase + Twilio (SMS fallback), email/password, the onboarding screen.
+3. Sign-in: email code (Supabase email OTP) with an optional password, the onboarding screen. *(WhatsApp OTP built, then switched off in v2.)*
 4. The portal shell: service-aware tabs, account switcher, plan badge (static for now), Team, Contacts, Settings.
-5. Claiming earlier bookings by verified phone/email.
+5. Claiming earlier bookings by verified email (and phone, if phone sign-in is turned on).
 6. Admin: Clients list and page, invite a client, "view as client".
 
 ### Phase 10: Project engine and property shoots
@@ -306,7 +307,7 @@ Each phase ends the same way: a staging deploy, tests green, a short how-to, and
 3. Shoots tab with stepper, downloads, revision requests and the request thread.
 4. Admin Projects board (board, list and phone view) and the project page.
 5. Site bookings arrive as *Requested* projects, linked by reference number.
-6. Notifications: Twilio WhatsApp templates and email for the shoot events, with a notification log.
+6. Notifications: emails (Resend) for the shoot events with the client's choices and extra recipients, a notification log, and "Send on WhatsApp" buttons in the admin.
 
 ### Phase 11: Post-production and AI avatars
 1. Editing tab: new batch (links + direct upload to R2, 5 GB per file by default, configurable), batch page, Completed sub-tab, "Ask about this project".
@@ -329,7 +330,7 @@ Each phase ends the same way: a staging deploy, tests green, a short how-to, and
 ### Phase 14: Migration and switch-off
 1. Import from the old portal (needs an export from the old developer): clients, bookings, invoices, delivered file links, share links.
 2. Redirect old share-link URLs to the new `/l/` and `/c/` pages.
-3. Send existing clients a WhatsApp message: "Your new Milkywayy portal".
+3. Invite existing clients (from the old portal's client list export: names, phones, emails, companies) with a "Your new Milkywayy portal" email, plus a WhatsApp from the admin if wanted. No old bookings, invoices or share links are imported (owner, 3 Oct 2026).
 4. Switch the old portal off.
 
 ---
@@ -358,7 +359,7 @@ If the old portal *can't* move, the fallback is: "Client login" opens a "Your po
 
 | Question | Default |
 |---|---|
-| How long are deliverables kept? | 12 months after completion, then deleted with a warning 14 days before. Raw uploads deleted 30 days after completion. |
+| How long are deliverables kept? | **Decided:** 12 months after completion, then deleted with a warning 14 days before. Raw uploads deleted 30 days after completion. Admin can extend per client. |
 | Per-file direct upload limit | 5 GB; links for anything bigger |
 | Which currencies show in billing | AED for UAE clients, USD for overseas |
 | Should members (agents) see prices? | No. Owner/admin only. |
@@ -373,5 +374,6 @@ If the old portal *can't* move, the fallback is: "Client login" opens a "Your po
 
 - **Supabase Pro**, already planned for launch.
 - **Cloudflare R2**: pay per GB stored per month, with free downloads. Small at Milkywayy's volume; deleting old files keeps it small.
-- **Twilio**: a per-message cost for WhatsApp OTP and template messages (Meta's fee plus Twilio's). Check current UAE rates in the Twilio console.
+- **Resend**: sign-in codes and notification emails (free tier 3,000 emails/month, 100/day; paid plan if volume grows).
+- **Twilio**: only the notifications number's automatic reply (Meta's fee plus Twilio's per message). Not used for sign-in or notifications in v2.
 - **Bunny/Mux**: video streaming for share pages and the site.

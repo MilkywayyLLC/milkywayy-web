@@ -1,4 +1,11 @@
-import { CompanyForm, NotificationsForm, ProfileForm } from "@/components/portal/SettingsForms";
+import {
+  CompanyForm,
+  NotificationsForm,
+  PasswordForm,
+  ProfileForm,
+  RecipientsForm,
+} from "@/components/portal/SettingsForms";
+import { phoneSignIn } from "@/lib/portal/flags";
 import { requireAccount } from "@/lib/portal/auth";
 import { industryLabel, type NotifyPrefs } from "@/lib/portal/options";
 import { isManager } from "@/lib/portal/shell";
@@ -33,21 +40,21 @@ export default async function Settings() {
           <ProfileForm name={profile?.full_name ?? ""} />
           <div className="pt-row">
             <div>
-              <span className="pt-eb">WhatsApp sign-in</span>
-              <div>{phone ?? "Not linked"}</div>
-            </div>
-            {phone && <span className="pt-badge ok">Verified</span>}
-          </div>
-          <div className="pt-row">
-            <div>
-              <span className="pt-eb">Email sign-in</span>
+              <span className="pt-eb">Sign-in email</span>
               <div style={{ overflowWrap: "anywhere" }}>{email ?? "Not linked"}</div>
             </div>
             {email && <span className="pt-badge ok">Verified</span>}
           </div>
-          <span className="pt-meta">
-            Want to sign in with both? WhatsApp us and we’ll link them for now.
-          </span>
+          {phoneSignIn && (
+            <div className="pt-row">
+              <div>
+                <span className="pt-eb">WhatsApp sign-in</span>
+                <div>{phone ?? "Not linked"}</div>
+              </div>
+              {phone && <span className="pt-badge ok">Verified</span>}
+            </div>
+          )}
+          <PasswordForm />
         </section>
 
         <section className="pt-card" aria-labelledby="co">
@@ -75,12 +82,21 @@ export default async function Settings() {
 
       <section className="pt-card" aria-labelledby="notify">
         <h2 id="notify" className="pt-h2">
-          Notifications
+          Email notifications
         </h2>
         <NotificationsForm
           prefs={(profile?.notification_prefs ?? {}) as NotifyPrefs}
           manager={isManager(current)}
+          email={email}
         />
+        {isManager(current) && (
+          <>
+            <h3 className="pt-h2" style={{ fontSize: 15, marginTop: 8 }}>
+              Extra recipients for {a.name}
+            </h3>
+            <RecipientsForm cc={a.notify_cc ?? {}} />
+          </>
+        )}
       </section>
     </>
   );

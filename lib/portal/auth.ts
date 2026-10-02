@@ -17,6 +17,7 @@ export type Account = {
   currency: "AED" | "USD";
   member_visibility: "own" | "all";
   services_interest: string[];
+  notify_cc: Partial<Record<"projects" | "billing", string[]>>;
 };
 export type Membership = { role: Role; account: Account };
 
@@ -43,7 +44,7 @@ export const getPortal = cache(async (): Promise<PortalState> => {
   const { data: rows } = await db
     .from("account_members")
     .select(
-      "role, created_at, account:accounts(id, type, name, industry, industry_other, volume_note, trn, billing_address, currency, member_visibility, services_interest)",
+      "role, created_at, account:accounts(id, type, name, industry, industry_other, volume_note, trn, billing_address, currency, member_visibility, services_interest, notify_cc)",
     )
     .eq("user_id", user.id)
     .order("created_at");

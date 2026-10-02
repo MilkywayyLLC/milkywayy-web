@@ -8,7 +8,7 @@ import { DEFAULT_COUNTRY, toE164 } from "@/lib/phone";
 import { COUNTRIES } from "@/lib/phone/countries";
 import { ACCOUNT_COOKIE, getPortal, requireAccount } from "./auth";
 import { inviteLinks, inviteText, originFrom } from "./invite";
-import { INDUSTRIES, NOTIFY_EVENTS } from "./options";
+import { INDUSTRIES, NOTIFY_CATEGORIES, NOTIFY_EVENTS } from "./options";
 import { isManager } from "./shell";
 
 /**
@@ -234,10 +234,7 @@ export async function saveProfile(_: Result | undefined, form: FormData): Promis
 export async function saveNotifications(_: Result | undefined, form: FormData): Promise<Result> {
   const { db, user } = await requireAccount("/portal/settings");
   const prefs = Object.fromEntries(
-    NOTIFY_EVENTS.map(([key]) => [
-      key,
-      { whatsapp: form.get(`${key}.whatsapp`) === "on", email: form.get(`${key}.email`) === "on" },
-    ]),
+    NOTIFY_EVENTS.map(([key]) => [key, { email: form.get(`${key}.email`) === "on" }]),
   );
   const { data, error } = await db
     .from("profiles")
@@ -245,9 +242,26 @@ export async function saveNotifications(_: Result | undefined, form: FormData): 
     .eq("user_id", user.id)
     .select("user_id");
   if (error) return dbError(error, "notifications");
-  return data?.length
-    ? done("Notification settings saved.")
-    : fail("We couldn’t find your profile.");
+  return data?.length ? done("Email settings saved.") : fail("We couldn’t find your profile.");
+}
+
+/** Owner/Admins: extra people who get the account's emails, per category (max 5 each). */
+export async function saveRecipients(_: Result | undefined, form: FormData): Promise<Result> {
+  const { db, current } = await requireAccount("/portal/settings");
+  if (!isManager(current)) return fail("Only the owner and admins can add recipients.");
+  const cc: Record<string, string[]> = {};
+  for (const [cat, label] of NOTIFY_CATEGORIES) {
+    const list = String(form.get(cat) ?? "")
+      .split(/[\s,;]+/)
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const bad = list.find((e) => !isEmail(e));
+    if (bad) return fail(`“${bad}” in ${label} isn’t a full email address.`);
+    if (list.length > 5) return fail(`Up to 5 extra recipients for ${label}.`);
+    if (list.length) cc[cat] = [...new Set(list)];
+  }
+  const { error } = await db.from("accounts").update({ notify_cc: cc }).eq("id", current.account.id);
+  return error ? dbError(error, "recipients") : done("Extra recipients saved.");
 }
 
 const Company = z

@@ -1,142 +1,200 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import {
   forgotPassword,
-  resendConfirmation,
+  sendEmailCode,
   signIn,
-  signUp,
+  verifyEmailCode,
   type AuthState,
 } from "@/lib/portal/actions";
 
-type Mode = "signin" | "signup";
+/** Seconds before "Send a new code" appears (Supabase also spaces emails to one address). */
+const RESEND_AFTER = 30;
 
-/** Email + password sign-in and sign-up (overseas clients, or anyone who prefers email). */
-export function LoginForm({ next, startOn }: { next: string; startOn: Mode }) {
-  const [mode, setMode] = useState<Mode>(startOn);
-  const [inState, inAction, inPending] = useActionState(signIn, undefined);
-  const [upState, upAction, upPending] = useActionState(signUp, undefined);
-  const [fpState, fpAction, fpPending] = useActionState(forgotPassword, undefined);
-  const [rsState, rsAction, rsPending] = useActionState(resendConfirmation, undefined);
+/**
+ * Email sign-in (owner, 3 Oct 2026): a 6-digit code by email is the main way in and creates the
+ * account the first time; a password is optional ("Sign in with a password instead").
+ */
+export function LoginForm({ next, startOn }: { next: string; startOn: "code" | "password" }) {
+  const [mode, setMode] = useState(startOn);
   const [email, setEmail] = useState("");
-  const [last, setLast] = useState<"in" | "up" | "fp" | "rs">(startOn === "signup" ? "up" : "in");
-  const switchTo = (m: Mode) => {
-    setMode(m);
-    setLast(m === "signup" ? "up" : "in");
-  };
+  return mode === "code" ? (
+    <CodeSignIn next={next} email={email} setEmail={setEmail} usePassword={() => setMode("password")} />
+  ) : (
+    <PasswordSignIn next={next} email={email} setEmail={setEmail} useCode={() => setMode("code")} />
+  );
+}
 
-  // The answer from whichever form was submitted last.
-  const state: AuthState = { in: inState, up: upState, fp: fpState, rs: rsState }[last];
-  const pending = inPending || upPending || fpPending || rsPending;
-  const sentConfirm = mode === "signup" && upState?.confirm && !upState.error;
+type Shared = { next: string; email: string; setEmail: (e: string) => void };
 
+function EmailField({ email, setEmail, invalid }: { email: string; setEmail: (e: string) => void; invalid?: boolean }) {
   return (
-    <div className="pt-form">
-      <div
-        className="pt-seg"
-        role="group"
-        aria-label="Sign in or create an account"
-        style={{ width: "100%", gridAutoColumns: "1fr" }}
-      >
-        <button type="button" aria-pressed={mode === "signin"} onClick={() => switchTo("signin")}>
-          I have an account
-        </button>
-        <button type="button" aria-pressed={mode === "signup"} onClick={() => switchTo("signup")}>
-          I’m new
-        </button>
-      </div>
+    <label className="pt-field">
+      Email
+      <input
+        type="email"
+        name="email"
+        autoComplete="username"
+        inputMode="email"
+        autoCapitalize="none"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        aria-invalid={invalid || undefined}
+      />
+    </label>
+  );
+}
 
-      {sentConfirm ? (
-        <div className="pt-form" role="status">
-          <p className="pt-note">
-            {last === "rs" ? (rsState?.error ?? rsState?.notice) : upState?.notice}
-          </p>
-          <form action={rsAction} onSubmit={() => setLast("rs")}>
-            <input type="hidden" name="email" value={upState?.email ?? ""} />
-            <button type="submit" className="lnk pt-small" disabled={pending}>
-              {rsPending ? "Sending…" : "Didn’t get it? Send it again"}
-            </button>
-          </form>
-        </div>
-      ) : (
+function Message({ state }: { state: AuthState }) {
+  if (state?.error)
+    return (
+      <p className="pt-error" role="alert">
+        {state.error}
+      </p>
+    );
+  if (state?.notice)
+    return (
+      <p className="pt-note" role="status">
+        {state.notice}
+      </p>
+    );
+  return null;
+}
+
+function CodeSignIn({ next, email, setEmail, usePassword }: Shared & { usePassword: () => void }) {
+  const [sent, send, sending] = useActionState(sendEmailCode, undefined);
+  const [checked, verify, verifying] = useActionState(verifyEmailCode, undefined);
+  const [editing, setEditing] = useState(false);
+  const [left, setLeft] = useState(RESEND_AFTER);
+  const codeInput = useRef<HTMLInputElement>(null);
+  const onCode = !!sent?.code && !editing;
+  const sentAt = sent?.sentAt;
+
+  useEffect(() => {
+    if (!onCode || !sentAt) return;
+    codeInput.current?.focus();
+    const tick = () => setLeft(Math.max(0, RESEND_AFTER - Math.floor((Date.now() - sentAt) / 1000)));
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [onCode, sentAt]);
+
+  if (!onCode)
+    return (
+      <div className="pt-form">
         <form
-          action={mode === "signin" ? inAction : upAction}
-          onSubmit={() => setLast(mode === "signin" ? "in" : "up")}
+          action={(f) => {
+            setEditing(false);
+            return send(f);
+          }}
           className="pt-form"
           noValidate
         >
-          <input type="hidden" name="next" value={next} />
-          <label className="pt-field">
-            Email
-            <input
-              type="email"
-              name="email"
-              autoComplete="username"
-              inputMode="email"
-              autoCapitalize="none"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              aria-invalid={state?.field === "email" || undefined}
-            />
-          </label>
-          <label className="pt-field">
-            Password
-            <input
-              type="password"
-              name="password"
-              autoComplete={mode === "signin" ? "current-password" : "new-password"}
-              minLength={mode === "signup" ? 8 : undefined}
-              required
-              aria-invalid={state?.field === "password" || undefined}
-              aria-describedby={mode === "signup" ? "pw-hint" : undefined}
-            />
-            {mode === "signup" && (
-              <small id="pw-hint" className="pt-muted" style={{ fontWeight: 400 }}>
-                At least 8 characters.
-              </small>
-            )}
-          </label>
-          {state?.error && (
+          <EmailField email={email} setEmail={setEmail} invalid={sent?.field === "email"} />
+          {sent?.error && (
             <p className="pt-error" role="alert">
-              {state.error}
+              {sent.error}
             </p>
           )}
-          {state?.notice && !state.error && (
-            <p className="pt-note" role="status">
-              {state.notice}
-            </p>
-          )}
-          <button type="submit" className="btn btn-p" disabled={pending}>
-            {mode === "signin"
-              ? inPending
-                ? "Signing in…"
-                : "Sign in"
-              : upPending
-                ? "Creating…"
-                : "Create account"}
+          <button type="submit" className="btn btn-p" disabled={sending}>
+            {sending ? "Sending…" : "Email me a sign-in code"}
           </button>
         </form>
-      )}
+        <button type="button" className="lnk pt-small" style={{ justifySelf: "start" }} onClick={usePassword}>
+          Sign in with a password instead
+        </button>
+      </div>
+    );
 
-      {mode === "signin" && (
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          <form action={fpAction} onSubmit={() => setLast("fp")}>
-            <input type="hidden" name="email" value={email} />
-            <button type="submit" className="lnk pt-small" disabled={pending}>
-              {fpPending ? "Sending…" : "Forgot password?"}
+  // Whichever answered last: a new code clears an old "wrong code", and the other way round.
+  const latest: AuthState = checked && !sending ? checked : sent;
+  return (
+    <div className="pt-form">
+      <p style={{ margin: 0 }}>
+        We sent a sign-in code to <b>{sent!.email}</b>. Enter it below.{" "}
+        <button type="button" className="lnk" onClick={() => setEditing(true)}>
+          Use a different email
+        </button>
+      </p>
+      <form action={verify} className="pt-form" noValidate>
+        <input type="hidden" name="email" value={sent!.email} />
+        <input type="hidden" name="next" value={next} />
+        <label className="pt-field">
+          Code
+          <input
+            ref={codeInput}
+            className="pt-code"
+            type="text"
+            name="token"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="[0-9]*"
+            maxLength={8}
+            required
+            aria-invalid={latest === checked && checked?.field === "password" ? true : undefined}
+          />
+        </label>
+        {!verifying && <Message state={latest} />}
+        <button type="submit" className="btn btn-p" disabled={verifying}>
+          {verifying ? "Checking…" : "Sign in"}
+        </button>
+      </form>
+      <div className="pt-small pt-muted">
+        {left > 0 ? (
+          <span aria-live="polite">
+            No email? Check spam, or ask for a new code in 0:{String(left).padStart(2, "0")}.
+          </span>
+        ) : (
+          <form action={send}>
+            <input type="hidden" name="email" value={sent!.email} />
+            <button type="submit" className="lnk" disabled={sending}>
+              {sending ? "Sending…" : "Send a new code"}
             </button>
           </form>
-          {inState?.confirm && (
-            <form action={rsAction} onSubmit={() => setLast("rs")}>
-              <input type="hidden" name="email" value={email} />
-              <button type="submit" className="lnk pt-small" disabled={pending}>
-                {rsPending ? "Sending…" : "Send the confirmation link again"}
-              </button>
-            </form>
-          )}
-        </div>
-      )}
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PasswordSignIn({ next, email, setEmail, useCode }: Shared & { useCode: () => void }) {
+  const [inState, signInAction, signingIn] = useActionState(signIn, undefined);
+  const [fpState, forgot, forgetting] = useActionState(forgotPassword, undefined);
+  const [last, setLast] = useState<"in" | "fp">("in");
+  const state = last === "in" ? inState : fpState;
+  return (
+    <div className="pt-form">
+      <form action={signInAction} onSubmit={() => setLast("in")} className="pt-form" noValidate>
+        <input type="hidden" name="next" value={next} />
+        <EmailField email={email} setEmail={setEmail} invalid={state?.field === "email"} />
+        <label className="pt-field">
+          Password
+          <input
+            type="password"
+            name="password"
+            autoComplete="current-password"
+            required
+            aria-invalid={state?.field === "password" || undefined}
+          />
+        </label>
+        <Message state={state} />
+        <button type="submit" className="btn btn-p" disabled={signingIn || forgetting}>
+          {signingIn ? "Signing in…" : "Sign in"}
+        </button>
+      </form>
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <form action={forgot} onSubmit={() => setLast("fp")}>
+          <input type="hidden" name="email" value={email} />
+          <button type="submit" className="lnk pt-small" disabled={signingIn || forgetting}>
+            {forgetting ? "Sending…" : "Forgot password?"}
+          </button>
+        </form>
+        <button type="button" className="lnk pt-small" onClick={useCode}>
+          Sign in with a code instead
+        </button>
+      </div>
     </div>
   );
 }

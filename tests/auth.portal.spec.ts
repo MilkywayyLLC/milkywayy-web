@@ -12,10 +12,10 @@ test.afterAll(async () => {
   await cleanup(RUN);
 });
 
-/** WhatsApp is the default tab when phone sign-in is on; these tests use email. */
+/** The email code is the default; these tests use the optional password. */
 async function pickEmail(page: import("@playwright/test").Page) {
-  const tab = page.getByRole("button", { name: "Email", exact: true });
-  if (await tab.isVisible()) await tab.click();
+  const link = page.getByRole("button", { name: "Sign in with a password instead" });
+  if (await link.isVisible()) await link.click();
 }
 
 async function signIn(page: import("@playwright/test").Page, email: string, password = PASSWORD) {
@@ -39,12 +39,11 @@ test("wrong password and unconfirmed email get clear messages", async ({ page })
   const unconfirmed = await createUser(RUN, "unconfirmed", false);
   await page.goto("/portal/login");
   await signIn(page, known, "not-the-password");
-  await expect(page.locator("p[role=alert]")).toHaveText("Wrong email or password.");
+  await expect(page.locator("p[role=alert]")).toHaveText(
+    "Wrong email or password. No password yet? Sign in with a code instead.",
+  );
   await signIn(page, unconfirmed);
-  await expect(page.locator("p[role=alert]")).toContainText("Confirm your email first");
-  await expect(
-    page.getByRole("button", { name: "Send the confirmation link again" }),
-  ).toBeVisible();
+  await expect(page.locator("p[role=alert]")).toContainText("Sign in with a code instead");
 });
 
 test("first sign-in: onboarding creates the account and attaches earlier bookings", async ({
@@ -96,20 +95,16 @@ test("?next= only ever leads inside the portal", async ({ page }) => {
   await expect(page).toHaveURL(/\/portal\/welcome$/);
 });
 
-test("create account: checks the form, then hands over to Supabase", async ({ page }) => {
-  await page.goto("/portal/login?mode=signup");
+test("email code: checks the address, then hands over to Supabase", async ({ page }) => {
+  await page.goto("/portal/login");
+  await expect(page.getByRole("button", { name: "Email me a sign-in code" })).toBeVisible();
   await page.getByLabel("Email").fill("someone@company");
-  await page.getByLabel("Password").fill("longenough1");
-  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByRole("button", { name: "Email me a sign-in code" }).click();
   await expect(page.locator("p[role=alert]")).toContainText("That email looks incomplete");
-  await page.getByLabel("Email").fill(`${RUN}-signup@example.com`);
-  await page.getByLabel("Password").fill("short");
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.locator("p[role=alert]")).toContainText("at least 8 characters");
   // example.com can't receive mail, so Supabase refuses it (or, on repeat runs, rate-limits
-  // sign-ups): either way the message says so plainly.
-  await page.getByLabel("Password").fill("longenough1");
-  await page.getByRole("button", { name: "Create account" }).click();
+  // emails): either way the message says so plainly and nothing is sent.
+  await page.getByLabel("Email").fill(`${RUN}-signup@example.com`);
+  await page.getByRole("button", { name: "Email me a sign-in code" }).click();
   await expect(page.locator("p[role=alert]")).toContainText(/can’t receive mail|Too many attempts/);
 });
 
@@ -133,10 +128,7 @@ test.describe("phone", () => {
     await page.goto("/portal/login");
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
-    const box = await page
-      .getByRole("button", { name: /Send code on WhatsApp|Sign in/ })
-      .first()
-      .boundingBox();
+    const box = await page.getByRole("button", { name: "Email me a sign-in code" }).boundingBox();
     expect(box!.height).toBeGreaterThanOrEqual(44);
   });
 });

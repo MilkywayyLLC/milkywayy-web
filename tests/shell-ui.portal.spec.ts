@@ -134,15 +134,13 @@ test("a member sees fewer tabs, no prices, and switches accounts", async ({ page
     page.getByText("The team is managed by the account’s owner and admins"),
   ).toBeVisible();
   // A forged account cookie is ignored: you only ever see accounts you belong to.
-  await page
-    .context()
-    .addCookies([
-      {
-        name: "mw-portal-account",
-        value: "00000000-0000-0000-0000-000000000000",
-        url: new URL(page.url()).origin,
-      },
-    ]);
+  await page.context().addCookies([
+    {
+      name: "mw-portal-account",
+      value: "00000000-0000-0000-0000-000000000000",
+      url: new URL(page.url()).origin,
+    },
+  ]);
   await page.goto("/portal");
   await expect(page.getByRole("button", { name: /Account: Max Solo/ })).toBeVisible();
 });
@@ -194,24 +192,44 @@ test("Settings: name, notifications and company details save; bad TRN is refused
   await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /profile menu/ })).toHaveText("OO");
 
-  const delivered = page.getByRole("checkbox", { name: "Files ready to download by WhatsApp" });
+  const delivered = page.getByRole("checkbox", { name: "Files ready to download" });
   await expect(delivered).toBeChecked();
   await delivered.uncheck();
-  await page.getByRole("button", { name: "Save notifications" }).click();
-  await expect(page.getByText("Notification settings saved.")).toBeVisible();
+  await page.getByRole("button", { name: "Save email settings" }).click();
+  await expect(page.getByText("Email settings saved.")).toBeVisible();
+
+  // Extra recipients per category (Owner/Admin): bad addresses are refused.
+  await page.getByLabel("Billing: also send to").fill("accounts@shellhomes, finance@");
+  await page.getByRole("button", { name: "Save recipients" }).click();
+  await expect(page.locator("p[role=alert]")).toContainText("isn’t a full email address");
+  await page
+    .getByLabel("Billing: also send to")
+    .fill("accounts@shellhomes.example, Finance@shellhomes.example");
+  await page.getByRole("button", { name: "Save recipients" }).click();
+  await expect(page.getByText("Extra recipients saved.")).toBeVisible();
+
+  // The optional password.
+  await page.getByLabel("Password (optional)").fill("short");
+  await page.getByRole("button", { name: "Save password" }).click();
+  await expect(page.locator("p[role=alert]")).toContainText(/at least 8 characters/i);
+  // Supabase checks it against the current one (later tests sign in with it, so it stays).
+  await page.getByLabel("Password (optional)").fill("Portal-e2e-pass-2026");
+  await page.getByRole("button", { name: "Save password" }).click();
+  await expect(page.locator("p[role=alert]")).toContainText("That’s your current password");
 
   await page.getByLabel("TRN (optional)").fill("12345");
   await page.getByRole("button", { name: "Save details" }).click();
-  await expect(page.locator("p[role=alert]")).toContainText("15 digits");
+  await expect(page.locator("section[aria-labelledby=co] p[role=alert]")).toContainText("15 digits");
   await page.getByLabel("TRN (optional)").fill("100 4821 3399 0003");
   await page.getByLabel("Billing address (optional)").fill("Office 1204, Bay Square 7, Dubai");
   await page.getByRole("button", { name: "Save details" }).click();
   await expect(page.getByText("Company details saved.")).toBeVisible();
 
   await page.reload();
-  await expect(
-    page.getByRole("checkbox", { name: "Files ready to download by WhatsApp" }),
-  ).not.toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Files ready to download" })).not.toBeChecked();
+  await expect(page.getByLabel("Billing: also send to")).toHaveValue(
+    "accounts@shellhomes.example, finance@shellhomes.example",
+  );
   await expect(page.getByLabel("TRN (optional)")).toHaveValue("100482133990003");
   await expect(page.getByText("Billing currency: AED")).toBeVisible();
 });

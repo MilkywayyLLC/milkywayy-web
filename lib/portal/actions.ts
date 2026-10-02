@@ -11,9 +11,11 @@ import { portalDb } from "./supabase";
 import { syncAfterSignIn } from "./sync";
 
 /**
- * Portal sign-in (CLIENT_PORTAL_GUIDE §3.3): email + password for now; WhatsApp OTP follows once
- * Twilio Verify is connected. Sign-up needs a confirmed email, and earlier website bookings only
- * attach to a verified email (§3.5), so a typo'd or borrowed address never sees anyone's bookings.
+ * Portal sign-in (CLIENT_PORTAL_GUIDE §3.3, owner, 3 Oct 2026): a 6-digit code by email is the
+ * main way in, and it creates the account the first time. A password is optional (set one in
+ * Settings, then "Sign in with a password instead"). A correct code also verifies the email, so
+ * earlier website bookings made with it attach (§3.5); a typo'd or borrowed address never sees
+ * anyone's bookings. Phone sign-in is switched off (lib/portal/flags.ts).
  */
 export type AuthState =
   | {
@@ -22,6 +24,9 @@ export type AuthState =
       email?: string;
       notice?: string;
       confirm?: boolean;
+      /** The code was sent: show the code step. */
+      code?: boolean;
+      sentAt?: number;
     }
   | undefined;
 
@@ -43,7 +48,12 @@ const readEmail = (form: FormData) =>
 function authError(e: { code?: string; message: string; status?: number }): string {
   switch (e.code) {
     case "invalid_credentials":
-      return "Wrong email or password.";
+      return "Wrong email or password. No password yet? Sign in with a code instead.";
+    case "email_not_confirmed":
+      return "Your email isn’t confirmed yet. Sign in with a code instead: we’ll email you one.";
+    case "otp_disabled":
+    case "signup_disabled":
+      return "New sign-ups are paused right now. Email or WhatsApp us and we’ll set you up.";
     case "over_request_rate_limit":
     case "over_email_send_rate_limit":
       return "Too many attempts. Wait a few minutes and try again.";
@@ -51,8 +61,6 @@ function authError(e: { code?: string; message: string; status?: number }): stri
       return "That email address can’t receive mail. Check it for a typo.";
     case "weak_password":
       return `Choose a stronger password: at least ${PASSWORD_MIN} characters, not a common one.`;
-    case "signup_disabled":
-      return "New sign-ups are paused right now. WhatsApp us and we’ll set you up.";
     case "same_password":
       return "That’s your current password. Choose a new one.";
   }
@@ -72,12 +80,6 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   if (!password) return { error: "Enter your password.", field: "password", email };
   const { error } = await db.auth.signInWithPassword({ email, password });
   if (error) {
-    if (error.code === "email_not_confirmed")
-      return {
-        email,
-        confirm: true,
-        error: "Confirm your email first: open the link we sent you, then sign in.",
-      };
     return { error: authError(error), email };
   }
   const claimed = await syncAfterSignIn(db);
@@ -85,59 +87,61 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   redirect(claimed ? `${next}${next.includes("?") ? "&" : "?"}claimed=${claimed}` : next);
 }
 
-export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
+export async function sendEmailCode(prev: AuthState, form: FormData): Promise<AuthState> {
   const db = await portalDb();
   if (!db) return { error: "The portal isn’t configured." };
   const email = readEmail(form);
-  const password = String(form.get("password") ?? "");
   if (!isEmail(email))
     return {
       error: "That email looks incomplete. Check for a typo (e.g. name@company.com).",
       field: "email",
       email,
     };
-  if (password.length < PASSWORD_MIN)
-    return {
-      error: `Use at least ${PASSWORD_MIN} characters for your password.`,
-      field: "password",
-      email,
-    };
-  if (password.length > 72)
-    return {
-      error: "That password is too long (72 characters at most).",
-      field: "password",
-      email,
-    };
-  const { error } = await db.auth.signUp({
-    email,
-    password,
-    options: { emailRedirectTo: `${await origin()}/portal/auth/callback` },
-  });
-  if (error && error.code !== "user_already_exists") return { error: authError(error), email };
-  // Same answer whether or not the address already has an account (no account fishing).
+  const { error } = await db.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+  if (error) return { error: authError(error), email, code: prev?.code };
   return {
     email,
-    confirm: true,
-    notice: `Check your inbox: we sent a link to ${email}. Open it to confirm your email, then you’re in.`,
+    code: true,
+    sentAt: Date.now(),
+    notice: prev?.code ? `New code sent to ${email}.` : undefined,
   };
 }
 
-export async function resendConfirmation(_: AuthState, form: FormData): Promise<AuthState> {
+export async function verifyEmailCode(_: AuthState, form: FormData): Promise<AuthState> {
   const db = await portalDb();
   const email = readEmail(form);
-  if (!db || !isEmail(email)) return { error: "Enter your email first.", email };
-  const { error } = await db.auth.resend({
-    type: "signup",
-    email,
-    options: { emailRedirectTo: `${await origin()}/portal/auth/callback` },
-  });
-  if (error && error.code !== "email_address_invalid")
-    return { error: authError(error), email, confirm: true };
-  return {
-    email,
-    confirm: true,
-    notice: `Sent again to ${email}. It can take a minute; check spam too.`,
-  };
+  const token = String(form.get("token") ?? "").replace(/\D/g, "");
+  if (!db || !isEmail(email)) return { error: "Enter your email again." };
+  if (token.length < 6 || token.length > 8)
+    return { error: "Enter the code from the email.", email, code: true, field: "password" };
+  const { error } = await db.auth.verifyOtp({ email, token, type: "email" });
+  if (error) {
+    if (/rate|too many/i.test(error.message))
+      return { error: authError(error), email, code: true };
+    return {
+      error: "That code isn’t right or has expired. Check it, or ask for a new one.",
+      email,
+      code: true,
+      field: "password",
+    };
+  }
+  const claimed = await syncAfterSignIn(db);
+  const next = safeNext(form.get("next"));
+  redirect(claimed ? `${next}${next.includes("?") ? "&" : "?"}claimed=${claimed}` : next);
+}
+
+/** Settings: add or change the optional password (signed in by code or password already). */
+export async function setPassword(_: AuthState, form: FormData): Promise<AuthState> {
+  const p = await getPortal();
+  if (p.state !== "signed-in") return { error: "Sign in again, then set your password." };
+  const password = String(form.get("password") ?? "");
+  if (password.length < PASSWORD_MIN)
+    return { error: `Use at least ${PASSWORD_MIN} characters.`, field: "password" };
+  if (password.length > 72)
+    return { error: "That password is too long (72 characters at most).", field: "password" };
+  const { error } = await p.db.auth.updateUser({ password });
+  if (error) return { error: authError(error), field: "password" };
+  return { notice: "Password saved. You can sign in with it or with a code." };
 }
 
 export async function forgotPassword(_: AuthState, form: FormData): Promise<AuthState> {

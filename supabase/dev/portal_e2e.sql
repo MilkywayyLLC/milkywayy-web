@@ -158,3 +158,54 @@ begin
 end $$;
 revoke all on function public.e2e_cleanup(text, text) from public, authenticated;
 grant execute on function public.e2e_cleanup(text, text) to anon;
+
+-- ---------- email codes (sign-in by code, 3 Oct 2026) ----------
+-- Test addresses may also be Resend's test inbox (delivered+e2e-portal-…@resend.dev), which
+-- accepts mail without delivering it, so the "send a code" step can run once Resend is the mailer.
+create or replace function private.e2e_gate(p_secret text, p_email text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare v_hash text;
+begin
+  select sha256 into v_hash from private.app_secrets where name = 'e2e';
+  if v_hash is null or v_hash <> encode(extensions.digest(coalesce(p_secret, ''), 'sha256'), 'hex') then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if p_email is not null
+    and p_email !~ '^e2e-portal-[a-z0-9-]+@example\.com$'
+    and p_email !~ '^delivered\+e2e-portal-[a-z0-9-]+@resend\.dev$' then
+    raise exception 'test addresses only' using errcode = '42501';
+  end if;
+end $$;
+revoke all on function private.e2e_gate(text, text) from public, anon, authenticated;
+
+-- Sets a known sign-in code for a test user (what Supabase stores: sha224(email || code)).
+create or replace function public.e2e_email_code(p_secret text, p_email text, p_code text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  perform private.e2e_gate(p_secret, p_email);
+  update auth.users
+    set recovery_token = encode(extensions.digest(lower(p_email) || p_code, 'sha224'), 'hex'),
+        recovery_sent_at = now()
+    where email = lower(p_email);
+end $$;
+revoke all on function public.e2e_email_code(text, text, text) from public, authenticated;
+grant execute on function public.e2e_email_code(text, text, text) to anon;
+
+create or replace function public.e2e_cleanup(p_secret text, p_prefix text) returns int
+language plpgsql security definer set search_path = '' as $$
+declare v_n int;
+begin
+  perform private.e2e_gate(p_secret, null);
+  if p_prefix !~ '^e2e-portal-[a-z0-9-]+$' then
+    raise exception 'test prefix only' using errcode = '42501';
+  end if;
+  delete from public.accounts a
+    where a.created_by in (select id from auth.users where email like p_prefix || '%' or email like 'delivered+' || p_prefix || '%')
+    or exists (select 1 from public.account_invites i where i.account_id = a.id and i.email like p_prefix || '%');
+  delete from public.leads where email like p_prefix || '%' or email like 'delivered+' || p_prefix || '%';
+  delete from auth.users where email like p_prefix || '%' or email like 'delivered+' || p_prefix || '%';
+  get diagnostics v_n = row_count;
+  return v_n;
+end $$;
+revoke all on function public.e2e_cleanup(text, text) from public, authenticated;
+grant execute on function public.e2e_cleanup(text, text) to anon;

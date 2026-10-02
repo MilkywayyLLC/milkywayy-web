@@ -6,6 +6,7 @@ import {
   createUser,
   hasPortal,
   newRun,
+  phoneSignInOn,
   portalClient,
   signedIn,
   TEST_CODE,
@@ -20,6 +21,7 @@ test.skip(
   !hasPortal,
   "Portal Supabase env (NEXT_PUBLIC_PORTAL_SUPABASE_*, E2E_PORTAL_SECRET) not set",
 );
+test.skip(!phoneSignInOn, "Phone sign-in is switched off (NEXT_PUBLIC_PORTAL_PHONE_SIGNIN)");
 test.describe.configure({ mode: "serial" });
 
 const RUN = newRun();

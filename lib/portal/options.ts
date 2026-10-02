@@ -20,19 +20,27 @@ export const industryLabel = (key: string | null, other?: string | null) =>
   key === "other" ? (other ?? "Other") : (INDUSTRIES.find((i) => i[0] === key)?.[1] ?? "");
 export const serviceLabel = (key: string) => SERVICES.find((s) => s[0] === key)?.[1] ?? key;
 
-/** Client notifications (CLIENT_PORTAL_GUIDE §8): [key, label, WhatsApp default, email default, owner/admin only]. */
+/**
+ * Client notifications, by email only (owner, 3 Oct 2026; CLIENT_PORTAL_GUIDE §8):
+ * [key, label, on by default, Owner/Admin only, category for extra recipients].
+ */
 export const NOTIFY_EVENTS = [
-  ["booking_confirmed", "Booking confirmed (date and slot)", true, true, false],
-  ["shoot_done", "Shoot done, editing started", false, false, false],
-  ["delivered", "Files ready to download", true, true, false],
-  ["batch_received", "Editing batch received", true, true, false],
-  ["script_ready", "Script ready for your approval", true, true, false],
-  ["revision_delivered", "Revision delivered", true, true, false],
-  ["new_message", "New message on a project", true, true, false],
-  ["invoice_issued", "Invoice issued", true, true, true],
+  ["booking_confirmed", "Booking confirmed (date and slot)", true, false, "projects"],
+  ["shoot_done", "Shoot done, editing started", false, false, "projects"],
+  ["delivered", "Files ready to download", true, false, "projects"],
+  ["batch_received", "Editing batch received", true, false, "projects"],
+  ["script_ready", "Script ready for your approval", true, false, "projects"],
+  ["revision_delivered", "Revision delivered", true, false, "projects"],
+  ["new_message", "New message on a project", true, false, "projects"],
+  ["invoice_issued", "Invoice issued", true, true, "billing"],
 ] as const;
-export type NotifyPrefs = Record<string, { whatsapp: boolean; email: boolean }>;
-export const prefOf = (prefs: NotifyPrefs | null | undefined, key: string) => {
-  const d = NOTIFY_EVENTS.find((e) => e[0] === key)!;
-  return { whatsapp: prefs?.[key]?.whatsapp ?? d[2], email: prefs?.[key]?.email ?? d[3] };
-};
+export type NotifyEvent = (typeof NOTIFY_EVENTS)[number][0];
+export type NotifyPrefs = Record<string, { email?: boolean }>;
+export const NOTIFY_CATEGORIES = [
+  ["projects", "Projects", "Bookings, deliveries, revisions and messages"],
+  ["billing", "Billing", "Invoices"],
+] as const;
+export type NotifyCc = Partial<Record<"projects" | "billing", string[]>>;
+/** Whether this person wants emails for the event (their choice, else the default). */
+export const wantsEmail = (prefs: NotifyPrefs | null | undefined, key: string) =>
+  prefs?.[key]?.email ?? NOTIFY_EVENTS.find((e) => e[0] === key)?.[2] ?? true;
