@@ -99,3 +99,22 @@ export const phoneSignInOn = env.NEXT_PUBLIC_PORTAL_PHONE_SIGNIN === "on";
 /** Sets a known email sign-in code for a test user (dev-only helper; no email is read). */
 export const setEmailCode = (email: string, code: string) =>
   must(portalClient().rpc("e2e_email_code", { p_secret: secret(), p_email: email, p_code: code }));
+
+/** Puts a Supabase test number on a test booking (dev-only helper). */
+export const setLeadPhone = (ref: string, phone: string) =>
+  must(
+    portalClient().rpc("e2e_set_lead_phone", { p_secret: secret(), p_ref: ref, p_phone: phone }),
+  );
+
+/** A test client with an account and one claimed website booking (a "requested" project). */
+export async function clientWithProject(run: string, name: string, account = "E2E Projects") {
+  const email = await createUser(run, name);
+  const ref = await addBooking(email);
+  const db = await signedIn(email);
+  const acc = await must<string>(
+    db.rpc("create_my_account", { p_type: "company", p_name: account, p_industry: "agency" }),
+  );
+  await must(db.rpc("claim_my_bookings", { p_account: acc }));
+  const [p] = await must<{ id: string }[]>(db.from("projects").select("id").eq("ref", ref));
+  return { email, ref, db, account: acc, id: p.id };
+}

@@ -116,8 +116,7 @@ export async function verifyEmailCode(_: AuthState, form: FormData): Promise<Aut
     return { error: "Enter the code from the email.", email, code: true, field: "password" };
   const { error } = await db.auth.verifyOtp({ email, token, type: "email" });
   if (error) {
-    if (/rate|too many/i.test(error.message))
-      return { error: authError(error), email, code: true };
+    if (/rate|too many/i.test(error.message)) return { error: authError(error), email, code: true };
     return {
       error: "That code isn’t right or has expired. Check it, or ask for a new one.",
       email,

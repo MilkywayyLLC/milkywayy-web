@@ -4,6 +4,7 @@ import {
   CancelInvite,
   ClientEditor,
   ClientInviteForm,
+  RetentionSelect,
 } from "@/components/admin/ClientAccountTools";
 import { dubai } from "@/lib/admin/format";
 import { portalAdminPage, type ClientDetail } from "@/lib/portal/admin";
@@ -77,6 +78,14 @@ export default async function ClientPage({ params, searchParams }: Props) {
               {a.member_visibility === "all" ? "All company projects" : "Only their own projects"}
             </dd>
           </dl>
+          <RetentionSelect accountId={a.id} months={a.retention_months ?? 12} />
+          <Link
+            className="ad-small"
+            href={`/admin/projects?q=${encodeURIComponent(a.name)}&view=list`}
+            prefetch={false}
+          >
+            This client’s projects →
+          </Link>
         </section>
         <ClientEditor id={a.id} currency={a.currency} notes={c.notes ?? ""} />
       </div>

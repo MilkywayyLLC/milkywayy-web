@@ -36,6 +36,10 @@ export async function portalAdminAction() {
   return <T>(fn: string, args: Record<string, unknown> = {}) => call<T>(a.email, fn, args);
 }
 
+/** For the daily housekeeping cron (no signed-in admin; logged as "cron"). */
+export const portalAdminSystem = <T>(fn: string, args: Record<string, unknown> = {}) =>
+  call<T>("cron", fn, args);
+
 export type ClientListRow = {
   id: string;
   type: "individual" | "company";
@@ -58,6 +62,7 @@ export type ClientDetail = {
     trn: string | null;
     billing_address: string | null;
     member_visibility: "own" | "all";
+    retention_months: number;
     updated_at: string;
   };
   members: {
@@ -105,4 +110,54 @@ export type ClientDetail = {
   notes: string | null;
   notes_updated: { by: string; at: string } | null;
   log: { at: string; actor: string; action: string; detail: string | null }[] | null;
+};
+
+export type ProjectListRow = {
+  id: string;
+  ref: string;
+  type: "shoot" | "edit" | "avatar";
+  title: string;
+  status: string;
+  status_note: string | null;
+  shoot_date: string | null;
+  slot: string | null;
+  meta: { area?: string; building?: string; unit?: string; services?: string[] };
+  revision_state: string | null;
+  revision_rounds_used: number;
+  revision_rounds_allowed: number;
+  created_at: string;
+  delivered_at: string | null;
+  completed_at: string | null;
+  account_id: string | null;
+  account_name: string | null;
+  client_name: string | null;
+  lead_phone: string;
+};
+
+export type ProjectDetail = {
+  project: import("./projects").Project;
+  account: { id: string; name: string; currency: string; retention_months: number } | null;
+  lead: { ref: string; name: string | null; phone: string | null; email: string | null } | null;
+  owner: { name: string | null; email: string | null; phone: string | null } | null;
+  events: import("./projects").ProjectEvent[];
+  files: import("./projects").ProjectFile[];
+  messages: import("./projects").ProjectMessage[];
+  line_items: {
+    id: string;
+    description: string;
+    qty: number;
+    unit_price: number;
+    currency: string;
+  }[];
+  notes: string | null;
+  notifications: {
+    id: number;
+    channel: string;
+    template: string;
+    to_address: string | null;
+    status: string;
+    error: string | null;
+    actor: string | null;
+    at: string;
+  }[];
 };

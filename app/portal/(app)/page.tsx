@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Icon } from "@/components/portal/Icon";
 import { getSiteSettings } from "@/lib/data";
 import { contactOf, requireAccount } from "@/lib/portal/auth";
-import { accountBookings, day, propertyTitle } from "@/lib/portal/bookings";
+import { LiveRefresh } from "@/components/portal/LiveRefresh";
+import { statusLabel, type Project } from "@/lib/portal/projects";
 import { isManager } from "@/lib/portal/shell";
 
 export const metadata = { title: { absolute: "Home · Milkywayy portal" } };
@@ -16,20 +17,48 @@ export default async function PortalHome({
   const { db, user, current } = await requireAccount("/portal");
   const q = await searchParams;
   const a = current.account;
-  const [bookings, { data: profile }, invites, chat] = await Promise.all([
-    accountBookings(db, a.id),
-    db.from("profiles").select("full_name").eq("user_id", user.id).maybeSingle(),
-    isManager(current)
-      ? db
-          .from("account_invites")
-          .select("id", { count: "exact", head: true })
-          .eq("account_id", a.id)
-          .is("accepted_at", null)
-      : Promise.resolve({ count: 0 }),
-    getSiteSettings()
-      .then((s) => s.whatsapp.number)
-      .catch(() => ""),
-  ]);
+  const [{ data: projectRows }, { data: profile }, invites, chat, { data: eventRows }] =
+    await Promise.all([
+      db
+        .from("projects")
+        .select("*")
+        .eq("account_id", a.id)
+        .order("updated_at", { ascending: false }),
+      db.from("profiles").select("full_name").eq("user_id", user.id).maybeSingle(),
+      isManager(current)
+        ? db
+            .from("account_invites")
+            .select("id", { count: "exact", head: true })
+            .eq("account_id", a.id)
+            .is("accepted_at", null)
+        : Promise.resolve({ count: 0 }),
+      getSiteSettings()
+        .then((s) => s.whatsapp.number)
+        .catch(() => ""),
+      db
+        .from("project_events")
+        .select(
+          "id, kind, to_status, note, at, project:projects!inner(ref, title, type, account_id)",
+        )
+        .eq("project.account_id", a.id)
+        .order("at", { ascending: false })
+        .limit(8),
+    ]);
+  const projects = (projectRows ?? []) as Project[];
+  const waiting = projects.filter(
+    (p) =>
+      p.status === "delivered" &&
+      !(p.revision_state === "requested" || p.revision_state === "in_progress"),
+  );
+  const inProgress = projects.filter((p) => p.status !== "completed");
+  const events = (eventRows ?? []) as unknown as {
+    id: number;
+    kind: string;
+    to_status: string | null;
+    note: string | null;
+    at: string;
+    project: { ref: string; title: string; type: string };
+  }[];
   const first = (profile?.full_name ?? "").split(" ")[0];
   const claimed = Number(q.claimed ?? 0);
   const s = a.services_interest;
@@ -43,6 +72,7 @@ export default async function PortalHome({
 
   return (
     <>
+      <LiveRefresh />
       <div className="pt-head">
         <div>
           <span className="pt-eb">
@@ -52,7 +82,9 @@ export default async function PortalHome({
           <h1 className="pt-h1">Home</h1>
         </div>
         <div className="pt-btns">
-          {(s.includes("shoots") || s.includes("production") || bookings.length > 0) && (
+          {(s.includes("shoots") ||
+            s.includes("production") ||
+            projects.some((p) => p.type === "shoot")) && (
             <a href="/property-shoots" className="btn btn-p btn-s">
               <Icon name="plus" size={16} /> Book a shoot
             </a>
@@ -81,23 +113,44 @@ export default async function PortalHome({
         <h2 id="attn" className="pt-h2">
           Needs your attention
         </h2>
-        {openInvites > 0 ? (
-          <Link href="/portal/team" className="pt-attn" style={{ padding: "6px 0" }}>
-            <div style={{ display: "grid", gap: 4 }}>
-              <span className="pt-eb">Team</span>
-              <b>
-                {openInvites} invite{openInvites === 1 ? "" : "s"} not accepted yet
-              </b>
-              <span className="pt-meta">
-                They join once they sign in with the number or email you invited.
-              </span>
-            </div>
-          </Link>
-        ) : (
+        {waiting.length === 0 && openInvites === 0 && (
           <p className="pt-meta" style={{ margin: 0 }}>
             Nothing needs you right now. Approvals, deliveries and invoices show up here.
           </p>
         )}
+        <div className="pt-list" style={{ border: 0 }} data-testid="attention">
+          {waiting.map((p) => (
+            <Link
+              key={p.id}
+              href={`/portal/p/${encodeURIComponent(p.ref)}`}
+              className="pt-attn"
+              style={{ padding: "10px 0" }}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <span className="pt-eb">Shoots · {p.ref}</span>
+                <b>
+                  {p.revision_state === "delivered" ? "Revision delivered" : "Your files are ready"}
+                </b>
+                <span className="pt-meta">
+                  {p.title}. Download, then approve or ask for a revision.
+                </span>
+              </div>
+            </Link>
+          ))}
+          {openInvites > 0 && (
+            <Link href="/portal/team" className="pt-attn" style={{ padding: "10px 0" }}>
+              <div style={{ display: "grid", gap: 4 }}>
+                <span className="pt-eb">Team</span>
+                <b>
+                  {openInvites} invite{openInvites === 1 ? "" : "s"} not accepted yet
+                </b>
+                <span className="pt-meta">
+                  They join once they sign in with the email you invited.
+                </span>
+              </div>
+            </Link>
+          )}
+        </div>
       </section>
 
       <div className="pt-grid2">
@@ -105,10 +158,12 @@ export default async function PortalHome({
           <h2 id="prog" className="pt-h2">
             In progress
           </h2>
-          <Link href="/portal/shoots" className="pt-stat" style={{ textDecoration: "none" }}>
-            <b>{bookings.length}</b>
-            <span className="pt-meta">Shoot{bookings.length === 1 ? "" : "s"} requested</span>
-          </Link>
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+            <Link href="/portal/shoots" className="pt-stat" style={{ textDecoration: "none" }}>
+              <b>{inProgress.filter((p) => p.type === "shoot").length}</b>
+              <span className="pt-meta">Shoots</span>
+            </Link>
+          </div>
         </section>
         <section className="pt-card" aria-labelledby="plan">
           <h2 id="plan" className="pt-h2">
@@ -125,18 +180,32 @@ export default async function PortalHome({
         <h2 id="act" className="pt-h2">
           Latest activity
         </h2>
-        {bookings.length ? (
-          <ul className="pt-timeline">
-            {bookings.slice(0, 6).map((b) => (
-              <li key={b.ref}>
-                <Link href="/portal/shoots" style={{ textDecoration: "none", display: "grid" }}>
+        {events.length ? (
+          <ul className="pt-timeline" data-testid="activity">
+            {events.map((e) => (
+              <li key={e.id}>
+                <Link
+                  href={`/portal/p/${encodeURIComponent(e.project.ref)}`}
+                  style={{ textDecoration: "none", display: "grid" }}
+                >
                   <span>
-                    {b.ref} · Requested:{" "}
-                    {b.properties[0] ? propertyTitle(b.properties[0]) : "shoot"}
-                    {b.properties[0] ? `, ${day(b.properties[0].date)}` : ""}
+                    {e.project.ref} ·{" "}
+                    {e.kind === "created"
+                      ? `Requested: ${e.project.title}`
+                      : e.kind === "status"
+                        ? `${statusLabel(e.to_status ?? "")}: ${e.project.title}`
+                        : e.kind === "delivery"
+                          ? (e.note ?? "Delivered")
+                          : e.kind === "revision_requested"
+                            ? "Revision requested"
+                            : e.kind === "revision_delivered"
+                              ? "Revision delivered"
+                              : e.kind === "approved" || e.kind === "auto_completed"
+                                ? "Completed"
+                                : (e.note ?? e.kind)}
                   </span>
                   <span className="pt-meta pt-mono">
-                    {new Date(b.booked_at).toLocaleDateString("en-GB", {
+                    {new Date(e.at).toLocaleDateString("en-GB", {
                       day: "numeric",
                       month: "short",
                       year: "numeric",

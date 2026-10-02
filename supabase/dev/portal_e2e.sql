@@ -209,3 +209,23 @@ begin
 end $$;
 revoke all on function public.e2e_cleanup(text, text) from public, authenticated;
 grant execute on function public.e2e_cleanup(text, text) to anon;
+
+-- ---------- Phase 10: unclaimed booking projects have no account; remove them by their lead ----------
+-- (e2e_cleanup and e2e_cleanup_phone gain a first line:)
+--   delete from public.projects where lead_id in (select id from public.leads where email like …);
+--   delete from public.projects where lead_id in (select id from public.leads where phone = p_phone);
+-- Applied to the dev project as migration dev_portal_e2e_cleanup_projects.
+
+-- ---------- Phase 10: a WhatsApp number on a test booking (admin WhatsApp-link test) ----------
+-- Applied to the dev project as migration dev_portal_e2e_lead_phone.
+create or replace function public.e2e_set_lead_phone(p_secret text, p_ref text, p_phone text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  perform private.e2e_gate(p_secret, null);
+  if p_phone !~ '^\+97150000000[0-9]$' then
+    raise exception 'test numbers only' using errcode = '42501';
+  end if;
+  update public.leads set phone = p_phone where ref = p_ref and email like 'e2e-portal-%';
+end $$;
+revoke all on function public.e2e_set_lead_phone(text, text, text) from public, authenticated;
+grant execute on function public.e2e_set_lead_phone(text, text, text) to anon;

@@ -7,6 +7,7 @@ import {
   updateClientAccount,
   type AdminResult,
 } from "@/lib/portal/admin-actions";
+import { setRetention } from "@/lib/portal/admin-project-actions";
 
 /** Billing currency (admin-only) and private notes the client never sees. */
 export function ClientEditor({
@@ -162,5 +163,52 @@ export function CancelInvite({ accountId, inviteId }: { accountId: string; invit
       </button>
       {err && <span className="ad-status error">{err}</span>}
     </>
+  );
+}
+
+/** How long this client's delivered files are kept after a project completes (default 12 months). */
+export function RetentionSelect({ accountId, months }: { accountId: string; months: number }) {
+  const [value, setValue] = useState(months);
+  const [msg, setMsg] = useState<{ ok: boolean; text?: string }>();
+  const [pending, start] = useTransition();
+  return (
+    <div className="ad-field">
+      <label htmlFor="retention">Keep delivered files</label>
+      <div className="ad-btns">
+        <select
+          id="retention"
+          value={value}
+          onChange={(e) => setValue(Number(e.target.value))}
+          style={{ width: "auto" }}
+        >
+          {[12, 18, 24, 36, 60].map((m) => (
+            <option key={m} value={m}>
+              {m} months after completion
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="ad-btn small"
+          disabled={pending || value === months}
+          onClick={() =>
+            start(async () => {
+              const r = await setRetention(accountId, value);
+              setMsg({ ok: r.ok, text: r.ok ? r.notice : r.error });
+            })
+          }
+        >
+          {pending ? "Saving…" : "Save"}
+        </button>
+      </div>
+      <span className="ad-small ad-muted">
+        Raw uploads are always deleted 30 days after completion.
+      </span>
+      {msg && (
+        <span className={`ad-status ${msg.ok ? "" : "error"}`} role={msg.ok ? "status" : "alert"}>
+          {msg.text}
+        </span>
+      )}
+    </div>
   );
 }

@@ -265,3 +265,13 @@ Made without waiting for review (owner: "make sensible decisions and note them")
 - **Supabase's mail sender is Resend** (milkywayy.com), so codes arrive reliably; code emails use custom templates with `{{ .Token }}`.
 - **Tests never read email:** a dev-only helper sets a known code on a test user. The full browser flow sends a real code to Resend's test inbox (`delivered+…@resend.dev`) and skips until Resend is the mailer.
 - Guide updated to v2 (`CLIENT_PORTAL_GUIDE.md`: D4, §2, §3.2–3.5, §5.7, §7.2, §7.5, §8, §10, §13, §14).
+
+## Phase 10 — shoots, deliveries, revisions (portal branch, 3 Oct 2026)
+- **A booking becomes a project:** every booking property is a shoot project (`projects`, migration `20261007090000`), ref = the booking ref (`-2`, `-3` when one booking has several properties). Unclaimed bookings show in the admin as "not in the portal yet"; they attach to the account when the client signs in with the booking's email.
+- **Pipeline:** Requested → Confirmed → Shot → Editing → Delivered → Completed (+ On hold with a reason the client sees). "Delivered" only happens by publishing a delivery. Delivered projects complete on their own 7 days later unless a revision is open (daily cron `/api/portal/housekeeping`, 06:00 Dubai).
+- **Deliveries:** files go into a numbered delivery (Delivery 1, Revision 1…), uploaded to R2 straight from the browser (multipart, resumable, up to 5 GB a file) or pasted as a link (tours, Drive). Clients see nothing until it's published. "Download all" is the zip the owner uploads with kind "Full set (zip)".
+- **Revisions:** 2 rounds included, one at a time; the owner can grant one more. Approving completes the project.
+- **Retention:** delivered files 12 months after completion (per client: 12/18/24/36/60 months on the client's admin page), raw uploads 30 days. Clients are emailed 14 days before deletion; the cron deletes from R2, then marks the file deleted.
+- **Prices:** Owners/Admins see the booking estimate (line items); Members never get them from the database.
+- **Emails** go out only when "Email the client" is ticked (on by default for portal clients); every send/skip/failure, and every "Send on WhatsApp" tap, is in the project's notification log. Test addresses never get email.
+- **Bug caught by the tests:** the visibility check returned NULL instead of false for a Member on a website booking (no creator), which let `not sees_project()` pass. Fixed with `coalesce(…, false)`; the test stays.

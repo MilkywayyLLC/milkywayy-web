@@ -46,7 +46,9 @@ export default async function Login({
         <SignInMethods
           next={next}
           phone={phoneSignIn && (await phoneSignInEnabled())}
-          startOn={q.method === "password" ? "password" : q.method === "whatsapp" ? "whatsapp" : "code"}
+          startOn={
+            q.method === "password" ? "password" : q.method === "whatsapp" ? "whatsapp" : "code"
+          }
         />
       </div>
     </main>

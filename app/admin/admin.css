@@ -229,6 +229,11 @@
     opacity: 0.45;
     cursor: not-allowed;
   }
+  /* The current status: shown as selected, not greyed out. */
+  .ad-btn[aria-pressed="true"]:disabled {
+    opacity: 1;
+    cursor: default;
+  }
   .ad-btns {
     display: flex;
     flex-wrap: wrap;
@@ -766,5 +771,64 @@
     margin: 0;
     min-width: 0;
     overflow-wrap: anywhere;
+  }
+}
+
+/* Small overlay dialog (portal projects: status changes). */
+@layer components {
+  .ad-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    padding: 12px;
+    background: rgb(17 17 16 / 0.5);
+  }
+  .ad-overlay-body {
+    width: min(560px, 100%);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+  }
+  .ad-board {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(150px, 1fr);
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+  .ad-col {
+    display: grid;
+    gap: 8px;
+    align-content: start;
+    min-height: 240px;
+    padding: 10px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .ad-ticket {
+    display: grid;
+    gap: 3px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--fg);
+    text-decoration: none;
+    font-size: 13px;
+  }
+  .ad-ticket:hover {
+    border-color: var(--fg);
+  }
+  .ad-only-wide {
+    display: none;
+  }
+  @media (min-width: 1000px) {
+    .ad-only-wide {
+      display: grid;
+    }
+    .ad-only-narrow {
+      display: none;
+    }
   }
 }

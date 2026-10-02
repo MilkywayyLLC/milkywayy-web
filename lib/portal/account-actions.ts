@@ -260,7 +260,10 @@ export async function saveRecipients(_: Result | undefined, form: FormData): Pro
     if (list.length > 5) return fail(`Up to 5 extra recipients for ${label}.`);
     if (list.length) cc[cat] = [...new Set(list)];
   }
-  const { error } = await db.from("accounts").update({ notify_cc: cc }).eq("id", current.account.id);
+  const { error } = await db
+    .from("accounts")
+    .update({ notify_cc: cc })
+    .eq("id", current.account.id);
   return error ? dbError(error, "recipients") : done("Extra recipients saved.");
 }
 
