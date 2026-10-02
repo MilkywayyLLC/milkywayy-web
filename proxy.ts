@@ -1,14 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { portalKey, portalUrl } from "@/lib/portal/supabase";
 
 /**
- * Runs only for /admin. Keeps the admin's Supabase session fresh (rotating the access token in
- * cookies before pages read it) and marks every admin response noindex on top of robots.txt.
+ * Runs only for /admin and /portal. Keeps the signed-in Supabase session fresh (rotating the
+ * access token in cookies before pages read it) and marks every response noindex on top of
+ * robots.txt. The portal may use its own Supabase project while it's built (lib/portal/supabase).
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const portal = request.nextUrl.pathname.startsWith("/portal");
+  const url = portal ? portalUrl : process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = portal ? portalKey : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (url && key) {
     const db = createServerClient(url, key, {
       cookies: {
@@ -27,4 +30,4 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ["/admin", "/admin/:path*"] };
+export const config = { matcher: ["/admin", "/admin/:path*", "/portal", "/portal/:path*"] };

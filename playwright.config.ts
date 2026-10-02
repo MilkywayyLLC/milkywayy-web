@@ -37,6 +37,12 @@ export default defineConfig({
       grep: /@mobile/,
       use: { ...devices["iPhone 14"] },
     },
+    // Client portal (Phase 9): its own Supabase project while it's built; skips without its env.
+    {
+      name: "portal",
+      testMatch: /.*\.portal\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], channel: "chrome" },
+    },
     // Admin: runs after the public tests (it publishes and deletes test content on the shared
     // database), signs in once, then edits as the e2e Owner / Editor / non-admin accounts.
     {

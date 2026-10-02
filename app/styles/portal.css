@@ -1187,3 +1187,39 @@
     }
   }
 }
+
+@layer components {
+  .pt-note {
+    margin: 0;
+    padding: 10px 12px;
+    border-left: 3px solid var(--champagne);
+    background: var(--bg);
+    font-size: 14px;
+  }
+  .pt-error {
+    margin: 0;
+    padding: 10px 12px;
+    border-left: 3px solid #b42318;
+    background: #fdf1ef;
+    color: #8f1c13;
+    font-size: 14px;
+  }
+  .pt-field-error {
+    color: #8f1c13;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .pt [aria-invalid="true"] {
+    border-color: #b42318 !important;
+  }
+}
+
+@layer components {
+  .pt-choice label {
+    position: relative;
+  }
+  .pt-choice label:has(input:focus-visible) {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+  }
+}
