@@ -195,6 +195,35 @@ await admin("portal_admin_publish_delivery", { p_id: shoot.id, p_delivery_no: 1 
 const photos = await must<{ id: string }[]>(
   db.from("project_files").select("id").eq("project_id", shoot.id).order("label"),
 );
+// A permit QR placeholder (a real one comes from DLD's Trakheesi permit): QR-like squares plus
+// "SAMPLE", so the permit block on the page shows its image.
+const qrKey = `listings/${account}/qr-sample.png`;
+{
+  const N = 25;
+  const cell = 12;
+  let rects = "";
+  const finder = (x: number, y: number) =>
+    `<rect x="${x * cell}" y="${y * cell}" width="${7 * cell}" height="${7 * cell}"/>` +
+    `<rect x="${(x + 1) * cell}" y="${(y + 1) * cell}" width="${5 * cell}" height="${5 * cell}" fill="#fff"/>` +
+    `<rect x="${(x + 2) * cell}" y="${(y + 2) * cell}" width="${3 * cell}" height="${3 * cell}"/>`;
+  let seed = 7;
+  const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let y = 0; y < N; y++)
+    for (let x = 0; x < N; x++) {
+      const inFinder = (x < 8 && y < 8) || (x > N - 9 && y < 8) || (x < 8 && y > N - 9);
+      if (!inFinder && rnd() > 0.55)
+        rects += `<rect x="${x * cell}" y="${y * cell}" width="${cell}" height="${cell}"/>`;
+    }
+  const size = N * cell;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size + 48}" height="${size + 48}">
+    <rect width="100%" height="100%" fill="#fff"/>
+    <g transform="translate(24 24)" fill="#111">${rects}${finder(0, 0)}${finder(N - 7, 0)}${finder(0, N - 7)}</g>
+    <rect x="${size / 2 - 50}" y="${size / 2 + 4}" width="148" height="40" fill="#fff"/>
+    <text x="${size / 2 + 24}" y="${size / 2 + 32}" font-family="Arial" font-weight="700" font-size="22" text-anchor="middle" fill="#111">SAMPLE</text>
+  </svg>`;
+  await put(qrKey, await sharp(Buffer.from(svg)).png().toBuffer(), "image/png");
+}
+
 const listing = await must<{ slug: string }>(
   db.rpc("save_listing", {
     p_id: null,
@@ -213,7 +242,7 @@ const listing = await must<{ slug: string }>(
         "A sample share page made by Milkywayy to show how listing links look. The photos are generated placeholders at real camera size.\n\nFull-floor layout with a wraparound terrace, three en-suite bedrooms and a kitchen that opens onto the living room.",
       highlights: ["Burj Khalifa view", "Private terrace", "Vacant on transfer"],
       permit_no: "SAMPLE-0001",
-      permit_qr_key: "",
+      permit_qr_key: qrKey,
       contact_ids: [contacts[0].id],
       photo_ids: photos.map((p) => p.id),
       reel_id: "",

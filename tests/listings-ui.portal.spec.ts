@@ -169,11 +169,11 @@ test("views and WhatsApp/Call taps count for people, not bots", async ({ browser
   await p.goto(`/l/${slug}`);
   await expect.poll(plus).toMatchObject({ views: 1, wa: 0 });
   await p.reload();
-  await p.locator(".sh-bar").getByRole("link", { name: "WhatsApp" }).click();
+  await p.getByRole("link", { name: "WhatsApp Rania Haddad" }).click();
   await expect.poll(plus).toMatchObject({ views: 1, wa: 1 });
   await p.evaluate(() => {
     // The Call link would hand off to the phone app; count the tap without leaving.
-    const a = document.querySelector<HTMLAnchorElement>('.sh-bar a[href^="tel:"]')!;
+    const a = document.querySelector<HTMLAnchorElement>('#sh-contact a[href^="tel:"]')!;
     a.addEventListener("click", (e) => e.preventDefault(), { once: true });
     a.click();
   });
@@ -190,7 +190,7 @@ test("views and WhatsApp/Call taps count for people, not bots", async ({ browser
     const b = await bot.newPage();
     await b.route("https://wa.me/**", (r) => r.abort());
     await b.goto(`/l/${slug}`);
-    await b.locator(".sh-bar").getByRole("link", { name: "WhatsApp" }).click();
+    await b.getByRole("link", { name: "WhatsApp Rania Haddad" }).click();
     const r = await b.request.post("/api/share/hit", {
       data: { kind: "l", slug, event: "wa" },
       headers: { "user-agent": ua },
@@ -313,4 +313,59 @@ test("a Member makes a share page, but sees no prices of ours and no Billing", a
   const theirs = page.getByRole("article", { name: "Sky-high 3 bed penthouse" });
   await expect(theirs.getByRole("button", { name: "Pause" })).toHaveCount(0);
   await expect(page.getByText(/1,234/)).toHaveCount(0);
+});
+
+test("polish: the permit QR shows, facts stay on one line, the bar steps aside for the contact card", async ({
+  browser,
+}) => {
+  const [d] = await ok<{ listing_defaults: Record<string, unknown> }[]>(
+    c.db.from("projects").select("listing_defaults").eq("id", shoot.id),
+  );
+  await ok(
+    c.db.rpc("save_listing", {
+      p_id: listingId,
+      p_project: null,
+      p: {
+        ...d.listing_defaults,
+        expires_on: "",
+        permit_qr_key: `listings/${c.account}/qr-e2e.png`,
+      },
+    }),
+  );
+  for (const width of [390, 360]) {
+    const ctx = await browser.newContext({ userAgent: PHONE_UA, viewport: { width, height: 560 } });
+    const p = await ctx.newPage();
+    await p.goto(`/l/${slug}`);
+    await expect(p.getByAltText("Permit QR code")).toHaveAttribute("src", /qr-e2e\.png/);
+    // Every fact on one line.
+    for (const li of await p.getByRole("list", { name: "Key facts" }).getByRole("listitem").all()) {
+      const { h, lh } = await li.evaluate((el) => ({
+        h: el.getBoundingClientRect().height,
+        lh: parseFloat(getComputedStyle(el).lineHeight) + 24,
+      }));
+      expect(h).toBeLessThanOrEqual(lh + 1);
+    }
+    const cols = await p
+      .getByRole("list", { name: "Key facts" })
+      .evaluate(
+        (el) => new Set([...el.children].map((li) => li.getBoundingClientRect().left)).size,
+      );
+    const n = await p.getByRole("list", { name: "Key facts" }).getByRole("listitem").count();
+    expect(cols).toBe(width < 381 ? 2 : n);
+    const bar = p.locator(".sh-bar");
+    await expect(bar).not.toHaveAttribute("data-hidden");
+    await p.locator("#sh-contact").scrollIntoViewIfNeeded();
+    await expect(bar).toHaveAttribute("data-hidden", "true");
+    await expect(bar).toBeHidden();
+    await ctx.close();
+  }
+  const v = await browser.newPage({ userAgent: PHONE_UA });
+  await v.goto(`/l/gone-${RUN.slice(-4)}`);
+  await expect(v.getByRole("link", { name: "Browse Milkywayy →" })).toHaveAttribute(
+    "href",
+    "/?utm_source=sharepage&utm_medium=referral&utm_campaign=listing",
+  );
+  const footer = await v.locator(".sh-byline").boundingBox();
+  expect(Math.round(footer!.y + footer!.height)).toBe(v.viewportSize()!.height);
+  await v.close();
 });

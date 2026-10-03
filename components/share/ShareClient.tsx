@@ -31,6 +31,26 @@ export function TrackView({ kind, slug }: { kind: "l" | "c"; slug: string }) {
   return null;
 }
 
+/**
+ * The sticky WhatsApp/Call bar, tucked away while the contact card (the same buttons) is on
+ * screen, so they never show twice.
+ */
+export function StickyBar({ watch, children }: { watch: string; children: React.ReactNode }) {
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    const el = document.getElementById(watch);
+    if (!el || !("IntersectionObserver" in window)) return;
+    const io = new IntersectionObserver(([e]) => setHidden(e.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, [watch]);
+  return (
+    <div className="sh-bar" data-hidden={hidden || undefined} aria-hidden={hidden || undefined}>
+      {children}
+    </div>
+  );
+}
+
 /** A WhatsApp or Call link that counts the tap. */
 export function TapLink({
   kind,

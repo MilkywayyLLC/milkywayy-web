@@ -223,25 +223,36 @@
     display: grid;
     gap: 6px;
   }
+  /* Facts never wrap inside a box ("2,410 sq ft" stays on one line); 1px gaps draw the lines,
+     so the same rule works as four across or as a 2×2 grid on small phones. */
   .sh-facts {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 1px;
     margin: 0;
     padding: 0;
     list-style: none;
     border: 1px solid var(--line);
-    background: var(--surface);
+    background: var(--line);
   }
   .sh-facts li {
-    padding: 12px 8px;
-    border-left: 1px solid var(--line);
+    padding: 12px 4px;
+    background: var(--surface);
     text-align: center;
     font-weight: 700;
     font-size: 14px;
     line-height: 1.2;
+    white-space: nowrap;
   }
-  .sh-facts li:first-child {
-    border-left: 0;
+  @media (max-width: 380px) {
+    .sh-facts {
+      grid-auto-flow: row;
+      grid-template-columns: 1fr 1fr;
+    }
+    .sh-facts li:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+    }
   }
   .sh-desc {
     margin: 0;
@@ -395,6 +406,16 @@
   .sh-bar .btn {
     min-height: 48px;
   }
+  /* Out of the way while the contact card (same buttons) is on screen. */
+  .sh-bar[data-hidden] {
+    visibility: hidden;
+    translate: 0 100%;
+  }
+  .sh-bar {
+    transition:
+      translate 0.2s ease,
+      visibility 0.2s;
+  }
   @media (min-width: 760px) {
     .sh-bar {
       left: 50%;
@@ -483,6 +504,14 @@
   .sh-gone p {
     margin: 0;
     color: var(--muted);
+  }
+  .sh-gone a {
+    justify-self: start;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    color: var(--acc);
+    font-weight: 600;
   }
   .sh-gone + .sh-byline {
     padding-bottom: calc(16px + env(safe-area-inset-bottom));

@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { pageMediaUrl } from "@/lib/r2";
 import { telLink, whatsappLink, type ShareBrand, type ShareContact } from "@/lib/share";
 import { initials } from "@/lib/portal/shell";
-import { TapLink } from "./ShareClient";
+import { StickyBar, TapLink } from "./ShareClient";
 
 /** This request's own origin, so links and previews point at the host the page was opened on. */
 export async function requestOrigin() {
@@ -46,7 +46,7 @@ export function Contacts({
   const first = contacts.find((c) => c.whatsapp) ?? contacts[0];
   return (
     <>
-      <section className="sh-card sh-agents" aria-labelledby="sh-agents">
+      <section id="sh-contact" className="sh-card sh-agents" aria-labelledby="sh-agents">
         <h2 id="sh-agents" className="sh-eb">
           {heading}
         </h2>
@@ -107,7 +107,7 @@ export function Contacts({
         })}
       </section>
       {first.whatsapp && (
-        <div className="sh-bar">
+        <StickyBar watch="sh-contact">
           <TapLink
             kind={kind}
             slug={slug}
@@ -126,20 +126,20 @@ export function Contacts({
           >
             Call
           </TapLink>
-        </div>
+        </StickyBar>
       )}
     </>
   );
 }
+
+const UTM = "utm_source=sharepage&utm_medium=referral&utm_campaign=listing";
 
 /** The cross-marketing loop (§6.2). */
 export function Byline() {
   return (
     <footer className="sh-byline">
       <span>Media &amp; page by Milkywayy</span>
-      <a href="/property-shoots?utm_source=share_page&utm_medium=referral&utm_campaign=byline">
-        Get yours →
-      </a>
+      <a href={`/property-shoots?${UTM}`}>Get yours →</a>
     </footer>
   );
 }
@@ -155,6 +155,7 @@ export function Unavailable({ kind }: { kind: "l" | "c" }) {
         <p>
           The agent may have paused it, or the link has expired. Ask them for an up-to-date link.
         </p>
+        <a href={`/?${UTM}`}>Browse Milkywayy →</a>
       </main>
       <Byline />
     </div>
