@@ -20,7 +20,12 @@ export function LoginForm({ next, startOn }: { next: string; startOn: "code" | "
   const [mode, setMode] = useState(startOn);
   const [email, setEmail] = useState("");
   return mode === "code" ? (
-    <CodeSignIn next={next} email={email} setEmail={setEmail} usePassword={() => setMode("password")} />
+    <CodeSignIn
+      next={next}
+      email={email}
+      setEmail={setEmail}
+      usePassword={() => setMode("password")}
+    />
   ) : (
     <PasswordSignIn next={next} email={email} setEmail={setEmail} useCode={() => setMode("code")} />
   );
@@ -28,7 +33,15 @@ export function LoginForm({ next, startOn }: { next: string; startOn: "code" | "
 
 type Shared = { next: string; email: string; setEmail: (e: string) => void };
 
-function EmailField({ email, setEmail, invalid }: { email: string; setEmail: (e: string) => void; invalid?: boolean }) {
+function EmailField({
+  email,
+  setEmail,
+  invalid,
+}: {
+  email: string;
+  setEmail: (e: string) => void;
+  invalid?: boolean;
+}) {
   return (
     <label className="pt-field">
       Email
@@ -75,7 +88,8 @@ function CodeSignIn({ next, email, setEmail, usePassword }: Shared & { usePasswo
   useEffect(() => {
     if (!onCode || !sentAt) return;
     codeInput.current?.focus();
-    const tick = () => setLeft(Math.max(0, RESEND_AFTER - Math.floor((Date.now() - sentAt) / 1000)));
+    const tick = () =>
+      setLeft(Math.max(0, RESEND_AFTER - Math.floor((Date.now() - sentAt) / 1000)));
     tick();
     const t = setInterval(tick, 1000);
     return () => clearInterval(t);
@@ -102,7 +116,12 @@ function CodeSignIn({ next, email, setEmail, usePassword }: Shared & { usePasswo
             {sending ? "Sending…" : "Email me a sign-in code"}
           </button>
         </form>
-        <button type="button" className="lnk pt-small" style={{ justifySelf: "start" }} onClick={usePassword}>
+        <button
+          type="button"
+          className="lnk pt-small"
+          style={{ justifySelf: "start" }}
+          onClick={usePassword}
+        >
           Sign in with a password instead
         </button>
       </div>

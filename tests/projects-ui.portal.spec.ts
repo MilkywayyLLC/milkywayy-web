@@ -78,7 +78,9 @@ test("delivered: the client opens the files, writes, asks for a revision, then a
   await page.getByRole("button", { name: "Open Edited photos" }).click();
   expect((await popup).url()).toContain("example.com/files");
 
-  await page.getByRole("textbox", { name: "Message" }).fill("Can we get the balcony at sunset next time?");
+  await page
+    .getByRole("textbox", { name: "Message" })
+    .fill("Can we get the balcony at sunset next time?");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByTestId("messages")).toContainText("balcony at sunset");
 

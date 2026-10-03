@@ -118,3 +118,46 @@ export async function clientWithProject(run: string, name: string, account = "E2
   const [p] = await must<{ id: string }[]>(db.from("projects").select("id").eq("ref", ref));
   return { email, ref, db, account: acc, id: p.id };
 }
+
+export const setProfilePhone = (email: string, phone: string) =>
+  must(
+    portalClient().rpc("e2e_set_profile_phone", {
+      p_secret: secret(),
+      p_email: email,
+      p_phone: phone,
+    }),
+  );
+
+/** A test client with an account (Owner). Optionally a Member too. */
+export async function clientAccount(run: string, name: string, account = "E2E Studio") {
+  const email = await createUser(run, name);
+  const db = await signedIn(email);
+  const id = await must<string>(
+    db.rpc("create_my_account", {
+      p_type: "company",
+      p_name: account,
+      p_industry: "agency",
+      p_full_name: `${name.toUpperCase()} Tester`,
+    }),
+  );
+  return { email, db, account: id };
+}
+
+/** A batch or avatar brief made by a signed-in client, as the New form does. */
+export const newProject = (
+  db: SupabaseClient,
+  account: string,
+  type: "edit" | "avatar",
+  title: string,
+  extra: Record<string, unknown> = {},
+) =>
+  must<{ id: string; ref: string; recipients: { email: string }[] }>(
+    db.rpc("create_project", {
+      p_account: account,
+      p_type: type,
+      p_title: title,
+      p_kind: type === "edit" ? "short_form" : "60s",
+      p_script_by: type === "avatar" ? "milkywayy" : null,
+      ...extra,
+    }),
+  );

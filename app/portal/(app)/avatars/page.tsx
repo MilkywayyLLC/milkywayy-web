@@ -1,15 +1,13 @@
-import { Coming } from "@/components/portal/Coming";
+import { ProjectList } from "@/components/portal/ProjectViews";
 
 export const metadata = { title: "Avatars" };
 
-export default function Avatars() {
-  return (
-    <Coming
-      eyebrow="AI avatars"
-      title="Avatars"
-      what="Follow your AI avatar videos from brief to delivery, and approve scripts here before production starts."
-      today="For now, send us your brief on WhatsApp."
-      ask="Hi, I'd like a new AI avatar video."
-    />
-  );
+/** Avatars (§5.4): avatar videos, with script approval on each one. */
+export default async function Avatars({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; q?: string }>;
+}) {
+  const { tab, q } = await searchParams;
+  return <ProjectList type="avatar" tab={tab} q={q} />;
 }

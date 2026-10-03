@@ -50,7 +50,10 @@ export default async function PortalHome({
       p.status === "delivered" &&
       !(p.revision_state === "requested" || p.revision_state === "in_progress"),
   );
+  const scripts = projects.filter((p) => p.status === "script_ready");
+  const onHold = projects.filter((p) => p.status === "on_hold");
   const inProgress = projects.filter((p) => p.status !== "completed");
+  const area = (t: string) => (t === "edit" ? "Editing" : t === "avatar" ? "Avatars" : "Shoots");
   const events = (eventRows ?? []) as unknown as {
     id: number;
     kind: string;
@@ -113,12 +116,44 @@ export default async function PortalHome({
         <h2 id="attn" className="pt-h2">
           Needs your attention
         </h2>
-        {waiting.length === 0 && openInvites === 0 && (
+        {waiting.length + scripts.length + onHold.length === 0 && openInvites === 0 && (
           <p className="pt-meta" style={{ margin: 0 }}>
             Nothing needs you right now. Approvals, deliveries and invoices show up here.
           </p>
         )}
         <div className="pt-list" style={{ border: 0 }} data-testid="attention">
+          {scripts.map((p) => (
+            <Link
+              key={p.id}
+              href={`/portal/p/${encodeURIComponent(p.ref)}`}
+              className="pt-attn"
+              style={{ padding: "10px 0" }}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <span className="pt-eb">Avatars · {p.ref}</span>
+                <b>Approve the script</b>
+                <span className="pt-meta">{p.title}. Production starts once you approve.</span>
+              </div>
+            </Link>
+          ))}
+          {onHold.map((p) => (
+            <Link
+              key={p.id}
+              href={`/portal/p/${encodeURIComponent(p.ref)}`}
+              className="pt-attn"
+              style={{ padding: "10px 0" }}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <span className="pt-eb">
+                  {area(p.type)} · {p.ref}
+                </span>
+                <b>On hold: waiting on you</b>
+                <span className="pt-meta">
+                  {p.title}. {p.status_note}
+                </span>
+              </div>
+            </Link>
+          ))}
           {waiting.map((p) => (
             <Link
               key={p.id}
@@ -127,7 +162,9 @@ export default async function PortalHome({
               style={{ padding: "10px 0" }}
             >
               <div style={{ display: "grid", gap: 4 }}>
-                <span className="pt-eb">Shoots · {p.ref}</span>
+                <span className="pt-eb">
+                  {area(p.type)} · {p.ref}
+                </span>
                 <b>
                   {p.revision_state === "delivered" ? "Revision delivered" : "Your files are ready"}
                 </b>
@@ -159,10 +196,25 @@ export default async function PortalHome({
             In progress
           </h2>
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            <Link href="/portal/shoots" className="pt-stat" style={{ textDecoration: "none" }}>
-              <b>{inProgress.filter((p) => p.type === "shoot").length}</b>
-              <span className="pt-meta">Shoots</span>
-            </Link>
+            {(
+              [
+                [
+                  "shoot",
+                  "/portal/shoots",
+                  "Shoots",
+                  s.includes("shoots") || s.includes("production"),
+                ],
+                ["edit", "/portal/editing", "Editing", s.includes("post")],
+                ["avatar", "/portal/avatars", "Avatars", s.includes("avatars")],
+              ] as const
+            )
+              .filter(([t, , , on]) => on || projects.some((p) => p.type === t))
+              .map(([t, href, label]) => (
+                <Link key={t} href={href} className="pt-stat" style={{ textDecoration: "none" }}>
+                  <b>{inProgress.filter((p) => p.type === t).length}</b>
+                  <span className="pt-meta">{label}</span>
+                </Link>
+              ))}
           </div>
         </section>
         <section className="pt-card" aria-labelledby="plan">
@@ -191,18 +243,24 @@ export default async function PortalHome({
                   <span>
                     {e.project.ref} ·{" "}
                     {e.kind === "created"
-                      ? `Requested: ${e.project.title}`
-                      : e.kind === "status"
-                        ? `${statusLabel(e.to_status ?? "")}: ${e.project.title}`
-                        : e.kind === "delivery"
-                          ? (e.note ?? "Delivered")
-                          : e.kind === "revision_requested"
-                            ? "Revision requested"
-                            : e.kind === "revision_delivered"
-                              ? "Revision delivered"
-                              : e.kind === "approved" || e.kind === "auto_completed"
-                                ? "Completed"
-                                : (e.note ?? e.kind)}
+                      ? `${e.project.type === "shoot" ? "Requested" : "Submitted"}: ${e.project.title}`
+                      : e.kind === "script_posted"
+                        ? `Script ready: ${e.project.title}`
+                        : e.kind === "script_approved"
+                          ? `Script approved: ${e.project.title}`
+                          : e.kind === "files_added"
+                            ? `Files added: ${e.project.title}`
+                            : e.kind === "status"
+                              ? `${statusLabel(e.to_status ?? "")}: ${e.project.title}`
+                              : e.kind === "delivery"
+                                ? (e.note ?? "Delivered")
+                                : e.kind === "revision_requested"
+                                  ? "Revision requested"
+                                  : e.kind === "revision_delivered"
+                                    ? "Revision delivered"
+                                    : e.kind === "approved" || e.kind === "auto_completed"
+                                      ? "Completed"
+                                      : (e.note ?? e.kind)}
                   </span>
                   <span className="pt-meta pt-mono">
                     {new Date(e.at).toLocaleDateString("en-GB", {

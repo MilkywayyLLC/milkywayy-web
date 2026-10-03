@@ -11,7 +11,7 @@ Things to do or undo when the portal moves from the `portal` branch and the dev 
 ## Cloudflare R2 (Akash, then Claude checks)
 - [ ] Production files: bucket `milkywayy-deliverables` (exists) with **its own API token** (Object Read & Write, that bucket only). The preview token covers `milkywayy-portal-dev` only (checked 3 Oct 2026: it gets 403 on `milkywayy-deliverables`); keep it that way.
 - [ ] In Vercel → Production: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (Secret) for that token, and `R2_BUCKET=milkywayy-deliverables`. The four `R2_` variables in Preview stay on `milkywayy-portal-dev`.
-- [ ] Same CORS rules on `milkywayy-deliverables` as on the dev bucket; Public Development URL stays disabled (downloads use short-lived signed links).
+- [ ] CORS on `milkywayy-deliverables`: `AllowedOrigins` = the live portal origin(s) only (e.g. `https://milkywayy.com`), methods GET and PUT (clients upload raw files too), `ExposeHeaders` ETag; Public Development URL stays disabled (downloads use short-lived signed links).
 - [ ] Optional: empty and delete `milkywayy-portal-dev` once the dev Supabase project is retired.
 
 ## Supabase, production project (`milkywayy-web`)
@@ -22,7 +22,7 @@ Things to do or undo when the portal moves from the `portal` branch and the dev 
 - [ ] (Phone sign-in only) Raise "Rate limit for sending SMS messages" from 30/hour to what real sign-ins need.
 - [ ] (Phone sign-in only) Decide on a CAPTCHA for the code request (Cloudflare Turnstile is free; it's a new service, so owner's call). Until then the SMS rate limit, Twilio Fraud Guard and geo permissions are the protection against SMS fraud.
 - [ ] Custom SMTP (Resend, `portal@milkywayy.com`), the code email templates with `{{ .Token }}` (Magic Link and Confirm signup), OTP length 6, a higher email rate limit; Site URL and Redirect URLs for milkywayy.com. Same steps as the dev project.
-- [ ] Apply `20261006090000_portal_email_notifications.sql` and `20261007090000_portal_projects.sql` (projects, deliveries, retention).
+- [ ] Apply `20261006090000_portal_email_notifications.sql`, `20261007090000_portal_projects.sql` (projects, deliveries, retention) and `20261008090000_portal_edit_avatar.sql` (batches, avatar scripts).
 
 ## Email (Resend)
 - [ ] `RESEND_API_KEY` (Sensitive) and `PORTAL_EMAIL_FROM` (`Milkywayy <portal@milkywayy.com>`) in Vercel **Production** too (Preview first, for testing).

@@ -595,7 +595,11 @@
     border-bottom: 1px solid var(--line);
     overflow-x: auto;
   }
-  .pt-tabs button {
+  .pt-tabs button,
+  .pt-tabs a {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
     min-height: 44px;
     padding: 0 14px;
     background: none;
@@ -608,6 +612,7 @@
     cursor: pointer;
     white-space: nowrap;
   }
+  .pt-tabs a[aria-selected="true"],
   .pt-tabs button[aria-selected="true"] {
     color: var(--fg);
     border-bottom-color: var(--fg);
@@ -1062,6 +1067,37 @@
     justify-self: end;
     background: var(--surface-2);
   }
+  /* upload progress (raw files) */
+  .pt-progress {
+    height: 4px;
+    background: var(--line);
+  }
+  .pt-progress i {
+    display: block;
+    height: 100%;
+    background: var(--fg);
+    transition: width 0.2s;
+  }
+  .pt-drop {
+    display: grid;
+    gap: 4px;
+    place-items: center;
+    padding: 22px 16px;
+    text-align: center;
+    border: 1px dashed var(--fg);
+    background: var(--bg);
+    cursor: pointer;
+  }
+  .pt-drop:focus-within {
+    outline: 2px solid var(--fg);
+    outline-offset: 2px;
+  }
+  .pt-drop input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
   .pt-hold {
     display: grid;
     gap: 4px;
@@ -1093,6 +1129,8 @@
     border-left: 3px solid var(--champagne);
     font-size: 15px;
     line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
   .pt-hscroll {
     overflow-x: auto;

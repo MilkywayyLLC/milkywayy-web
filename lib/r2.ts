@@ -22,7 +22,10 @@ const sha = (d: string | Buffer) => createHash("sha256").update(d).digest("hex")
 const hmac = (k: string | Buffer, d: string) => createHmac("sha256", k).update(d).digest();
 /** RFC 3986 encoding, as SigV4 wants it. */
 const enc = (s: string) =>
-  encodeURIComponent(s).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  encodeURIComponent(s).replace(
+    /[!'()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
 const path = (key: string) => `/${cfg().bucket}/${key.split("/").map(enc).join("/")}`;
 const host = () => `${cfg().account}.r2.cloudflarestorage.com`;
 
@@ -40,7 +43,12 @@ const canonicalQuery = (q: Record<string, string>) =>
     .join("&");
 
 /** A presigned URL a browser can use directly (no headers needed beyond Host). */
-export function presign(method: "GET" | "PUT", key: string, seconds: number, extra: Record<string, string> = {}) {
+export function presign(
+  method: "GET" | "PUT",
+  key: string,
+  seconds: number,
+  extra: Record<string, string> = {},
+) {
   const c = cfg();
   const { amz, day } = stamp();
   const scope = `${day}/auto/s3/aws4_request`;
@@ -66,10 +74,21 @@ async function call(method: string, key: string, q: Record<string, string> = {},
   const { amz, day } = stamp();
   const scope = `${day}/auto/s3/aws4_request`;
   const payload = sha(body);
-  const headers: Record<string, string> = { host: host(), "x-amz-content-sha256": payload, "x-amz-date": amz };
+  const headers: Record<string, string> = {
+    host: host(),
+    "x-amz-content-sha256": payload,
+    "x-amz-date": amz,
+  };
   const names = Object.keys(headers).sort();
   const qs = canonicalQuery(q);
-  const canon = [method, path(key), qs, names.map((n) => `${n}:${headers[n]}\n`).join(""), names.join(";"), payload].join("\n");
+  const canon = [
+    method,
+    path(key),
+    qs,
+    names.map((n) => `${n}:${headers[n]}\n`).join(""),
+    names.join(";"),
+    payload,
+  ].join("\n");
   const sig = createHmac("sha256", signingKey(day))
     .update(["AWS4-HMAC-SHA256", amz, scope, sha(canon)].join("\n"))
     .digest("hex");
@@ -82,7 +101,10 @@ async function call(method: string, key: string, q: Record<string, string> = {},
     body: body || undefined,
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`R2 ${method} ${res.status}: ${/<Message>(.*?)<\/Message>/.exec(text)?.[1] ?? text.slice(0, 200)}`);
+  if (!res.ok)
+    throw new Error(
+      `R2 ${method} ${res.status}: ${/<Message>(.*?)<\/Message>/.exec(text)?.[1] ?? text.slice(0, 200)}`,
+    );
   return text;
 }
 
@@ -115,13 +137,28 @@ export async function listParts(key: string, uploadId: string) {
   }));
 }
 
-export async function completeMultipart(key: string, uploadId: string, parts: { partNumber: number; etag: string }[]) {
+export async function completeMultipart(
+  key: string,
+  uploadId: string,
+  parts: { partNumber: number; etag: string }[],
+) {
   const body = `<CompleteMultipartUpload>${parts
     .sort((a, b) => a.partNumber - b.partNumber)
-    .map((p) => `<Part><PartNumber>${p.partNumber}</PartNumber><ETag>${p.etag.replace(/"/g, "&quot;")}</ETag></Part>`)
+    .map(
+      (p) =>
+        `<Part><PartNumber>${p.partNumber}</PartNumber><ETag>${p.etag.replace(/"/g, "&quot;")}</ETag></Part>`,
+    )
     .join("")}</CompleteMultipartUpload>`;
   await call("POST", key, { uploadId }, body);
 }
 
-export const abortMultipart = (key: string, uploadId: string) => call("DELETE", key, { uploadId }).then(() => undefined);
+export const abortMultipart = (key: string, uploadId: string) =>
+  call("DELETE", key, { uploadId }).then(() => undefined);
 export const deleteObject = (key: string) => call("DELETE", key).then(() => undefined);
+
+/** Biggest single file anyone may upload (§13: 5 GB by default; PORTAL_UPLOAD_MAX_GB changes it). */
+export const maxUploadGb = () => {
+  const n = Number(process.env.PORTAL_UPLOAD_MAX_GB);
+  return n > 0 && n <= 50 ? n : 5;
+};
+export const maxUploadBytes = () => maxUploadGb() * 1024 * 1024 * 1024;

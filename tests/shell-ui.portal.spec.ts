@@ -219,7 +219,9 @@ test("Settings: name, notifications and company details save; bad TRN is refused
 
   await page.getByLabel("TRN (optional)").fill("12345");
   await page.getByRole("button", { name: "Save details" }).click();
-  await expect(page.locator("section[aria-labelledby=co] p[role=alert]")).toContainText("15 digits");
+  await expect(page.locator("section[aria-labelledby=co] p[role=alert]")).toContainText(
+    "15 digits",
+  );
   await page.getByLabel("TRN (optional)").fill("100 4821 3399 0003");
   await page.getByLabel("Billing address (optional)").fill("Office 1204, Bay Square 7, Dubai");
   await page.getByRole("button", { name: "Save details" }).click();

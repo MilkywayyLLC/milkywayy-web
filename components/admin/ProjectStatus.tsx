@@ -94,11 +94,14 @@ export function StatusButtons({
   );
 }
 
-const EVENT_FOR: Record<string, MessageEvent | undefined> = {
+const EVENT_FOR: Record<string, MessageEvent> = {
   confirmed: "booking_confirmed",
   shot: "shoot_done",
   delivered: "delivered",
+  script_ready: "script_ready",
 };
+/** Every step can be emailed; the ones without their own email send a short progress update. */
+const eventFor = (status: string): MessageEvent => EVENT_FOR[status] ?? "status_update";
 
 function StatusDialog({
   project,
@@ -111,8 +114,8 @@ function StatusDialog({
   origin: string;
   onClose: () => void;
 }) {
-  const event = EVENT_FOR[to];
-  const [notify, setNotify] = useState(!!event && project.inPortal);
+  const event = eventFor(to);
+  const [notify, setNotify] = useState(project.inPortal);
   const [date, setDate] = useState(project.shoot_date ?? "");
   const [slot, setSlot] = useState(project.slot ?? "Morning");
   const [note, setNote] = useState("");
@@ -158,30 +161,27 @@ function StatusDialog({
             )}
             {to === "on_hold" && (
               <div className="ad-field">
-                <label htmlFor="st-note">Reason the client sees</label>
+                <label htmlFor="st-note">What you’re waiting for (the client sees this)</label>
                 <input
                   id="st-note"
                   value={note}
+                  maxLength={500}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="Waiting on client: …"
+                  placeholder="e.g. The music licence for reel 2"
                 />
               </div>
             )}
-            {event ? (
-              <label className="ad-check">
-                <input
-                  type="checkbox"
-                  checked={notify}
-                  disabled={!project.inPortal}
-                  onChange={(e) => setNotify(e.target.checked)}
-                />
-                {project.inPortal
-                  ? "Email the client"
-                  : "Email the client (not in the portal yet: use WhatsApp)"}
-              </label>
-            ) : (
-              <span className="ad-small ad-muted">No email for this step.</span>
-            )}
+            <label className="ad-check">
+              <input
+                type="checkbox"
+                checked={notify}
+                disabled={!project.inPortal}
+                onChange={(e) => setNotify(e.target.checked)}
+              />
+              {project.inPortal
+                ? "Email the client"
+                : "Email the client (not in the portal yet: use WhatsApp)"}
+            </label>
             {result?.error && (
               <p className="ad-status error" role="alert">
                 {result.error}
@@ -192,18 +192,16 @@ function StatusDialog({
                 type="button"
                 className="ad-btn"
                 disabled={pending}
-                onClick={() =>
+                onClick={() => {
+                  if (to === "on_hold" && !note.trim())
+                    return setResult({
+                      ok: false,
+                      error: "Say what you’re waiting for: the client sees it.",
+                    });
                   start(async () =>
-                    setResult(
-                      await setStatus(project.id, to, {
-                        date,
-                        slot,
-                        note,
-                        notify: notify && !!event,
-                      }),
-                    ),
-                  )
-                }
+                    setResult(await setStatus(project.id, to, { date, slot, note, notify })),
+                  );
+                }}
               >
                 {pending ? "Saving…" : "Save"}
               </button>
@@ -223,10 +221,11 @@ function StatusDialog({
                 project={{
                   ...project,
                   status: to,
+                  status_note: to === "on_hold" ? note : null,
                   shoot_date: date || project.shoot_date,
                   slot: to === "confirmed" ? slot : project.slot,
                 }}
-                event={event ?? "status"}
+                event={event}
                 origin={origin}
               />
               <button type="button" className="ad-btn quiet" onClick={onClose}>

@@ -5,6 +5,9 @@
 export type ProjectInfo = {
   ref: string;
   title: string;
+  type?: "shoot" | "edit" | "avatar";
+  status?: string;
+  status_note?: string | null;
   shoot_date?: string | null;
   slot?: string | null;
   meta?: { area?: string; building?: string; unit?: string } | null;
@@ -15,7 +18,28 @@ export type MessageEvent =
   | "delivered"
   | "revision_delivered"
   | "new_message"
-  | "files_expiring";
+  | "files_expiring"
+  | "batch_received"
+  | "script_ready"
+  | "status_update";
+
+const STATUS_TEXT: Record<string, string> = {
+  requested: "requested",
+  confirmed: "confirmed",
+  shot: "shot",
+  editing: "in editing",
+  submitted: "submitted",
+  files_received: "files received, editing starts soon",
+  in_editing: "in editing",
+  brief_received: "brief received",
+  script_ready: "script ready for your approval",
+  in_production: "in production",
+  on_hold: "on hold",
+  delivered: "delivered",
+  completed: "completed",
+};
+const what = (p: ProjectInfo) =>
+  p.type === "edit" ? "batch" : p.type === "avatar" ? "avatar video" : "shoot";
 
 const day = (d?: string | null) =>
   d
@@ -94,6 +118,41 @@ export function emailFor(
         ],
         button: "Reply in your portal",
       };
+    case "batch_received":
+      return {
+        subject: `Received: ${p.title} (${p.ref})`,
+        lines: [
+          hi,
+          p.type === "avatar"
+            ? `We’ve got your brief for ${p.title}. We’ll be in touch with the script for your approval.`
+            : `We’ve got your batch ${p.title}. We’ll check the files and let you know when editing starts.`,
+          "Add files or notes any time from the project page.",
+        ],
+        button: "Open the project",
+      };
+    case "script_ready":
+      return {
+        subject: `Script ready for your approval: ${p.title} (${p.ref})`,
+        lines: [
+          hi,
+          `The script for ${p.title} is ready. Approve it, or tell us what to change. Production starts once you approve.`,
+        ],
+        button: "Review the script",
+      };
+    case "status_update":
+      return {
+        subject:
+          p.status === "on_hold"
+            ? `On hold, waiting on you: ${p.title} (${p.ref})`
+            : `Update: ${p.title} is ${STATUS_TEXT[p.status ?? ""] ?? p.status} (${p.ref})`,
+        lines: [
+          hi,
+          p.status === "on_hold"
+            ? `Your ${what(p)} ${p.title} is on hold until we hear from you:\n${p.status_note ?? ""}`
+            : `Your ${what(p)} ${p.title} is now ${STATUS_TEXT[p.status ?? ""] ?? p.status}.`,
+        ],
+        button: "Open the project",
+      };
     case "files_expiring":
       return {
         subject: `Your files for ${p.ref} will be deleted on ${o.expires}`,
@@ -126,10 +185,20 @@ export function whatsappFor(
       return `${hi} the revision for ${p.title} (${p.ref}) is ready: ${o.link}`;
     case "new_message":
       return `${hi} I’ve replied about ${p.ref} in your portal: ${o.link}`;
+    case "batch_received":
+      return `${hi} we’ve got ${p.title} (${p.ref}). We’ll keep you posted here: ${o.link}`;
+    case "script_ready":
+      return `${hi} the script for ${p.title} (${p.ref}) is ready for your approval: ${o.link}`;
+    case "status_update":
+      return p.status === "on_hold"
+        ? `${hi} ${p.title} (${p.ref}) is on hold until we hear from you: ${p.status_note ?? ""} ${o.link}`
+        : `${hi} ${p.title} (${p.ref}) is now ${STATUS_TEXT[p.status ?? ""] ?? p.status}: ${o.link}`;
     case "files_expiring":
       return `${hi} a reminder that the files for ${p.ref} will be deleted soon. Download them here: ${o.link}`;
     default:
-      return `${hi} an update on ${p.title} (${p.ref})${o.status ? `: ${o.status}` : ""}. ${o.link}`;
+      return p.status === "on_hold"
+        ? `${hi} ${p.title} (${p.ref}) is on hold until we hear from you: ${p.status_note ?? ""} ${o.link}`
+        : `${hi} an update on ${p.title} (${p.ref})${o.status ? `: ${o.status.toLowerCase()}` : ""}. ${o.link}`;
   }
 }
 

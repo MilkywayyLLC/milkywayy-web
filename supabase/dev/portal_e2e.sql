@@ -229,3 +229,18 @@ begin
 end $$;
 revoke all on function public.e2e_set_lead_phone(text, text, text) from public, authenticated;
 grant execute on function public.e2e_set_lead_phone(text, text, text) to anon;
+
+-- ---------- Phase 11: a test WhatsApp number on a test user's profile ----------
+-- Applied to the dev project as migration dev_portal_e2e_profile_phone.
+create or replace function public.e2e_set_profile_phone(p_secret text, p_email text, p_phone text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  perform private.e2e_gate(p_secret, p_email);
+  if p_phone !~ '^\+97150000000[0-9]$' then
+    raise exception 'test numbers only' using errcode = '42501';
+  end if;
+  update public.profiles set phone_e164 = p_phone
+    where user_id = (select id from auth.users where email = lower(p_email));
+end $$;
+revoke all on function public.e2e_set_profile_phone(text, text, text) from public, authenticated;
+grant execute on function public.e2e_set_profile_phone(text, text, text) to anon;

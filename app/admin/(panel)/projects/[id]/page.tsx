@@ -1,15 +1,19 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { StatusButtons, WhatsAppButton } from "@/components/admin/ProjectStatus";
+import { FilesIn, ScriptPanel } from "@/components/admin/ProjectBrief";
+import { StatusButtons, WhatsAppButton, type StatusTarget } from "@/components/admin/ProjectStatus";
 import { Deliveries, ProjectNotes, RevisionPanel, Thread } from "@/components/admin/ProjectWork";
 import { dubai } from "@/lib/admin/format";
 import { portalAdminPage, type ProjectDetail } from "@/lib/portal/admin";
 import { originFrom } from "@/lib/portal/invite";
 import {
+  adminStatuses,
+  briefKindLabel,
+  day,
   deliveries,
-  PIPELINES,
   REVISION_LABEL,
+  TYPE_LABEL,
   SHOOT_SERVICE_LABEL,
   shootDay,
   statusLabel,
@@ -18,7 +22,7 @@ import {
 export const metadata = { title: "Project" };
 
 const EVENT_TEXT: Record<string, string> = {
-  created: "Requested on milkywayy.com",
+  created: "Created",
   status: "Status",
   delivery: "Delivery",
   revision_requested: "Revision requested",
@@ -27,6 +31,10 @@ const EVENT_TEXT: Record<string, string> = {
   approved: "Approved by the client",
   auto_completed: "Completed automatically",
   note: "Note",
+  files_added: "Files added",
+  script_posted: "Script posted",
+  script_approved: "Script approved",
+  script_changes: "Script changes asked",
 };
 
 /** One project (§7.2): status, deliveries, revisions, messages, notes, notifications, activity. */
@@ -38,18 +46,22 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   if (!d) notFound();
   const origin = originFrom(await headers());
   const p = d.project;
-  const target = {
+  // WhatsApp goes to whoever submitted it (batches, avatar briefs), else the booking, else the Owner.
+  const target: StatusTarget = {
     id: p.id,
     ref: p.ref,
     title: p.title,
+    type: p.type,
     status: p.status,
+    status_note: p.status_note,
     shoot_date: p.shoot_date,
     slot: p.slot,
     meta: p.meta,
     inPortal: !!p.account_id,
-    phone: d.owner?.phone || d.lead?.phone || null,
-    name: d.owner?.name || d.lead?.name || d.account?.name || null,
+    phone: d.submitter?.phone || d.lead?.phone || d.owner?.phone || null,
+    name: d.submitter?.name || d.lead?.name || d.owner?.name || d.account?.name || null,
   };
+  const shoot = p.type === "shoot";
   const groups = deliveries(d.files);
   const revisionOpen = p.revision_state === "requested" || p.revision_state === "in_progress";
   const total = d.line_items.reduce((t, i) => t + Number(i.qty) * Number(i.unit_price), 0);
@@ -63,7 +75,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           </Link>
           <h1 className="ad-h1">{p.title}</h1>
           <span className="ad-small ad-muted">
-            {p.ref} · {statusLabel(p.status)}
+            {TYPE_LABEL[p.type]} · {p.ref} · {statusLabel(p.status)}
             {p.revision_state ? ` · ${REVISION_LABEL[p.revision_state]}` : ""} ·{" "}
             {d.account ? (
               <Link href={`/admin/accounts/${d.account.id}`} prefetch={false}>
@@ -96,10 +108,14 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
       <section className="ad-card ad-form" aria-label="Status">
         <h2 className="ad-h2">Status</h2>
-        <StatusButtons project={target} options={[...PIPELINES.shoot]} origin={origin} />
+        <StatusButtons project={target} options={adminStatuses(p.type)} origin={origin} />
+        {p.status === "on_hold" && p.status_note && (
+          <p className="ad-note warn">Waiting on the client: {p.status_note}</p>
+        )}
         <span className="ad-small ad-muted">
           “Delivered” happens when you publish a delivery below. Delivered projects complete on
           their own 7 days later unless a revision is open.
+          {p.type === "avatar" ? " In production needs the client’s approved script." : ""}
         </span>
       </section>
 
@@ -107,30 +123,80 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         <section className="ad-card" aria-label="Details">
           <h2 className="ad-h2">Details</h2>
           <dl className="ad-dl">
-            <dt>When</dt>
-            <dd>{[shootDay(p.shoot_date), p.slot].filter(Boolean).join(" · ") || "—"}</dd>
-            <dt>Where</dt>
-            <dd>
-              {[p.meta.unit && `Unit ${p.meta.unit}`, p.meta.building, p.meta.area]
-                .filter(Boolean)
-                .join(", ") || "—"}
-            </dd>
-            <dt>Services</dt>
-            <dd>
-              {(p.meta.services ?? []).map((s) => SHOOT_SERVICE_LABEL[s] ?? s).join(", ") || "—"}
-            </dd>
+            {shoot ? (
+              <>
+                <dt>When</dt>
+                <dd>{[shootDay(p.shoot_date), p.slot].filter(Boolean).join(" · ") || "—"}</dd>
+                <dt>Where</dt>
+                <dd>
+                  {[p.meta.unit && `Unit ${p.meta.unit}`, p.meta.building, p.meta.area]
+                    .filter(Boolean)
+                    .join(", ") || "—"}
+                </dd>
+                <dt>Services</dt>
+                <dd>
+                  {(p.meta.services ?? []).map((s) => SHOOT_SERVICE_LABEL[s] ?? s).join(", ") ||
+                    "—"}
+                </dd>
+              </>
+            ) : (
+              <>
+                <dt>{p.type === "avatar" ? "Length" : "What"}</dt>
+                <dd>{briefKindLabel(p.type, p.meta.kind) || "—"}</dd>
+                {p.type === "edit" && (
+                  <>
+                    <dt>Quantity</dt>
+                    <dd>{p.meta.quantity ?? "—"}</dd>
+                  </>
+                )}
+                {p.type === "avatar" && (
+                  <>
+                    <dt>Script</dt>
+                    <dd>{p.meta.script_by === "client" ? "Client sends it" : "We write it"}</dd>
+                  </>
+                )}
+                <dt>Wanted by</dt>
+                <dd>{p.due_at ? day(p.due_at, true) : "—"}</dd>
+                <dt>Notes</dt>
+                <dd style={{ whiteSpace: "pre-wrap" }}>{p.meta.notes ?? "—"}</dd>
+                <dt>Reference</dt>
+                <dd style={{ overflowWrap: "anywhere" }}>
+                  {(p.meta.references ?? []).length
+                    ? (p.meta.references ?? []).map((r) => (
+                        <a
+                          key={r}
+                          href={r}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ display: "block" }}
+                        >
+                          {r}
+                        </a>
+                      ))
+                    : "—"}
+                </dd>
+                <dt>Submitted by</dt>
+                <dd>
+                  {[d.submitter?.name, d.submitter?.email].filter(Boolean).join(" · ") || "—"}
+                </dd>
+              </>
+            )}
             <dt>Client</dt>
             <dd>
               {[d.owner?.name ?? d.lead?.name, d.owner?.email ?? d.lead?.email, target.phone]
                 .filter(Boolean)
                 .join(" · ") || "—"}
             </dd>
-            <dt>Price</dt>
-            <dd>
-              {total
-                ? `${d.account?.currency ?? "AED"} ${total.toLocaleString("en-US")} (estimate at booking)`
-                : "—"}
-            </dd>
+            {shoot && (
+              <>
+                <dt>Price</dt>
+                <dd>
+                  {total
+                    ? `${d.account?.currency ?? "AED"} ${total.toLocaleString("en-US")} (estimate at booking)`
+                    : "—"}
+                </dd>
+              </>
+            )}
             <dt>Files kept</dt>
             <dd>
               {d.account
@@ -147,6 +213,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         />
       </div>
 
+      {p.type === "avatar" && <ScriptPanel project={target} scripts={d.scripts} origin={origin} />}
+      {!shoot && <FilesIn projectId={p.id} files={d.files} />}
       <Deliveries project={target} groups={groups} revisionOpen={revisionOpen} origin={origin} />
       <Thread project={target} messages={d.messages} origin={origin} />
       <ProjectNotes projectId={p.id} notes={d.notes ?? ""} />

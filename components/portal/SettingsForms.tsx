@@ -53,7 +53,15 @@ export function ProfileForm({ name }: { name: string }) {
   );
 }
 
-export function NotificationsForm({ prefs, manager, email }: { prefs: NotifyPrefs; manager: boolean; email: string | null }) {
+export function NotificationsForm({
+  prefs,
+  manager,
+  email,
+}: {
+  prefs: NotifyPrefs;
+  manager: boolean;
+  email: string | null;
+}) {
   const [state, save, saving] = useActionState(saveNotifications, undefined);
   return (
     <form action={save} className="pt-form" style={{ gap: 6 }}>
@@ -63,12 +71,18 @@ export function NotificationsForm({ prefs, manager, email }: { prefs: NotifyPref
       <div>
         {NOTIFY_EVENTS.filter((e) => manager || !e[3]).map(([key, label]) => (
           <label key={key} className="pt-check" style={{ minHeight: 40 }}>
-            <input type="checkbox" name={`${key}.email`} defaultChecked={wantsEmail(prefs, key)} /> {label}
+            <input type="checkbox" name={`${key}.email`} defaultChecked={wantsEmail(prefs, key)} />{" "}
+            {label}
           </label>
         ))}
       </div>
       <Status state={state} />
-      <button type="submit" className="btn btn-p btn-s" style={{ justifySelf: "start" }} disabled={saving}>
+      <button
+        type="submit"
+        className="btn btn-p btn-s"
+        style={{ justifySelf: "start" }}
+        disabled={saving}
+      >
         {saving ? "Saving…" : "Save email settings"}
       </button>
     </form>
@@ -97,7 +111,12 @@ export function RecipientsForm({ cc }: { cc: NotifyCc }) {
         </label>
       ))}
       <Status state={state} />
-      <button type="submit" className="btn btn-g btn-s" style={{ justifySelf: "start" }} disabled={saving}>
+      <button
+        type="submit"
+        className="btn btn-g btn-s"
+        style={{ justifySelf: "start" }}
+        disabled={saving}
+      >
         {saving ? "Saving…" : "Save recipients"}
       </button>
     </form>
@@ -118,7 +137,8 @@ export function PasswordForm() {
           aria-invalid={state?.field === "password" || undefined}
         />
         <small className="pt-muted" style={{ fontWeight: 400 }}>
-          Set or change it here. At least 8 characters. You can always sign in with an email code instead.
+          Set or change it here. At least 8 characters. You can always sign in with an email code
+          instead.
         </small>
       </label>
       {state?.error && (
@@ -131,7 +151,12 @@ export function PasswordForm() {
           {state.notice}
         </p>
       )}
-      <button type="submit" className="btn btn-g btn-s" style={{ justifySelf: "start" }} disabled={saving}>
+      <button
+        type="submit"
+        className="btn btn-g btn-s"
+        style={{ justifySelf: "start" }}
+        disabled={saving}
+      >
         {saving ? "Saving…" : "Save password"}
       </button>
     </form>

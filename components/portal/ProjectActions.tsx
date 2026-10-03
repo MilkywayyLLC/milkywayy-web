@@ -7,7 +7,15 @@ import { Icon } from "./Icon";
 import { Sheet, useToast } from "./ui";
 
 /** Gets a short-lived link for one file, then starts the download (or opens a link/360 tour). */
-export function DownloadButton({ fileId, label = "Download", name }: { fileId: string; label?: string; name: string }) {
+export function DownloadButton({
+  fileId,
+  label = "Download",
+  name,
+}: {
+  fileId: string;
+  label?: string;
+  name: string;
+}) {
   const [pending, start] = useTransition();
   const [toast, say] = useToast();
   return (
@@ -26,7 +34,13 @@ export function DownloadButton({ fileId, label = "Download", name }: { fileId: s
           })
         }
       >
-        {pending ? "…" : label === "Open" ? "Open" : <Icon name="download" size={16} title={`Download ${name}`} />}
+        {pending ? (
+          "…"
+        ) : label === "Open" ? (
+          "Open"
+        ) : (
+          <Icon name="download" size={16} title={`Download ${name}`} />
+        )}
       </button>
       {toast}
     </>
@@ -113,7 +127,8 @@ export function ProjectActions({
               />
             </label>
             <span className="pt-meta">
-              Point to photo numbers or video timecodes. Screenshots or links can go in a message below.
+              Point to photo numbers or video timecodes. Screenshots or links can go in a message
+              below.
             </span>
             {error && (
               <p className="pt-error" role="alert">
@@ -129,7 +144,8 @@ export function ProjectActions({
       {sheet === "approve" && (
         <Sheet title="Approve this delivery?" onClose={() => setSheet(null)}>
           <p style={{ margin: 0 }}>
-            The shoot moves to Completed. Your files stay available to download, and you can still message us about it.
+            The shoot moves to Completed. Your files stay available to download, and you can still
+            message us about it.
           </p>
           {error && (
             <p className="pt-error" role="alert">
@@ -159,7 +175,15 @@ export function ProjectActions({
 }
 
 /** The thread with Milkywayy about this project (§4.2): works on completed projects too. */
-export function ProjectMessages({ projectId, messages }: { projectId: string; messages: ProjectMessage[] }) {
+export function ProjectMessages({
+  projectId,
+  messages,
+  hint = "Questions about this project go here.",
+}: {
+  projectId: string;
+  messages: ProjectMessage[];
+  hint?: string;
+}) {
   const [body, setBody] = useState("");
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
@@ -171,14 +195,20 @@ export function ProjectMessages({ projectId, messages }: { projectId: string; me
       <div style={{ display: "grid", gap: 10 }} data-testid="messages">
         {messages.length === 0 && (
           <p className="pt-meta" style={{ margin: 0 }}>
-            No messages yet. Questions about access, parking or the brief go here.
+            No messages yet. {hint}
           </p>
         )}
         {messages.map((m) => (
           <div key={m.id} className={`pt-msg ${m.is_admin ? "admin" : ""}`}>
             <span className="pt-eb">
               {m.is_admin ? "Milkywayy" : (m.author_name ?? "You")} ·{" "}
-              {new Date(m.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dubai" })}
+              {new Date(m.at).toLocaleString("en-GB", {
+                day: "numeric",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+                timeZone: "Asia/Dubai",
+              })}
             </span>
             <span style={{ whiteSpace: "pre-wrap" }}>{m.body}</span>
           </div>
@@ -208,7 +238,12 @@ export function ProjectMessages({ projectId, messages }: { projectId: string; me
             {error}
           </p>
         )}
-        <button type="submit" className="btn btn-g btn-s" style={{ justifySelf: "start" }} disabled={pending || !body.trim()}>
+        <button
+          type="submit"
+          className="btn btn-g btn-s"
+          style={{ justifySelf: "start" }}
+          disabled={pending || !body.trim()}
+        >
           {pending ? "Sending…" : "Send"}
         </button>
       </form>

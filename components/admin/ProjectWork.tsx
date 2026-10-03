@@ -20,10 +20,8 @@ import {
   type ProjectFile,
   type ProjectMessage,
 } from "@/lib/portal/projects";
+import { uploadFile } from "@/lib/upload-browser";
 import { WhatsAppButton, type StatusTarget } from "./ProjectStatus";
-
-const PART = 16 * 1024 * 1024;
-const PARALLEL = 3;
 
 function Status({
   r,
@@ -41,54 +39,8 @@ function Status({
   );
 }
 
-/** PUT straight to R2 with a presigned URL, reporting progress; returns the part's ETag. */
-function put(url: string, body: Blob, onProgress: (loaded: number) => void) {
-  return new Promise<string>((resolve, reject) => {
-    const x = new XMLHttpRequest();
-    x.open("PUT", url);
-    x.upload.onprogress = (e) => onProgress(e.loaded);
-    x.onload = () =>
-      x.status >= 200 && x.status < 300
-        ? resolve(x.getResponseHeader("ETag") ?? "")
-        : reject(new Error(`R2 said ${x.status}`));
-    x.onerror = () => reject(new Error("Network error (check the bucket's CORS settings)"));
-    x.send(body);
-  });
-}
-
-async function retry<T>(fn: () => Promise<T>, tries = 3) {
-  let last: unknown;
-  for (let i = 0; i < tries; i++) {
-    try {
-      return await fn();
-    } catch (e) {
-      last = e;
-      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
-    }
-  }
-  throw last;
-}
-
-type Saved = { key: string; uploadId: string };
-const memo = (ref: string, f: File) => `mw-upload:${ref}:${f.name}:${f.size}`;
-const recall = (k: string): Saved | null => {
-  try {
-    return JSON.parse(localStorage.getItem(k) ?? "null");
-  } catch {
-    return null;
-  }
-};
-const remember = (k: string, v: Saved | null) => {
-  try {
-    if (v) localStorage.setItem(k, JSON.stringify(v));
-    else localStorage.removeItem(k);
-  } catch {}
-};
-
 /**
- * Upload files into one delivery. Files up to 16 MB go in one request; bigger ones in 16 MB parts,
- * 3 at a time, each retried. If the page reloads mid-upload, choosing the same file again resumes:
- * R2 says which parts it already has.
+ * Upload files into one delivery (lib/upload-browser: straight to R2, resumable).
  */
 function Uploader({
   projectId,
@@ -111,74 +63,23 @@ function Uploader({
     setBusy(true);
     setRows(files.map((f) => ({ name: f.name, size: f.size, done: 0, state: "Waiting" })));
     for (const [i, f] of files.entries()) {
-      try {
-        const k = memo(projectRef, f);
-        const saved = recall(k);
-        const plan = saved
-          ? await resumeUpload(saved.key, saved.uploadId, f.size)
-          : await startUpload(projectId, projectRef, delivery.no, f.name, f.size);
-        if (!plan.ok) {
-          set(i, { state: plan.error });
-          continue;
-        }
-        if (plan.single) {
-          set(i, { state: "Uploading" });
-          await retry(() => put(plan.single!, f, (n) => set(i, { done: n })));
-          const r = await finishUpload(projectId, delivery, {
-            key: plan.key,
-            name: f.name,
-            size: f.size,
-            type: f.type,
-            kind,
-          });
-          set(i, { done: f.size, state: r.ok ? "Done" : r.error! });
-          continue;
-        }
-        remember(k, { key: plan.key, uploadId: plan.uploadId! });
-        const resumed = (plan as { done?: { partNumber: number; etag: string }[] }).done;
-        const finished: { partNumber: number; etag: string }[] = resumed ? [...resumed] : [];
-        const sent: Record<number, number> = Object.fromEntries(
-          finished.map((p) => [p.partNumber, PART]),
-        );
-        const show = () =>
-          set(i, {
-            done: Math.min(
-              f.size,
-              Object.values(sent).reduce((a, b) => a + b, 0),
-            ),
-          });
-        set(i, { state: finished.length ? "Resuming" : "Uploading" });
-        show();
-        const queue = [...plan.parts!];
-        await Promise.all(
-          Array.from({ length: PARALLEL }, async () => {
-            for (let p = queue.shift(); p; p = queue.shift()) {
-              const part = p;
-              const blob = f.slice((part.partNumber - 1) * PART, part.partNumber * PART);
-              const etag = await retry(() =>
-                put(part.url, blob, (n) => ((sent[part.partNumber] = n), show())),
-              );
-              finished.push({ partNumber: part.partNumber, etag });
-            }
-          }),
-        );
-        set(i, { state: "Finishing" });
-        const r = await finishUpload(projectId, delivery, {
-          key: plan.key,
-          uploadId: plan.uploadId,
-          parts: finished,
-          name: f.name,
-          size: f.size,
-          type: f.type,
-          kind,
-        });
-        if (r.ok) remember(k, null);
-        set(i, { done: f.size, state: r.ok ? "Done" : r.error! });
-      } catch (e) {
-        set(i, {
-          state: `${e instanceof Error ? e.message : "Failed"}. Choose the file again to resume.`,
-        });
-      }
+      await uploadFile(
+        f,
+        projectRef,
+        {
+          start: () => startUpload(projectId, projectRef, delivery.no, f.name, f.size),
+          resume: (key, uploadId) => resumeUpload(key, uploadId, f.size),
+          finish: (x) =>
+            finishUpload(projectId, delivery, {
+              ...x,
+              name: f.name,
+              size: f.size,
+              type: f.type,
+              kind,
+            }),
+        },
+        (patch) => set(i, patch),
+      );
     }
     setBusy(false);
   }

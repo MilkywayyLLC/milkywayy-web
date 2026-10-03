@@ -17,15 +17,30 @@ export function SignInMethods({
   phone: boolean;
   startOn: "code" | "password" | "whatsapp";
 }) {
-  const [method, setMethod] = useState<"email" | "whatsapp">(phone && startOn === "whatsapp" ? "whatsapp" : "email");
+  const [method, setMethod] = useState<"email" | "whatsapp">(
+    phone && startOn === "whatsapp" ? "whatsapp" : "email",
+  );
   return (
     <div className="pt-form">
       {phone && (
-        <div className="pt-seg" role="group" aria-label="Sign in with" style={{ width: "100%", gridAutoColumns: "1fr" }}>
-          <button type="button" aria-pressed={method === "email"} onClick={() => setMethod("email")}>
+        <div
+          className="pt-seg"
+          role="group"
+          aria-label="Sign in with"
+          style={{ width: "100%", gridAutoColumns: "1fr" }}
+        >
+          <button
+            type="button"
+            aria-pressed={method === "email"}
+            onClick={() => setMethod("email")}
+          >
             Email
           </button>
-          <button type="button" aria-pressed={method === "whatsapp"} onClick={() => setMethod("whatsapp")}>
+          <button
+            type="button"
+            aria-pressed={method === "whatsapp"}
+            onClick={() => setMethod("whatsapp")}
+          >
             WhatsApp
           </button>
         </div>

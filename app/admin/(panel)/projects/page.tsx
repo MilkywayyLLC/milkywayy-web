@@ -1,21 +1,72 @@
 import { headers } from "next/headers";
 import Link from "next/link";
-import { StatusButtons } from "@/components/admin/ProjectStatus";
+import { StatusButtons, type StatusTarget } from "@/components/admin/ProjectStatus";
 import { portalAdminPage, portalAdminReady, type ProjectListRow } from "@/lib/portal/admin";
 import { originFrom } from "@/lib/portal/invite";
-import { PIPELINES, REVISION_LABEL, shootDay, statusLabel } from "@/lib/portal/projects";
+import {
+  adminStatuses,
+  briefKindLabel,
+  day,
+  REVISION_LABEL,
+  shootDay,
+  statusLabel,
+  type ProjectType,
+} from "@/lib/portal/projects";
 
 export const metadata = { title: "Projects" };
 
-type Props = { searchParams: Promise<{ q?: string; status?: string; view?: string }> };
+type Props = {
+  searchParams: Promise<{ q?: string; status?: string; view?: string; type?: string }>;
+};
+
+const TYPES: [ProjectType, string][] = [
+  ["shoot", "Shoots"],
+  ["edit", "Editing"],
+  ["avatar", "Avatars"],
+];
+const SCRIPT: Record<string, string> = {
+  pending: "script with client",
+  changes_requested: "script changes asked",
+  approved: "script approved",
+};
+const BOARD_LIMIT = 12;
+
+/** One line under a ticket: what matters for that kind of project. */
+function facts(r: ProjectListRow) {
+  const revision =
+    r.revision_state && r.revision_state !== "delivered" ? REVISION_LABEL[r.revision_state] : "";
+  const due = r.due_at ? `by ${day(r.due_at)}` : "";
+  if (r.type === "shoot")
+    return [shootDay(r.shoot_date), r.slot, revision].filter(Boolean).join(" · ");
+  if (r.type === "avatar")
+    return [
+      briefKindLabel("avatar", r.meta.kind),
+      r.script_status ? SCRIPT[r.script_status] : "",
+      due,
+      revision,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  return [
+    briefKindLabel("edit", r.meta.kind),
+    r.meta.quantity ? `${r.meta.quantity} items` : "",
+    `${r.files_in} file${r.files_in === 1 ? "" : "s"} in`,
+    due,
+    revision,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 /**
- * Projects (§7.2): every shoot (website bookings arrive here as Requested). A board by status on
- * desktop; on phones (and with "List") one row each with one-tap status buttons. Owner only.
+ * Projects (§7.2): shoots (website bookings arrive as Requested), editing batches and avatar
+ * videos, each on its own pipeline. A board by status on desktop; on phones (and with "List") one
+ * row each with one-tap status buttons. Owner only.
  */
 export default async function Projects({ searchParams }: Props) {
   const rpc = await portalAdminPage();
   const f = await searchParams;
+  const type: ProjectType = f.type === "edit" || f.type === "avatar" ? f.type : "shoot";
   const origin = originFrom(await headers());
   let rows: ProjectListRow[] = [];
   let error = "";
@@ -23,19 +74,21 @@ export default async function Projects({ searchParams }: Props) {
   else
     try {
       rows = await rpc<ProjectListRow[]>("portal_admin_projects", {
-        p_type: "shoot",
+        p_type: type,
         p_status: f.status || null,
         p_q: f.q || null,
       });
     } catch (e) {
       error = e instanceof Error ? e.message : "Couldn’t load projects.";
     }
-  const statuses = PIPELINES.shoot as readonly string[];
-  const target = (r: ProjectListRow) => ({
+  const statuses = adminStatuses(type);
+  const target = (r: ProjectListRow): StatusTarget => ({
     id: r.id,
     ref: r.ref,
     title: r.title,
+    type: r.type,
     status: r.status,
+    status_note: r.status_note,
     shoot_date: r.shoot_date,
     slot: r.slot,
     meta: r.meta,
@@ -43,6 +96,14 @@ export default async function Projects({ searchParams }: Props) {
     phone: r.lead_phone || null,
     name: r.client_name,
   });
+  const href = (o: Record<string, string | undefined>) => {
+    const q = new URLSearchParams(
+      Object.entries({ type, q: f.q, status: f.status, view: f.view, ...o }).filter(
+        (e): e is [string, string] => !!e[1] && !(e[0] === "type" && e[1] === "shoot"),
+      ),
+    ).toString();
+    return `/admin/projects${q ? `?${q}` : ""}`;
+  };
 
   return (
     <div className="ad-page">
@@ -50,10 +111,31 @@ export default async function Projects({ searchParams }: Props) {
         <div>
           <span className="ad-eb">Portal</span>
           <h1 className="ad-h1">Projects</h1>
-          <span className="ad-small ad-muted">Shoots. Website bookings arrive as Requested.</span>
+          <span className="ad-small ad-muted">
+            {type === "shoot"
+              ? "Shoots. Website bookings arrive as Requested."
+              : type === "edit"
+                ? "Editing batches clients submit in the portal."
+                : "AI avatar videos. Production waits for the client to approve the script."}
+          </span>
         </div>
       </div>
+      <nav className="ad-btns" aria-label="Project type">
+        {TYPES.map(([t, label]) => (
+          <Link
+            key={t}
+            href={href({ type: t, status: undefined })}
+            className={`ad-btn small ${t === type ? "" : "ghost"}`}
+            aria-current={t === type ? "page" : undefined}
+            prefetch={false}
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
       <form className="ad-filter" method="get" role="search">
+        {type !== "shoot" && <input type="hidden" name="type" value={type} />}
+        {f.view && <input type="hidden" name="view" value={f.view} />}
         <input
           type="search"
           name="q"
@@ -74,7 +156,11 @@ export default async function Projects({ searchParams }: Props) {
           Filter
         </button>
         {(f.q || f.status) && (
-          <Link className="ad-btn quiet small" href="/admin/projects" prefetch={false}>
+          <Link
+            className="ad-btn quiet small"
+            href={href({ q: undefined, status: undefined })}
+            prefetch={false}
+          >
             Clear
           </Link>
         )}
@@ -91,7 +177,7 @@ export default async function Projects({ searchParams }: Props) {
                   <span className="ad-eb">{statusLabel(s)}</span>
                   <span className="ad-eb">{col.length}</span>
                 </div>
-                {col.map((r) => (
+                {col.slice(0, BOARD_LIMIT).map((r) => (
                   <Link
                     key={r.id}
                     href={`/admin/projects/${r.id}`}
@@ -103,14 +189,21 @@ export default async function Projects({ searchParams }: Props) {
                     <span className="ad-muted">
                       {r.account_name ?? r.client_name ?? "Not claimed yet"}
                     </span>
-                    <span className="ad-muted ad-mono">
-                      {[shootDay(r.shoot_date), r.slot].filter(Boolean).join(" · ")}
-                      {r.revision_state && r.revision_state !== "delivered"
-                        ? ` · ${REVISION_LABEL[r.revision_state]}`
-                        : ""}
-                    </span>
+                    <span className="ad-muted ad-mono">{facts(r)}</span>
+                    {r.status === "on_hold" && r.status_note && (
+                      <span className="ad-small">Waiting: {r.status_note}</span>
+                    )}
                   </Link>
                 ))}
+                {col.length > BOARD_LIMIT && (
+                  <Link
+                    className="ad-small"
+                    href={href({ status: s, view: "list" })}
+                    prefetch={false}
+                  >
+                    +{col.length - BOARD_LIMIT} more
+                  </Link>
+                )}
               </section>
             );
           })}
@@ -135,19 +228,16 @@ export default async function Projects({ searchParams }: Props) {
                 <span className="ad-row-meta" style={{ display: "block" }}>
                   {[
                     r.account_name ?? r.client_name ?? "Not claimed yet",
-                    shootDay(r.shoot_date),
-                    r.slot,
                     statusLabel(r.status),
+                    facts(r),
                   ]
                     .filter(Boolean)
                     .join(" · ")}
-                  {r.revision_state && r.revision_state !== "delivered"
-                    ? ` · ${REVISION_LABEL[r.revision_state]}`
-                    : ""}
+                  {r.status === "on_hold" && r.status_note ? ` · waiting: ${r.status_note}` : ""}
                 </span>
               </span>
             </Link>
-            <StatusButtons project={target(r)} options={[...statuses]} origin={origin} />
+            <StatusButtons project={target(r)} options={statuses} origin={origin} />
           </div>
         ))}
         {!rows.length && !error && (
@@ -157,10 +247,7 @@ export default async function Projects({ searchParams }: Props) {
         )}
       </div>
       <p className="ad-small ad-muted">
-        <Link
-          href={f.view === "list" ? "/admin/projects" : "/admin/projects?view=list"}
-          prefetch={false}
-        >
+        <Link href={href({ view: f.view === "list" ? undefined : "list" })} prefetch={false}>
           {f.view === "list" ? "Board view" : "List view"}
         </Link>
       </p>

@@ -66,6 +66,11 @@ function authError(e: { code?: string; message: string; status?: number }): stri
   }
   if (/rate|too many/i.test(e.message))
     return "Too many attempts. Wait a few minutes and try again.";
+  // The mailer (Resend) refused the address: usually a typo or a domain that takes no mail.
+  if (/error sending .*email/i.test(e.message)) {
+    console.error("[portal] mailer refused:", e.status, e.message);
+    return "We couldn’t email that address. Check it for a typo, or try again in a minute.";
+  }
   console.error("[portal] auth error:", e.status, e.code, e.message);
   return "Something went wrong on our side. Try again in a minute.";
 }

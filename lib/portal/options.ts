@@ -31,6 +31,13 @@ export const NOTIFY_EVENTS = [
   ["batch_received", "Editing batch received", true, false, "projects"],
   ["script_ready", "Script ready for your approval", true, false, "projects"],
   ["revision_delivered", "Revision delivered", true, false, "projects"],
+  [
+    "status_update",
+    "Other progress (in editing, on hold, in production…)",
+    true,
+    false,
+    "projects",
+  ],
   ["new_message", "New message on a project", true, false, "projects"],
   ["invoice_issued", "Invoice issued", true, true, "billing"],
 ] as const;

@@ -7,7 +7,10 @@ import {
   abortMultipart,
   completeMultipart,
   deleteObject,
+  downloadUrl,
   listParts,
+  maxUploadBytes,
+  maxUploadGb,
   PART_SIZE,
   partUrl,
   presign,
@@ -41,6 +44,13 @@ const fail = (e: unknown): ActionResult => {
     return { ok: false, error: "The portal admin key isn’t set up (PORTAL_ADMIN_SECRET)." };
   if (/add files to this delivery first/.test(m))
     return { ok: false, error: "Add at least one file to this delivery first." };
+  if (/approves the script first/.test(m))
+    return { ok: false, error: "The client approves the script first (post it under Script)." };
+  if (/post the script first/.test(m))
+    return { ok: false, error: "Post the script below; that moves it to Script ready." };
+  if (/say what you are waiting for/.test(m))
+    return { ok: false, error: "Say what you’re waiting for: the client sees it." };
+  if (/already approved/.test(m)) return { ok: false, error: "The script is already approved." };
   if (/check constraint|violates/.test(m))
     return { ok: false, error: "That isn’t allowed for this project." };
   return {
@@ -73,6 +83,9 @@ async function sendFor(
   const info: ProjectInfo = {
     ref: p.ref,
     title: p.title,
+    type: p.type,
+    status: p.status,
+    status_note: p.status_note,
     shoot_date: p.shoot_date,
     slot: p.slot,
     meta: p.meta,
@@ -175,8 +188,6 @@ export type UploadPlan =
       parts?: { partNumber: number; url: string }[];
     };
 
-const MAX_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB per file (§13)
-
 export async function startUpload(
   id: string,
   ref: string,
@@ -187,8 +198,11 @@ export async function startUpload(
   await portalAdminAction(); // Owner only
   if (!r2Ready())
     return { ok: false, error: "File storage (R2) isn’t set up for this deployment." };
-  if (size <= 0 || size > MAX_BYTES)
-    return { ok: false, error: "Files can be up to 5 GB. Use a link for bigger ones." };
+  if (size <= 0 || size > maxUploadBytes())
+    return {
+      ok: false,
+      error: `Files can be up to ${maxUploadGb()} GB. Use a link for bigger ones.`,
+    };
   const safe =
     name
       .replace(/[^\w.\- ()]+/g, "-")
@@ -366,6 +380,62 @@ export async function setRetention(accountId: string, months: number): Promise<A
     await rpc("portal_admin_set_retention", { p_id: accountId, p_months: months });
     revalidatePath(`/admin/accounts/${accountId}`);
     return { ok: true, notice: `Files now kept ${months} months after completion.` };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Post a script version for the client to approve (avatar videos). */
+export async function postScript(
+  id: string,
+  body: string,
+  length: string,
+  notify: boolean,
+): Promise<ActionResult> {
+  const text = body.trim();
+  if (!text) return { ok: false, error: "Write the script first." };
+  if (text.length > 20000) return { ok: false, error: "Keep the script under 20,000 characters." };
+  try {
+    const rpc = await portalAdminAction();
+    const out = await rpc<{ event: string; version: number; recipients: Recipient[] }>(
+      "portal_admin_post_script",
+      { p_id: id, p_body: text, p_length: length.trim().slice(0, 60) || null },
+    );
+    const emailed = await sendFor(id, out, notify);
+    return done(id, {
+      ok: true,
+      event: out.event,
+      emailed,
+      notice: `Script v${out.version} posted${emailed ? `, emailed ${emailed}` : ""}.`,
+    });
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** A short-lived link to any file on a project (e.g. the client's raw uploads). */
+export async function adminFileLink(
+  id: string,
+  fileId: string,
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  try {
+    const rpc = await portalAdminAction();
+    const d = await projectFor(rpc, id);
+    const f = (
+      d as unknown as {
+        files: {
+          id: string;
+          source: string;
+          url: string | null;
+          r2_key: string | null;
+          label: string;
+        }[];
+      }
+    ).files.find((x) => x.id === fileId);
+    if (!f) return { ok: false, error: "That file isn’t there any more." };
+    if (f.source === "link") return { ok: true, url: f.url! };
+    if (!r2Ready()) return { ok: false, error: "File storage (R2) isn’t set up here." };
+    return { ok: true, url: downloadUrl(f.r2_key!, f.label) };
   } catch (e) {
     return fail(e);
   }

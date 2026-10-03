@@ -25,6 +25,43 @@ export const STATUS_LABEL: Record<string, string> = {
 };
 export const statusLabel = (s: string) => STATUS_LABEL[s] ?? s;
 export const stepsFor = (type: ProjectType) => PIPELINES[type].map(statusLabel);
+/** Statuses the admin can set for a type (On hold for batches and avatar videos). */
+export const adminStatuses = (type: ProjectType): string[] =>
+  type === "shoot"
+    ? [...PIPELINES.shoot]
+    : [...PIPELINES[type].slice(0, -2), "on_hold", ...PIPELINES[type].slice(-2)];
+
+export const TYPE_LABEL: Record<ProjectType, string> = {
+  shoot: "Shoot",
+  edit: "Editing batch",
+  avatar: "Avatar video",
+};
+/** Where a project lives in the portal. */
+export const TYPE_PATH: Record<ProjectType, string> = {
+  shoot: "/portal/shoots",
+  edit: "/portal/editing",
+  avatar: "/portal/avatars",
+};
+
+/** What an editing batch is (the New batch form, §5.3). */
+export const EDIT_KINDS = [
+  ["hdr_photos", "HDR photos"],
+  ["short_form", "Short-form"],
+  ["long_form", "Long-form"],
+  ["avatar_edit", "Avatar edit"],
+  ["other", "Other"],
+] as const;
+/** How long an avatar video is (the brief form, §5.4). */
+export const AVATAR_LENGTHS = [
+  ["30s", "Up to 30 seconds"],
+  ["60s", "Up to 60 seconds"],
+  ["90s", "Up to 90 seconds"],
+  ["longer", "Longer"],
+] as const;
+export const briefKindLabel = (type: ProjectType, k?: string) =>
+  (
+    (type === "avatar" ? AVATAR_LENGTHS : EDIT_KINDS) as readonly (readonly [string, string])[]
+  ).find((x) => x[0] === k)?.[1] ?? "";
 
 export const REVISION_LABEL: Record<string, string> = {
   requested: "Revision requested",
@@ -40,7 +77,9 @@ export const FILE_KINDS = [
   ["zip", "Full set (zip)"],
   ["other", "Other"],
 ] as const;
-export const kindLabel = (k: string) => FILE_KINDS.find((f) => f[0] === k)?.[1] ?? k;
+const KIND_EXTRA: Record<string, string> = { raw: "Raw files" };
+export const kindLabel = (k: string) =>
+  FILE_KINDS.find((f) => f[0] === k)?.[1] ?? KIND_EXTRA[k] ?? k;
 
 export type Project = {
   id: string;
@@ -58,7 +97,13 @@ export type Project = {
     size?: string;
     property_type?: string;
     lighting?: string;
+    kind?: string;
+    quantity?: number;
+    notes?: string;
+    references?: string[];
+    script_by?: "milkywayy" | "client";
   };
+  due_at: string | null;
   shoot_date: string | null;
   slot: string | null;
   delivered_at: string | null;
@@ -96,6 +141,17 @@ export type ProjectEvent = {
   by_admin: boolean;
   at: string;
 };
+export type ProjectScript = {
+  id: string;
+  version: number;
+  body: string;
+  length_note: string | null;
+  status: "pending" | "approved" | "changes_requested" | "replaced";
+  client_comment: string | null;
+  decided_by_name: string | null;
+  decided_at: string | null;
+  created_at: string;
+};
 export type ProjectMessage = {
   id: string;
   author_name: string | null;
@@ -106,6 +162,7 @@ export type ProjectMessage = {
 
 /** What the client is waiting on, in one line. */
 export function clientStatus(p: Project) {
+  if (p.status === "on_hold") return "On hold";
   if (p.revision_state && p.revision_state !== "delivered") return REVISION_LABEL[p.revision_state];
   if (p.status === "delivered" && p.revision_state === "delivered") return "Revision delivered";
   return statusLabel(p.status);
@@ -159,5 +216,15 @@ export const shootDay = (d: string | null) =>
         weekday: "short",
         day: "numeric",
         month: "short",
+      })
+    : "";
+
+export const day = (iso: string | null | undefined, year = false) =>
+  iso
+    ? new Date(iso).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        ...(year ? { year: "numeric" } : {}),
+        timeZone: "Asia/Dubai",
       })
     : "";

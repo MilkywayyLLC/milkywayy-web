@@ -101,11 +101,13 @@ test("email code: checks the address, then hands over to Supabase", async ({ pag
   await page.getByLabel("Email").fill("someone@company");
   await page.getByRole("button", { name: "Email me a sign-in code" }).click();
   await expect(page.locator("p[role=alert]")).toContainText("That email looks incomplete");
-  // example.com can't receive mail, so Supabase refuses it (or, on repeat runs, rate-limits
-  // emails): either way the message says so plainly and nothing is sent.
+  // example.com can't receive mail, so Supabase (or its mailer, Resend) refuses it, or on repeat
+  // runs rate-limits emails: either way the message says so plainly and nothing is sent.
   await page.getByLabel("Email").fill(`${RUN}-signup@example.com`);
   await page.getByRole("button", { name: "Email me a sign-in code" }).click();
-  await expect(page.locator("p[role=alert]")).toContainText(/can’t receive mail|Too many attempts/);
+  await expect(page.locator("p[role=alert]")).toContainText(
+    /can’t receive mail|couldn’t email that address|Too many attempts/,
+  );
 });
 
 test("forgot password never reveals whether an account exists", async ({ page }) => {

@@ -121,7 +121,10 @@ export type ProjectListRow = {
   status_note: string | null;
   shoot_date: string | null;
   slot: string | null;
-  meta: { area?: string; building?: string; unit?: string; services?: string[] };
+  meta: import("./projects").Project["meta"];
+  due_at: string | null;
+  script_status: string | null;
+  files_in: number;
   revision_state: string | null;
   revision_rounds_used: number;
   revision_rounds_allowed: number;
@@ -139,6 +142,8 @@ export type ProjectDetail = {
   account: { id: string; name: string; currency: string; retention_months: number } | null;
   lead: { ref: string; name: string | null; phone: string | null; email: string | null } | null;
   owner: { name: string | null; email: string | null; phone: string | null } | null;
+  submitter: { name: string | null; email: string | null; phone: string | null } | null;
+  scripts: import("./projects").ProjectScript[];
   events: import("./projects").ProjectEvent[];
   files: import("./projects").ProjectFile[];
   messages: import("./projects").ProjectMessage[];

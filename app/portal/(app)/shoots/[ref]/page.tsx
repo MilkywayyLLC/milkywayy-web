@@ -1,17 +1,17 @@
 import { notFound } from "next/navigation";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
+import { ProjectActions, ProjectMessages } from "@/components/portal/ProjectActions";
 import {
-  DownloadButton,
-  ProjectActions,
-  ProjectMessages,
-} from "@/components/portal/ProjectActions";
+  actionsFor,
+  ActivityList,
+  ApprovalNote,
+  DeliveryList,
+} from "@/components/portal/ProjectParts";
 import { Back, Badge, Stepper } from "@/components/portal/ui";
 import { requireAccount } from "@/lib/portal/auth";
 import {
-  bytes,
   clientStatus,
   deliveries,
-  kindLabel,
   SHOOT_SERVICE_LABEL,
   shootDay,
   statusLabel,
@@ -24,18 +24,6 @@ import {
 import { isManager } from "@/lib/portal/shell";
 
 export const metadata = { title: "Shoot" };
-
-const EVENT_TEXT: Record<string, (e: ProjectEvent) => string> = {
-  created: () => "Requested on milkywayy.com",
-  status: (e) => `${statusLabel(e.to_status ?? "")}${e.note ? `: ${e.note}` : ""}`,
-  delivery: (e) => e.note ?? "Delivered",
-  revision_requested: (e) => `Revision requested${e.note ? `: “${e.note}”` : ""}`,
-  revision_in_progress: () => "Revision in progress",
-  revision_delivered: () => "Revision delivered",
-  approved: () => "Approved",
-  auto_completed: () => "Completed automatically, 7 days after delivery",
-  note: (e) => e.note ?? "",
-};
 
 /** One shoot (§5.2): status, deliveries and downloads, revision, approve, details, activity, messages. */
 export default async function ShootPage({ params }: { params: Promise<{ ref: string }> }) {
@@ -77,14 +65,6 @@ export default async function ShootPage({ params }: { params: Promise<{ ref: str
   const groups = deliveries((files ?? []) as ProjectFile[]);
   const latest = groups[0];
   const zip = latest?.files.find((f) => f.kind === "zip");
-  const autoDay =
-    p.status === "delivered" && p.delivered_at
-      ? new Date(new Date(p.delivered_at).getTime() + 7 * 864e5).toLocaleDateString("en-GB", {
-          weekday: "short",
-          day: "numeric",
-          month: "short",
-        })
-      : null;
   const when = [shootDay(p.shoot_date), p.slot].filter(Boolean).join(" · ");
   const total = (items ?? []).reduce((t, i) => t + Number(i.qty) * Number(i.unit_price), 0);
 
@@ -106,72 +86,14 @@ export default async function ShootPage({ params }: { params: Promise<{ ref: str
       </div>
       <Stepper steps={stepsFor("shoot")} now={statusLabel(p.status)} />
 
-      {p.status === "delivered" &&
-        !(p.revision_state === "requested" || p.revision_state === "in_progress") &&
-        autoDay && (
-          <p className="pt-meta" style={{ margin: 0 }}>
-            Happy with it? Approve to complete. Otherwise it completes on its own on {autoDay}.
-          </p>
-        )}
-      {(p.revision_state === "requested" || p.revision_state === "in_progress") && (
-        <p className="pt-note" role="status">
-          Revision {p.revision_rounds_used} of {p.revision_rounds_allowed} is{" "}
-          {p.revision_state === "requested" ? "with us" : "in progress"}. We’ll email you when it’s
-          ready.
-        </p>
-      )}
-
+      <ApprovalNote p={p} />
       <ProjectActions
         projectId={p.id}
         zipId={zip?.id ?? null}
-        canRevise={
-          p.status === "delivered" &&
-          !(p.revision_state === "requested" || p.revision_state === "in_progress") &&
-          p.revision_rounds_used < p.revision_rounds_allowed
-        }
-        canApprove={
-          p.status === "delivered" &&
-          !(p.revision_state === "requested" || p.revision_state === "in_progress")
-        }
-        round={{ next: p.revision_rounds_used + 1, of: p.revision_rounds_allowed }}
+        {...actionsFor(p)}
         hasDelivery={!!latest}
       />
-
-      {groups.map((d) => (
-        <section key={d.no} className="pt-card" aria-label={d.label} data-testid="delivery">
-          <div className="pt-row">
-            <h2 className="pt-h2">{d.label}</h2>
-            <span className="pt-meta pt-mono">
-              {new Date(d.files[0].created_at).toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "short",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          </div>
-          <div className="pt-list">
-            {d.files.map((f) => (
-              <div key={f.id} className="pt-file">
-                <div>
-                  <b>{f.label}</b>
-                  <div className="pt-meta">
-                    {[kindLabel(f.kind), bytes(f.bytes)].filter(Boolean).join(" · ")}
-                    {f.expires_at
-                      ? ` · kept until ${new Date(f.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
-                      : ""}
-                  </div>
-                </div>
-                <DownloadButton
-                  fileId={f.id}
-                  label={f.source === "link" || f.kind === "tour" ? "Open" : "Download"}
-                  name={f.label}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
+      <DeliveryList files={(files ?? []) as ProjectFile[]} />
 
       <div className="pt-grid2">
         <section className="pt-card">
@@ -209,30 +131,16 @@ export default async function ShootPage({ params }: { params: Promise<{ ref: str
               ))}
           </dl>
         </section>
-        <section className="pt-card">
-          <h2 className="pt-h2">Activity</h2>
-          <ul className="pt-timeline" data-testid="activity">
-            {((events ?? []) as ProjectEvent[]).map((e) => (
-              <li key={e.id}>
-                <div style={{ display: "grid" }}>
-                  <span>{(EVENT_TEXT[e.kind] ?? (() => e.kind))(e)}</span>
-                  <span className="pt-meta pt-mono">
-                    {new Date(e.at).toLocaleString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      timeZone: "Asia/Dubai",
-                    })}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <ActivityList events={(events ?? []) as ProjectEvent[]} />
       </div>
 
-      <ProjectMessages projectId={p.id} messages={(messages ?? []) as ProjectMessage[]} />
+      <div id="messages">
+        <ProjectMessages
+          projectId={p.id}
+          messages={(messages ?? []) as ProjectMessage[]}
+          hint="Questions about access, parking or the brief go here."
+        />
+      </div>
     </>
   );
 }
