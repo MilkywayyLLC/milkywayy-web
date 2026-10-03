@@ -6,7 +6,7 @@
 # shoot flow can be tested end to end; the dev project accepts the same LEAD_SECRET.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-get() { grep -E "^$1=" .env.local | head -1 | cut -d= -f2-; }
+get() { { grep -E "^$1=" .env.local || true; } | head -1 | cut -d= -f2-; }
 URL=$(get NEXT_PUBLIC_PORTAL_SUPABASE_URL)
 KEY=$(get NEXT_PUBLIC_PORTAL_SUPABASE_ANON_KEY)
 ADMIN=$(get PORTAL_ADMIN_SECRET)
