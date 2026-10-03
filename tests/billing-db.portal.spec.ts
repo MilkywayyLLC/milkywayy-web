@@ -15,7 +15,7 @@ import {
 /**
  * Billing rules (Phase 12): Owners/Admins see invoices, plans and prices; Members never do; Overdue
  * after the due date; the usage meter counts delivered items; this month's total is the sum of
- * delivered line items; suggestions only when switched on globally (and not hidden per client).
+ * delivered line items. Package suggestions: billing-plus-db.portal.spec.ts.
  */
 test.skip(!hasPortalAdmin, "needs the portal env and PORTAL_ADMIN_SECRET in .env.local");
 test.describe.configure({ mode: "serial" });
@@ -38,10 +38,8 @@ test.beforeAll(async () => {
   await must(O.from("account_invites").insert({ account_id: account, email: m, name: "Max" }));
   M = await signedIn(m);
   await must(M.rpc("accept_my_invites"));
-  await must(adminRpc("portal_admin_set_suggestions", { p_enabled: false }));
 });
 test.afterAll(async () => {
-  await adminRpc("portal_admin_set_suggestions", { p_enabled: false });
   await cleanup(RUN);
 });
 
@@ -178,44 +176,6 @@ test("a package's usage meter counts delivered items of each kind in the period"
       p_renews: null,
     }),
   );
-});
-
-test("suggestions: none while the global switch is off; shown when on; hidden per client", async () => {
-  const tpl = await must<string>(
-    adminRpc("portal_admin_save_package", {
-      p_id: null,
-      p_account: null,
-      p_name: `E2E Starter ${RUN.slice(-4)}`,
-      p_price: 500,
-      p_currency: "AED",
-      p_inclusions: [{ key: "reel", label: "Reels", qty: 4 }],
-      p_overage: [],
-    }),
-  );
-  const rule = await must<string>(
-    adminRpc("portal_admin_save_rule", {
-      p_id: null,
-      p_package: tpl,
-      p_lookback: 3,
-      p_threshold: 100,
-      p_min_saving: 50,
-      p_active: true,
-    }),
-  );
-  // 2,000 delivered two months ago → average 666.67 over 3 months vs 500: saving ~166.67.
-  const sug = async () =>
-    (await must<{ suggestion: unknown }>(O.rpc("my_billing", { p_account: account }))).suggestion;
-  try {
-    expect(await sug()).toBeNull(); // global switch off (the default)
-    await must(adminRpc("portal_admin_set_suggestions", { p_enabled: true }));
-    expect(await sug()).toMatchObject({ package: `E2E Starter ${RUN.slice(-4)}`, saving: 166.67 });
-    await must(adminRpc("portal_admin_hide_suggestions", { p_account: account, p_hide: true }));
-    expect(await sug()).toBeNull();
-  } finally {
-    await adminRpc("portal_admin_set_suggestions", { p_enabled: false });
-    await adminRpc("portal_admin_delete_rule", { p_id: rule });
-    await adminRpc("portal_admin_delete_package", { p_id: tpl });
-  }
 });
 
 test("rates: the client's own rate wins over the card; line items use it", async () => {

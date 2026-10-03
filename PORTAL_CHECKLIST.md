@@ -23,7 +23,7 @@ Things to do or undo when the portal moves from the `portal` branch and the dev 
 - [ ] (Phone sign-in only) Raise "Rate limit for sending SMS messages" from 30/hour to what real sign-ins need.
 - [ ] (Phone sign-in only) Decide on a CAPTCHA for the code request (Cloudflare Turnstile is free; it's a new service, so owner's call). Until then the SMS rate limit, Twilio Fraud Guard and geo permissions are the protection against SMS fraud.
 - [ ] Custom SMTP (Resend, `portal@milkywayy.com`), the code email templates with `{{ .Token }}` (Magic Link and Confirm signup), OTP length 6, a higher email rate limit; Site URL and Redirect URLs for milkywayy.com. Same steps as the dev project.
-- [ ] Apply `20261006090000_portal_email_notifications.sql`, `20261007090000_portal_projects.sql` (projects, deliveries, retention) and `20261008090000_portal_edit_avatar.sql` (batches, avatar scripts) `20261009090000_portal_qa_fixes.sql` (admin create/attach, WhatsApp numbers, photo previews) `20261010090000_booking_attach_by_email.sql`, `20261011090000_booking_email_flag.sql` and `20261012090000_portal_billing.sql` (billing) and `20261013090000_portal_listings.sql` (share pages).
+- [ ] Apply `20261006090000_portal_email_notifications.sql`, `20261007090000_portal_projects.sql` (projects, deliveries, retention) and `20261008090000_portal_edit_avatar.sql` (batches, avatar scripts) `20261009090000_portal_qa_fixes.sql` (admin create/attach, WhatsApp numbers, photo previews) `20261010090000_booking_attach_by_email.sql`, `20261011090000_booking_email_flag.sql` and `20261012090000_portal_billing.sql` (billing) `20261013090000_portal_listings.sql` (share pages) and `20261014090000_portal_billing_plus.sql` (billing add-on).
 
 ## Email (Resend)
 - [ ] `RESEND_API_KEY` (Sensitive) and `PORTAL_EMAIL_FROM` (`Milkywayy <portal@milkywayy.com>`) in Vercel **Production** too (Preview first, for testing).
@@ -33,6 +33,12 @@ Things to do or undo when the portal moves from the `portal` branch and the dev 
 - [ ] Set the real rates in Admin → Billing → Rate card (the seeded AED values are USD × 3.67), and each client's currency.
 - [ ] Production R2 CORS must allow PUT from the admin's origin for invoice PDFs (same rule as deliveries).
 - [ ] Suggestions stay off until you switch them on (Admin → Billing → Suggestions).
+
+## Billing add-on (owner, 4 Oct 2026)
+- [ ] Admin → Billing → Settings: bank account name, bank, IBAN, SWIFT; tick "VAT registered" only once Milkywayy is.
+- [ ] Admin → Billing → Packages: create the internal templates (AED + USD prices, overage, 6-month %); check the minimum saving under Suggestions (AED 500 / USD 135).
+- [ ] Stripe (Akash): Production env `STRIPE_SECRET_KEY` (live) and `STRIPE_WEBHOOK_SECRET`; in Stripe add the webhook `https://milkywayy.com/api/stripe/webhook` for `checkout.session.completed` and `checkout.session.async_payment_succeeded`. Previews: test keys only (`sk_test_…`, its own test webhook secret).
+- [ ] The daily housekeeping cron freezes last month's statements; check one on the 1st.
 
 ## Share pages (Phase 13)
 - [ ] Production R2 CORS must allow PUT from the portal's origin too (clients upload the permit QR, contact photos and their logo) and from the admin's (web versions of photos and reels).

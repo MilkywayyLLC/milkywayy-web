@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { env, WEBHOOK_SECRET } from "./tests/helpers/env";
 
 const PORT = 3200;
 /** Set BASE_URL to test a deployed site (e.g. staging) instead of a local build. */
@@ -86,6 +87,8 @@ export default defineConfig({
           // Share pages without R2 locally: media URLs point here (nothing needs to answer).
           env: {
             SHARE_DEV_MEDIA_ORIGIN: process.env.SHARE_DEV_MEDIA_ORIGIN ?? "http://127.0.0.1:3299",
+            // The Stripe webhook test signs its events with this when .env.local has no secret.
+            ...(env.STRIPE_WEBHOOK_SECRET ? {} : { STRIPE_WEBHOOK_SECRET: WEBHOOK_SECRET }),
           },
         },
 });

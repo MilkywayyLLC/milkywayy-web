@@ -18,10 +18,17 @@ const trimmed = (f) => sharp(src(f)).trim({ threshold: 1 }).toBuffer();
 
 async function logo(file, out) {
   const t = await trimmed(file);
-  for (const [h, suffix] of [[44, ""], [66, "@3x"]]) {
+  for (const [h, suffix] of [
+    [44, ""],
+    [66, "@3x"],
+  ]) {
     const img = sharp(t).resize({ height: h });
-    if (!suffix) await img.clone().webp({ lossless: true, effort: 6 }).toFile(`public/brand/${out}.webp`);
-    await img.clone().png({ compressionLevel: 9, palette: true }).toFile(`public/brand/${out}${suffix}.png`);
+    if (!suffix)
+      await img.clone().webp({ lossless: true, effort: 6 }).toFile(`public/brand/${out}.webp`);
+    await img
+      .clone()
+      .png({ compressionLevel: 9, palette: true })
+      .toFile(`public/brand/${out}${suffix}.png`);
   }
   const m = await sharp(`public/brand/${out}.png`).metadata();
   return `${out}: ${m.width}×${m.height}`;
@@ -64,10 +71,15 @@ await (await tile(512)).toFile("app/icon.png");
 await (await tile(180, 0.16)).toFile("app/apple-icon.png");
 await writeFile("app/favicon.ico", await ico([16, 32, 48]));
 
-const icon = await sharp(await trimmed("Icon (Black Bg)")).resize({ height: 260 }).toBuffer();
+const icon = await sharp(await trimmed("Icon (Black Bg)"))
+  .resize({ height: 260 })
+  .toBuffer();
 await sharp({ create: { width: 1200, height: 630, channels: 4, background: BG } })
   .composite([{ input: icon, gravity: "center" }])
   .png()
   .toFile("public/brand/og.png");
-await sharp(await trimmed("Logo (Black Bg)")).resize({ height: 72 }).png().toFile("assets/og/logo-on-dark.png");
+await sharp(await trimmed("Logo (Black Bg)"))
+  .resize({ height: 72 })
+  .png()
+  .toFile("assets/og/logo-on-dark.png");
 console.log("icons, favicon and share image written");

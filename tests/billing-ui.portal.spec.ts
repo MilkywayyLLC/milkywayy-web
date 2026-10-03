@@ -32,7 +32,6 @@ test.beforeAll(async () => {
     c.db.from("account_invites").insert({ account_id: c.account, email: member, name: "Mia" }),
   );
   await ok((await signedIn(member)).rpc("accept_my_invites"));
-  await ok(adminRpc("portal_admin_set_suggestions", { p_enabled: false }));
   await deliveredItems(c.account, "Marina reels", [{ kind: "reel", qty: 3, price: 200 }]);
   await ok(
     adminRpc("portal_admin_create_invoice", {
@@ -67,7 +66,8 @@ test("Owner: Billing tab, this month so far (an estimate), invoices with Overdue
   const inv = page.getByTestId("invoices");
   await expect(inv).toContainText("INV-OLD");
   await expect(inv).toContainText("Overdue"); // due 10 days ago, still marked Due
-  await expect(page.getByTestId("suggestion")).toHaveCount(0); // the global switch is off
+  // One active month: too little history for a package suggestion.
+  await expect(page.getByTestId("suggestion")).toHaveCount(0);
   await page.goto("/portal");
   await expect(page.getByTestId("attention")).toContainText("Invoice overdue: AED 750");
 });

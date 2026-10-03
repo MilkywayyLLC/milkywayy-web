@@ -27,7 +27,7 @@ Everyone gets invoices, a monthly running total for pay-as-you-go work, their pa
 | D4 | **Sign-in: email.** A 6-digit code by email (Supabase email OTP) is the main way in; a password is optional. *(v2, owner 3 Oct 2026: replaces WhatsApp OTP, which is built but switched off.)* | Simpler and free: no per-code Twilio cost, no template or language issues, works the same for UAE and overseas clients. |
 | D5 | **Raw files: a link first (Drive, Dropbox, OneDrive, WeTransfer, Frame.io); direct upload as a second option.** | Raw footage runs to tens of GB. Links cost nothing and never fail mid-upload. Direct upload is for smaller jobs. |
 | D6 | **Files we host go on Cloudflare R2, not Supabase Storage.** | R2 doesn't charge for downloads. Clients downloading 4K videos and full photo sets would cost real money on any storage that charges for downloads. |
-| D7 | **No online payment in the portal.** Invoices are shown and downloadable, and marked paid by admin. | Matches the site: pay by invoice after delivery. |
+| D7 | **No online payment in the portal.** Invoices are shown and downloadable, and marked paid by admin. *(v2, owner 4 Oct 2026: Stripe "Pay now" for non-AED accounts, bank transfer with an uploaded proof for AED ones.)* | Matches the site: pay by invoice after delivery. |
 | D8 | **Same Next.js app, same Supabase project, same design system.** The portal is **light tone**. | One codebase, one login system, one admin. Light tone because this is a working tool. |
 | D9 | **Revisions: 2 rounds included per project**, shown as "Revision 1 of 2". Admin can grant extra rounds. | Same rule the site already states. |
 
@@ -320,6 +320,7 @@ Each phase ends the same way: a staging deploy, tests green, a short how-to, and
 2. Rate card, per-client rates, line items (with a kind) feeding the running pay-as-you-go total.
 3. Packages (private to one client by default), account plans, usage meter.
 4. Suggestion rules plus the suggestion card, off globally by default, hideable per client.
+5. *(Add-on, owner 4 Oct 2026, see DECISIONS.md: templates in AED/USD with a 6-month discount, a pinned offer per client, the 3-month suggestion engine (on by default, with a minimum saving), package usage view with overage and "Month n of 6", month-end statements with optional VAT, Stripe "Pay now" for non-AED accounts and bank transfer with proof for AED ones.)*
 
 ### Phase 13: Listing share pages (built 3 Oct 2026, see DECISIONS.md)
 1. The create sheet, saved details, contact pills, photo picker.

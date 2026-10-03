@@ -5,6 +5,7 @@ const TABS = [
   ["/admin/billing/rates", "Rate card"],
   ["/admin/billing/packages", "Packages"],
   ["/admin/billing/suggestions", "Suggestions"],
+  ["/admin/billing/settings", "Settings"],
 ] as const;
 
 /** Admin → Billing sections (CLIENT_PORTAL_GUIDE §7.3). */

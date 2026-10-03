@@ -75,6 +75,8 @@ export type NewInvoice = {
   pdfKey: string | null;
   note?: string;
   notify: boolean;
+  /** The month this invoice bills (its statement), "YYYY-MM-01". */
+  statementMonth?: string | null;
 };
 
 export async function createInvoice(i: NewInvoice): Promise<BillingResult> {
@@ -95,6 +97,7 @@ export async function createInvoice(i: NewInvoice): Promise<BillingResult> {
       p_status: i.status,
       p_pdf_key: i.pdfKey,
       p_note: i.note?.trim() || null,
+      p_statement_month: i.statementMonth || null,
     });
     let emailed = 0;
     if (i.notify && out.recipients.length)
@@ -229,12 +232,22 @@ export type PackageInput = {
   price: number;
   currency: "AED" | "USD";
   inclusions: { key: string; label: string; qty: number }[];
-  overage: { key: string; label: string; amount: number }[];
+  overage: { key: string; label: string; amount: number; amount_usd?: number | null }[];
+  /** Templates only: the USD price beside the AED one. */
+  priceUsd?: number | null;
+  /** Off the monthly price for a 6-month commitment. */
+  discountPct?: number;
+  /** Templates only: a candidate for package suggestions. */
+  suggest?: boolean;
 };
 
 export async function savePackage(p: PackageInput): Promise<BillingResult> {
   if (!p.name.trim()) return { ok: false, error: "Give the package a name." };
   if (!(p.price >= 0)) return { ok: false, error: "Enter the monthly price." };
+  if (!p.account && !(Number(p.priceUsd) >= 0))
+    return { ok: false, error: "Templates need a USD price too." };
+  const pct = p.discountPct ?? 10;
+  if (!(pct >= 0 && pct <= 50)) return { ok: false, error: "The 6-month discount is 0–50%." };
   try {
     const rpc = await portalAdminAction();
     const id = await rpc<string>("portal_admin_save_package", {
@@ -246,6 +259,9 @@ export async function savePackage(p: PackageInput): Promise<BillingResult> {
       p_inclusions: p.inclusions,
       p_overage: p.overage,
       p_visible: false,
+      p_price_usd: p.account ? null : p.priceUsd,
+      p_discount_pct: pct,
+      p_suggest: p.suggest ?? true,
     });
     refresh("/admin/billing/packages", ...(p.account ? [`/admin/accounts/${p.account}`] : []));
     return { ok: true, id, notice: `${p.name.trim()} saved.` };
@@ -271,6 +287,8 @@ export async function setPlan(
   pkg: string | null,
   started: string | null,
   renews: string | null,
+  term: 1 | 6 = 1,
+  ends: string | null = null,
 ): Promise<BillingResult> {
   try {
     const rpc = await portalAdminAction();
@@ -280,6 +298,8 @@ export async function setPlan(
       p_package: pkg,
       p_started: started || null,
       p_renews: renews || null,
+      p_term: term,
+      p_ends: term === 6 ? ends || null : null,
     });
     revalidatePath(`/admin/accounts/${account}`);
     return { ok: true, notice: mode === "payg" ? "Now pay as you go." : "Plan saved." };
@@ -288,49 +308,170 @@ export async function setPlan(
   }
 }
 
+export type BillingSettings = {
+  suggestions_enabled: boolean;
+  min_saving_aed: number;
+  min_saving_usd: number;
+  vat_registered: boolean;
+  bank_account_name: string | null;
+  bank_name: string | null;
+  bank_iban: string | null;
+  bank_swift: string | null;
+};
+
+/** Suggestions (switch, minimum saving), VAT, bank details: whichever fields are given. */
+export async function saveBillingSettings(p: Partial<BillingSettings>): Promise<BillingResult> {
+  if (
+    p.bank_iban &&
+    !/^[A-Z]{2}\d{2}[A-Z0-9]{8,30}$/.test(p.bank_iban.replace(/\s/g, "").toUpperCase())
+  )
+    return { ok: false, error: "Check the IBAN (e.g. AE07 0331 2345 6789 0123 456)." };
+  if (
+    p.bank_swift &&
+    !/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(p.bank_swift.trim().toUpperCase())
+  )
+    return { ok: false, error: "Check the SWIFT code (8 or 11 characters)." };
+  for (const k of ["min_saving_aed", "min_saving_usd"] as const)
+    if (k in p && !(Number(p[k]) >= 0)) return { ok: false, error: "Enter the minimum saving." };
+  try {
+    const rpc = await portalAdminAction();
+    await rpc("portal_admin_save_billing_settings", { p });
+    refresh("/admin/billing/suggestions", "/admin/billing/settings");
+    return { ok: true, notice: "Saved." };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Kept for the switch on the Suggestions page. */
 export async function setSuggestions(enabled: boolean): Promise<BillingResult> {
+  const r = await saveBillingSettings({ suggestions_enabled: enabled });
+  return r.ok ? { ok: true, notice: enabled ? "Suggestions are on." : "Suggestions are off." } : r;
+}
+
+/** Per client: a pinned offer (replaces the templates in their suggestion), and card payments. */
+export async function setClientBilling(
+  account: string,
+  p: { pinned_package_id?: string | null; pay_online?: boolean | null },
+): Promise<BillingResult> {
   try {
     const rpc = await portalAdminAction();
-    await rpc("portal_admin_set_suggestions", { p_enabled: enabled });
-    refresh("/admin/billing/suggestions");
-    return { ok: true, notice: enabled ? "Suggestions are on." : "Suggestions are off." };
+    await rpc("portal_admin_set_client_billing", { p_account: account, p });
+    revalidatePath(`/admin/accounts/${account}`);
+    return { ok: true, notice: "Saved." };
   } catch (e) {
     return fail(e);
   }
 }
 
-export async function saveRule(r: {
-  id?: string;
-  package: string;
-  lookback: number;
-  threshold: number;
-  minSaving: number;
-  active: boolean;
-}): Promise<BillingResult> {
-  if (!r.package) return { ok: false, error: "Choose the package to suggest." };
+export type Statement = {
+  month: string;
+  currency: "AED" | "USD";
+  mode: "payg" | "package";
+  subtotal: number;
+  vat: number;
+  total: number;
+  frozen_at: string;
+};
+
+/** A client's frozen statement for a month (to prefill an invoice), or null. */
+export async function statementFor(account: string, month: string): Promise<Statement | null> {
+  if (!/^[0-9a-f-]{36}$/.test(account) || !/^\d{4}-\d{2}-01$/.test(month)) return null;
   try {
     const rpc = await portalAdminAction();
-    await rpc("portal_admin_save_rule", {
-      p_id: r.id ?? null,
-      p_package: r.package,
-      p_lookback: r.lookback,
-      p_threshold: r.threshold,
-      p_min_saving: r.minSaving,
-      p_active: r.active,
+    return await rpc<Statement | null>("portal_admin_statement", {
+      p_account: account,
+      p_month: month,
     });
-    refresh("/admin/billing/suggestions");
-    return { ok: true, notice: "Rule saved." };
+  } catch {
+    return null;
+  }
+}
+
+/** Freeze (or re-freeze) a month's statements: one client, or everyone. */
+export async function freezeStatements(
+  account: string | null,
+  month: string,
+  replace = false,
+): Promise<BillingResult> {
+  try {
+    const rpc = await portalAdminAction();
+    const n = await rpc<number>("portal_admin_freeze_statements", {
+      p_month: month,
+      p_account: account,
+      p_replace: replace,
+    });
+    if (account) revalidatePath(`/admin/accounts/${account}`);
+    return {
+      ok: true,
+      notice: n ? `${n} statement${n === 1 ? "" : "s"} frozen.` : "Already frozen (nothing new).",
+    };
+  } catch (e) {
+    const m = e instanceof Error ? e.message : "";
+    if (/only complete months/.test(m))
+      return { ok: false, error: "Only finished months can be frozen." };
+    return fail(e);
+  }
+}
+
+/** The client's transfer proof, as a short-lived link. */
+export async function proofLink(id: string): Promise<BillingResult> {
+  try {
+    const rpc = await portalAdminAction();
+    const p = await rpc<{ key: string; filename: string } | null>("portal_admin_proof", {
+      p_proof: id,
+    });
+    if (!p) return { ok: false, error: "That proof isn’t there any more." };
+    if (!r2Ready()) return { ok: false, error: "File storage (R2) isn’t set up here." };
+    return { ok: true, url: downloadUrl(p.key, p.filename, 300) };
   } catch (e) {
     return fail(e);
   }
 }
 
-export async function deleteRule(id: string): Promise<BillingResult> {
+/** Bank transfer: confirm (Paid, "Payment received") or reject with a reason (emailed). */
+export async function decidePayment(
+  proof: string,
+  confirm: boolean,
+  reason = "",
+): Promise<BillingResult> {
+  if (!confirm && reason.trim().length < 3)
+    return { ok: false, error: "Say why (the client sees it)." };
   try {
     const rpc = await portalAdminAction();
-    await rpc("portal_admin_delete_rule", { p_id: id });
-    refresh("/admin/billing/suggestions");
-    return { ok: true, notice: "Rule deleted." };
+    const out = await rpc<{
+      account: string;
+      number: string;
+      amount: number;
+      currency: string;
+      due_on: string;
+      event: "payment_received" | "payment_rejected";
+      reason: string | null;
+      recipients: Recipient[];
+    }>("portal_admin_decide_payment", {
+      p_proof: proof,
+      p_confirm: confirm,
+      p_reason: confirm ? null : reason.trim(),
+    });
+    let emailed = 0;
+    if (out.recipients.length)
+      emailed = await notifyBilling(
+        out.account,
+        out.event,
+        {
+          number: out.number,
+          amount: money(out.currency, out.amount),
+          due: dateLabel(out.due_on),
+          reason: out.reason,
+        },
+        out.recipients,
+        `${originFrom(await headers())}/portal/billing`,
+      );
+    refresh(`/admin/accounts/${out.account}`);
+    return {
+      ok: true,
+      notice: `${confirm ? "Confirmed: marked Paid" : "Rejected"}${emailed ? `, emailed ${emailed}` : ""}.`,
+    };
   } catch (e) {
     return fail(e);
   }

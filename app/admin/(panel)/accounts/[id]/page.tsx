@@ -7,9 +7,12 @@ import {
   RetentionSelect,
 } from "@/components/admin/ClientAccountTools";
 import {
+  ClientOffer,
   ClientRates,
   HideSuggestions,
+  OfferPreview,
   PlanForm,
+  Statements,
   type ClientBilling,
   type InvoiceRowData,
 } from "@/components/admin/BillingTools";
@@ -118,13 +121,19 @@ export default async function ClientPage({ params, searchParams }: Props) {
           <div className="stack" style={{ gap: 8 }}>
             <b>
               {billing.plan.package.name} ·{" "}
-              {money(billing.plan.package.currency, billing.plan.package.price)}/month · renews{" "}
-              {dateLabel(billing.plan.package.period_end)}
+              {money(billing.plan.package.currency, billing.plan.package.price)}/month
+              {billing.plan.package.term_months === 6
+                ? ` · Month ${billing.plan.package.month_no} of 6${billing.plan.package.ends_on ? `, ends ${dateLabel(billing.plan.package.ends_on)}` : ""}`
+                : ""}{" "}
+              · renews {dateLabel(billing.plan.package.renews_on)}
             </b>
             {billing.plan.package.usage.map((u) => (
               <div key={u.key} className="stack" style={{ gap: 4 }}>
                 <span className="ad-small">
                   {u.label}: {Number(u.used)} of {Number(u.qty)}
+                  {Number(u.over) > 0
+                    ? ` · ${Number(u.over)} over (${money(billing.plan.package!.currency, Number(u.overage))})`
+                    : ""}
                 </span>
                 <span className="ad-meter" aria-hidden="true">
                   <i
@@ -135,21 +144,28 @@ export default async function ClientPage({ params, searchParams }: Props) {
                 </span>
               </div>
             ))}
+            <span className="ad-small">
+              This month, estimated:{" "}
+              {money(billing.plan.package.currency, Number(billing.plan.package.estimate))}
+            </span>
           </div>
         ) : (
           <span className="ad-small">
             Pay as you go · this month so far {money(billing.currency, billing.payg.total)}{" "}
             (estimate)
+            {billing.payg.last_month
+              ? ` · last month ${money(billing.currency, Number(billing.payg.last_month.total))}${billing.payg.last_month.final ? " (final)" : ""}`
+              : ""}
           </span>
         )}
-        {billing.suggestion && (
-          <span className="ad-small ad-muted">
-            Sees a suggestion: {billing.suggestion.package}, saving about{" "}
-            {money(billing.suggestion.currency, billing.suggestion.saving)} a month.
-          </span>
-        )}
+        <OfferPreview billing={billing} />
         <PlanForm account={a.id} billing={billing} />
         <HideSuggestions account={a.id} hidden={billing.hide_suggestions} />
+        <ClientOffer account={a.id} billing={billing} />
+        <details>
+          <summary className="ad-small">Monthly statements</summary>
+          <Statements account={a.id} billing={billing} />
+        </details>
         <details>
           <summary className="ad-small">Rates for this client</summary>
           <ClientRates account={a.id} billing={billing} />

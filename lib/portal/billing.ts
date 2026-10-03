@@ -16,40 +16,87 @@ export type Invoice = {
   paid_at: string | null;
   pdf_key: string | null;
   note: string | null;
+  statement_month?: string | null;
+  /** Bank transfer: the client sent a proof ("submitted") or it was turned down ("rejected"). */
+  payment_state?: "submitted" | "rejected" | null;
+  reject_reason?: string | null;
+  paid_via?: "stripe" | "bank" | "manual" | null;
 };
 
-export type Usage = { key: string; label: string; qty: number; used: number };
+export type Inclusion = { key: string; label: string; qty: number };
+export type Usage = {
+  key: string;
+  label: string;
+  qty: number;
+  used: number;
+  remaining: number;
+  over: number;
+  rate: number | null;
+  overage: number;
+};
+export type LineItem = {
+  description: string;
+  qty: number;
+  unit_price: number;
+  kind: string | null;
+  ref: string;
+  title?: string;
+};
+/** A package client's month (billing add-on, owner 4 Oct 2026). */
+export type PlanView = {
+  name: string;
+  price: number;
+  currency: string;
+  inclusions: Inclusion[];
+  term_months: 1 | 6;
+  discount_pct: number | null;
+  month_no: number;
+  started_on: string | null;
+  ends_on: string | null;
+  renews_on: string;
+  period_start: string;
+  usage: Usage[];
+  overage_total: number;
+  extras: LineItem[];
+  extras_total: number;
+  estimate: number;
+};
+export type Offer = {
+  package_id: string;
+  package: string;
+  inclusions: Inclusion[];
+  currency: string;
+  price: number;
+  average: number;
+  overage: number;
+  uncovered: number;
+  cost: number;
+  saving: number;
+  discount_pct: number;
+  price_6: number;
+  saving_6: number;
+  pinned: boolean;
+  active_months: number;
+};
 export type MyBilling = {
   currency: "AED" | "USD";
   mode: "payg" | "package";
-  plan: {
-    name: string;
-    price: number;
-    currency: string;
-    renews_on: string;
-    period_start: string;
-    overage: { key: string; label: string; amount: number }[];
-    usage: Usage[];
-  } | null;
+  plan: PlanView | null;
   payg: {
     month: string;
     total: number;
-    items: {
-      description: string;
-      qty: number;
-      unit_price: number;
-      kind: string | null;
-      ref: string;
-      title: string;
-    }[];
+    items: LineItem[];
+    last_month: { month: string; total: number; final: boolean } | null;
   };
-  suggestion: {
-    package: string;
-    price: number;
-    currency: string;
-    average: number;
-    saving: number;
+  suggestion: Offer | null;
+  pay_online: boolean;
+  bank: {
+    account_name: string | null;
+    bank: string | null;
+    iban: string;
+    swift: string | null;
   } | null;
+  statements: { month: string; total: number; currency: string; vat: number }[];
 };
 
 /** Today in Dubai, as YYYY-MM-DD. */
@@ -91,6 +138,19 @@ export const KINDS = [
 ] as const;
 export const kindLabel = (k: string | null | undefined) =>
   KINDS.find((x) => x[0] === k)?.[1] ?? k ?? "Other";
+
+/** "October 2026" from a month's first day. */
+export const monthLabel = (m: string | null | undefined) =>
+  m
+    ? new Date(`${m.slice(0, 10)}T12:00:00`).toLocaleDateString("en-GB", {
+        month: "long",
+        year: "numeric",
+      })
+    : "";
+
+/** "10 reels, 2 shoot days" from a package's inclusions. */
+export const inclusionsText = (inc: Inclusion[]) =>
+  inc.map((i) => `${Number(i.qty)} ${i.label.toLowerCase()}`).join(", ");
 
 /** The WhatsApp chat (business number) for "talk to us" buttons. */
 export const CHAT_NUMBER = "971507263306";

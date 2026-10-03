@@ -40,6 +40,12 @@ export async function portalAdminAction() {
 export const portalAdminSystem = <T>(fn: string, args: Record<string, unknown> = {}) =>
   call<T>("cron", fn, args);
 
+/** For server code acting without a signed-in admin (e.g. the Stripe webhook), logged as `actor`. */
+export const portalAdminAs =
+  (actor: string) =>
+  <T>(fn: string, args: Record<string, unknown> = {}) =>
+    call<T>(actor, fn, args);
+
 export type ClientListRow = {
   id: string;
   type: "individual" | "company";

@@ -20,3 +20,6 @@ export const hasAdminAccounts = !!(
   env.E2E_EDITOR_EMAIL &&
   env.E2E_STRANGER_EMAIL
 );
+
+/** The Stripe webhook secret the local test server uses (a local-only value unless set). */
+export const WEBHOOK_SECRET = env.STRIPE_WEBHOOK_SECRET || "whsec_e2e_local_only";

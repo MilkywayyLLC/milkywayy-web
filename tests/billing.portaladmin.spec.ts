@@ -3,6 +3,7 @@ import { OWNER } from "./helpers/admin";
 import { env, hasAdminAccounts } from "./helpers/env";
 import {
   adminRpc,
+  backdateDelivery,
   cleanup,
   clientAccount,
   deliveredItems,
@@ -134,12 +135,125 @@ test("a private package, the client on it, and line items counting towards usage
   await expect(page.getByTestId("client-billing")).toContainText("Reels: 6 of 10");
 });
 
-test("suggestions are off for everyone by default; rate card lists the rates", async ({ page }) => {
-  await adminRpc("portal_admin_set_suggestions", { p_enabled: false });
+test("suggestions (on by default, with minimums); a template in AED and USD; VAT and bank details in Settings", async ({
+  page,
+}) => {
   await page.goto("/admin/billing/suggestions");
-  await expect(page.getByRole("checkbox", { name: /Show package suggestions/ })).not.toBeChecked();
-  await expect(page.getByText("Off: no client sees a suggestion")).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /Show package suggestions/ })).toBeChecked();
+  await expect(page.getByLabel("Minimum saving a month (AED)")).toHaveValue("500");
+  await expect(page.getByLabel("Minimum saving a month (USD)")).toHaveValue("135");
+
+  const TPL = `E2E Template ${RUN.slice(-4)}`;
+  await page.goto("/admin/billing/packages");
+  const form = page.getByRole("form", { name: "New package" });
+  await form.getByLabel("Package name").fill(TPL);
+  await form
+    .getByLabel("Client (private package)")
+    .selectOption({ label: "Template, no client (internal, for suggestions)" });
+  await form.getByLabel("Monthly price (AED)").fill("2500");
+  await form.getByLabel("Monthly price (USD)").fill("680");
+  await form.getByLabel("6-month commitment discount (%)").fill("15");
+  await expect(form.getByLabel("Use for suggestions")).toBeChecked();
+  await form.getByRole("button", { name: "+ Add" }).nth(1).click();
+  await form.getByLabel("Overage rates 1: kind").selectOption("reel");
+  await form.getByLabel("Overage rates 1: AED each").fill("160");
+  await form.getByLabel("Overage rates 1: USD each").fill("44");
+  await form.getByRole("button", { name: "Create package" }).click();
+  await expect(form.getByRole("status")).toContainText(`${TPL} saved`);
+  const pkgs = await adminRpc("portal_admin_packages", {});
+  const tpl = (
+    pkgs.data as {
+      id: string;
+      name: string;
+      price_usd: number;
+      six_month_discount_pct: number;
+      overage: { amount: number; amount_usd: number }[];
+    }[]
+  ).find((p) => p.name === TPL)!;
+  expect(tpl).toMatchObject({ price_usd: 680, six_month_discount_pct: 15 });
+  expect(tpl.overage[0]).toMatchObject({ amount: 160, amount_usd: 44 });
+  await adminRpc("portal_admin_delete_package", { p_id: tpl.id });
+
+  await page.goto("/admin/billing/settings");
+  const set = page.getByRole("form", { name: "Billing settings" });
+  await set.getByLabel("IBAN").fill("AE07 0331 2345 6789 0123 456");
+  await set.getByLabel("SWIFT").fill("bomlaead");
+  await set.getByLabel("Account name").fill("Milkywayy (test)");
+  await set.getByRole("button", { name: "Save settings" }).click();
+  await expect(set.getByRole("status")).toContainText("Saved");
+  await page.reload();
+  await expect(set.getByLabel("IBAN")).toHaveValue("AE070331234567890123456");
+  await expect(set.getByLabel("SWIFT")).toHaveValue("BOMLAEAD");
+  await expect(set.getByLabel(/VAT registered/)).not.toBeChecked();
+  await adminRpc("portal_admin_save_billing_settings", {
+    p: { bank_account_name: "", bank_name: "", bank_iban: "", bank_swift: "" },
+  });
+
   await page.goto("/admin/billing/rates");
   await expect(page.getByLabel("Label reel")).toHaveValue("Short-form reel");
   await expect(page.getByLabel("AED reel")).toBeVisible();
+});
+
+test("the invoice form takes the amount from the frozen statement and warns if it differs; a bank transfer is confirmed", async ({
+  page,
+}) => {
+  const p = await deliveredItems(c.account, "Last month's reels", [
+    { kind: "reel", qty: 5, price: 300 },
+  ]);
+  await backdateDelivery(p.id, 1);
+  const d = new Date();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() - 1);
+  const last = d.toISOString().slice(0, 8) + "01";
+  await adminRpc("portal_admin_freeze_statements", { p_month: last, p_account: c.account });
+
+  await page.goto("/admin/billing");
+  const form = page.getByRole("form", { name: "New invoice" });
+  await form.getByLabel("Client", { exact: true }).selectOption({ label: NAME });
+  // On the Growth package (above): 5 reels are inside its 10, so the month is the package price.
+  await expect(form.getByTestId("statement-note")).toContainText("AED 4,000");
+  await expect(form.getByLabel("Amount", { exact: true })).toHaveValue("4000");
+  await expect(form.getByRole("alert")).toHaveCount(0);
+  await form.getByLabel("Amount", { exact: true }).fill("4100");
+  await expect(form.getByRole("alert")).toContainText("Differs from the statement (AED 4,000)");
+
+  // The client says they've paid by transfer; the admin confirms it.
+  const inv = await adminRpc("portal_admin_create_invoice", {
+    p_account: c.account,
+    p_number: `TR-${RUN.slice(-5)}`,
+    p_issued: last,
+    p_due: new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10),
+    p_amount: 4000,
+    p_currency: "AED",
+    p_status: "due",
+    p_pdf_key: null,
+    p_statement_month: last,
+  });
+  const id = (inv.data as { id: string }).id;
+  const { error } = await c.db.rpc("submit_payment_proof", {
+    p_invoice: id,
+    p_key: `payments/${c.account}/${id}/receipt.pdf`,
+    p_filename: "receipt.pdf",
+    p_bytes: 1000,
+    p_content_type: "application/pdf",
+  });
+  expect(error).toBeNull();
+  await page.goto("/admin/billing?status=submitted");
+  const review = page.getByTestId("payment-review").filter({ hasText: "receipt.pdf" });
+  await expect(review).toContainText("Payment submitted");
+  await review.getByRole("button", { name: `Confirm payment for TR-${RUN.slice(-5)}` }).click();
+  // Paid: it leaves the "Payment submitted" list.
+  await expect(review).toHaveCount(0);
+  const [row] = (await c.db.from("invoices").select("status, paid_via").eq("id", id)).data as {
+    status: string;
+    paid_via: string;
+  }[];
+  expect(row).toEqual({ status: "paid", paid_via: "bank" });
+
+  // The client page: statements, and the engine's view of a suggestion.
+  await page.goto(`/admin/accounts/${c.account}`);
+  const billing = page.getByTestId("client-billing");
+  await billing.getByText("Monthly statements").click();
+  await expect(billing.getByTestId("statements")).toContainText("AED 4,000");
+  await expect(billing.getByLabel("How they pay")).toHaveValue("");
 });

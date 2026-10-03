@@ -13,7 +13,16 @@ ADMIN=$(get PORTAL_ADMIN_SECRET)
 HOOK=$(get PORTAL_HOOK_SECRET)
 LEAD=$(get LEAD_SECRET)
 [ -n "$URL" ] && [ -n "$KEY" ] && [ -n "$ADMIN" ] && [ -n "$HOOK" ] && [ -n "$LEAD" ] || { echo "Portal values missing from .env.local" >&2; exit 1; }
-exec npx vercel deploy --yes \
+# Optional: Stripe TEST keys for "Pay now" on previews (never a live key; lib/stripe.ts refuses
+# live keys outside production anyway). Passed only if present, never printed.
+EXTRA=()
+SK=$(get STRIPE_SECRET_KEY)
+WH=$(get STRIPE_WEBHOOK_SECRET)
+if [ -n "$SK" ]; then
+  case "$SK" in sk_test_*|rk_test_*) EXTRA+=(--env STRIPE_SECRET_KEY="$SK") ;; *) echo "Skipping STRIPE_SECRET_KEY: previews take test keys only" >&2 ;; esac
+fi
+[ -n "$WH" ] && EXTRA+=(--env STRIPE_WEBHOOK_SECRET="$WH")
+exec npx vercel deploy --yes ${EXTRA[@]+"${EXTRA[@]}"} \
   --build-env NEXT_PUBLIC_PORTAL_SUPABASE_URL="$URL" \
   --build-env NEXT_PUBLIC_PORTAL_SUPABASE_ANON_KEY="$KEY" \
   --env NEXT_PUBLIC_PORTAL_SUPABASE_URL="$URL" \

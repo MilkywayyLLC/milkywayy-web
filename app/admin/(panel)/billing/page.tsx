@@ -3,10 +3,11 @@ import { BillingNav } from "@/components/admin/BillingNav";
 import {
   InvoiceActions,
   NewInvoiceForm,
+  PaymentReview,
   type InvoiceRowData,
 } from "@/components/admin/BillingTools";
 import { portalAdminPage, portalAdminReady, type ClientListRow } from "@/lib/portal/admin";
-import { dateLabel, money, STATUS_LABEL } from "@/lib/portal/billing";
+import { dateLabel, money, monthLabel, STATUS_LABEL } from "@/lib/portal/billing";
 
 export const metadata = { title: "Billing" };
 
@@ -64,6 +65,7 @@ export default async function BillingInvoices({ searchParams }: Props) {
           <option value="due">Due</option>
           <option value="overdue">Overdue</option>
           <option value="paid">Paid</option>
+          <option value="submitted">Payment submitted</option>
         </select>
         <button className="ad-btn small" type="submit">
           Filter
@@ -85,12 +87,16 @@ export default async function BillingInvoices({ searchParams }: Props) {
               className={
                 i.shown_status === "paid"
                   ? "ad-pill"
-                  : i.shown_status === "overdue"
-                    ? "ad-pill warn"
-                    : "ad-pill live"
+                  : i.payment_state === "submitted"
+                    ? "ad-pill draft"
+                    : i.shown_status === "overdue"
+                      ? "ad-pill warn"
+                      : "ad-pill live"
               }
             >
-              {STATUS_LABEL[i.shown_status]}
+              {i.shown_status !== "paid" && i.payment_state === "submitted"
+                ? "Payment submitted"
+                : STATUS_LABEL[i.shown_status]}
             </span>
             <span style={{ display: "grid", gap: 6, minWidth: 0 }}>
               <span className="ad-row-title">
@@ -98,7 +104,15 @@ export default async function BillingInvoices({ searchParams }: Props) {
               </span>
               <span className="ad-row-meta">
                 {dateLabel(i.issued_on)} · due {dateLabel(i.due_on)}
+                {i.statement_month ? ` · for ${monthLabel(i.statement_month)}` : ""}
+                {i.paid_via
+                  ? ` · paid by ${i.paid_via === "stripe" ? "card" : i.paid_via === "bank" ? "bank transfer" : "hand"}`
+                  : ""}
+                {i.payment_state === "rejected" && i.status !== "paid"
+                  ? ` · transfer rejected: ${i.reject_reason}`
+                  : ""}
               </span>
+              <PaymentReview inv={i} />
               <InvoiceActions inv={i} />
             </span>
           </div>

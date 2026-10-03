@@ -1,5 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
-import { emailFor, invoiceEmail, type MessageEvent, type ProjectInfo } from "./messages";
+import {
+  emailFor,
+  invoiceEmail,
+  type BillingEmail,
+  type MessageEvent,
+  type ProjectInfo,
+} from "./messages";
 import { portalKey, portalUrl } from "./supabase";
 
 /**
@@ -140,8 +146,8 @@ export async function notifyMilkywayy(
 /** Billing emails to an account's Owner/Admins and billing copies, each logged (no project). */
 export async function notifyBilling(
   account: string,
-  kind: "invoice_issued" | "payment_received",
-  inv: { number: string; amount: string; due: string },
+  kind: BillingEmail,
+  inv: { number: string; amount: string; due: string; reason?: string | null },
   recipients: Recipient[],
   link: string,
   actor = "admin",
@@ -167,4 +173,30 @@ export async function notifyBilling(
     if (error) console.error("[notify] couldn't log billing email:", error.message);
   }
   return sent;
+}
+
+/** Milkywayy's own billing notice (e.g. a client says they've paid by bank transfer), logged. */
+export async function alertMilkywayyBilling(
+  account: string,
+  template: string,
+  subject: string,
+  lines: string[],
+  link: string,
+) {
+  const to = replyTo();
+  const { text, html } = renderEmail(lines, "Open in the admin", link);
+  const res = await sendEmail(to, subject, text, html);
+  if (!process.env.PORTAL_ADMIN_SECRET) return;
+  const db = createClient(portalUrl, portalKey, { auth: { persistSession: false } });
+  const { error } = await db.rpc("portal_admin_log_billing_notification", {
+    p_secret: process.env.PORTAL_ADMIN_SECRET,
+    p_actor: "client",
+    p_account: account,
+    p_template: template,
+    p_to: to,
+    p_status: res.status,
+    p_provider_id: "id" in res ? (res.id ?? null) : null,
+    p_error: "error" in res ? (res.error ?? null) : null,
+  });
+  if (error) console.error("[notify] couldn't log billing alert:", error.message);
 }
