@@ -131,9 +131,11 @@ export function Shell({
                 <span className="pt-switch-name">{current.name}</span>
               </span>
             )}
-            <span className="pt-plan" title="Your plan">
-              {plan}
-            </span>
+            {plan && (
+              <span className="pt-plan" title="Your plan">
+                {plan}
+              </span>
+            )}
             <div className="pt-pop-wrap">
               <button
                 type="button"

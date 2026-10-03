@@ -244,3 +244,20 @@ begin
 end $$;
 revoke all on function public.e2e_set_profile_phone(text, text, text) from public, authenticated;
 grant execute on function public.e2e_set_profile_phone(text, text, text) to anon;
+
+-- ---------- Phase 12: back-date a test project's delivery (billing tests) ----------
+-- Applied to the dev project as migration dev_portal_e2e_backdate_delivery.
+create or replace function public.e2e_backdate_delivery(p_secret text, p_project uuid, p_months int) returns void
+language plpgsql security definer set search_path = '' as $$
+declare v_at timestamptz := now() - make_interval(months => p_months);
+begin
+  perform private.e2e_gate(p_secret, null);
+  if not exists (select 1 from public.projects p join public.account_members m on m.account_id = p.account_id
+      join auth.users u on u.id = m.user_id where p.id = p_project and u.email like 'e2e-portal-%') then
+    raise exception 'test projects only' using errcode = '42501';
+  end if;
+  update public.projects set delivered_at = v_at where id = p_project;
+  update public.line_items set delivered_month = private.dubai_month(v_at) where project_id = p_project;
+end $$;
+revoke all on function public.e2e_backdate_delivery(text, uuid, int) from public, authenticated;
+grant execute on function public.e2e_backdate_delivery(text, uuid, int) to anon;

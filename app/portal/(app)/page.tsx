@@ -1,3 +1,4 @@
+import { dateLabel, money, shownStatus, type Invoice } from "@/lib/portal/billing";
 import Link from "next/link";
 import { Icon } from "@/components/portal/Icon";
 import { getSiteSettings } from "@/lib/data";
@@ -17,33 +18,50 @@ export default async function PortalHome({
   const { db, user, current } = await requireAccount("/portal");
   const q = await searchParams;
   const a = current.account;
-  const [{ data: projectRows }, { data: profile }, invites, chat, { data: eventRows }] =
-    await Promise.all([
-      db
-        .from("projects")
-        .select("*")
-        .eq("account_id", a.id)
-        .order("updated_at", { ascending: false }),
-      db.from("profiles").select("full_name").eq("user_id", user.id).maybeSingle(),
-      isManager(current)
-        ? db
-            .from("account_invites")
-            .select("id", { count: "exact", head: true })
-            .eq("account_id", a.id)
-            .is("accepted_at", null)
-        : Promise.resolve({ count: 0 }),
-      getSiteSettings()
-        .then((s) => s.whatsapp.number)
-        .catch(() => ""),
-      db
-        .from("project_events")
-        .select(
-          "id, kind, to_status, note, at, project:projects!inner(ref, title, type, account_id)",
-        )
-        .eq("project.account_id", a.id)
-        .order("at", { ascending: false })
-        .limit(8),
-    ]);
+  const [
+    { data: projectRows },
+    { data: profile },
+    invites,
+    chat,
+    { data: eventRows },
+    { data: invoiceRows },
+  ] = await Promise.all([
+    db
+      .from("projects")
+      .select("*")
+      .eq("account_id", a.id)
+      .order("updated_at", { ascending: false }),
+    db.from("profiles").select("full_name").eq("user_id", user.id).maybeSingle(),
+    isManager(current)
+      ? db
+          .from("account_invites")
+          .select("id", { count: "exact", head: true })
+          .eq("account_id", a.id)
+          .is("accepted_at", null)
+      : Promise.resolve({ count: 0 }),
+    getSiteSettings()
+      .then((s) => s.whatsapp.number)
+      .catch(() => ""),
+    db
+      .from("project_events")
+      .select("id, kind, to_status, note, at, project:projects!inner(ref, title, type, account_id)")
+      .eq("project.account_id", a.id)
+      .order("at", { ascending: false })
+      .limit(8),
+    // Invoices waiting for payment: Owner and Admins only (RLS returns none to Members).
+    isManager(current)
+      ? db
+          .from("invoices")
+          .select("id, number, amount, currency, due_on, status")
+          .eq("account_id", a.id)
+          .neq("status", "paid")
+          .order("due_on")
+      : Promise.resolve({ data: [] }),
+  ]);
+  const unpaid = (invoiceRows ?? []) as Pick<
+    Invoice,
+    "id" | "number" | "amount" | "currency" | "due_on" | "status"
+  >[];
   const projects = (projectRows ?? []) as Project[];
   const waiting = projects.filter(
     (p) =>
@@ -116,11 +134,12 @@ export default async function PortalHome({
         <h2 id="attn" className="pt-h2">
           Needs your attention
         </h2>
-        {waiting.length + scripts.length + onHold.length === 0 && openInvites === 0 && (
-          <p className="pt-meta" style={{ margin: 0 }}>
-            Nothing needs you right now. Approvals and deliveries show up here.
-          </p>
-        )}
+        {waiting.length + scripts.length + onHold.length + unpaid.length === 0 &&
+          openInvites === 0 && (
+            <p className="pt-meta" style={{ margin: 0 }}>
+              Nothing needs you right now. Approvals, deliveries and invoices show up here.
+            </p>
+          )}
         <div className="pt-list" style={{ border: 0 }} data-testid="attention">
           {scripts.map((p) => (
             <Link
@@ -170,6 +189,25 @@ export default async function PortalHome({
                 </b>
                 <span className="pt-meta">
                   {p.title}. Download, then approve or ask for a revision.
+                </span>
+              </div>
+            </Link>
+          ))}
+          {unpaid.map((i) => (
+            <Link
+              key={i.id}
+              href="/portal/billing"
+              className="pt-attn"
+              style={{ padding: "10px 0" }}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <span className="pt-eb">Billing · {i.number}</span>
+                <b>
+                  {shownStatus(i) === "overdue" ? "Invoice overdue" : "Invoice due"}:{" "}
+                  {money(i.currency, i.amount)}
+                </b>
+                <span className="pt-meta">
+                  Due {dateLabel(i.due_on)}. Download it from Billing.
                 </span>
               </div>
             </Link>

@@ -9,7 +9,8 @@ import { deleteObject, r2Ready } from "@/lib/r2";
  * Portal housekeeping (CLIENT_PORTAL_GUIDE §5.7, §13), daily via vercel.json:
  *   1. delivered projects with no open revision complete themselves 7 days after delivery;
  *   2. files past their retention date are deleted from R2, then marked deleted;
- *   3. clients are emailed 14 days before their delivered files are deleted.
+ *   3. clients are emailed 14 days before their delivered files are deleted;
+ *   4. Due invoices past their due date become Overdue.
  * Vercel calls it with `Authorization: Bearer $CRON_SECRET`.
  */
 export const dynamic = "force-dynamic";
@@ -30,6 +31,8 @@ export async function GET(req: NextRequest) {
   if (!portalAdminReady()) return NextResponse.json({ skipped: "portal not configured" });
 
   const out = await portalAdminSystem<Out>("portal_admin_housekeeping");
+  // Invoices past their due date become Overdue (Phase 12).
+  const overdue = await portalAdminSystem<number>("portal_admin_mark_overdue");
 
   const deleted: string[] = [];
   if (r2Ready())
@@ -67,5 +70,6 @@ export async function GET(req: NextRequest) {
     files_deleted: deleted.length,
     files_waiting: out.expired.length - deleted.length,
     warned,
+    invoices_overdue: overdue,
   });
 }

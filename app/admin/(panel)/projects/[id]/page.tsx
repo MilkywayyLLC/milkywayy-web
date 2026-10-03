@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EmailAttachedBadge } from "@/components/admin/EmailAttachedBadge";
+import { LineItems } from "@/components/admin/BillingTools";
 import { AttachToClient } from "@/components/admin/ClientProjectTools";
 import { FilesIn, ScriptPanel } from "@/components/admin/ProjectBrief";
 import { StatusButtons, WhatsAppButton, type StatusTarget } from "@/components/admin/ProjectStatus";
@@ -227,6 +228,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       {p.type === "avatar" && <ScriptPanel project={target} scripts={d.scripts} origin={origin} />}
       {!shoot && <FilesIn projectId={p.id} files={d.files} />}
       <Deliveries project={target} groups={groups} revisionOpen={revisionOpen} origin={origin} />
+      {p.account_id && <LineItems project={p.id} items={d.line_items} />}
       <Thread project={target} messages={d.messages} origin={origin} />
       <ProjectNotes projectId={p.id} notes={d.notes ?? ""} />
 

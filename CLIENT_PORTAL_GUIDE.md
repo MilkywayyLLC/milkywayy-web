@@ -210,7 +210,7 @@ Delivered photos are stored on R2 in full resolution for downloads, plus WebP ve
 ### 7.3 Billing
 - **Invoices**: upload a PDF made in Milkywayy Ledger, enter the number, amount, date and client, and set the status. *(Later: a direct Ledger → portal sync, out of scope here.)*
 - **Rate card**: post-production and avatar unit rates per account currency (AED / USD).
-- **Packages**: name, monthly price, currency, what's included (e.g. 10 reels + 2 long-form), overage rates, and whether it shows to clients.
+- **Packages**: name, monthly price, currency, what's included (e.g. 10 reels + 2 long-form), overage rates. Private to one client by default (v2, owner 3 Oct 2026: priced individually, no public tiers).
 - **Suggestion rules** (one form):
   - "Suggest **package X** to pay-as-you-go clients whose average spend over the last **N months** is at least **Y%** of X's price."
   - The suggestion shows the computed saving and only appears when the saving is above **Z**.
@@ -315,11 +315,11 @@ Each phase ends the same way: a staging deploy, tests green, a short how-to, and
 3. Revision rounds across all types, plus "+1 round" in admin.
 4. The matching notifications.
 
-### Phase 12: Billing and plans
-1. Invoices (admin uploads the PDF; the client sees and downloads it).
-2. Rate card, per-client rates, line items feeding the running pay-as-you-go total.
-3. Packages, account plans, usage meter.
-4. Suggestion rules plus the suggestion card.
+### Phase 12: Billing and plans (built 3 Oct 2026, see DECISIONS.md)
+1. Invoices (admin uploads the PDF; the client sees and downloads it). Overdue is automatic after the due date; "New invoice" and "Payment received" emails, each a Settings choice.
+2. Rate card, per-client rates, line items (with a kind) feeding the running pay-as-you-go total.
+3. Packages (private to one client by default), account plans, usage meter.
+4. Suggestion rules plus the suggestion card, off globally by default, hideable per client.
 
 ### Phase 13: Listing share pages
 1. The create sheet, saved details, contact pills, photo picker.

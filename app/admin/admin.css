@@ -259,6 +259,53 @@
     pointer-events: none;
     opacity: 0.55;
   }
+  /* billing (Phase 12) */
+  .ad-rate {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1.4fr) minmax(0, 0.8fr) 90px 90px auto minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .ad-line {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 110px auto;
+    gap: 8px;
+    align-items: center;
+  }
+  form.ad-line {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 80px 130px auto;
+  }
+  .ad-fieldset {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 12px;
+    border: 1px solid var(--line);
+  }
+  .ad-fieldset legend {
+    padding: 0 6px;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .ad-meter {
+    display: block;
+    height: 6px;
+    background: var(--line);
+  }
+  .ad-meter i {
+    display: block;
+    height: 100%;
+    background: var(--fg);
+  }
+  @media (max-width: 760px) {
+    .ad-rate,
+    .ad-line,
+    form.ad-line {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
   /* The current status: shown as selected, not greyed out. */
   .ad-btn[aria-pressed="true"]:disabled {
     opacity: 1;

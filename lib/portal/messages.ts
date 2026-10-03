@@ -215,3 +215,27 @@ export function whatsappFor(
 
 export const waLink = (phone: string, text: string) =>
   `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`;
+
+/** Billing emails (owner, 3 Oct 2026): a new invoice, and a payment received. */
+export function invoiceEmail(
+  kind: "invoice_issued" | "payment_received",
+  inv: { number: string; amount: string; due: string },
+  o: { name?: string | null; link: string },
+) {
+  const hi = `Hi ${firstName(o.name)},`;
+  return kind === "invoice_issued"
+    ? {
+        subject: `New invoice ${inv.number}: ${inv.amount}`,
+        lines: [
+          hi,
+          `Invoice ${inv.number} for ${inv.amount} is in your portal, due ${inv.due}.`,
+          "Download the PDF from Billing. Questions about it? Reply to this email.",
+        ],
+        button: "View the invoice",
+      }
+    : {
+        subject: `Payment received: ${inv.number}`,
+        lines: [hi, `Thank you. We've received ${inv.amount} for invoice ${inv.number}.`],
+        button: "Open Billing",
+      };
+}

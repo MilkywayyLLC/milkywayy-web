@@ -1,4 +1,4 @@
--- Content update, NOT applied (owner approves first; it changes live site copy).
+-- Content update. Owner approved; applied to the website project on 3 Oct 2026.
 -- AI avatar plans (site-refine, 3 Oct 2026): plan names as titles, billing as tags, clearer note.
 -- Same as editing Admin → Other prices → AI avatars by hand. Keeps launchLine as it is.
 update public.pricing_other

@@ -39,13 +39,14 @@ export const NOTIFY_EVENTS = [
     "projects",
   ],
   ["new_message", "New message on a project", true, false, "projects"],
-  ["invoice_issued", "Invoice issued", true, true, "billing"],
+  ["invoice_issued", "New invoice", true, true, "billing"],
+  ["payment_received", "Payment received", true, true, "billing"],
 ] as const;
 export type NotifyEvent = (typeof NOTIFY_EVENTS)[number][0];
 export type NotifyPrefs = Record<string, { email?: boolean }>;
 export const NOTIFY_CATEGORIES = [
   ["projects", "Projects", "Bookings, deliveries, revisions and messages"],
-  ["billing", "Billing", "Invoices"],
+  ["billing", "Billing", "New invoices and payments received"],
 ] as const;
 export type NotifyCc = Partial<Record<"projects" | "billing", string[]>>;
 /** Whether this person wants emails for the event (their choice, else the default). */

@@ -46,7 +46,7 @@ test.afterAll(async () => {
 
 const rail = (page: Page) => page.getByRole("navigation", { name: "Portal sections" });
 
-test("tabs: every service for everyone, Team for the owner; Listings and Billing hidden", async ({
+test("tabs: every service for everyone; Billing and Team for the owner; Listings hidden", async ({
   page,
 }) => {
   await signInUI(page, e.owner);
@@ -56,13 +56,12 @@ test("tabs: every service for everyone, Team for the owner; Listings and Billing
     "Shoots",
     "Editing",
     "Avatars",
+    "Billing",
     "Team",
     "Contacts",
     "Settings",
   ]);
-  // Hidden until built (owner QA, 3 Oct 2026): old links go Home.
-  await page.goto("/portal/billing");
-  await expect(page).toHaveURL(/\/portal$/);
+  // Listings stays hidden until Phase 13: old links go Home.
   await page.goto("/portal/listings");
   await expect(page).toHaveURL(/\/portal$/);
   await expect(page.locator(".pt-plan")).toHaveText("Pay as you go");
@@ -257,7 +256,7 @@ test.describe("phone", () => {
     await expect(bar.getByRole("link")).toHaveText(["Home", "Shoots", "Editing", "Avatars"]);
     await bar.getByRole("button", { name: "More" }).click();
     const more = page.getByRole("dialog", { name: "More" });
-    await expect(more.getByRole("link")).toHaveText(["Team", "Contacts", "Settings"]);
+    await expect(more.getByRole("link")).toHaveText(["Billing", "Team", "Contacts", "Settings"]);
     await more.getByRole("link", { name: "Team" }).click();
     await expect(page).toHaveURL(/\/portal\/team$/);
     for (const path of [

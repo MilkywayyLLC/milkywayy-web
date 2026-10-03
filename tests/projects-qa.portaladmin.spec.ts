@@ -104,7 +104,7 @@ test("new project for a client (a WhatsApp booking): it opens, and the client se
   await page.getByRole("button", { name: "Create project" }).click();
   await expect(page).toHaveURL(/\/admin\/projects\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name: "Villa 12, Arabian Ranches" })).toBeVisible();
-  await expect(page.getByText("AED 1,800")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Details" })).toContainText("AED 1,800");
   created = page.url().split("/").pop()!;
   const { data } = await c.db.from("projects").select("status, meta").eq("id", created).single();
   expect(data).toMatchObject({ status: "requested", meta: { services: ["photo", "tour"] } });

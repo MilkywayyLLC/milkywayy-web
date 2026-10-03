@@ -168,3 +168,40 @@ export const newProject = (
       ...extra,
     }),
   );
+
+export const backdateDelivery = (project: string, months: number) =>
+  must(
+    portalClient().rpc("e2e_backdate_delivery", {
+      p_secret: secret(),
+      p_project: project,
+      p_months: months,
+    }),
+  );
+
+/** A delivered editing project for a client, with line items (as the admin adds them). */
+export async function deliveredItems(
+  account: string,
+  title: string,
+  items: { kind: string; qty: number; price?: number }[],
+) {
+  const p = await must<{ id: string; ref: string }>(
+    adminRpc("portal_admin_create_project", {
+      p_account: account,
+      p_type: "edit",
+      p_title: title,
+      p_kind: "short_form",
+    }),
+  );
+  for (const i of items)
+    await must(
+      adminRpc("portal_admin_add_line_item", {
+        p_project: p.id,
+        p_kind: i.kind,
+        p_description: null,
+        p_qty: i.qty,
+        p_unit_price: i.price ?? null,
+      }),
+    );
+  await must(adminRpc("portal_admin_set_status", { p_id: p.id, p_status: "delivered" }));
+  return p;
+}

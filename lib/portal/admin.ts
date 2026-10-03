@@ -147,13 +147,7 @@ export type ProjectDetail = {
   events: import("./projects").ProjectEvent[];
   files: import("./projects").ProjectFile[];
   messages: import("./projects").ProjectMessage[];
-  line_items: {
-    id: string;
-    description: string;
-    qty: number;
-    unit_price: number;
-    currency: string;
-  }[];
+  line_items: import("@/components/admin/BillingTools").LineItemRow[];
   notes: string | null;
   notifications: {
     id: number;

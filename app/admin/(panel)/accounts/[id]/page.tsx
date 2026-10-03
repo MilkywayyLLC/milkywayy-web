@@ -6,6 +6,14 @@ import {
   ClientInviteForm,
   RetentionSelect,
 } from "@/components/admin/ClientAccountTools";
+import {
+  ClientRates,
+  HideSuggestions,
+  PlanForm,
+  type ClientBilling,
+  type InvoiceRowData,
+} from "@/components/admin/BillingTools";
+import { dateLabel, money } from "@/lib/portal/billing";
 import { AttachBooking, MemberPhone } from "@/components/admin/ClientProjectTools";
 import { dubai } from "@/lib/admin/format";
 import { portalAdminPage, type ClientDetail } from "@/lib/portal/admin";
@@ -30,7 +38,11 @@ export default async function ClientPage({ params, searchParams }: Props) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const rpc = await portalAdminPage();
-  const c = await rpc<ClientDetail | null>("portal_admin_client", { p_id: id, p_view_as: false });
+  const [c, billing, invoices] = await Promise.all([
+    rpc<ClientDetail | null>("portal_admin_client", { p_id: id, p_view_as: false }),
+    rpc<ClientBilling>("portal_admin_client_billing", { p_account: id }),
+    rpc<InvoiceRowData[]>("portal_admin_invoices", { p_account: id }),
+  ]);
   if (!c) notFound();
   const a = c.account;
   const { created } = await searchParams;
@@ -83,6 +95,62 @@ export default async function ClientPage({ params, searchParams }: Props) {
         </section>
         <ClientEditor id={a.id} currency={a.currency} notes={c.notes ?? ""} />
       </div>
+
+      <section className="ad-card ad-form" aria-label="Billing" data-testid="client-billing">
+        <div className="ad-row-main" style={{ justifyContent: "space-between" }}>
+          <h2 className="ad-h2">Billing · {billing.currency}</h2>
+          <Link
+            className="ad-btn ghost small"
+            href={`/admin/billing?account=${a.id}`}
+            prefetch={false}
+          >
+            Invoices ({invoices.length})
+          </Link>
+        </div>
+        {billing.plan.package ? (
+          <div className="stack" style={{ gap: 8 }}>
+            <b>
+              {billing.plan.package.name} ·{" "}
+              {money(billing.plan.package.currency, billing.plan.package.price)}/month · renews{" "}
+              {dateLabel(billing.plan.package.period_end)}
+            </b>
+            {billing.plan.package.usage.map((u) => (
+              <div key={u.key} className="stack" style={{ gap: 4 }}>
+                <span className="ad-small">
+                  {u.label}: {Number(u.used)} of {Number(u.qty)}
+                </span>
+                <span className="ad-meter" aria-hidden="true">
+                  <i
+                    style={{
+                      width: `${Math.min(100, (Number(u.used) / Math.max(1, Number(u.qty))) * 100)}%`,
+                    }}
+                  />
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <span className="ad-small">
+            Pay as you go · this month so far {money(billing.currency, billing.payg.total)}{" "}
+            (estimate)
+          </span>
+        )}
+        {billing.suggestion && (
+          <span className="ad-small ad-muted">
+            Sees a suggestion: {billing.suggestion.package}, saving about{" "}
+            {money(billing.suggestion.currency, billing.suggestion.saving)} a month.
+          </span>
+        )}
+        <PlanForm account={a.id} billing={billing} />
+        <HideSuggestions account={a.id} hidden={billing.hide_suggestions} />
+        <details>
+          <summary className="ad-small">Rates for this client</summary>
+          <ClientRates account={a.id} billing={billing} />
+        </details>
+        <Link className="ad-small" href="/admin/billing/packages" prefetch={false}>
+          Create a private package for this client →
+        </Link>
+      </section>
 
       <section className="ad-card ad-form" aria-label="Projects">
         <h2 className="ad-h2">Projects</h2>

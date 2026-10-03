@@ -1,16 +1,29 @@
 import { Shell } from "@/components/portal/Shell";
 import { Hydrated } from "@/components/ui/Hydrated";
 import { contactOf, requireAccount } from "@/lib/portal/auth";
-import { initials, portalTabs } from "@/lib/portal/shell";
+import { initials, isManager, portalTabs } from "@/lib/portal/shell";
 
 /** Signed-in portal pages: the shell from the approved mockup around every tab. */
 export default async function PortalApp({ children }: { children: React.ReactNode }) {
   const { db, user, memberships, current } = await requireAccount("/portal");
-  const { data: profile } = await db
-    .from("profiles")
-    .select("full_name")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const manager = isManager(current);
+  const [{ data: profile }, { data: plan }] = await Promise.all([
+    db.from("profiles").select("full_name").eq("user_id", user.id).maybeSingle(),
+    // The plan badge (§5.1): Owner and Admins only (RLS hides plans from Members).
+    manager
+      ? db
+          .from("account_plans")
+          .select("mode, package:packages(name)")
+          .eq("account_id", current.account.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const pkg = (plan as { mode?: string; package?: { name: string } | null } | null) ?? null;
+  const planLabel = !manager
+    ? ""
+    : pkg?.mode === "package" && pkg.package
+      ? `Monthly: ${pkg.package.name}`
+      : "Pay as you go";
   const tabs = portalTabs(current);
   const name = profile?.full_name || contactOf(user);
   return (
@@ -19,8 +32,7 @@ export default async function PortalApp({ children }: { children: React.ReactNod
       account={tabs.account}
       accounts={memberships.map((m) => ({ id: m.account.id, name: m.account.name, role: m.role }))}
       currentId={current.account.id}
-      // Plans and packages arrive in Phase 12; everyone is pay as you go until then.
-      plan="Pay as you go"
+      plan={planLabel}
       me={{ name, initials: initials(profile?.full_name || current.account.name) }}
     >
       <Hydrated />

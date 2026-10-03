@@ -4,8 +4,8 @@ export type Tab = { href: string; label: string; icon: string };
 
 /**
  * Tabs (CLIENT_PORTAL_GUIDE §5.1; owner QA, 3 Oct 2026): Home, Shoots, Editing and Avatars for
- * everyone, so any client can start any service. Listings and Billing are hidden until they're
- * built (Phases 12–13). Team for the Owner and Admins, Contacts and Settings for everyone.
+ * everyone, so any client can start any service; Billing and Team for the Owner and Admins;
+ * Contacts and Settings for everyone. Listings is hidden until Phase 13.
  */
 export function portalTabs(m: Membership) {
   const manager = m.role === "owner" || m.role === "admin";
@@ -14,6 +14,9 @@ export function portalTabs(m: Membership) {
     { href: "/portal/shoots", label: "Shoots", icon: "shoots" },
     { href: "/portal/editing", label: "Editing", icon: "editing" },
     { href: "/portal/avatars", label: "Avatars", icon: "avatars" },
+    // Billing (Phase 12): Owner and Admins only; Members never see prices. Listings stays hidden
+    // until Phase 13.
+    ...(manager ? [{ href: "/portal/billing", label: "Billing", icon: "billing" }] : []),
   ];
   const account: Tab[] = [
     ...(manager ? [{ href: "/portal/team", label: "Team", icon: "team" }] : []),
