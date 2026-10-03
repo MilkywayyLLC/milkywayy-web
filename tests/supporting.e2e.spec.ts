@@ -66,11 +66,11 @@ test("legal pages are marked as drafts until reviewed", async ({ page }) => {
   }
 });
 
-test("Client login opens the “portal is moving” page with WhatsApp for files @mobile", async ({
+test("Client login opens the portal; the old “portal is moving” page still works @mobile", async ({
   page,
 }) => {
   await page.goto("/");
-  const login = page.locator('a[href="/client-login"]').first();
+  const login = page.locator('a[href="/portal/login"]').first();
   await expect(login).toHaveCount(1);
   await page.goto("/client-login");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Your portal");

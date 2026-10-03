@@ -141,3 +141,30 @@ export async function uploadFile(
     return false;
   }
 }
+
+/** A small WebP preview of a photo (longest side `max` px), or null if it isn't a photo. */
+export async function makeThumb(f: File, max = 800): Promise<Blob | null> {
+  if (!/^image\/(jpeg|png|webp|avif)$/.test(f.type) || f.size > 80 * 1024 * 1024) return null;
+  try {
+    const bmp = await createImageBitmap(f);
+    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(bmp.width * scale));
+    c.height = Math.max(1, Math.round(bmp.height * scale));
+    c.getContext("2d")?.drawImage(bmp, 0, 0, c.width, c.height);
+    bmp.close();
+    return await new Promise<Blob | null>((res) => c.toBlob(res, "image/webp", 0.8));
+  } catch {
+    return null;
+  }
+}
+
+/** PUT a small blob to a presigned URL; true when stored. */
+export async function putBlob(url: string, blob: Blob) {
+  try {
+    const r = await fetch(url, { method: "PUT", body: blob });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}

@@ -46,19 +46,25 @@ test.afterAll(async () => {
 
 const rail = (page: Page) => page.getByRole("navigation", { name: "Portal sections" });
 
-test("tabs follow the account's services and the person's role", async ({ page }) => {
+test("tabs: every service for everyone, Team for the owner; Listings and Billing hidden", async ({
+  page,
+}) => {
   await signInUI(page, e.owner);
   await expect(page).toHaveURL(/\/portal$/);
   await expect(rail(page).getByRole("link")).toHaveText([
     "Home",
     "Shoots",
     "Editing",
-    "Listings",
-    "Billing",
+    "Avatars",
     "Team",
     "Contacts",
     "Settings",
   ]);
+  // Hidden until built (owner QA, 3 Oct 2026): old links go Home.
+  await page.goto("/portal/billing");
+  await expect(page).toHaveURL(/\/portal$/);
+  await page.goto("/portal/listings");
+  await expect(page).toHaveURL(/\/portal$/);
   await expect(page.locator(".pt-plan")).toHaveText("Pay as you go");
   await expect(page.getByRole("button", { name: /Olivia Owner: profile menu/ })).toHaveText("OO");
   await rail(page).getByRole("link", { name: "Shoots" }).click();
@@ -120,15 +126,13 @@ test("a member sees fewer tabs, no prices, and switches accounts", async ({ page
     "Home",
     "Shoots",
     "Editing",
-    "Listings",
+    "Avatars",
     "Contacts",
     "Settings",
   ]);
   await page.goto("/portal/shoots");
   await expect(page.getByTestId("shoots")).toContainText("Marina Gate 1"); // visibility: all
   await expect(page.getByTestId("shoots")).not.toContainText("AED");
-  await page.goto("/portal/billing");
-  await expect(page.getByText("Billing is for the account’s owner and admins")).toBeVisible();
   await page.goto("/portal/team");
   await expect(
     page.getByText("The team is managed by the account’s owner and admins"),
@@ -188,9 +192,16 @@ test("Settings: name, notifications and company details save; bad TRN is refused
   await signInUI(page, e.owner);
   await page.goto("/portal/settings");
   await page.getByLabel("Your name").fill("Olivia Ortega");
-  await page.getByRole("button", { name: "Save name" }).click();
+  // An optional WhatsApp number (owner QA, 3 Oct 2026): checked, saved as +971…
+  await page.getByLabel("WhatsApp number (optional)").fill("12");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.locator("p[role=alert]")).toContainText("Check the WhatsApp number");
+  await page.getByLabel("WhatsApp number (optional)").fill("50 000 0008");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /profile menu/ })).toHaveText("OO");
+  await page.reload();
+  await expect(page.getByLabel("WhatsApp number (optional)")).toHaveValue("500000008");
 
   const delivered = page.getByRole("checkbox", { name: "Files ready to download" });
   await expect(delivered).toBeChecked();
@@ -243,10 +254,10 @@ test.describe("phone", () => {
   }) => {
     await signInUI(page, e.owner);
     const bar = page.getByRole("navigation", { name: "Portal tabs" });
-    await expect(bar.getByRole("link")).toHaveText(["Home", "Shoots", "Editing", "Listings"]);
+    await expect(bar.getByRole("link")).toHaveText(["Home", "Shoots", "Editing", "Avatars"]);
     await bar.getByRole("button", { name: "More" }).click();
     const more = page.getByRole("dialog", { name: "More" });
-    await expect(more.getByRole("link")).toHaveText(["Billing", "Team", "Contacts", "Settings"]);
+    await expect(more.getByRole("link")).toHaveText(["Team", "Contacts", "Settings"]);
     await more.getByRole("link", { name: "Team" }).click();
     await expect(page).toHaveURL(/\/portal\/team$/);
     for (const path of [

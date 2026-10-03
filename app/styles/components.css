@@ -1856,6 +1856,13 @@
   .txtbtn:hover {
     color: var(--fg);
   }
+  .bk-contact {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
   .addprop {
     border: 1px dashed var(--line);
     background: transparent;

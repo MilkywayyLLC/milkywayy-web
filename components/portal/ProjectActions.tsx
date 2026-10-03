@@ -54,6 +54,7 @@ export function ProjectActions({
   canApprove,
   round,
   hasDelivery,
+  noun = "shoot",
 }: {
   projectId: string;
   zipId: string | null;
@@ -61,6 +62,8 @@ export function ProjectActions({
   canApprove: boolean;
   round: { next: number; of: number };
   hasDelivery: boolean;
+  /** What the client calls it: shoot, batch or video. */
+  noun?: string;
 }) {
   const [sheet, setSheet] = useState<null | "revision" | "approve">(null);
   const [note, setNote] = useState("");
@@ -144,7 +147,7 @@ export function ProjectActions({
       {sheet === "approve" && (
         <Sheet title="Approve this delivery?" onClose={() => setSheet(null)}>
           <p style={{ margin: 0 }}>
-            The shoot moves to Completed. Your files stay available to download, and you can still
+            This {noun} moves to Completed. Your files stay available to download, and you can still
             message us about it.
           </p>
           {error && (

@@ -36,7 +36,7 @@ function attribution(): Attribution {
 }
 
 export type SendResult =
-  | { ok: true; ref: string; eventId: string; message?: string }
+  | { ok: true; ref: string; eventId: string; message?: string; portal?: boolean }
   | { ok: false; errors?: Record<string, string>; error: string };
 
 export async function sendLead(
@@ -63,7 +63,8 @@ export async function sendLead(
       }),
     });
     const body = await res.json().catch(() => ({}));
-    if (res.ok && body.ref) return { ok: true, ref: body.ref, eventId, message: body.message };
+    if (res.ok && body.ref)
+      return { ok: true, ref: body.ref, eventId, message: body.message, portal: !!body.portal };
     return {
       ok: false,
       errors: body.errors,

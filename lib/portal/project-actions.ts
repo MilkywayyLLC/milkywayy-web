@@ -167,7 +167,7 @@ export async function createProject(
   const origin = originFrom(await headers());
   await notifyClients(
     out.id,
-    "batch_received",
+    input.type === "avatar" ? "avatar_received" : "batch_received",
     { ref: out.ref, title, type: input.type },
     out.recipients,
     { link: projectLink(origin, out.ref), actor: "client" },
@@ -339,8 +339,6 @@ export async function decideScript(
   revalidatePath("/portal", "layout");
   return {
     ok: true,
-    notice: approveIt
-      ? "Script approved. Production has started."
-      : "Changes sent. We’ll post the next version here.",
+    notice: approveIt ? "Script approved. Production has started." : "Changes sent.",
   };
 }

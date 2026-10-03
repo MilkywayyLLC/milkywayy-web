@@ -258,6 +258,13 @@ test.describe("desktop builder", () => {
     await b.getByLabel("Community / area").fill("JVC");
     await b.getByLabel("Building / tower").fill("Bloom Towers");
     await b.getByLabel("Unit number").fill("804");
+    // Then who it's for: name and WhatsApp number (owner QA, 3 Oct 2026).
+    await send.click();
+    await expect(b.getByText("Add your name so we know who the booking is for.")).toBeVisible();
+    await expect(b.getByLabel("Name")).toBeFocused();
+    expect(await opened(page)).toHaveLength(0);
+    await b.getByLabel("Name").fill("Sara Agent");
+    await b.getByLabel("WhatsApp number").fill("50 123 4567");
     await send.click();
 
     // The lead is saved first, then WhatsApp opens with the ref the server issued.
@@ -348,6 +355,8 @@ test.describe("phone layout @mobile-only", () => {
     await expect(b.getByLabel("Community / area")).toBeFocused();
     await b.getByLabel("Community / area").fill("Al Barsha");
     await b.getByLabel("Building / tower").fill("Barsha Heights Tower");
+    await b.getByLabel("Name").fill("Sara Agent");
+    await b.getByLabel("WhatsApp number").fill("50 123 4567");
     await bar.getByRole("button", { name: "Review & send" }).click();
     await sheet.getByRole("button", { name: "Send request on WhatsApp" }).click();
     await expect.poll(() => opened(page)).toHaveLength(1);

@@ -1,7 +1,9 @@
 import { DownloadButton } from "@/components/portal/ProjectActions";
+import { presign, r2Ready } from "@/lib/r2";
 import {
   bytes,
   day,
+  expiry,
   deliveries,
   kindLabel,
   statusLabel,
@@ -58,36 +60,72 @@ export function ActivityList({ events }: { events: ProjectEvent[] }) {
   );
 }
 
-/** Published deliveries, newest first; each file opens or downloads by a short-lived link. */
+/**
+ * Published deliveries, newest first; each file opens or downloads by a short-lived link. Photos
+ * with a preview show as tiles (owner QA, 3 Oct 2026); tapping one opens the preview larger.
+ */
 export function DeliveryList({ files }: { files: ProjectFile[] }) {
+  const view = (key: string) => (r2Ready() ? presign("GET", key, 3600) : null);
   return (
     <>
-      {deliveries(files).map((d) => (
-        <section key={d.no} className="pt-card" aria-label={d.label} data-testid="delivery">
-          <div className="pt-row">
-            <h2 className="pt-h2">{d.label}</h2>
-            <span className="pt-meta pt-mono">{when(d.files[0].created_at)}</span>
-          </div>
-          <div className="pt-list">
-            {d.files.map((f) => (
-              <div key={f.id} className="pt-file">
-                <div>
-                  <b>{f.label}</b>
-                  <div className="pt-meta">
-                    {[kindLabel(f.kind), bytes(f.bytes)].filter(Boolean).join(" · ")}
-                    {f.expires_at ? ` · kept until ${day(f.expires_at, true)}` : ""}
+      {deliveries(files).map((d) => {
+        const tiles = d.files.filter((f) => f.thumb_key);
+        const rows = d.files.filter((f) => !f.thumb_key);
+        return (
+          <section key={d.no} className="pt-card" aria-label={d.label} data-testid="delivery">
+            <div className="pt-row">
+              <h2 className="pt-h2">{d.label}</h2>
+              <span className="pt-meta pt-mono">{when(d.files[0].created_at)}</span>
+            </div>
+            {tiles.length > 0 && (
+              <ul className="pt-thumbs" aria-label="Photos">
+                {tiles.map((f) => {
+                  const src = view(f.thumb_key!);
+                  return (
+                    <li key={f.id}>
+                      {src && (
+                        <a
+                          href={src}
+                          target="_blank"
+                          rel="noopener"
+                          aria-label={`Preview ${f.label}`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- signed, short-lived R2 URL */}
+                          <img src={src} alt={f.label} loading="lazy" decoding="async" />
+                        </a>
+                      )}
+                      <div className="pt-thumb-foot">
+                        <span className="pt-small">{f.label}</span>
+                        <DownloadButton fileId={f.id} name={f.label} />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {rows.length > 0 && (
+              <div className="pt-list">
+                {rows.map((f) => (
+                  <div key={f.id} className="pt-file">
+                    <div>
+                      <b>{f.label}</b>
+                      <div className="pt-meta">
+                        {[kindLabel(f.kind), bytes(f.bytes)].filter(Boolean).join(" · ")}
+                        {f.expires_at ? ` · kept until ${day(f.expires_at, true)}` : ""}
+                      </div>
+                    </div>
+                    <DownloadButton
+                      fileId={f.id}
+                      label={f.source === "link" || f.kind === "tour" ? "Open" : "Download"}
+                      name={f.label}
+                    />
                   </div>
-                </div>
-                <DownloadButton
-                  fileId={f.id}
-                  label={f.source === "link" || f.kind === "tour" ? "Open" : "Download"}
-                  name={f.label}
-                />
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
-      ))}
+            )}
+          </section>
+        );
+      })}
     </>
   );
 }
@@ -109,7 +147,7 @@ export function FilesInList({ files }: { files: ProjectFile[] }) {
             <b style={{ overflowWrap: "anywhere" }}>{f.label}</b>
             <div className="pt-meta" style={{ overflowWrap: "anywhere" }}>
               {f.source === "link" ? f.url : bytes(f.bytes)}
-              {f.expires_at ? ` · deleted ${day(f.expires_at, true)}` : ""}
+              {f.expires_at ? ` · ${expiry(f.expires_at)}` : ""}
             </div>
           </div>
           <DownloadButton

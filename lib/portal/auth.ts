@@ -61,6 +61,15 @@ export async function requirePortalUser(next = "/portal") {
   return p;
 }
 
+/** The signed-in person and the account they're working in, or null (never redirects). */
+export async function currentClient() {
+  const p = await getPortal();
+  if (p.state !== "signed-in" || !p.memberships.length) return null;
+  const chosen = (await cookies()).get(ACCOUNT_COOKIE)?.value;
+  const current = p.memberships.find((m) => m.account.id === chosen) ?? p.memberships[0];
+  return { ...p, current };
+}
+
 /** Signed in with an account; no account yet means onboarding first. */
 export async function requireAccount(next = "/portal") {
   const p = await requirePortalUser(next);

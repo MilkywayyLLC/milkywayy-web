@@ -119,6 +119,11 @@ export default async function Projects({ searchParams }: Props) {
                 : "AI avatar videos. Production waits for the client to approve the script."}
           </span>
         </div>
+        <div className="ad-btns">
+          <Link className="ad-btn small" href="/admin/projects/new" prefetch={false}>
+            New project
+          </Link>
+        </div>
       </div>
       <nav className="ad-btns" aria-label="Project type">
         {TYPES.map(([t, label]) => (

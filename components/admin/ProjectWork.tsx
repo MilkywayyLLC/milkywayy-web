@@ -10,7 +10,9 @@ import {
   resumeUpload,
   revisionStep,
   saveProjectNotes,
+  saveThumb,
   startUpload,
+  thumbUploadUrl,
   type ActionResult,
 } from "@/lib/portal/admin-project-actions";
 import {
@@ -20,7 +22,8 @@ import {
   type ProjectFile,
   type ProjectMessage,
 } from "@/lib/portal/projects";
-import { uploadFile } from "@/lib/upload-browser";
+import { makeThumb, putBlob, uploadFile } from "@/lib/upload-browser";
+import { Confirm } from "./Confirm";
 import { WhatsAppButton, type StatusTarget } from "./ProjectStatus";
 
 function Status({
@@ -69,14 +72,23 @@ function Uploader({
         {
           start: () => startUpload(projectId, projectRef, delivery.no, f.name, f.size),
           resume: (key, uploadId) => resumeUpload(key, uploadId, f.size),
-          finish: (x) =>
-            finishUpload(projectId, delivery, {
+          finish: async (x) => {
+            const r = await finishUpload(projectId, delivery, {
               ...x,
               name: f.name,
               size: f.size,
               type: f.type,
               kind,
-            }),
+            });
+            // Photos: a small preview next to the original, so clients see it without downloading.
+            if (r.ok && r.fileId) {
+              const thumb = await makeThumb(f);
+              const t = thumb ? await thumbUploadUrl(x.key) : null;
+              if (thumb && t?.url && (await putBlob(t.url, thumb)))
+                await saveThumb(projectId, r.fileId, x.key);
+            }
+            return r;
+          },
         },
         (patch) => set(i, patch),
       );
@@ -258,7 +270,12 @@ export function Deliveries({
                     </span>
                   </span>
                 </span>
-                <RemoveFile projectId={project.id} fileId={f.id} />
+                <RemoveFile
+                  projectId={project.id}
+                  fileId={f.id}
+                  label={f.label}
+                  published={f.published}
+                />
               </div>
             ))}
           </div>
@@ -345,20 +362,52 @@ export function Deliveries({
   );
 }
 
-function RemoveFile({ projectId, fileId }: { projectId: string; fileId: string }) {
+/**
+ * Remove a file. Before publishing: two taps. After publishing the client may already rely on it,
+ * so a dialog says so first (owner QA, 3 Oct 2026).
+ */
+function RemoveFile({
+  projectId,
+  fileId,
+  label,
+  published,
+}: {
+  projectId: string;
+  fileId: string;
+  label: string;
+  published: boolean;
+}) {
   const [pending, start] = useTransition();
   const [sure, setSure] = useState(false);
+  const remove = () => start(async () => void (await removeFile(projectId, fileId)));
   return (
-    <button
-      type="button"
-      className="ad-btn quiet small"
-      disabled={pending}
-      onClick={() =>
-        sure ? start(async () => void (await removeFile(projectId, fileId))) : setSure(true)
-      }
-    >
-      {pending ? "Removing…" : sure ? "Really remove?" : "Remove"}
-    </button>
+    <>
+      <button
+        type="button"
+        className="ad-btn quiet small"
+        disabled={pending}
+        onClick={() => (published ? setSure(true) : sure ? remove() : setSure(true))}
+      >
+        {pending ? "Removing…" : sure && !published ? "Really remove?" : "Remove"}
+      </button>
+      {published && (
+        <Confirm
+          open={sure}
+          title={`Remove “${label}”?`}
+          confirmLabel="Remove it"
+          danger
+          busy={pending}
+          onConfirm={remove}
+          onCancel={() => setSure(false)}
+        >
+          <p style={{ margin: 0 }}>
+            This delivery is already published: the client loses access to this file straight away,
+            and an uploaded file is deleted from storage. To send a corrected version, start a new
+            delivery instead.
+          </p>
+        </Confirm>
+      )}
+    </>
   );
 }
 

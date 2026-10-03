@@ -1,11 +1,12 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AttachToClient } from "@/components/admin/ClientProjectTools";
 import { FilesIn, ScriptPanel } from "@/components/admin/ProjectBrief";
 import { StatusButtons, WhatsAppButton, type StatusTarget } from "@/components/admin/ProjectStatus";
 import { Deliveries, ProjectNotes, RevisionPanel, Thread } from "@/components/admin/ProjectWork";
 import { dubai } from "@/lib/admin/format";
-import { portalAdminPage, type ProjectDetail } from "@/lib/portal/admin";
+import { portalAdminPage, type ClientListRow, type ProjectDetail } from "@/lib/portal/admin";
 import { originFrom } from "@/lib/portal/invite";
 import {
   adminStatuses,
@@ -46,6 +47,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   if (!d) notFound();
   const origin = originFrom(await headers());
   const p = d.project;
+  const clients =
+    !p.account_id && d.lead
+      ? ((await rpc<ClientListRow[]>("portal_admin_clients", {})) ?? [])
+          .map((c) => ({ id: c.id, name: c.name }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+      : [];
   // WhatsApp goes to whoever submitted it (batches, avatar briefs), else the booking, else the Owner.
   const target: StatusTarget = {
     id: p.id,
@@ -105,6 +112,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           )}
         </div>
       </div>
+
+      {!p.account_id && d.lead && <AttachToClient bookingRef={d.lead.ref} clients={clients} />}
 
       <section className="ad-card ad-form" aria-label="Status">
         <h2 className="ad-h2">Status</h2>
@@ -192,7 +201,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                 <dt>Price</dt>
                 <dd>
                   {total
-                    ? `${d.account?.currency ?? "AED"} ${total.toLocaleString("en-US")} (estimate at booking)`
+                    ? `${d.account?.currency ?? "AED"} ${total.toLocaleString("en-US")} (${d.lead ? "estimate at booking" : "agreed price"})`
                     : "—"}
                 </dd>
               </>

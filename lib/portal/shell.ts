@@ -3,28 +3,17 @@ import type { Membership } from "./auth";
 export type Tab = { href: string; label: string; icon: string };
 
 /**
- * Tabs for this account (CLIENT_PORTAL_GUIDE §5.1): the services it uses or chose at
- * onboarding (a booking counts as using shoots; a batch or avatar video as using those), Listings
- * with shoots, Billing and Team for the Owner and Admins, Contacts and Settings for everyone.
+ * Tabs (CLIENT_PORTAL_GUIDE §5.1; owner QA, 3 Oct 2026): Home, Shoots, Editing and Avatars for
+ * everyone, so any client can start any service. Listings and Billing are hidden until they're
+ * built (Phases 12–13). Team for the Owner and Admins, Contacts and Settings for everyone.
  */
-export function portalTabs(
-  m: Membership,
-  used: { shoots: boolean; edits: boolean; avatars: boolean },
-) {
-  const s = m.account.services_interest;
+export function portalTabs(m: Membership) {
   const manager = m.role === "owner" || m.role === "admin";
-  const shoots = used.shoots || s.includes("shoots") || s.includes("production");
   const main: Tab[] = [
     { href: "/portal", label: "Home", icon: "home" },
-    ...(shoots ? [{ href: "/portal/shoots", label: "Shoots", icon: "shoots" }] : []),
-    ...(used.edits || s.includes("post")
-      ? [{ href: "/portal/editing", label: "Editing", icon: "editing" }]
-      : []),
-    ...(used.avatars || s.includes("avatars")
-      ? [{ href: "/portal/avatars", label: "Avatars", icon: "avatars" }]
-      : []),
-    ...(shoots ? [{ href: "/portal/listings", label: "Listings", icon: "listings" }] : []),
-    ...(manager ? [{ href: "/portal/billing", label: "Billing", icon: "billing" }] : []),
+    { href: "/portal/shoots", label: "Shoots", icon: "shoots" },
+    { href: "/portal/editing", label: "Editing", icon: "editing" },
+    { href: "/portal/avatars", label: "Avatars", icon: "avatars" },
   ];
   const account: Tab[] = [
     ...(manager ? [{ href: "/portal/team", label: "Team", icon: "team" }] : []),

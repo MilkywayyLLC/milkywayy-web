@@ -124,6 +124,7 @@ export type ProjectFile = {
   source: "link" | "r2";
   url: string | null;
   r2_key: string | null;
+  thumb_key?: string | null;
   label: string;
   bytes: number | null;
   content_type: string | null;
@@ -228,3 +229,7 @@ export const day = (iso: string | null | undefined, year = false) =>
         timeZone: "Asia/Dubai",
       })
     : "";
+
+/** "deletes on 2 Nov 2026" while it's ahead, "deleted 2 Nov 2026" once it's past. */
+export const expiry = (iso: string) =>
+  `${new Date(iso).getTime() > Date.now() ? "deletes on" : "deleted"} ${day(iso, true)}`;

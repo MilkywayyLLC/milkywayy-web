@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
     for (const f of out.expired) {
       try {
         await deleteObject(f.key);
+        await deleteObject(`${f.key}.thumb.webp`).catch(() => undefined);
         deleted.push(f.id);
       } catch (e) {
         console.error("[housekeeping] R2 delete failed:", f.key, e);

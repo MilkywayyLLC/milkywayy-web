@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneField } from "@/components/forms/PhoneField";
 import { useActionState, useState } from "react";
 import {
   saveCompany,
@@ -32,7 +33,7 @@ function Status({ state }: { state: Result | undefined }) {
   );
 }
 
-export function ProfileForm({ name }: { name: string }) {
+export function ProfileForm({ name, phone }: { name: string; phone: string | null }) {
   const [state, save, saving] = useActionState(saveProfile, undefined);
   return (
     <form action={save} className="pt-form" style={{ gap: 10 }}>
@@ -40,6 +41,10 @@ export function ProfileForm({ name }: { name: string }) {
         Your name
         <input type="text" name="full_name" defaultValue={name} required autoComplete="name" />
       </label>
+      <PhoneField label="WhatsApp number (optional)" defaultE164={phone} />
+      <span className="pt-meta">
+        So we can message you about your projects. It isn’t used to sign in.
+      </span>
       <Status state={state} />
       <button
         type="submit"
@@ -47,7 +52,7 @@ export function ProfileForm({ name }: { name: string }) {
         style={{ justifySelf: "start" }}
         disabled={saving}
       >
-        {saving ? "Saving…" : "Save name"}
+        {saving ? "Saving…" : "Save"}
       </button>
     </form>
   );

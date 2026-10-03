@@ -141,6 +141,12 @@ test("uploads go straight to storage (single and multipart) and download again",
     page.getByRole("button", { name: "Download small.txt" }).click(),
   ]);
   expect(download.suggestedFilename()).toBe("small.txt");
+
+  // Completed: raw uploads show when they will be deleted, in the future tense.
+  await ok(adminRpc("portal_admin_set_status", { p_id: p.id, p_status: "completed" }));
+  await page.reload();
+  await expect(page.getByTestId("files-in")).toContainText(/deletes on \d{1,2} \w{3} \d{4}/);
+  await expect(page.getByTestId("files-in")).not.toContainText("deleted ");
 });
 
 test("avatar video: brief, then approve the script; production starts", async ({ page }) => {
@@ -157,6 +163,12 @@ test("avatar video: brief, then approve the script; production starts", async ({
   await expect(page.getByRole("heading", { name: "Brief received" })).toBeVisible();
 
   const p = await projectByTitle("Launch presenter");
+  // Its own "brief received" email, not the batch one (owner QA, 3 Oct 2026).
+  const detail = (await ok(adminRpc("portal_admin_project", { p_id: p.id }))) as {
+    notifications: { template: string }[];
+  };
+  expect(detail.notifications.map((n) => n.template)).toContain("avatar_received");
+  expect(detail.notifications.map((n) => n.template)).not.toContain("batch_received");
   await ok(
     adminRpc("portal_admin_post_script", {
       p_id: p.id,
@@ -177,6 +189,8 @@ test("avatar video: brief, then approve the script; production starts", async ({
   await script.getByLabel("What should change?").fill("Say the phone number at the end");
   await script.getByRole("button", { name: "Send changes" }).click();
   await expect(script.getByRole("status")).toContainText("Changes sent");
+  // "We'll post the next version here" once, not twice.
+  await expect(script.getByText("We’ll post the next version here")).toHaveCount(1);
 
   await ok(
     adminRpc("portal_admin_post_script", {
@@ -187,6 +201,10 @@ test("avatar video: brief, then approve the script; production starts", async ({
   await page.reload();
   await expect(page.getByTestId("script")).toContainText("v2");
   await page.getByTestId("script").getByRole("button", { name: "Approve script" }).click();
+  // A confirmation first, like approving a delivery (owner QA, 3 Oct 2026).
+  const confirm = page.getByRole("dialog", { name: "Approve script v2?" });
+  await expect(confirm).toContainText("Production starts with this script");
+  await confirm.getByRole("button", { name: "Approve and start production" }).click();
   await expect(page.getByTestId("script")).toContainText("Approved");
   await expect(page.getByText("In production").first()).toBeVisible();
   await expect(page.getByTestId("activity")).toContainText("Script v2 approved");

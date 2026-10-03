@@ -190,6 +190,11 @@ test("Booking: saved with the server's estimate and the exact WhatsApp message",
   const b = page.locator("#booking");
   await b.getByLabel("Community / area").fill("JVC");
   await b.getByLabel("Building / tower").fill(`${RUN} Tower`);
+  await b.getByLabel("Name").fill("E2E Booker");
+  await b.getByLabel("WhatsApp number").fill("50 000 0007");
+  await b
+    .getByLabel("Email (optional)")
+    .fill(`${RUN.toLowerCase().replace(/\s+/g, "-")}@example.com`);
   await humanPause(page);
   const wa = await whatsappTab(page, () =>
     b.locator(".bk > .b-sum").getByRole("button", { name: "Send request on WhatsApp" }).click(),
@@ -197,8 +202,11 @@ test("Booking: saved with the server's estimate and the exact WhatsApp message",
   const ref = wa.text.match(/^Ref #(MW-\d+)\n/)![1];
   await expect(b.locator(".bk > .b-sum").getByRole("status")).toContainText(`Ref #${ref}`);
   const row = await lead(ref);
+  // Who it's for (owner QA, 3 Oct 2026).
   expect(row).toMatchObject({
     type: "property",
+    name: "E2E Booker",
+    phone: "+971500000007",
     preferred_reply: "WhatsApp",
     page: "/property-shoots",
   });

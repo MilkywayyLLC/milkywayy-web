@@ -20,7 +20,8 @@ import { DEFAULT_COUNTRY, toE164 } from "@/lib/phone";
 import { COUNTRIES } from "@/lib/phone/countries";
 import { checkLead, type LeadValues } from "@/lib/leads/rules";
 import { leadRequest } from "@/lib/leads/schema";
-import { leadStore, type Lead } from "@/lib/leads/store";
+import { leadsInPortalDb, leadStore, type Lead } from "@/lib/leads/store";
+import { currentClient } from "@/lib/portal/auth";
 
 /**
  * POST /api/lead (guide §9.4, §11): every form and the booking builder.
@@ -200,6 +201,20 @@ export async function POST(req: NextRequest) {
       429,
     );
 
+  // Signed in to the portal: the booking joins their account now (claim_my_bookings matches it
+  // by their verified email; same database only).
+  let portal = false;
+  if (r.type === "property" && !isTest && leadsInPortalDb()) {
+    const client = await currentClient().catch(() => null);
+    if (client && lead.email && lead.email === client.user.email?.toLowerCase()) {
+      const { data: claim, error } = await client.db.rpc("claim_my_bookings", {
+        p_account: client.current.account.id,
+      });
+      if (error) console.error("[lead] portal claim:", error.message);
+      portal = !error && ((claim?.claimed as string[] | undefined) ?? []).includes(saved.ref);
+    }
+  }
+
   if (typeof data.message === "string") {
     message = data.message.replace("{{REF}}", saved.ref);
     data.message = message;
@@ -236,6 +251,7 @@ export async function POST(req: NextRequest) {
     ref: saved.ref,
     eventId: r.eventId,
     message,
+    ...(portal ? { portal: true } : {}),
     ...(testMode && capi ? { capi } : {}),
   });
 }

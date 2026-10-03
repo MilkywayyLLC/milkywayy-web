@@ -22,7 +22,7 @@ export default async function Settings() {
   const { db, user, current } = await requireAccount("/portal/settings");
   const { data: profile } = await db
     .from("profiles")
-    .select("full_name, notification_prefs")
+    .select("full_name, notification_prefs, phone_e164")
     .eq("user_id", user.id)
     .maybeSingle();
   const a = current.account;
@@ -37,7 +37,7 @@ export default async function Settings() {
           <h2 id="you" className="pt-h2">
             You
           </h2>
-          <ProfileForm name={profile?.full_name ?? ""} />
+          <ProfileForm name={profile?.full_name ?? ""} phone={profile?.phone_e164 ?? null} />
           <div className="pt-row">
             <div>
               <span className="pt-eb">Sign-in email</span>

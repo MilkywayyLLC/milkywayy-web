@@ -17,6 +17,8 @@ import {
   r2Ready,
   startMultipart,
 } from "@/lib/r2";
+import { DEFAULT_COUNTRY, toE164 } from "@/lib/phone";
+import { COUNTRIES } from "@/lib/phone/countries";
 import { portalAdminAction } from "./admin";
 import { originFrom } from "./invite";
 import { projectLink, type MessageEvent, type ProjectInfo } from "./messages";
@@ -31,6 +33,7 @@ import type { Project } from "./projects";
  */
 export type ActionResult = {
   ok: boolean;
+  fileId?: string;
   error?: string;
   notice?: string;
   emailed?: number;
@@ -261,7 +264,7 @@ export async function finishUpload(
   try {
     const rpc = await portalAdminAction();
     if (file.uploadId && file.parts) await completeMultipart(file.key, file.uploadId, file.parts);
-    await rpc("portal_admin_add_file", {
+    const fileId = await rpc<string>("portal_admin_add_file", {
       p_id: id,
       p_delivery_no: delivery.no,
       p_delivery_label: delivery.label,
@@ -273,7 +276,7 @@ export async function finishUpload(
       p_bytes: file.size,
       p_content_type: file.type.slice(0, 120) || null,
     });
-    return done(id, { ok: true, notice: `${file.name} uploaded.` });
+    return done(id, { ok: true, fileId, notice: `${file.name} uploaded.` });
   } catch (e) {
     return fail(e);
   }
@@ -288,8 +291,10 @@ export async function removeFile(id: string, fileId: string): Promise<ActionResu
   try {
     const rpc = await portalAdminAction();
     const key = await rpc<string | null>("portal_admin_remove_file", { p_file: fileId });
-    if (key && r2Ready())
+    if (key && r2Ready()) {
       await deleteObject(key).catch((e) => console.error("[admin/projects] R2 delete:", e));
+      await deleteObject(`${key}.thumb.webp`).catch(() => undefined);
+    }
     return done(id, { ok: true, notice: "Removed." });
   } catch (e) {
     return fail(e);
@@ -436,6 +441,140 @@ export async function adminFileLink(
     if (f.source === "link") return { ok: true, url: f.url! };
     if (!r2Ready()) return { ok: false, error: "File storage (R2) isn’t set up here." };
     return { ok: true, url: downloadUrl(f.r2_key!, f.label) };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+// ---------- QA fixes: projects the admin creates, bookings the admin attaches ----------
+
+export type NewClientProject = {
+  account: string;
+  type: "shoot" | "edit" | "avatar";
+  title: string;
+  kind?: string;
+  quantity?: number | null;
+  notes?: string;
+  due?: string;
+  shootDate?: string;
+  slot?: string;
+  area?: string;
+  building?: string;
+  unit?: string;
+  services?: string[];
+  price?: number | null;
+  scriptBy?: "milkywayy" | "client";
+};
+
+/** A project for a client whose booking came by WhatsApp or phone. */
+export async function createClientProject(
+  p: NewClientProject,
+): Promise<ActionResult & { id?: string; ref?: string }> {
+  if (!p.account) return { ok: false, error: "Choose the client." };
+  if (!p.title.trim()) return { ok: false, error: "Give it a title." };
+  try {
+    const rpc = await portalAdminAction();
+    const out = await rpc<{ id: string; ref: string }>("portal_admin_create_project", {
+      p_account: p.account,
+      p_type: p.type,
+      p_title: p.title.trim(),
+      p_kind: p.type === "shoot" ? null : (p.kind ?? null),
+      p_quantity: p.quantity || null,
+      p_notes: p.notes?.trim() || null,
+      p_due: p.due || null,
+      p_shoot_date: p.type === "shoot" ? p.shootDate || null : null,
+      p_slot: p.type === "shoot" ? p.slot || null : null,
+      p_area: p.area?.trim() || null,
+      p_building: p.building?.trim() || null,
+      p_unit: p.unit?.trim() || null,
+      p_services: p.type === "shoot" ? (p.services ?? []) : [],
+      p_price: p.price ?? null,
+      p_script_by: p.type === "avatar" ? (p.scriptBy ?? "milkywayy") : null,
+    });
+    revalidatePath("/admin/projects");
+    revalidatePath(`/admin/accounts/${p.account}`);
+    return { ok: true, id: out.id, ref: out.ref, notice: `${out.ref} created.` };
+  } catch (e) {
+    const m = e instanceof Error ? e.message : "";
+    if (/building and area/.test(m)) return { ok: false, error: "Add the building and the area." };
+    if (/choose what it is/.test(m)) return { ok: false, error: "Choose what it is." };
+    return fail(e);
+  }
+}
+
+/** Attach a website booking (by its ref) to a client: its projects join their portal. */
+export async function attachBooking(
+  ref: string,
+  account: string,
+): Promise<ActionResult & { ids?: string[] }> {
+  const r = ref.trim().toUpperCase();
+  if (!/^MW-\d{3,9}$/.test(r)) return { ok: false, error: "Enter the booking ref, e.g. MW-1314." };
+  if (!account) return { ok: false, error: "Choose the client." };
+  try {
+    const rpc = await portalAdminAction();
+    const out = await rpc<{ ref: string; projects: number; ids: string[] }>(
+      "portal_admin_attach_lead",
+      { p_ref: r, p_account: account },
+    );
+    revalidatePath("/admin/projects");
+    revalidatePath(`/admin/accounts/${account}`);
+    for (const id of out.ids) revalidatePath(`/admin/projects/${id}`);
+    return {
+      ok: true,
+      ids: out.ids,
+      notice: `${out.ref} attached (${out.projects} project${out.projects === 1 ? "" : "s"}).`,
+    };
+  } catch (e) {
+    const m = e instanceof Error ? e.message : "";
+    if (/no booking with that ref/.test(m))
+      return { ok: false, error: `No booking ${r} in this database.` };
+    if (/only property bookings/.test(m))
+      return { ok: false, error: `${r} isn’t a property booking (only those become projects).` };
+    return fail(e);
+  }
+}
+
+/** The WhatsApp number we reach a client member on (contact only; never used to sign in). */
+export async function setMemberPhone(
+  account: string,
+  user: string,
+  raw: string,
+  countryIso: string,
+): Promise<ActionResult> {
+  const country = COUNTRIES.find((c) => c.iso === countryIso) ?? DEFAULT_COUNTRY;
+  const phone = raw.trim() ? toE164(raw, country) : null;
+  if (raw.trim() && !phone) return { ok: false, error: "Check the number and the country code." };
+  try {
+    const rpc = await portalAdminAction();
+    await rpc("portal_admin_set_member_phone", {
+      p_account: account,
+      p_user: user,
+      p_phone: phone,
+    });
+    revalidatePath(`/admin/accounts/${account}`);
+    return { ok: true, notice: phone ? "WhatsApp number saved." : "WhatsApp number removed." };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+// ---------- photo previews (owner QA, 3 Oct 2026) ----------
+// The admin's browser shrinks an uploaded photo to a small WebP and puts it next to the original
+// (<key>.thumb.webp); clients see previews without downloading the full files.
+
+export async function thumbUploadUrl(key: string): Promise<{ ok: boolean; url?: string }> {
+  await portalAdminAction();
+  if (!r2Ready() || !/^projects\/[^/]+\/d\d+\//.test(key) || key.includes(".."))
+    return { ok: false };
+  return { ok: true, url: presign("PUT", `${key}.thumb.webp`, 600) };
+}
+
+export async function saveThumb(id: string, fileId: string, key: string): Promise<ActionResult> {
+  try {
+    const rpc = await portalAdminAction();
+    await rpc("portal_admin_set_thumb", { p_file: fileId, p_thumb_key: `${key}.thumb.webp` });
+    revalidatePath(`/admin/projects/${id}`);
+    return { ok: true };
   } catch (e) {
     return fail(e);
   }

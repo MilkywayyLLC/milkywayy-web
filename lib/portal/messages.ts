@@ -20,6 +20,7 @@ export type MessageEvent =
   | "new_message"
   | "files_expiring"
   | "batch_received"
+  | "avatar_received"
   | "script_ready"
   | "status_update";
 
@@ -120,13 +121,21 @@ export function emailFor(
       };
     case "batch_received":
       return {
-        subject: `Received: ${p.title} (${p.ref})`,
+        subject: `Batch received: ${p.title} (${p.ref})`,
         lines: [
           hi,
-          p.type === "avatar"
-            ? `We’ve got your brief for ${p.title}. We’ll be in touch with the script for your approval.`
-            : `We’ve got your batch ${p.title}. We’ll check the files and let you know when editing starts.`,
-          "Add files or notes any time from the project page.",
+          `We’ve got your batch ${p.title}. We’ll check the files and let you know when editing starts.`,
+          "Add files or notes any time from the batch page.",
+        ],
+        button: "Open the batch",
+      };
+    case "avatar_received":
+      return {
+        subject: `Brief received: ${p.title} (${p.ref})`,
+        lines: [
+          hi,
+          `We’ve got your brief for the avatar video ${p.title}.`,
+          "Next, we post the script in your portal. Nothing goes into production until you approve it.",
         ],
         button: "Open the project",
       };
@@ -186,7 +195,9 @@ export function whatsappFor(
     case "new_message":
       return `${hi} I’ve replied about ${p.ref} in your portal: ${o.link}`;
     case "batch_received":
-      return `${hi} we’ve got ${p.title} (${p.ref}). We’ll keep you posted here: ${o.link}`;
+      return `${hi} we’ve got your batch ${p.title} (${p.ref}). We’ll keep you posted here: ${o.link}`;
+    case "avatar_received":
+      return `${hi} we’ve got your brief for ${p.title} (${p.ref}). The script for your approval comes next, here: ${o.link}`;
     case "script_ready":
       return `${hi} the script for ${p.title} (${p.ref}) is ready for your approval: ${o.link}`;
     case "status_update":

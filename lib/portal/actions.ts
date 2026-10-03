@@ -9,6 +9,7 @@ import { ACCOUNT_COOKIE, getPortal, safeNext } from "./auth";
 import { INDUSTRIES, SERVICES } from "./options";
 import { portalDb } from "./supabase";
 import { syncAfterSignIn } from "./sync";
+import { whatsappFrom } from "./whatsapp-number";
 
 /**
  * Portal sign-in (CLIENT_PORTAL_GUIDE §3.3, owner, 3 Oct 2026): a 6-digit code by email is the
@@ -241,6 +242,11 @@ export async function createAccount(_: OnboardingState, form: FormData): Promise
       errors: Object.fromEntries(parsed.error.issues.map((i) => [String(i.path[0]), i.message])),
     };
   const v = parsed.data;
+  const phone = whatsappFrom(form);
+  if (phone === false)
+    return {
+      errors: { phone: "Check the number and the country code (e.g. 50 123 4567 for the UAE)." },
+    };
   const { data: id, error } = await p.db.rpc("create_my_account", {
     p_type: v.type,
     p_name: v.type === "company" ? v.company : v.fullName,
@@ -254,6 +260,10 @@ export async function createAccount(_: OnboardingState, form: FormData): Promise
     if (error.code === "23505") redirect("/portal");
     console.error("[portal] create_my_account:", error.code, error.message);
     return { error: "We couldn’t save that. Try again, or WhatsApp us if it keeps happening." };
+  }
+  if (phone) {
+    const { error: e } = await p.db.rpc("set_my_whatsapp", { p_phone: phone });
+    if (e) console.error("[portal] set_my_whatsapp:", e.message);
   }
   const { data: claim } = await p.db.rpc("claim_my_bookings", { p_account: id });
   (await cookies()).set(ACCOUNT_COOKIE, String(id), {

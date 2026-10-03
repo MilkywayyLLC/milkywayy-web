@@ -26,7 +26,7 @@ export function ScriptReview({
   canDecide: boolean;
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"view" | "changes">("view");
+  const [mode, setMode] = useState<"view" | "changes" | "confirm">("view");
   const [comment, setComment] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text?: string }>();
   const [pending, start] = useTransition();
@@ -38,7 +38,7 @@ export function ScriptReview({
         setMode("view");
         setComment("");
         router.refresh();
-      }
+      } else if (approve) setMode("view");
     });
 
   return (
@@ -79,19 +79,30 @@ export function ScriptReview({
             Production starts once you approve.
           </p>
           <div className="pt-btns">
-            <button
-              type="button"
-              className="btn btn-p"
-              disabled={pending}
-              onClick={() => decide(true)}
-            >
-              {pending ? "Saving…" : "Approve script"}
+            <button type="button" className="btn btn-p" onClick={() => setMode("confirm")}>
+              Approve script
             </button>
             <button type="button" className="btn btn-g" onClick={() => setMode("changes")}>
               Ask for changes
             </button>
           </div>
         </>
+      )}
+      {mode === "confirm" && (
+        <Sheet title={`Approve script v${script.version}?`} onClose={() => setMode("view")}>
+          <p style={{ margin: 0 }}>
+            Production starts with this script. Changes after this count as a revision of the
+            finished video.
+          </p>
+          <button
+            type="button"
+            className="btn btn-p"
+            disabled={pending}
+            onClick={() => decide(true)}
+          >
+            {pending ? "Approving…" : "Approve and start production"}
+          </button>
+        </Sheet>
       )}
       {mode === "changes" && (
         <form

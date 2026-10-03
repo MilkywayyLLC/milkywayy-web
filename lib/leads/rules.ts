@@ -85,7 +85,11 @@ export function checkLead(type: LeadType, v: LeadValues): LeadErrors {
     if (link && !isUrl(link)) e.link = "Paste the full link, starting with https://";
     if (str(v.fields.now) && !EDITORS_NOW.includes(str(v.fields.now) as never))
       e.now = "Pick one of the options.";
-  } else if (type !== "property") {
+  } else if (type === "property") {
+    // Bookings (owner QA, 3 Oct 2026): who it's for, and a WhatsApp number to confirm on.
+    if (!name) e.name = "Add your name so we know who the booking is for.";
+    if (!phone) e.phone = "Add your WhatsApp number so we can confirm the slot.";
+  } else {
     if (!name) e.name = "Add your name so we know who we're talking to.";
     if (reply && !REPLIES.includes(reply)) e.preferred_reply = "Pick how we should reply.";
     if (reply === "Email" && !email) e.email = "Add your email, or choose another way to reply.";

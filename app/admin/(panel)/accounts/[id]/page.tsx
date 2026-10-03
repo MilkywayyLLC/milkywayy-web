@@ -6,6 +6,7 @@ import {
   ClientInviteForm,
   RetentionSelect,
 } from "@/components/admin/ClientAccountTools";
+import { AttachBooking, MemberPhone } from "@/components/admin/ClientProjectTools";
 import { dubai } from "@/lib/admin/format";
 import { portalAdminPage, type ClientDetail } from "@/lib/portal/admin";
 import { day, propertyTitle, SHOOT_SERVICES } from "@/lib/portal/bookings";
@@ -79,23 +80,37 @@ export default async function ClientPage({ params, searchParams }: Props) {
             </dd>
           </dl>
           <RetentionSelect accountId={a.id} months={a.retention_months ?? 12} />
-          <Link
-            className="ad-small"
-            href={`/admin/projects?q=${encodeURIComponent(a.name)}&view=list`}
-            prefetch={false}
-          >
-            This client’s projects →
-          </Link>
         </section>
         <ClientEditor id={a.id} currency={a.currency} notes={c.notes ?? ""} />
       </div>
+
+      <section className="ad-card ad-form" aria-label="Projects">
+        <h2 className="ad-h2">Projects</h2>
+        <div className="ad-btns">
+          <Link
+            className="ad-btn small"
+            href={`/admin/projects/new?account=${a.id}`}
+            prefetch={false}
+          >
+            New project for this client
+          </Link>
+          <Link
+            className="ad-btn ghost small"
+            href={`/admin/projects?q=${encodeURIComponent(a.name)}&view=list`}
+            prefetch={false}
+          >
+            Their projects
+          </Link>
+        </div>
+        <AttachBooking account={a.id} />
+      </section>
 
       <section className="ad-card" aria-label="Members">
         <h2 className="ad-h2">Members</h2>
         {c.members.length ? (
           <div className="ad-list" data-testid="members">
             {c.members.map((m) => (
-              <div key={m.user_id} className="ad-row ad-lead">
+              <div key={m.user_id} className="ad-row ad-lead" style={{ alignItems: "start" }}>
                 <span className={`ad-pill ${m.role === "owner" ? "live" : "draft"}`}>
                   {ROLE[m.role]}
                 </span>
@@ -108,6 +123,12 @@ export default async function ClientPage({ params, searchParams }: Props) {
                     </span>
                   </span>
                 </span>
+                <MemberPhone
+                  account={a.id}
+                  user={m.user_id}
+                  phone={m.phone}
+                  name={m.name ?? m.email ?? "this member"}
+                />
               </div>
             ))}
           </div>

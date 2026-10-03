@@ -9,6 +9,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import Link from "next/link";
 import type { PropertyPricing } from "@/content/types";
 import {
   EVENING,
@@ -37,9 +38,11 @@ import {
 import { bookingWindow, firstBookable, type BookingWindow } from "@/lib/booking/dates";
 import { MENU_OPEN_EVENT } from "@/lib/events";
 import { formatAED } from "@/lib/format";
-import { sendLead } from "@/lib/leads/client";
+import { readForm, sendLead } from "@/lib/leads/client";
 import { track } from "@/lib/tracking/events";
 import { whatsappLink } from "@/lib/whatsapp";
+import { PhoneField } from "@/components/forms/PhoneField";
+import { Field } from "@/components/ui/Field";
 import { CloseIcon } from "@/components/ui/Icons";
 import { Seg } from "@/components/ui/Seg";
 import { MonthCalendar } from "./MonthCalendar";
@@ -100,6 +103,18 @@ export function BookingBuilder({
   const [sent, setSent] = useState<{ ref: string; url: string; message: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+  // Who the booking is for (owner QA, 3 Oct 2026). Signed in to the portal: prefilled, and the
+  // booking joins their account.
+  const contact = useRef<HTMLFormElement>(null);
+  const [contactErrors, setContactErrors] = useState<Record<string, string>>({});
+  const [me, setMe] = useState<Me | null>(null);
+  const [inPortal, setInPortal] = useState(false);
+  useEffect(() => {
+    fetch("/api/portal/me", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m: Me | null) => m?.signedIn && setMe(m))
+      .catch(() => undefined);
+  }, []);
   const started = useRef(0);
   useEffect(() => {
     started.current = Date.now();
@@ -162,6 +177,20 @@ export function BookingBuilder({
           : `bk-${firstBad.id}-building`;
       return;
     }
+    const who = contact.current ? readForm(contact.current).values : { fields: {} };
+    const missing: Record<string, string> = {};
+    if (!who.name) missing.name = "Add your name so we know who the booking is for.";
+    if (!who.phone) missing.phone = "Add your WhatsApp number so we can confirm the slot.";
+    setContactErrors(missing);
+    if (Object.keys(missing).length) {
+      closeSheet();
+      const el = contact.current?.querySelector<HTMLInputElement>(
+        missing.name ? "input[name=name]" : "input[name=phone]",
+      );
+      el?.scrollIntoView({ block: "center" });
+      el?.focus({ preventScroll: true });
+      return;
+    }
     // Already sent and unchanged: just reopen WhatsApp.
     if (current) {
       window.open(current.url, "_blank", "noopener,noreferrer");
@@ -174,11 +203,19 @@ export function BookingBuilder({
     setSaveFailed(false);
     sendLead(
       "property",
-      { fields: {} },
+      { ...who, fields: {} },
       { hp: "", elapsed: Date.now() - started.current, booking: state },
     ).then((r) => {
       setSending(false);
+      if (!r.ok && r.errors && (r.errors.name || r.errors.phone || r.errors.email)) {
+        tab?.close();
+        setContactErrors(r.errors);
+        closeSheet();
+        contact.current?.scrollIntoView({ block: "center" });
+        return;
+      }
       if (r.ok) {
+        setInPortal(!!r.portal);
         track(
           "Lead",
           { content_name: "property", lead_type: "property", currency: "AED", value: grandTotal },
@@ -223,6 +260,14 @@ export function BookingBuilder({
                 WhatsApp opened with your booking. Send the message and we&apos;ll confirm your
                 slot.
               </p>
+              {inPortal && (
+                <p className="fine">
+                  It&apos;s in your client portal too.{" "}
+                  <Link className="lnk" href="/portal/shoots" prefetch={false}>
+                    Open it
+                  </Link>
+                </p>
+              )}
               <p className="fine">
                 Ref #{current.ref} ·{" "}
                 <a className="lnk" href={current.url} target="_blank" rel="noopener noreferrer">
@@ -283,6 +328,59 @@ export function BookingBuilder({
           + Add another property
         </button>
         <p className="multi">{multiPropertyNote}</p>
+        <form
+          ref={contact}
+          key={me ? "me" : "anon"}
+          className="bk-contact"
+          aria-labelledby="bk-contact-h"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            send();
+          }}
+        >
+          <span className="eb" id="bk-contact-h">
+            Your details
+          </span>
+          {me && (
+            <p className="fine" style={{ margin: 0 }}>
+              Signed in as {me.email}.
+              {me.attaches ? ` The booking goes straight into your portal (${me.account}).` : ""}
+            </p>
+          )}
+          <div className="row2">
+            <Field label="Name" error={contactErrors.name}>
+              <input
+                name="name"
+                autoComplete="name"
+                required
+                maxLength={120}
+                defaultValue={me?.name}
+                aria-invalid={!!contactErrors.name || undefined}
+              />
+            </Field>
+            <PhoneField
+              label="WhatsApp number"
+              error={contactErrors.phone}
+              invalid={!!contactErrors.phone}
+              defaultE164={me?.phone || null}
+            />
+          </div>
+          <Field label="Email (optional)" error={contactErrors.email}>
+            <input
+              name="email"
+              type="email"
+              autoComplete="email"
+              defaultValue={me?.email}
+              aria-invalid={!!contactErrors.email || undefined}
+            />
+          </Field>
+          {!me && (
+            <p className="fine" style={{ margin: 0 }}>
+              With your email, the booking also shows up in your client portal.
+            </p>
+          )}
+        </form>
       </div>
 
       {summary}
@@ -328,6 +426,15 @@ export function BookingBuilder({
     </div>
   );
 }
+
+type Me = {
+  signedIn: true;
+  name: string;
+  email: string;
+  phone: string;
+  account: string;
+  attaches: boolean;
+};
 
 /** True from 768px: one options panel at a time, and clicking a selected card reopens it. */
 const WIDE = "(min-width: 768px)";

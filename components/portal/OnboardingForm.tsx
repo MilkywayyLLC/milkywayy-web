@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { PhoneField } from "@/components/forms/PhoneField";
 import { createAccount } from "@/lib/portal/actions";
 import { INDUSTRIES, SERVICES } from "@/lib/portal/options";
 
@@ -67,6 +68,11 @@ export function OnboardingForm() {
               />
               {err("fullName")}
             </label>
+            <PhoneField
+              label="WhatsApp number (optional)"
+              error={state?.errors?.phone}
+              invalid={!!state?.errors?.phone}
+            />
             {type === "company" && (
               <>
                 <label className="pt-field">

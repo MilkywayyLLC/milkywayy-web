@@ -229,6 +229,35 @@
     opacity: 0.45;
     cursor: not-allowed;
   }
+  /* A link was clicked: the next page is on its way (components/ui/Hydrated). */
+  html[data-navigating] .ad-main {
+    opacity: 0.55;
+    transition: opacity 0.15s 0.1s;
+    cursor: progress;
+  }
+  html[data-navigating] body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto;
+    height: 3px;
+    z-index: 1000;
+    background: var(--fg);
+    transform-origin: left;
+    animation: ad-nav 2s ease-out forwards;
+  }
+  @keyframes ad-nav {
+    from {
+      transform: scaleX(0.05);
+    }
+    to {
+      transform: scaleX(0.85);
+    }
+  }
+  /* Until React has hydrated, buttons can't respond: show that instead of ignoring the tap. */
+  html:not([data-hydrated]) .ad-main button {
+    pointer-events: none;
+    opacity: 0.55;
+  }
   /* The current status: shown as selected, not greyed out. */
   .ad-btn[aria-pressed="true"]:disabled {
     opacity: 1;

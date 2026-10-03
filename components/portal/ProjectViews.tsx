@@ -313,6 +313,7 @@ export async function ProjectDetail({ type, projectRef }: { type: Kind; projectR
         zipId={zip?.id ?? null}
         {...actionsFor(p)}
         hasDelivery={!!latest}
+        noun={c.noun}
       />
       <DeliveryList files={all} />
       {!latest && (

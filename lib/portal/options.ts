@@ -28,7 +28,7 @@ export const NOTIFY_EVENTS = [
   ["booking_confirmed", "Booking confirmed (date and slot)", true, false, "projects"],
   ["shoot_done", "Shoot done, editing started", false, false, "projects"],
   ["delivered", "Files ready to download", true, false, "projects"],
-  ["batch_received", "Editing batch received", true, false, "projects"],
+  ["batch_received", "Batch or avatar brief received", true, false, "projects"],
   ["script_ready", "Script ready for your approval", true, false, "projects"],
   ["revision_delivered", "Revision delivered", true, false, "projects"],
   [

@@ -10,6 +10,7 @@ import { ACCOUNT_COOKIE, getPortal, requireAccount } from "./auth";
 import { inviteLinks, inviteText, originFrom } from "./invite";
 import { INDUSTRIES, NOTIFY_CATEGORIES, NOTIFY_EVENTS } from "./options";
 import { isManager } from "./shell";
+import { whatsappFrom } from "./whatsapp-number";
 
 /**
  * Team, Contacts and Settings (CLIENT_PORTAL_GUIDE §5.6, §5.7). Every write runs as the signed-in
@@ -219,6 +220,11 @@ export async function saveProfile(_: Result | undefined, form: FormData): Promis
   const { db, user } = await requireAccount("/portal/settings");
   const name = String(form.get("full_name") ?? "").trim();
   if (name.length < 2 || name.length > 120) return fail("Add your name.");
+  const phone = whatsappFrom(form);
+  if (phone === false)
+    return fail("Check the WhatsApp number and the country code (e.g. 50 123 4567 for the UAE).");
+  const { error: phoneError } = await db.rpc("set_my_whatsapp", { p_phone: phone });
+  if (phoneError) return dbError(phoneError, "whatsapp");
   // The profile row exists once someone has an account; create it if an invite skipped that.
   const { data, error } = await db
     .from("profiles")

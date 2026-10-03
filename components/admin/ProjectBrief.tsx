@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { adminFileLink, postScript, type ActionResult } from "@/lib/portal/admin-project-actions";
-import { bytes, day, type ProjectFile, type ProjectScript } from "@/lib/portal/projects";
+import { bytes, day, expiry, type ProjectFile, type ProjectScript } from "@/lib/portal/projects";
 import { WhatsAppButton, type StatusTarget } from "./ProjectStatus";
 
 /** What the client sent: links open, uploads download through a short-lived link. */
@@ -31,7 +31,7 @@ export function FilesIn({ projectId, files }: { projectId: string; files: Projec
                   style={{ display: "block", overflowWrap: "anywhere" }}
                 >
                   {f.source === "link" ? f.url : bytes(f.bytes)} · {day(f.created_at)}
-                  {f.expires_at ? ` · deleted ${day(f.expires_at, true)}` : ""}
+                  {f.expires_at ? ` · ${expiry(f.expires_at)}` : ""}
                 </span>
               </span>
             </span>

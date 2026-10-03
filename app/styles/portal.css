@@ -1067,6 +1067,67 @@
     justify-self: end;
     background: var(--surface-2);
   }
+  /* A link was clicked: the next page is on its way (components/ui/Hydrated). */
+  html[data-navigating] .pt-content {
+    opacity: 0.55;
+    transition: opacity 0.15s 0.1s;
+    cursor: progress;
+  }
+  html[data-navigating] body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto;
+    height: 3px;
+    z-index: 1000;
+    background: var(--fg);
+    transform-origin: left;
+    animation: pt-nav 2s ease-out forwards;
+  }
+  @keyframes pt-nav {
+    from {
+      transform: scaleX(0.05);
+    }
+    to {
+      transform: scaleX(0.85);
+    }
+  }
+  /* until React has hydrated, buttons can't respond: show it */
+  html:not([data-hydrated]) .pt-content button {
+    pointer-events: none;
+    opacity: 0.55;
+  }
+  /* photo previews in a delivery */
+  .pt-thumbs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .pt-thumbs li {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+  }
+  .pt-thumbs img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background: var(--line);
+  }
+  .pt-thumb-foot {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px;
+  }
+  .pt-thumb-foot .pt-small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   /* upload progress (raw files) */
   .pt-progress {
     height: 4px;

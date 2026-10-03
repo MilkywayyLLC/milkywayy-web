@@ -118,7 +118,7 @@ export default async function PortalHome({
         </h2>
         {waiting.length + scripts.length + onHold.length === 0 && openInvites === 0 && (
           <p className="pt-meta" style={{ margin: 0 }}>
-            Nothing needs you right now. Approvals, deliveries and invoices show up here.
+            Nothing needs you right now. Approvals and deliveries show up here.
           </p>
         )}
         <div className="pt-list" style={{ border: 0 }} data-testid="attention">
@@ -198,33 +198,33 @@ export default async function PortalHome({
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
             {(
               [
-                [
-                  "shoot",
-                  "/portal/shoots",
-                  "Shoots",
-                  s.includes("shoots") || s.includes("production"),
-                ],
-                ["edit", "/portal/editing", "Editing", s.includes("post")],
-                ["avatar", "/portal/avatars", "Avatars", s.includes("avatars")],
+                ["shoot", "/portal/shoots", "Shoots"],
+                ["edit", "/portal/editing", "Editing"],
+                ["avatar", "/portal/avatars", "Avatars"],
               ] as const
-            )
-              .filter(([t, , , on]) => on || projects.some((p) => p.type === t))
-              .map(([t, href, label]) => (
-                <Link key={t} href={href} className="pt-stat" style={{ textDecoration: "none" }}>
-                  <b>{inProgress.filter((p) => p.type === t).length}</b>
-                  <span className="pt-meta">{label}</span>
-                </Link>
-              ))}
+            ).map(([t, href, label]) => (
+              <Link key={t} href={href} className="pt-stat" style={{ textDecoration: "none" }}>
+                <b>{inProgress.filter((p) => p.type === t).length}</b>
+                <span className="pt-meta">{label}</span>
+              </Link>
+            ))}
           </div>
         </section>
-        <section className="pt-card" aria-labelledby="plan">
-          <h2 id="plan" className="pt-h2">
-            Pay as you go
+        <section className="pt-card" aria-labelledby="start">
+          <h2 id="start" className="pt-h2">
+            Start something
           </h2>
-          <span className="pt-meta">
-            You pay per project in {a.currency}. Your monthly running total and invoices will show
-            in Billing.
-          </span>
+          <div className="pt-btns">
+            <a href="/property-shoots#booking" className="btn btn-g btn-s">
+              Book a shoot
+            </a>
+            <Link href="/portal/editing/new" className="btn btn-g btn-s">
+              New editing batch
+            </Link>
+            <Link href="/portal/avatars/new" className="btn btn-g btn-s">
+              New avatar video
+            </Link>
+          </div>
         </section>
       </div>
 

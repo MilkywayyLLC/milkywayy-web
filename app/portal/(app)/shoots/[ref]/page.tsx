@@ -116,7 +116,7 @@ export default async function ShootPage({ params }: { params: Promise<{ ref: str
                   ? [
                       [
                         "Price",
-                        `${current.account.currency} ${total.toLocaleString("en-US")} (estimate at booking)`,
+                        `${current.account.currency} ${total.toLocaleString("en-US")} (${(items ?? []).some((i) => /estimate/.test(i.description)) ? "estimate at booking" : "agreed price"})`,
                       ],
                     ]
                   : []),
