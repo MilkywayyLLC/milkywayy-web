@@ -9,7 +9,11 @@ import { ServiceCards4, type ServiceCard } from "@/components/blocks/ServiceCard
 import { StatsBand } from "@/components/blocks/StatsBand";
 import { Steps, type Step } from "@/components/blocks/Steps";
 import { FreeTestSection } from "@/components/forms/FreeTestSection";
+import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
+import { FormatGallery } from "@/components/blocks/FormatGallery";
+import { SHOWCASE } from "@/lib/showcase";
 import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { oneFormat } from "@/lib/media";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -82,6 +86,11 @@ export default async function PostProductionPage() {
       getAvatars(),
       getPortfolio("post-hero"),
     ]);
+  const heroSet = oneFormat(heroMedia);
+  // Everything this page shows, once each, for the format gallery.
+  const work = [...heroMedia, ...cardMedia].filter(
+    (m, i, all) => all.findIndex((x) => x.id === m.id) === i,
+  );
   const rate = (k: "photo" | "short" | "long") =>
     other.postProduction.rates.find((r) => r.key === k);
   const from = (k: "photo" | "short" | "long") => {
@@ -157,21 +166,33 @@ export default async function PostProductionPage() {
               </ButtonLink>
             </Ctas>
           </div>
-          {heroMedia.length > 0 && (
+          {heroSet.items.length > 1 ? (
             <div className="trio">
-              {heroMedia.slice(0, 3).map((m, i) => (
+              {heroSet.items.map((m, i) => (
                 <ViewfinderFrame
                   key={m.id}
                   media={m.media}
+                  format="reel"
                   small
-                  play={m.format === "reel" ? "icon" : undefined}
+                  play="icon"
                   tag={HERO_LABEL[m.format]}
                   priority={i === 1}
                   sizes="(max-width: 900px) 33vw, 18vw"
                 />
               ))}
             </div>
-          )}
+          ) : heroSet.items[0] ? (
+            <div className={`hero-one f-${heroSet.format}`}>
+              <ViewfinderFrame
+                media={heroSet.items[0].media}
+                format={heroSet.format}
+                tag={HERO_LABEL[heroSet.items[0].format]}
+                play={heroSet.format === "photo" ? undefined : "icon"}
+                priority
+                sizes="(max-width: 900px) 100vw, 45vw"
+              />
+            </div>
+          ) : null}
         </section>
       </div>
 
@@ -236,11 +257,12 @@ export default async function PostProductionPage() {
         </div>
       </section>
 
-      {stats.length > 0 && (
+      {(stats.length > 0 || work.length > 0) && (
         <section className="sec alt" id="our-work" aria-labelledby="track-title">
-          <div className="w">
+          <div className="w stack" style={{ gap: 40 }}>
             <SectionHead id="track-title" eyebrow="Track record" title="Work we've delivered." />
-            <StatsBand stats={stats} />
+            {stats.length > 0 && <StatsBand stats={stats} />}
+            <FormatGallery items={work} label="Edits by format" />
           </div>
         </section>
       )}
@@ -262,13 +284,29 @@ export default async function PostProductionPage() {
         </div>
       </section>
 
-      <section className="sec alt" aria-label="Questions">
+      <section className="sec alt" aria-labelledby="dashboard-title">
+        <div className="w">
+          <SectionHead
+            id="dashboard-title"
+            eyebrow="Your client dashboard"
+            title="Every batch in one place."
+            aside={
+              <p className="lede">
+                Upload raw files, follow each batch, download deliveries and ask for revisions.
+              </p>
+            }
+          />
+          <DashboardShowcase features={SHOWCASE.post} />
+        </div>
+      </section>
+
+      <section className="sec" aria-label="Questions">
         <div className="w">
           <FAQ title="Editing FAQ." faqs={faqs} />
         </div>
       </section>
 
-      <FreeTestSection alt={false} />
+      <FreeTestSection alt />
 
       <CTABand
         title="Try us on one project."

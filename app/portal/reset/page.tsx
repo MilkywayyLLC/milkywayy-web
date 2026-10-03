@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/layout/Logo";
 import { ResetForm } from "@/components/portal/ResetForm";
 import { requirePortalUser } from "@/lib/portal/auth";
 
@@ -10,7 +11,7 @@ export default async function Reset() {
     <main className="pt-auth" id="main">
       <div className="pt-card">
         <span className="pt-logo">
-          <i className="rec-dot" aria-hidden="true" /> MILKYWAYY
+          <BrandLogo tone="light" />
         </span>
         <div>
           <span className="pt-eb">{p.user.email}</span>

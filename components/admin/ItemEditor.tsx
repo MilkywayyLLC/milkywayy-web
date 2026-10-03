@@ -1,5 +1,6 @@
 "use client";
 
+import { cx } from "@/lib/cx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -132,11 +133,13 @@ export function ItemEditor({
           errors={errors}
           isOwner={isOwner}
           portfolio={portfolio}
-          onChange={(name, v) => setValues((cur) => setPath(cur, name, v))}
+          onChange={(name, v) =>
+            setValues((cur) => ({ ...setPath(cur, name, v), ...section.derive?.(name, v, cur) }))
+          }
         />
         <div className="ad-savebar">
           <p
-            className={`ad-status${status ? (status.ok ? "ok" : "error") : ""}`}
+            className={cx("ad-status", status && (status.ok ? "ok" : "error"))}
             role="status"
             aria-live="polite"
           >

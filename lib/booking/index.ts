@@ -113,6 +113,9 @@ export function normalize(p: BookingProperty, pricing: PropertyPricing): Booking
     q.long = false;
   }
   if (!q.photo) q.twilight = false;
+  // Options reset when their service is turned off (owner, 3 Oct 2026).
+  if (!q.twilight) q.twilightQty = TWILIGHT_QTYS[0];
+  if (!q.long) q.lighting = "day";
   if (needsEvening(q)) q.slot = EVENING;
   return q;
 }

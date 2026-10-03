@@ -12,7 +12,7 @@ export function Footer({ site }: { site: SiteSettings }) {
       <div className="w">
         <div className="ftr-grid">
           <div>
-            <Logo />
+            <Logo tone="dark" />
             <p>{site.footerLine}</p>
           </div>
           <nav aria-labelledby="ftr-services">

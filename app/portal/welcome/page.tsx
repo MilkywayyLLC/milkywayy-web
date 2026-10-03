@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/layout/Logo";
 import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/portal/OnboardingForm";
 import { contactOf, requirePortalUser } from "@/lib/portal/auth";
@@ -14,7 +15,7 @@ export default async function Welcome() {
     <main className="pt-auth" id="main">
       <div className="pt-card" style={{ width: "min(560px, 100%)" }}>
         <span className="pt-logo">
-          <i className="rec-dot" aria-hidden="true" /> MILKYWAYY
+          <BrandLogo tone="light" />
         </span>
         <div>
           <span className="pt-eb">Welcome · 3 quick questions</span>

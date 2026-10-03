@@ -4,13 +4,20 @@ import { otherPricing } from "@/content/pricing";
 /** Phase 4: Post-production and AI avatars (guide §6.4, §6.5). */
 
 test.describe("post-production", () => {
-  test("hero shows three labelled frames; the slider lives in the gallery @mobile", async ({
+  test("hero media never mixes formats; the slider lives in the gallery @mobile", async ({
     page,
   }) => {
     await page.goto("/post-production");
     const hero = page.locator(".pp-hero");
-    await expect(hero.locator(".trio .fr")).toHaveCount(3);
-    await expect(hero.locator(".trio .tag")).toHaveText(["HDR edit", "Reel", "Long-form"]);
+    // Three reels make a trio; otherwise one labelled frame at its own ratio (site-refine).
+    const frames = hero.locator(".trio .fr, .hero-one .fr");
+    const n = await frames.count();
+    expect([1, 3]).toContain(n);
+    const ratios = await frames.evaluateAll((els) =>
+      els.map((e) => e.clientWidth / e.clientHeight),
+    );
+    for (const r of ratios) expect(Math.abs(r - ratios[0])).toBeLessThan(0.02);
+    await expect(hero.locator(".tag").first()).not.toBeEmpty();
     await expect(hero.getByRole("slider")).toHaveCount(0);
 
     // "See our work" goes to the before/after gallery, where the slider works by keyboard.

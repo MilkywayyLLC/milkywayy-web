@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { PropertyPricing } from "@/content/types";
 import {
@@ -452,20 +444,6 @@ type Me = {
   attaches: boolean;
 };
 
-/** True from 768px: one options panel at a time, and clicking a selected card reopens it. */
-const WIDE = "(min-width: 768px)";
-function useWide() {
-  return useSyncExternalStore(
-    (cb) => {
-      const mq = window.matchMedia(WIDE);
-      mq.addEventListener("change", cb);
-      return () => mq.removeEventListener("change", cb);
-    },
-    () => window.matchMedia(WIDE).matches,
-    () => true,
-  );
-}
-
 type Panel = "photo" | "video";
 const LIGHTING_SHORT = { day: "day", night: "night", dayNight: "day + night" } as const;
 
@@ -521,28 +499,11 @@ function PropertyEditor({
   const update = (patch: Partial<BookingProperty>) => dispatch({ type: "update", id: p.id, patch });
   const tog = (key: Toggle) => dispatch({ type: "toggle", id: p.id, key });
   const fid = (f: string) => `bk-${p.id}-${f}`;
-  const wide = useWide();
-  const [active, setActive] = useState<Panel | null>("photo");
   const selected = { photo: p.photo, video: p.video, tour: p.tour };
-
-  /**
-   * Service card click. From 768px: select if needed and show that card's panel (closing the other);
-   * a selected card is never deselected by a click. Phones keep the plain toggle.
-   */
-  const pick = (key: Panel | "tour") => {
-    if (!wide) {
-      tog(key);
-      if (!selected[key] && key !== "tour") setActive(key);
-      return;
-    }
-    if (!selected[key]) tog(key);
-    setActive(key === "tour" ? null : key);
-  };
-  const removeService = (key: Panel | "tour") => {
-    if (selected[key]) tog(key);
-    if (active === key) setActive(null);
-  };
-  const isOpen = (key: Panel) => selected[key] && (!wide || active === key);
+  /** Service cards toggle (owner, 3 Oct 2026): click to select, click again to deselect. A
+   *  selected service shows its options under it; deselecting resets them (lib/booking). */
+  const pick = (key: Panel | "tour") => tog(key);
+  const isOpen = (key: Panel) => selected[key];
   const short = (lg: string, sm: string): ReactNode =>
     lg === sm ? (
       lg
@@ -639,24 +600,18 @@ function PropertyEditor({
             summary={photoSummary(p)}
             pressed={p.photo}
             onClick={() => pick("photo")}
-            onRemove={() => removeService("photo")}
           />
           {p.photo && (
-            <SubPanel
-              id={fid("photo-opts")}
-              pointTo={0}
-              label="Photography options"
-              active={active === "photo"}
-            >
-              <label className="chk">
-                <input type="checkbox" checked={p.twilight} onChange={() => tog("twilight")} />
-                <span>
-                  Add twilight images{" "}
-                  <span className="muted" style={{ fontSize: 13 }}>
-                    (edited from your daylight shots)
-                  </span>
-                </span>
-              </label>
+            <SubPanel id={fid("photo-opts")} pointTo={0} label="Photography options">
+              <ChoiceCards cols={2}>
+                <ChoiceCard
+                  title="Twilight images"
+                  sub="Edited from your daylight shots"
+                  price={`From ${formatAED(twi[TWILIGHT_QTYS[0]])}`}
+                  pressed={p.twilight}
+                  onClick={() => tog("twilight")}
+                />
+              </ChoiceCards>
               {p.twilight && (
                 <>
                   <Seg
@@ -671,11 +626,6 @@ function PropertyEditor({
                   <p className="note">{twilightNote(p, pricing)}</p>
                 </>
               )}
-              <div className="sub-f">
-                <button type="button" className="txtbtn" onClick={() => removeService("photo")}>
-                  Remove photography
-                </button>
-              </div>
             </SubPanel>
           )}
           <ChoiceCard
@@ -695,15 +645,9 @@ function PropertyEditor({
             summary={videoSummary(p)}
             pressed={p.video}
             onClick={() => pick("video")}
-            onRemove={() => removeService("video")}
           />
           {p.video && (
-            <SubPanel
-              id={fid("video-opts")}
-              pointTo={1}
-              label="Videography options"
-              active={active === "video"}
-            >
+            <SubPanel id={fid("video-opts")} pointTo={1} label="Videography options">
               <span className="gl">Video format</span>
               <ChoiceCards cols={2}>
                 <ChoiceCard
@@ -743,11 +687,6 @@ function PropertyEditor({
                   )}
                 </>
               )}
-              <div className="sub-f">
-                <button type="button" className="txtbtn" onClick={() => removeService("video")}>
-                  Remove videography
-                </button>
-              </div>
             </SubPanel>
           )}
           <ChoiceCard
@@ -758,7 +697,6 @@ function PropertyEditor({
             pressed={p.tour}
             disabled={tourLocked}
             onClick={() => pick("tour")}
-            onRemove={() => removeService("tour")}
           />
         </div>
         {errors?.services && (

@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/layout/Logo";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignInMethods } from "@/components/portal/SignInMethods";
@@ -32,7 +33,7 @@ export default async function Login({
     <main className="pt-auth" id="main">
       <div className="pt-card">
         <Link href="/" className="pt-logo">
-          <i className="rec-dot" aria-hidden="true" /> MILKYWAYY
+          <BrandLogo tone="light" />
         </Link>
         <div>
           <span className="pt-eb">Client portal</span>

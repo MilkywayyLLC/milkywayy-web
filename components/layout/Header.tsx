@@ -9,6 +9,7 @@ import { env } from "@/lib/env";
 import { MENU_OPEN_EVENT } from "@/lib/events";
 import { isCurrent, mainNav, pageNameFor } from "@/lib/pages";
 import { pageWhatsappLink } from "@/lib/whatsapp";
+import type { Tone } from "@/content/types";
 import { Logo } from "./Logo";
 
 /**
@@ -23,7 +24,10 @@ export function Header({
   path: pathProp,
   sticky = true,
   whatsapp,
+  tone = "dark",
 }: {
+  /** The page tone, for the logo (light marks on dark pages, dark marks on light ones). */
+  tone?: Tone;
   path?: string;
   sticky?: boolean;
   /** Business chat number from Site settings. */
@@ -69,7 +73,7 @@ export function Header({
       className={[sticky ? "hdr" : "hdr hdr-static", open && "menu-open"].filter(Boolean).join(" ")}
     >
       <div className="w hdr-in">
-        <Logo />
+        <Logo tone={tone} />
         <nav className="nav" aria-label="Main">
           {mainNav.map((n) => (
             <Link
@@ -114,7 +118,7 @@ export function Header({
       {open && (
         <div className="mnav" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu">
           <div className="top">
-            <Logo onClick={leave} />
+            <Logo tone={tone} onClick={leave} />
             <button
               ref={closeBtn}
               className="icon-btn"

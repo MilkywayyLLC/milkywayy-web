@@ -3,14 +3,15 @@ import type { Metadata } from "next";
 import { BookingSection } from "@/components/booking/BookingSection";
 import { CompareTable } from "@/components/blocks/CompareTable";
 import { CTABand } from "@/components/blocks/CTABand";
-import { DashboardPreview } from "@/components/blocks/DashboardPreview";
+import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
 import { FAQ } from "@/components/blocks/FAQ";
-import { SampleGallery } from "@/components/blocks/SampleGallery";
+import { FormatGallery } from "@/components/blocks/FormatGallery";
 import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Hl, SectionHead } from "@/components/ui/Section";
+import { SHOWCASE } from "@/lib/showcase";
 import { getFaqs, getPortfolio, getPropertyPricing, getSiteSettings } from "@/lib/data";
 import { env } from "@/lib/env";
 import { formatNumber } from "@/lib/format";
@@ -76,7 +77,7 @@ export default async function PropertyShootsPage() {
           {heroItem && (
             <ViewfinderFrame
               media={heroItem.media}
-              aspect="16/10"
+              format="photo"
               topLeft="F/8 · ISO 100"
               tag={heroItem.tag}
               tagRight="Photo 07 / 32"
@@ -92,50 +93,35 @@ export default async function PropertyShootsPage() {
       <section className="sec" aria-labelledby="samples-title">
         <div className="w">
           <SectionHead id="samples-title" eyebrow="Samples" title="What you'll get." />
-          <SampleGallery items={{ photo: photos, video: videos, "360": tours }} />
+          <FormatGallery
+            items={[...photos, ...videos, ...tours]}
+            tabs={["photo", "reel", "long-form", "360"]}
+            label="Sample type"
+            captions={false}
+          />
         </div>
       </section>
 
-      <section className="sec alt" aria-labelledby="dashboard-title">
-        <div className="w dash">
-          <div className="stack">
-            <span className="eb">After you book</span>
-            <h2 className="d h2" id="dashboard-title">
-              Everything in one dashboard.
-            </h2>
-            <p className="lede">
-              Track the shoot, download files and invoices, request a reshoot. Your files stay there
-              permanently.
-            </p>
-            <Ctas>
-              <ButtonLink href={env.clientLoginUrl} variant="ghost">
-                Client login
-              </ButtonLink>
-            </Ctas>
-          </div>
-          <DashboardPreview
-            rows={[
-              {
-                title: "Dubai Marina · 2BR",
-                meta: "Photo + reel · Thu 2 Oct",
-                status: "Editing",
-                tone: "go",
-              },
-              {
-                title: "JVC Townhouse",
-                meta: "Photo + 360 · Mon 29 Sep",
-                status: "Delivered",
-                tone: "ok",
-              },
-              {
-                title: "Business Bay office",
-                meta: "Commercial Essential · Fri 26 Sep",
-                status: "Delivered",
-                tone: "ok",
-              },
-              { title: "Invoice MW-1042", meta: "AED 1,050 · Paid", status: "PDF" },
-            ]}
+      <section className="sec" data-tone="light" aria-labelledby="dashboard-title">
+        <div className="w">
+          <SectionHead
+            id="dashboard-title"
+            eyebrow="After you book"
+            title="Everything in one dashboard."
+            aside={
+              <>
+                <p className="lede">
+                  Track the shoot, download your files, ask for a revision and find every invoice.
+                </p>
+                <Ctas>
+                  <ButtonLink href={env.clientLoginUrl} variant="ghost">
+                    Client login
+                  </ButtonLink>
+                </Ctas>
+              </>
+            }
           />
+          <DashboardShowcase features={SHOWCASE.property} />
         </div>
       </section>
 

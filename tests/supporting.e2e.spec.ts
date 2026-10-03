@@ -25,25 +25,21 @@ test("contact: service cards, details, form defaults @mobile", async ({ page }) 
   );
 });
 
-test("work: filters narrow the grid and only offer filters with work", async ({ page }) => {
+test("work: one tab per format, each a uniform grid at that format's ratio", async ({ page }) => {
   await page.goto("/work");
-  const grid = page.locator(".work-grid figure");
-  const all = await grid.count();
-  expect(all).toBeGreaterThan(3);
-  const chips = page.getByRole("group", { name: "Filter work" });
-  await chips.getByRole("button", { name: "Photo" }).click();
-  await expect(chips.getByRole("button", { name: "Photo" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  const photos = await grid.count();
-  expect(photos).toBeGreaterThan(0);
-  expect(photos).toBeLessThan(all);
-  for (const cap of await page.locator(".work-grid figcaption span").allTextContents()) {
-    expect(cap).toMatch(/^Photo/);
+  const tabs = page.getByRole("tablist", { name: "Work by format" });
+  const panel = page.getByRole("tabpanel");
+  const expected: Record<string, number> = { Photos: 3 / 2, Reels: 9 / 16, "Long-form": 16 / 9 };
+  for (const name of await tabs.getByRole("tab").allTextContents()) {
+    await tabs.getByRole("tab", { name }).click();
+    const ratios = await panel
+      .locator("figure .fr")
+      .evaluateAll((els) => els.map((e) => e.clientWidth / e.clientHeight));
+    expect(ratios.length, name).toBeGreaterThan(0);
+    // Never mixed: every frame in the tab has the same ratio (and the format's, where it's fixed).
+    for (const r of ratios) expect(Math.abs(r - ratios[0]), name).toBeLessThan(0.02);
+    if (expected[name]) expect(Math.abs(ratios[0] - expected[name]), name).toBeLessThan(0.02);
   }
-  await chips.getByRole("button", { name: "All" }).click();
-  await expect(grid).toHaveCount(all);
   // Case study card leads to the template.
   await page.getByRole("link", { name: "Read the case study →" }).first().click();
   await expect(page).toHaveURL(/\/work\/.+/);

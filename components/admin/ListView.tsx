@@ -1,6 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- admin thumbnails */
+import { cx } from "@/lib/cx";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -202,7 +203,7 @@ export function ListView({
         </div>
       )}
       <p
-        className={`ad-status${status ? (status.ok ? "ok" : "error") : ""}`}
+        className={cx("ad-status", status && (status.ok ? "ok" : "error"))}
         role="status"
         aria-live="polite"
       >

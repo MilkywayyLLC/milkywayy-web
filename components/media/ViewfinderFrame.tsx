@@ -1,7 +1,15 @@
 import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
-import type { Media } from "@/content/types";
+import type { Media, PortfolioFormat } from "@/content/types";
 import { cx } from "@/lib/cx";
+
+/** One ratio per format, site-wide (site-refine, 3 Oct 2026). Images fill it with object-fit: cover. */
+export const FORMAT_RATIO: Record<PortfolioFormat, string> = {
+  photo: "3/2",
+  reel: "9/16",
+  "long-form": "16/9",
+  "360": "16/9",
+};
 
 /**
  * Media wrapper with the camera look: corner brackets, optional timecode (top right), top-left
@@ -19,6 +27,7 @@ export function ViewfinderFrame({
   small,
   clean,
   aspect,
+  format,
   priority,
   sizes = "(max-width: 900px) 100vw, 50vw",
   className,
@@ -38,6 +47,8 @@ export function ViewfinderFrame({
   /** Bright images: no dark gradient, dark tag text. */
   clean?: boolean;
   aspect?: string;
+  /** Portfolio format: sets the frame's ratio (photo 3:2, reel 9:16, long-form/360 16:9). */
+  format?: PortfolioFormat;
   priority?: boolean;
   sizes?: string;
   className?: string;
@@ -56,7 +67,10 @@ export function ViewfinderFrame({
         placeholder,
         className,
       )}
-      style={{ ...(aspect ? { aspectRatio: aspect } : null), ...style }}
+      style={{
+        ...(aspect || format ? { aspectRatio: aspect ?? FORMAT_RATIO[format!] } : null),
+        ...style,
+      }}
       role={media.src ? undefined : "img"}
       aria-label={media.src ? undefined : media.alt}
     >

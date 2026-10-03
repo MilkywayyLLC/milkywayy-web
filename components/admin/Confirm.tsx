@@ -65,7 +65,7 @@ export function Confirm({
         <div className="ad-btns">
           <button
             type="button"
-            className={`ad-btn${danger ? "danger" : ""}`}
+            className={danger ? "ad-btn danger" : "ad-btn"}
             onClick={onConfirm}
             disabled={busy}
           >

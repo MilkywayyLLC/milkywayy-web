@@ -151,7 +151,7 @@ export function ScriptPanel({
             >
               {latest ? "Post new version" : "Post script"}
             </button>
-            <span className={`ad-status${r && !r.ok ? "error" : ""}`} role="status">
+            <span className={r && !r.ok ? "ad-status error" : "ad-status"} role="status">
               {pending ? "Posting…" : (r?.notice ?? r?.error)}
             </span>
             {r?.ok && (

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { CTABand } from "@/components/blocks/CTABand";
+import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
 import { FAQ } from "@/components/blocks/FAQ";
 import { FounderBlock } from "@/components/blocks/FounderBlock";
 import { NeedSelector, type Need } from "@/components/blocks/NeedSelector";
 import { ProofStrip } from "@/components/blocks/ProofStrip";
-import { ReelStrip } from "@/components/blocks/ReelStrip";
 import { ServiceRow } from "@/components/blocks/ServiceRow";
 import { StatsBand } from "@/components/blocks/StatsBand";
 import { Steps, type Step } from "@/components/blocks/Steps";
@@ -32,6 +32,7 @@ import { formatNumber, formatUSD } from "@/lib/format";
 import { lowestShootPrice } from "@/lib/pricing";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { pageMetadata } from "@/lib/seo/meta";
+import { SHOWCASE } from "@/lib/showcase";
 import { PageLd } from "@/components/seo/JsonLd";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -59,6 +60,9 @@ const NEEDS: Need[] = [
   },
 ];
 
+/** Home keeps the FAQ short; the rest live on the service pages (site-refine, 3 Oct 2026). */
+const HOME_FAQS = 6;
+
 const STEPS: Step[] = [
   {
     n: "01",
@@ -79,33 +83,20 @@ const STEPS: Step[] = [
 ];
 
 export default async function HomePage() {
-  const [
-    site,
-    clients,
-    proof,
-    stats,
-    faqs,
-    reviews,
-    reels,
-    rowProd,
-    rowPost,
-    rowAv,
-    property,
-    other,
-  ] = await Promise.all([
-    getSiteSettings(),
-    getClients(),
-    showsProofStrip("home"),
-    getStats("home"),
-    getFaqs("home"),
-    getReviews("home"),
-    getPortfolio("home-reels"),
-    getPortfolio("home-row-production"),
-    getPortfolio("home-row-post"),
-    getPortfolio("home-row-avatars"),
-    getPropertyPricing(),
-    getOtherPricing(),
-  ]);
+  const [site, clients, proof, stats, faqs, reviews, rowProd, rowPost, rowAv, property, other] =
+    await Promise.all([
+      getSiteSettings(),
+      getClients(),
+      showsProofStrip("home"),
+      getStats("home"),
+      getFaqs("home"),
+      getReviews("home"),
+      getPortfolio("home-row-production"),
+      getPortfolio("home-row-post"),
+      getPortfolio("home-row-avatars"),
+      getPropertyPricing(),
+      getOtherPricing(),
+    ]);
 
   const shootsFrom = lowestShootPrice(property);
   const photoRate = other.postProduction.rates.find((r) => r.key === "photo");
@@ -115,163 +106,174 @@ export default async function HomePage() {
   return (
     <>
       <PageLd page="home" />
-      <div className="w">
-        <section className="hero" aria-labelledby="home-title">
-          <div className="hero-copy">
-            <Eyebrow rec>Dubai content studio · Clients worldwide</Eyebrow>
-            <HeroTitle
-              id="home-title"
-              line1={
-                <>
-                  Content that <Hl>sells</Hl>
-                </>
-              }
-              line2="property & brands."
-            />
-            <p className="lede">
-              We shoot and edit in the UAE, edit remotely for studios abroad, and build AI
-              presenters for people who&apos;d rather not be on camera.
-            </p>
-            <NeedSelector needs={NEEDS} />
-          </div>
-          <div className="hero-media-col">
-            <ViewfinderFrame
-              media={site.showreel}
-              topLeft="4K · 25P"
-              timecode={<Timecode start="00:14:08" />}
-              tag="Showreel 2026"
-              tagRight={site.showreel.duration}
-              priority
-              sizes="(max-width: 900px) 100vw, 45vw"
-            >
-              <LiteVideo video={site.showreel.video} title="Milkywayy showreel" />
-            </ViewfinderFrame>
-            {showreelIsSample && <SampleLabel>Placeholder · showreel coming</SampleLabel>}
-          </div>
-        </section>
-      </div>
-
-      {proof && <ProofStrip clients={clients} rating={site.googleRating.value} />}
-
-      <section className="sec" id="services" aria-labelledby="services-title">
+      <div className="home">
         <div className="w">
-          <SectionHead
-            id="services-title"
-            eyebrow="What we do"
-            title="Three services. One studio."
-            aside={
+          <section className="hero" aria-labelledby="home-title">
+            <div className="hero-copy">
+              <Eyebrow rec>Dubai content studio · Clients worldwide</Eyebrow>
+              <HeroTitle
+                id="home-title"
+                line1={
+                  <>
+                    Content that <Hl>sells</Hl>
+                  </>
+                }
+                line2="property & brands."
+              />
               <p className="lede">
-                Every service has its own page with real samples, the process and prices. Pick the
-                one that fits.
+                We shoot in the UAE, edit for studios worldwide and build AI presenters for brands.
               </p>
-            }
-          />
-          <div className="doors">
-            <ServiceRow
-              kicker="01 · Production · UAE"
-              title="Shoot and edit, handled end to end."
-              text="Monthly content for agencies and brands: shoot days, reels and long-form. Or one property shoot, booked in a minute."
-              price={
-                <>
-                  Packages from <b>AED {formatNumber(other.production.fromMonthly)} / month</b> ·
-                  Shoots from <b>AED {formatNumber(shootsFrom)}</b>
-                </>
-              }
-              cta="Explore production"
-              href="/production"
-              media={rowProd}
-            />
-            <ServiceRow
-              kicker="02 · Post-production · Worldwide"
-              title="Your remote edit team."
-              text="Photo edits, short-form and long-form video, and AI avatar generation for media companies and creators, anywhere."
-              price={
-                <>
-                  Edits from <b>{photoRate ? formatUSD(photoRate.amount) : ""} per photo</b> · Free
-                  test edit
-                </>
-              }
-              cta="Explore post-production"
-              href="/post-production"
-              media={rowPost}
-            />
-            <ServiceRow
-              kicker="03 · AI avatars · Everyone"
-              title="A presenter built for your brand."
-              text="A custom AI host with its own face and voice, scripted and edited into videos every month. No camera, no studio."
-              price={
-                <>
-                  <b>Launch pricing</b> · Book a demo
-                </>
-              }
-              cta="Explore AI avatars"
-              href="/ai-avatars"
-              media={rowAv}
-            />
-          </div>
+              <NeedSelector needs={NEEDS} />
+            </div>
+            <div className="hero-media-col">
+              <ViewfinderFrame
+                media={site.showreel}
+                topLeft="4K · 25P"
+                timecode={<Timecode start="00:14:08" />}
+                tag="Showreel 2026"
+                tagRight={site.showreel.duration}
+                priority
+                sizes="(max-width: 900px) 100vw, 45vw"
+              >
+                <LiteVideo video={site.showreel.video} title="Milkywayy showreel" />
+              </ViewfinderFrame>
+              {showreelIsSample && <SampleLabel>Placeholder · showreel coming</SampleLabel>}
+            </div>
+          </section>
         </div>
-      </section>
 
-      {reels.length > 0 && (
-        <section className="sec alt" id="work" aria-label="Selected work">
+        {proof && <ProofStrip clients={clients} rating={site.googleRating.value} />}
+
+        <section className="sec" id="services" aria-labelledby="services-title">
           <div className="w">
-            <ReelStrip items={reels} eyebrow="Selected work" title="Made for the feed." />
+            <SectionHead
+              id="services-title"
+              eyebrow="What we do"
+              title="Three services. One studio."
+              aside={
+                <p className="lede">
+                  Every service has its own page with real samples, the process and prices. Pick the
+                  one that fits.
+                </p>
+              }
+            />
+            <div className="doors">
+              <ServiceRow
+                kicker="01 · Production · UAE"
+                title="Shoot and edit, handled end to end."
+                text="Monthly content for agencies and brands: shoot days, reels and long-form. Or one property shoot, booked in a minute."
+                price={
+                  <>
+                    Packages from <b>AED {formatNumber(other.production.fromMonthly)} / month</b> ·
+                    Shoots from <b>AED {formatNumber(shootsFrom)}</b>
+                  </>
+                }
+                cta="Explore production"
+                href="/production"
+                media={rowProd}
+              />
+              <ServiceRow
+                kicker="02 · Post-production · Worldwide"
+                title="Your remote edit team."
+                text="Photo edits, short-form and long-form video, and AI avatar generation for media companies and creators, anywhere."
+                price={
+                  <>
+                    Edits from <b>{photoRate ? formatUSD(photoRate.amount) : ""} per photo</b> ·
+                    Free test edit
+                  </>
+                }
+                cta="Explore post-production"
+                href="/post-production"
+                media={rowPost}
+                flip
+              />
+              <ServiceRow
+                kicker="03 · AI avatars · Everyone"
+                title="A presenter built for your brand."
+                text="A custom AI host with its own face and voice, scripted and edited into videos every month. No camera, no studio."
+                price={
+                  <>
+                    <b>Launch pricing</b> · Book a demo
+                  </>
+                }
+                cta="Explore AI avatars"
+                href="/ai-avatars"
+                media={rowAv}
+              />
+            </div>
           </div>
         </section>
-      )}
 
-      {stats.length > 0 && (
-        <section className="sec tight" aria-label="Studio in numbers">
+        {stats.length > 0 && (
+          <section className="sec alt stats-sec" aria-label="Studio in numbers">
+            <div className="w">
+              <StatsBand stats={stats} />
+            </div>
+          </section>
+        )}
+
+        <section className="sec" data-tone="light" aria-labelledby="dashboard-title">
           <div className="w">
-            <StatsBand stats={stats} />
+            <SectionHead
+              id="dashboard-title"
+              eyebrow="Your client dashboard"
+              title="Everything in one place."
+              aside={
+                <p className="lede">
+                  Every project, file, revision and invoice in one dashboard. You always know where
+                  things are.
+                </p>
+              }
+            />
+            <DashboardShowcase features={SHOWCASE.home} />
           </div>
         </section>
-      )}
 
-      <section className="sec" style={{ paddingTop: 0 }} aria-labelledby="how-title">
-        <div className="w">
-          <SectionHead id="how-title" eyebrow="How we work" title="Brief to delivery." />
-          <Steps steps={STEPS} />
-        </div>
-      </section>
-
-      <section className="sec alt" id="founder" aria-label="From the founder">
-        <div className="w">
-          <FounderBlock founder={site.founder} />
-        </div>
-      </section>
-
-      {reviews.length > 0 && (
-        <section className="sec" aria-labelledby="reviews-title">
+        <section className="sec" aria-labelledby="how-title">
           <div className="w">
-            <SectionHead id="reviews-title" eyebrow="Client words" title="What clients say." />
-            <Testimonials reviews={reviews} />
+            <SectionHead id="how-title" eyebrow="How we work" title="Brief to delivery." />
+            <Steps steps={STEPS} />
           </div>
         </section>
-      )}
 
-      <section className="sec alt" aria-label="Questions">
-        <div className="w">
-          <FAQ
-            title="Before you ask."
-            lede="Anything else: WhatsApp us and a real person replies."
-            faqs={faqs}
-          />
-        </div>
-      </section>
+        {reviews.length > 0 && (
+          <section className="sec alt" aria-labelledby="reviews-title">
+            <div className="w">
+              <SectionHead id="reviews-title" eyebrow="Client words" title="What clients say." />
+              <Testimonials reviews={reviews} />
+            </div>
+          </section>
+        )}
 
-      <CTABand
-        title="Tell us what you're working on."
-        text="We reply within 15 minutes during working hours."
-        actions={
-          <>
-            <ButtonLink href="/contact">Get a quote</ButtonLink>
-            <ButtonLink href={whatsapp} variant="ghost">
-              WhatsApp us
-            </ButtonLink>
-          </>
-        }
-      />
+        <section className="sec" id="founder" aria-label="From the founder">
+          <div className="w">
+            <FounderBlock founder={site.founder} />
+          </div>
+        </section>
+
+        <section className="sec alt" aria-label="Questions">
+          <div className="w">
+            <FAQ
+              title="Before you ask."
+              lede="Anything else: WhatsApp us and a real person replies."
+              faqs={faqs.slice(0, HOME_FAQS)}
+            />
+          </div>
+        </section>
+
+        <CTABand
+          title="Tell us what you're working on."
+          text="We reply within 15 minutes during working hours."
+          actions={
+            <>
+              <ButtonLink href="/contact">Get a quote</ButtonLink>
+              <ButtonLink href={whatsapp} variant="ghost">
+                WhatsApp us
+              </ButtonLink>
+            </>
+          }
+        />
+      </div>
     </>
   );
 }

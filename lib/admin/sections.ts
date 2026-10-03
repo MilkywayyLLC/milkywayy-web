@@ -32,6 +32,8 @@ export interface Section {
     /** Per-placement order (portfolio_placements / stats.placement_order); else sort_order. */
     orderPerValue?: boolean;
   };
+  /** Follow-on changes when a field changes (e.g. a new upload's shape sets the format). */
+  derive?: (name: string, next: unknown, prev: Row) => Partial<Row>;
   /** Page to open for Preview. */
   preview: (r?: Row) => string;
   help?: string;
@@ -94,6 +96,12 @@ const list = (v: unknown) => (Array.isArray(v) ? (v as string[]) : []);
 const label = (opts: Option[], v: unknown) =>
   opts.find((o) => o.value === v)?.label ?? String(v ?? "");
 
+/** Portfolio format from an image's shape: wide → long-form 16:9, tall → reel 9:16, else photo 3:2. */
+export function formatFromSize(width: number, height: number) {
+  const r = width / height;
+  return r >= 1.6 ? "long-form" : r <= 0.8 ? "reel" : "photo";
+}
+
 export const SECTIONS: Section[] = [
   {
     key: "portfolio",
@@ -120,6 +128,14 @@ export const SECTIONS: Section[] = [
       orderPerValue: true,
     },
     preview: (r) => placementPage(list(r?.placements)[0]),
+    // A new upload sets the format from its shape (site-refine, 3 Oct 2026); still editable.
+    derive: (name, next, prev) => {
+      const m = next as { src?: string; width?: number; height?: number } | null;
+      const was = prev.media as { src?: string } | undefined;
+      if (name !== "media" || !m?.width || !m.height || m.src === was?.src) return {};
+      if (prev.format === "360") return {};
+      return { format: formatFromSize(m.width, m.height) };
+    },
     fields: [
       { name: "title", kind: "text", label: "Title", required: true, max: 80 },
       { name: "client", kind: "text", label: "Client (optional)", max: 80 },
@@ -130,7 +146,7 @@ export const SECTIONS: Section[] = [
         label: "Format",
         required: true,
         options: [
-          { value: "photo", label: "Photo" },
+          { value: "photo", label: "Photo 3:2" },
           { value: "reel", label: "Reel 9:16" },
           { value: "long-form", label: "Long-form 16:9" },
           { value: "360", label: "360 tour" },

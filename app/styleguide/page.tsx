@@ -1,3 +1,4 @@
+import { SHOWCASE } from "@/lib/showcase";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { BookingBuilder } from "@/components/booking/BookingBuilder";
@@ -5,7 +6,8 @@ import { AiTiers } from "@/components/blocks/AiTiers";
 import { BeforeAfterGallery } from "@/components/blocks/BeforeAfterGallery";
 import { CompareTable } from "@/components/blocks/CompareTable";
 import { CTABand } from "@/components/blocks/CTABand";
-import { DashboardPreview } from "@/components/blocks/DashboardPreview";
+import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
+import { FormatGallery } from "@/components/blocks/FormatGallery";
 import { FAQ } from "@/components/blocks/FAQ";
 import { FounderBlock } from "@/components/blocks/FounderBlock";
 import { IncludedGrid } from "@/components/blocks/IncludedGrid";
@@ -14,8 +16,6 @@ import { PackagesBand } from "@/components/blocks/PackagesBand";
 import { PathCards } from "@/components/blocks/PathCards";
 import { ProofStrip } from "@/components/blocks/ProofStrip";
 import { RateCards } from "@/components/blocks/RateCards";
-import { ReelStrip } from "@/components/blocks/ReelStrip";
-import { SampleGallery } from "@/components/blocks/SampleGallery";
 import { ServiceCards4 } from "@/components/blocks/ServiceCards4";
 import { ServiceRow } from "@/components/blocks/ServiceRow";
 import { StatsBand } from "@/components/blocks/StatsBand";
@@ -511,13 +511,13 @@ export default async function StyleguidePage() {
 
       <Both
         id="reels"
-        title="Reel strip and stats band"
+        title="Format gallery and stats band"
         note="Stats: home order and labels, then post-production order with the per-placement label override."
       >
         {() => (
           <div className="w stack" style={{ gap: 48 }}>
             <div>
-              <ReelStrip items={reels} eyebrow="Selected work" title="Made for the feed." />
+              <FormatGallery items={reels} />
             </div>
             <StatsBand stats={statsHome} />
             <StatsBand stats={statsPost} />
@@ -675,46 +675,16 @@ export default async function StyleguidePage() {
       <Both
         id="property"
         title="Property shoot blocks"
-        note="Dashboard rows are illustrative. The dashboard itself is a pre-launch decision (DECISIONS.md)."
+        note="The dashboard screens are illustrative copy mirroring the real portal."
       >
         {() => (
           <div className="w stack" style={{ gap: 48 }}>
-            <SampleGallery
-              items={{
-                photo: gallery,
-                video: reels.filter((r) => r.category === "property"),
-                "360": [],
-              }}
+            <FormatGallery
+              items={[...gallery, ...reels.filter((r) => r.category === "property")]}
+              tabs={["photo", "reel", "long-form", "360"]}
+              captions={false}
             />
-            <div className="dash">
-              <div className="stack">
-                <span className="eb">After you book</span>
-                <h2 className="d h2">Everything in one dashboard.</h2>
-              </div>
-              <DashboardPreview
-                rows={[
-                  {
-                    title: "Dubai Marina · 2BR",
-                    meta: "Photo + reel · Thu 2 Oct",
-                    status: "Editing",
-                    tone: "go",
-                  },
-                  {
-                    title: "JVC Townhouse",
-                    meta: "Photo + 360 · Mon 29 Sep",
-                    status: "Delivered",
-                    tone: "ok",
-                  },
-                  {
-                    title: "Business Bay office",
-                    meta: "Commercial Essential · Fri 26 Sep",
-                    status: "Delivered",
-                    tone: "ok",
-                  },
-                  { title: "Invoice MW-1042", meta: "AED 1,050 · Paid", status: "PDF" },
-                ]}
-              />
-            </div>
+            <DashboardShowcase features={SHOWCASE.property} />
             <CompareTable
               bad={{
                 title: "The usual way",

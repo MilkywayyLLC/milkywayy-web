@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLogo } from "@/components/layout/Logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useTransition, type ReactNode } from "react";
@@ -67,7 +68,7 @@ export function Shell({
     <div className="pt-shell">
       <aside className="pt-rail" aria-label="Portal">
         <Link href="/portal" className="pt-logo">
-          <i className="rec-dot" aria-hidden="true" /> MILKYWAYY
+          <BrandLogo tone="light" />
         </Link>
         <nav className="pt-rail-nav" aria-label="Portal sections">
           {main.map((t) => (
@@ -87,7 +88,7 @@ export function Shell({
       <div className="pt-main">
         <header className="pt-top">
           <Link href="/portal" className="pt-logo pt-logo-sm">
-            <i className="rec-dot" aria-hidden="true" /> MILKYWAYY
+            <BrandLogo tone="light" />
           </Link>
           <div className="pt-top-right">
             {accounts.length > 1 ? (

@@ -75,7 +75,7 @@ test.describe("desktop builder", () => {
       "aria-controls",
       (await panel.getAttribute("id")) ?? "",
     );
-    await panel.getByLabel(/Add twilight images/).check();
+    await card(panel, /^Twilight images/).click();
     await panel.getByRole("button", { name: /^10 images/ }).click();
     await expect(total(b)).toHaveText("AED 720");
     await expect(b.getByText("AED 22 per image. You save AED 20.")).toBeVisible();
@@ -159,7 +159,7 @@ test.describe("desktop builder", () => {
     await expect(day(addDays(next, 1))).toBeFocused();
   });
 
-  test("one options panel at a time; selected cards reopen, ✓ corner and Remove deselect", async ({
+  test("every service toggles: select, deselect, reselect; options reset; total follows", async ({
     page,
   }) => {
     const b = await open(page);
@@ -168,54 +168,79 @@ test.describe("desktop builder", () => {
     const tour = card(b, /^360° tour/);
     const photoPanel = b.getByRole("group", { name: "Photography options" });
     const videoPanel = b.getByRole("group", { name: "Videography options" });
+    const twilight = card(photoPanel, /^Twilight images/);
+    // No more "Remove …" buttons: clicking the card again is how you deselect (owner, 3 Oct 2026).
+    await expect(
+      b.getByRole("button", { name: /^Remove (photography|videography|twilight)/i }),
+    ).toHaveCount(0);
 
-    await expect(photoPanel).toBeVisible();
-    await expect(photo).toHaveAttribute("aria-expanded", "true");
-    await expect(photo).toContainText("No add-ons");
-
-    // Selecting Videography opens its panel and closes Photography's; Photography stays selected.
-    await video.click();
-    await expect(videoPanel).toBeVisible();
-    await expect(photoPanel).toBeHidden();
+    // Photography: selected by default with its options; deselect → total drops; reselect.
     await expect(photo).toHaveAttribute("aria-pressed", "true");
-    await expect(photo).toHaveAttribute("aria-expanded", "false");
-    await expect(video).toContainText("Short-form");
-    await card(videoPanel, /^Long-form/).click();
-    await expect(video).toContainText("Short-form + Long-form (day)");
-
-    // Clicking the selected Photography card reopens its panel, it doesn't deselect.
+    await expect(photoPanel).toBeVisible();
+    await expect(total(b)).toHaveText("AED 500");
+    await photo.click();
+    await expect(photo).toHaveAttribute("aria-pressed", "false");
+    await expect(photoPanel).toHaveCount(0);
+    await expect(total(b)).toHaveText("AED 0");
     await photo.click();
     await expect(photo).toHaveAttribute("aria-pressed", "true");
-    await expect(photoPanel).toBeVisible();
-    await expect(videoPanel).toBeHidden();
-    await photoPanel.getByLabel(/Add twilight images/).check();
-    await expect(photo).toContainText("+ 5 twilight");
-    await expect(video).toContainText("Short-form + Long-form (day)"); // still visible while closed
+    await expect(total(b)).toHaveText("AED 500");
 
-    // 360: select, click again keeps it, the ✓ corner removes it.
-    await tour.click();
-    await expect(photoPanel).toBeHidden();
-    await tour.click();
-    await expect(tour).toHaveAttribute("aria-pressed", "true");
-    await b.getByRole("button", { name: "Remove 360° tour" }).click();
-    await expect(tour).toHaveAttribute("aria-pressed", "false");
+    // Twilight: a card like the others; its pack resets when it's turned off.
+    await twilight.click();
+    await expect(twilight).toHaveAttribute("aria-pressed", "true");
+    await photoPanel.getByRole("button", { name: /^10 images/ }).click();
+    await expect(total(b)).toHaveText("AED 720");
+    await twilight.click();
+    await expect(twilight).toHaveAttribute("aria-pressed", "false");
+    await expect(photoPanel.getByRole("button", { name: /^10 images/ })).toHaveCount(0);
+    await expect(total(b)).toHaveText("AED 500");
+    await twilight.click();
+    await expect(photoPanel.getByRole("button", { name: /^5 images/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    ); // back to the default pack
+    await twilight.click();
 
-    // ✓ corner on Videography, then the Remove link inside the Photography panel.
-    await b.getByRole("button", { name: "Remove Videography" }).click();
+    // Videography: options appear under it; deselect resets long-form and lighting.
+    await video.click();
+    await expect(video).toHaveAttribute("aria-pressed", "true");
+    await expect(videoPanel).toBeVisible();
+    await expect(photoPanel).toBeVisible(); // every selected service shows its options
+    await expect(total(b)).toHaveText("AED 800");
+    await card(videoPanel, /^Long-form/).click();
+    await videoPanel.getByRole("button", { name: "Night", exact: true }).click();
+    await video.click();
     await expect(video).toHaveAttribute("aria-pressed", "false");
     await expect(videoPanel).toHaveCount(0);
-    await photo.click();
-    await photoPanel.getByRole("button", { name: "Remove photography" }).click();
-    await expect(photo).toHaveAttribute("aria-pressed", "false");
-    await expect(total(b)).toHaveText("AED 0");
+    await expect(total(b)).toHaveText("AED 500");
+    await video.click();
+    await expect(
+      card(b.getByRole("group", { name: "Videography options" }), /^Short-form/),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      card(b.getByRole("group", { name: "Videography options" }), /^Long-form/),
+    ).toHaveAttribute("aria-pressed", "false");
+    await expect(total(b)).toHaveText("AED 800");
+
+    // 360° tour: select, deselect, reselect.
+    const before = await total(b).textContent();
+    await tour.click();
+    await expect(tour).toHaveAttribute("aria-pressed", "true");
+    await expect(total(b)).not.toHaveText(before!);
+    await tour.click();
+    await expect(tour).toHaveAttribute("aria-pressed", "false");
+    await expect(total(b)).toHaveText(before!);
+    await tour.click();
+    await expect(tour).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("tablet (768px) behaves like desktop: one panel at a time", async ({ page }) => {
+  test("tablet (768px): each selected service shows its options", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
     const b = await open(page);
     await card(b, /^Videography/).click();
     await expect(b.getByRole("group", { name: "Videography options" })).toBeVisible();
-    await expect(b.getByRole("group", { name: "Photography options" })).toBeHidden();
+    await expect(b.getByRole("group", { name: "Photography options" })).toBeVisible();
   });
 
   test("calendar fills the card: time slots sit beside it on desktop", async ({ page }) => {

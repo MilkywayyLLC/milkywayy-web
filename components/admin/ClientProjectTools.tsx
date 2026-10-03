@@ -20,7 +20,7 @@ function Note({
   busy?: string;
 }) {
   return (
-    <span className={`ad-status${r && !r.ok ? "error" : ""}`} role="status">
+    <span className={r && !r.ok ? "ad-status error" : "ad-status"} role="status">
       {pending ? busy : (r?.notice ?? r?.error)}
     </span>
   );

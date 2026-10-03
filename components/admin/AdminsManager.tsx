@@ -1,5 +1,6 @@
 "use client";
 
+import { cx } from "@/lib/cx";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { addAdmin, removeAdmin } from "@/lib/admin/actions";
@@ -91,7 +92,7 @@ export function AdminsManager({
           Then create their login in Supabase → Authentication → Users → Add user (there’s no public
           sign-up).
         </p>
-        <p className={`ad-status${msg ? (msg.ok ? "ok" : "error") : ""}`} role="status">
+        <p className={cx("ad-status", msg && (msg.ok ? "ok" : "error"))} role="status">
           {msg?.text}
         </p>
         <div>

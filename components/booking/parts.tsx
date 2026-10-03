@@ -125,11 +125,11 @@ export function ChoiceCard({
       {badge && <span className="pop">{badge}</span>}
     </button>
   );
-  if (!onRemove) return card;
+  if (!onRemove && col === undefined) return card;
   return (
     <div className="sc-wrap" data-col={col}>
       {card}
-      {pressed && (
+      {pressed && onRemove && (
         <button type="button" className="sc-x" aria-label={`Remove ${title}`} onClick={onRemove} />
       )}
     </div>

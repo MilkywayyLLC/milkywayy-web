@@ -122,15 +122,18 @@ for (const w of [360, 390]) {
 }
 
 for (const w of [360, 390, 768]) {
-  test(`hero trios sit below the text with a clear gap at ${w}px`, async ({ page }) => {
+  test(`hero media sits below the text with a clear gap at ${w}px`, async ({ page }) => {
     await page.setViewportSize({ width: w, height: 900 });
     for (const p of ["/production", "/post-production"]) {
       await page.goto(p);
-      const gap = await page.locator(".trio").evaluate((trio) => {
-        const copy = trio.previousElementSibling!.getBoundingClientRect();
-        const top = Math.min(...[...trio.children].map((f) => f.getBoundingClientRect().top));
-        return top - copy.bottom;
-      });
+      const gap = await page
+        .locator(".trio, .hero-one")
+        .first()
+        .evaluate((trio) => {
+          const copy = trio.previousElementSibling!.getBoundingClientRect();
+          const top = Math.min(...[...trio.children].map((f) => f.getBoundingClientRect().top));
+          return top - copy.bottom;
+        });
       expect(gap, p).toBeGreaterThanOrEqual(24);
     }
   });

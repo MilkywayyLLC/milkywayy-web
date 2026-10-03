@@ -1,5 +1,6 @@
 "use client";
 
+import { cx } from "@/lib/cx";
 import { useActionState, useState, useTransition } from "react";
 import {
   adminCancelInvite,
@@ -62,7 +63,7 @@ export function ClientEditor({
         >
           Save notes
         </button>
-        <span className={`ad-status${msg ? (msg.ok ? "ok" : "error") : ""}`} role="status">
+        <span className={cx("ad-status", msg && (msg.ok ? "ok" : "error"))} role="status">
           {pending ? "Saving…" : (msg?.notice ?? msg?.error)}
         </span>
       </div>

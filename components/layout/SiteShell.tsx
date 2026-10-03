@@ -15,7 +15,7 @@ export async function SiteShell({ tone, children }: { tone: Tone; children: Reac
   const site = await getSiteSettings();
   return (
     <div data-tone={tone} className="tone-root">
-      <Header whatsapp={site.whatsapp.number} />
+      <Header whatsapp={site.whatsapp.number} tone={tone} />
       <main id="main" tabIndex={-1}>
         {children}
       </main>

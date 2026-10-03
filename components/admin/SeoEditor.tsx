@@ -1,5 +1,6 @@
 "use client";
 
+import { cx } from "@/lib/cx";
 import { useState, useTransition } from "react";
 import { saveSeo } from "@/lib/admin/actions";
 import type { SeoPage } from "@/lib/seo/pages";
@@ -90,7 +91,7 @@ function PageSeo({ page, row }: { page: SeoPage; row: Row }) {
               Use the built-in image
             </button>
           )}
-          <span className={`ad-status${msg ? (msg.ok ? "ok" : "error") : ""}`} role="status">
+          <span className={cx("ad-status", msg && (msg.ok ? "ok" : "error"))} role="status">
             {pending ? "Saving…" : msg?.text}
           </span>
         </div>

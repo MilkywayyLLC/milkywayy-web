@@ -115,10 +115,8 @@
   .pt-logo {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    font: 700 17px/1 var(--font-display);
-    font-variation-settings: "wdth" 80;
     text-decoration: none;
+    line-height: 0;
   }
   .pt-top-right {
     display: flex;

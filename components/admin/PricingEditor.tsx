@@ -1,5 +1,6 @@
 "use client";
 
+import { cx } from "@/lib/cx";
 import { useEffect, useState, useTransition } from "react";
 import type { CommercialTier, PropertyPricing, ResidentialSize } from "@/content/types";
 import {
@@ -43,7 +44,7 @@ function Price({
 }) {
   const off = value === null;
   return (
-    <td className={`ad-num${value !== base ? "ad-changed" : ""}`}>
+    <td className={cx("ad-num", value !== base && "ad-changed")}>
       <div style={{ display: "grid", gap: 4 }}>
         {!off && (
           <input
@@ -506,7 +507,7 @@ export function PricingEditor({
         </div>
         <div className="ad-savebar">
           <p
-            className={`ad-status${status ? (status.ok ? "ok" : "error") : ""}`}
+            className={cx("ad-status", status && (status.ok ? "ok" : "error"))}
             role="status"
             aria-live="polite"
             style={{ whiteSpace: "pre-line" }}

@@ -153,18 +153,19 @@ export const otherPricing: OtherPricing = {
   aiAvatars: {
     // TODO(owner): real AI avatar prices. Until then the site shows the launch-pricing line.
     launchLine: "Launch pricing · set on your demo call",
-    extraAvatarNote: "Each extra avatar is added with its own setup fee.",
+    extraAvatarNote:
+      "Setup is a one-time fee. Monthly plans include it. Each extra avatar has its own setup fee.",
     tiers: [
       {
         name: "Avatar setup",
-        cadence: "One-off",
+        cadence: "One-time",
         bullets: ["Custom face and look", "Voice selection", "3 test videos", "Yours to keep"],
       },
       {
-        name: "Videos",
+        name: "Monthly videos",
         cadence: "Monthly",
         bullets: [
-          "Everything in setup",
+          "Includes your avatar setup",
           "Monthly video bundle",
           "Captions and branding",
           "You send scripts or topics",
@@ -174,7 +175,7 @@ export const otherPricing: OtherPricing = {
         name: "Videos + strategy",
         cadence: "Monthly",
         bullets: [
-          "Everything in Videos",
+          "Everything in Monthly videos",
           "Content strategy",
           "We write every script",
           "Monthly performance review",

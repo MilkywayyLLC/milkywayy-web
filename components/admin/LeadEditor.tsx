@@ -1,5 +1,6 @@
 "use client";
 
+import { cx } from "@/lib/cx";
 import { useState, useTransition } from "react";
 import { updateLead } from "@/lib/admin/actions";
 import { LEAD_STATUSES } from "@/lib/admin/leads";
@@ -64,7 +65,7 @@ export function LeadEditor({
         >
           Save notes
         </button>
-        <span className={`ad-status${msg ? (msg.ok ? "ok" : "error") : ""}`} role="status">
+        <span className={cx("ad-status", msg && (msg.ok ? "ok" : "error"))} role="status">
           {pending ? "Saving…" : msg?.text}
         </span>
       </div>

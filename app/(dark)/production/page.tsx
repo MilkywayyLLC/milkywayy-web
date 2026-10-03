@@ -9,6 +9,7 @@ import { ProofStrip } from "@/components/blocks/ProofStrip";
 import { Steps, type Step } from "@/components/blocks/Steps";
 import { LeadForm } from "@/components/forms/LeadForm";
 import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { oneFormat } from "@/lib/media";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -98,6 +99,7 @@ export default async function ProductionPage() {
     getOtherPricing(),
     getPropertyPricing(),
   ]);
+  const heroSet = oneFormat(hero);
   const whatsapp = pageWhatsappLink("Production", site.whatsapp.number);
   const from = formatNumber(other.production.fromMonthly);
 
@@ -132,12 +134,13 @@ export default async function ProductionPage() {
               </span>
             </div>
           </div>
-          {hero.length > 0 && (
+          {heroSet.items.length > 1 ? (
             <div className="trio">
-              {hero.slice(0, 3).map((m, i) => (
+              {heroSet.items.map((m, i) => (
                 <ViewfinderFrame
                   key={m.id}
                   media={m.media}
+                  format="reel"
                   small
                   play="icon"
                   priority={i === 1}
@@ -145,7 +148,17 @@ export default async function ProductionPage() {
                 />
               ))}
             </div>
-          )}
+          ) : heroSet.items[0] ? (
+            <div className={`hero-one f-${heroSet.format}`}>
+              <ViewfinderFrame
+                media={heroSet.items[0].media}
+                format={heroSet.format}
+                play={heroSet.format === "photo" ? undefined : "icon"}
+                priority
+                sizes="(max-width: 900px) 100vw, 45vw"
+              />
+            </div>
+          ) : null}
         </section>
       </div>
 

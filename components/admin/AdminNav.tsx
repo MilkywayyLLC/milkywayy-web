@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLogo } from "@/components/layout/Logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -73,8 +74,9 @@ export function AdminNav({ role, email }: { role: "owner" | "editor"; email: str
   return (
     <>
       <header className="ad-top">
-        <Link className="ad-brand" href="/admin">
-          Milkywayy<small>Admin</small>
+        <Link className="ad-brand" href="/admin" aria-label="Milkywayy admin">
+          <BrandLogo tone="light" />
+          <small>Admin</small>
         </Link>
         <button
           type="button"

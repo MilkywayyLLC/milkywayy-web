@@ -1,3 +1,5 @@
+import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
+import { SHOWCASE } from "@/lib/showcase";
 import { Ctas } from "@/components/ui/Ctas";
 import type { Metadata } from "next";
 import { AiTiers } from "@/components/blocks/AiTiers";
@@ -162,7 +164,24 @@ export default async function AiAvatarsPage() {
         </div>
       </section>
 
-      <section className="sec" aria-labelledby="plans-title">
+      <section className="sec" aria-labelledby="dashboard-title">
+        <div className="w">
+          <SectionHead
+            id="dashboard-title"
+            eyebrow="Your client dashboard"
+            title="Approve, track, download."
+            aside={
+              <p className="lede">
+                Scripts, production, finished videos and revisions in one place. Nothing goes into
+                production until you approve the script.
+              </p>
+            }
+          />
+          <DashboardShowcase features={SHOWCASE.avatars} account="JVC Heights" />
+        </div>
+      </section>
+
+      <section className="sec alt" aria-labelledby="plans-title">
         <div className="w">
           <SectionHead
             id="plans-title"
@@ -182,7 +201,7 @@ export default async function AiAvatarsPage() {
         </div>
       </section>
 
-      <section className="sec alt" aria-labelledby="uses-title">
+      <section className="sec" aria-labelledby="uses-title">
         <div className="w">
           <SectionHead id="uses-title" eyebrow="Use cases" title="What it's for." />
           <div className="uses">
@@ -196,13 +215,13 @@ export default async function AiAvatarsPage() {
         </div>
       </section>
 
-      <section className="sec" aria-label="Questions">
+      <section className="sec alt" aria-label="Questions">
         <div className="w">
           <FAQ title="The honest answers." faqs={faqs} />
         </div>
       </section>
 
-      <section className="sec alt" id="demo" aria-labelledby="demo-title">
+      <section className="sec" id="demo" aria-labelledby="demo-title">
         <div className="w formwrap">
           <div className="stack">
             <span className="eb">Demo</span>

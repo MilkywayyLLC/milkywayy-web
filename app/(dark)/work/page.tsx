@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { CaseStudyCards } from "@/components/blocks/CaseStudyCards";
 import { CTABand } from "@/components/blocks/CTABand";
-import { WorkGrid } from "@/components/blocks/WorkGrid";
+import { FormatGallery } from "@/components/blocks/FormatGallery";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -43,7 +43,7 @@ export default async function WorkPage() {
           {hasSamples && (
             <SampleLabel className="mb-4">Placeholder work · real projects go here</SampleLabel>
           )}
-          <WorkGrid items={items} />
+          <FormatGallery items={items} label="Work by format" />
         </div>
       </section>
 
