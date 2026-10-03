@@ -20,7 +20,7 @@ import { DEFAULT_COUNTRY, toE164 } from "@/lib/phone";
 import { COUNTRIES } from "@/lib/phone/countries";
 import { checkLead, type LeadValues } from "@/lib/leads/rules";
 import { leadRequest } from "@/lib/leads/schema";
-import { leadsInPortalDb, leadStore, type Lead } from "@/lib/leads/store";
+import { leadDb, leadsInPortalDb, leadStore, type Lead } from "@/lib/leads/store";
 import { currentClient } from "@/lib/portal/auth";
 
 /**
@@ -201,17 +201,38 @@ export async function POST(req: NextRequest) {
       429,
     );
 
-  // Signed in to the portal: the booking joins their account now (claim_my_bookings matches it
-  // by their verified email; same database only).
+  // The portal is email-only (owner, 3 Oct 2026): a booking joins the portal account of its email.
+  // Signed in with that email: the account they're working in (and their WhatsApp number is saved
+  // to their profile the first time they give it). Otherwise: the account of whoever owns that
+  // email, if anyone does; if nobody does, it attaches when they first sign in with it. Only a
+  // signed-in client is told; a visitor never learns whether an email has an account.
   let portal = false;
-  if (r.type === "property" && !isTest && leadsInPortalDb()) {
+  if (r.type === "property" && leadsInPortalDb() && lead.email) {
     const client = await currentClient().catch(() => null);
-    if (client && lead.email && lead.email === client.user.email?.toLowerCase()) {
+    if (client && lead.email === client.user.email?.toLowerCase()) {
       const { data: claim, error } = await client.db.rpc("claim_my_bookings", {
         p_account: client.current.account.id,
       });
       if (error) console.error("[lead] portal claim:", error.message);
       portal = !error && ((claim?.claimed as string[] | undefined) ?? []).includes(saved.ref);
+      if (lead.phone) {
+        const { data: me } = await client.db
+          .from("profiles")
+          .select("phone_e164")
+          .eq("user_id", client.user.id)
+          .maybeSingle();
+        if (!me?.phone_e164) {
+          const { error: e } = await client.db.rpc("set_my_whatsapp", { p_phone: lead.phone });
+          if (e) console.error("[lead] save WhatsApp number:", e.message);
+        }
+      }
+    }
+    if (!portal) {
+      const { error } = (await leadDb()?.rpc("attach_booking_by_email", {
+        p_secret: process.env.LEAD_SECRET,
+        p_ref: saved.ref,
+      })) ?? { error: null };
+      if (error) console.error("[lead] attach by email:", error.message);
     }
   }
 

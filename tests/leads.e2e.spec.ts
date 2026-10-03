@@ -193,7 +193,7 @@ test("Booking: saved with the server's estimate and the exact WhatsApp message",
   await b.getByLabel("Name").fill("E2E Booker");
   await b.getByLabel("WhatsApp number").fill("50 000 0007");
   await b
-    .getByLabel("Email (optional)")
+    .getByLabel("Email", { exact: true })
     .fill(`${RUN.toLowerCase().replace(/\s+/g, "-")}@example.com`);
   await humanPause(page);
   const wa = await whatsappTab(page, () =>

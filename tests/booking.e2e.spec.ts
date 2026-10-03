@@ -265,6 +265,15 @@ test.describe("desktop builder", () => {
     expect(await opened(page)).toHaveLength(0);
     await b.getByLabel("Name").fill("Sara Agent");
     await b.getByLabel("WhatsApp number").fill("50 123 4567");
+    // Email is required too: the portal is email-only (owner, 3 Oct 2026).
+    await send.click();
+    await expect(b.getByText("Add your email: it's where we send updates")).toBeVisible();
+    await expect(b.getByLabel("Email", { exact: true })).toBeFocused();
+    await b.getByLabel("Email", { exact: true }).fill("sara@agency");
+    await send.click();
+    await expect(b.getByText("That email looks incomplete")).toBeVisible();
+    await b.getByLabel("Email", { exact: true }).fill("sara@agency.example");
+    await expect(b.getByText("For coordinating on the shoot day.")).toBeVisible();
     await send.click();
 
     // The lead is saved first, then WhatsApp opens with the ref the server issued.
@@ -356,6 +365,7 @@ test.describe("phone layout @mobile-only", () => {
     await b.getByLabel("Community / area").fill("Al Barsha");
     await b.getByLabel("Building / tower").fill("Barsha Heights Tower");
     await b.getByLabel("Name").fill("Sara Agent");
+    await b.getByLabel("Email", { exact: true }).fill("sara@agency.example");
     await b.getByLabel("WhatsApp number").fill("50 123 4567");
     await bar.getByRole("button", { name: "Review & send" }).click();
     await sheet.getByRole("button", { name: "Send request on WhatsApp" }).click();

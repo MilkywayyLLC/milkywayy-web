@@ -22,7 +22,7 @@ Things to do or undo when the portal moves from the `portal` branch and the dev 
 - [ ] (Phone sign-in only) Raise "Rate limit for sending SMS messages" from 30/hour to what real sign-ins need.
 - [ ] (Phone sign-in only) Decide on a CAPTCHA for the code request (Cloudflare Turnstile is free; it's a new service, so owner's call). Until then the SMS rate limit, Twilio Fraud Guard and geo permissions are the protection against SMS fraud.
 - [ ] Custom SMTP (Resend, `portal@milkywayy.com`), the code email templates with `{{ .Token }}` (Magic Link and Confirm signup), OTP length 6, a higher email rate limit; Site URL and Redirect URLs for milkywayy.com. Same steps as the dev project.
-- [ ] Apply `20261006090000_portal_email_notifications.sql`, `20261007090000_portal_projects.sql` (projects, deliveries, retention) and `20261008090000_portal_edit_avatar.sql` (batches, avatar scripts) and `20261009090000_portal_qa_fixes.sql` (admin create/attach, WhatsApp numbers, photo previews).
+- [ ] Apply `20261006090000_portal_email_notifications.sql`, `20261007090000_portal_projects.sql` (projects, deliveries, retention) and `20261008090000_portal_edit_avatar.sql` (batches, avatar scripts) `20261009090000_portal_qa_fixes.sql` (admin create/attach, WhatsApp numbers, photo previews) and `20261010090000_booking_attach_by_email.sql`.
 
 ## Email (Resend)
 - [ ] `RESEND_API_KEY` (Sensitive) and `PORTAL_EMAIL_FROM` (`Milkywayy <portal@milkywayy.com>`) in Vercel **Production** too (Preview first, for testing).

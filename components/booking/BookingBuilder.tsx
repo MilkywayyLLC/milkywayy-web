@@ -39,6 +39,7 @@ import { bookingWindow, firstBookable, type BookingWindow } from "@/lib/booking/
 import { MENU_OPEN_EVENT } from "@/lib/events";
 import { formatAED } from "@/lib/format";
 import { readForm, sendLead } from "@/lib/leads/client";
+import { isEmail } from "@/lib/leads/rules";
 import { track } from "@/lib/tracking/events";
 import { whatsappLink } from "@/lib/whatsapp";
 import { PhoneField } from "@/components/forms/PhoneField";
@@ -112,7 +113,18 @@ export function BookingBuilder({
   useEffect(() => {
     fetch("/api/portal/me", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((m: Me | null) => m?.signedIn && setMe(m))
+      .then((m: Me | null) => {
+        if (!m?.signedIn) return;
+        setMe(m);
+        // Fill only what's still empty: never overwrite what they've started typing.
+        const fill = (name: string, value: string) => {
+          const el = contact.current?.querySelector<HTMLInputElement>(`input[name=${name}]`);
+          if (el && !el.value && value) el.value = value;
+        };
+        fill("name", m.name);
+        fill("email", m.email);
+        fill("phone", m.phone.startsWith("+971") ? m.phone.slice(4) : m.phone);
+      })
       .catch(() => undefined);
   }, []);
   const started = useRef(0);
@@ -180,13 +192,15 @@ export function BookingBuilder({
     const who = contact.current ? readForm(contact.current).values : { fields: {} };
     const missing: Record<string, string> = {};
     if (!who.name) missing.name = "Add your name so we know who the booking is for.";
-    if (!who.phone) missing.phone = "Add your WhatsApp number so we can confirm the slot.";
+    if (!who.email) missing.email = "Add your email: it's where we send updates about the booking.";
+    else if (!isEmail(who.email))
+      missing.email = "That email looks incomplete. Check for a typo (e.g. name@company.com).";
+    if (!who.phone) missing.phone = "Add a WhatsApp number for coordinating on the shoot day.";
     setContactErrors(missing);
     if (Object.keys(missing).length) {
       closeSheet();
-      const el = contact.current?.querySelector<HTMLInputElement>(
-        missing.name ? "input[name=name]" : "input[name=phone]",
-      );
+      const first = (["name", "email", "phone"] as const).find((k) => missing[k]);
+      const el = contact.current?.querySelector<HTMLInputElement>(`input[name=${first}]`);
       el?.scrollIntoView({ block: "center" });
       el?.focus({ preventScroll: true });
       return;
@@ -330,7 +344,6 @@ export function BookingBuilder({
         <p className="multi">{multiPropertyNote}</p>
         <form
           ref={contact}
-          key={me ? "me" : "anon"}
           className="bk-contact"
           aria-labelledby="bk-contact-h"
           noValidate
@@ -355,29 +368,32 @@ export function BookingBuilder({
                 autoComplete="name"
                 required
                 maxLength={120}
-                defaultValue={me?.name}
                 aria-invalid={!!contactErrors.name || undefined}
               />
             </Field>
-            <PhoneField
-              label="WhatsApp number"
-              error={contactErrors.phone}
-              invalid={!!contactErrors.phone}
-              defaultE164={me?.phone || null}
-            />
+            <Field label="Email" error={contactErrors.email}>
+              <input
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                aria-invalid={!!contactErrors.email || undefined}
+              />
+            </Field>
           </div>
-          <Field label="Email (optional)" error={contactErrors.email}>
-            <input
-              name="email"
-              type="email"
-              autoComplete="email"
-              defaultValue={me?.email}
-              aria-invalid={!!contactErrors.email || undefined}
-            />
-          </Field>
+          <PhoneField
+            label="WhatsApp number"
+            error={contactErrors.phone}
+            invalid={!!contactErrors.phone}
+          />
+          <p className="fine" style={{ margin: 0 }}>
+            For coordinating on the shoot day.
+            {me && !me.phone ? " We’ll save it to your profile." : ""}
+          </p>
           {!me && (
             <p className="fine" style={{ margin: 0 }}>
-              With your email, the booking also shows up in your client portal.
+              Updates go to your email, and the booking shows up in your client portal when you sign
+              in with it.
             </p>
           )}
         </form>
