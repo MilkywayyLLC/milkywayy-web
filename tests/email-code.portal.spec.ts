@@ -47,10 +47,11 @@ test("browser: email me a code → enter it → in (needs Resend as the mailer)"
   const sent = page.getByText("We sent a sign-in code to");
   const refused = page.locator("p[role=alert]");
   await expect(sent.or(refused)).toBeVisible();
-  test.skip(
-    await refused.isVisible(),
-    `Supabase didn't send (${await refused.textContent()}): set Resend as the mailer`,
-  );
+  if (await refused.isVisible())
+    test.skip(
+      true,
+      `Supabase didn't send (${await refused.textContent()}): set Resend as the mailer`,
+    );
 
   await expect(page.getByLabel("Code")).toBeFocused();
   await page.getByLabel("Code").fill("000000");
