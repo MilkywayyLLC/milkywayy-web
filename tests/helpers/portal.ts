@@ -82,7 +82,14 @@ export async function signInUI(page: import("@playwright/test").Page, email: str
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL((u) => !u.pathname.startsWith("/portal/login"));
+  // In, or the page says why not (e.g. Supabase's sign-in rate limit after many runs in a row).
+  const refused = page.locator("p[role=alert]");
+  await Promise.race([
+    page.waitForURL((u) => !u.pathname.startsWith("/portal/login")),
+    refused.waitFor().then(async () => {
+      throw new Error(`Sign-in refused: ${await refused.textContent()}`);
+    }),
+  ]);
 }
 
 /** Admin gate for the portal_admin_* functions (dev project), as the server calls them. */

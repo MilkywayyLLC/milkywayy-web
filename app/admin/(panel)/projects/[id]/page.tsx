@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { EmailAttachedBadge } from "@/components/admin/EmailAttachedBadge";
 import { AttachToClient } from "@/components/admin/ClientProjectTools";
 import { FilesIn, ScriptPanel } from "@/components/admin/ProjectBrief";
 import { StatusButtons, WhatsAppButton, type StatusTarget } from "@/components/admin/ProjectStatus";
@@ -81,6 +82,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             ← Projects
           </Link>
           <h1 className="ad-h1">{p.title}</h1>
+          {p.meta.attached_by_email && <EmailAttachedBadge />}
           <span className="ad-small ad-muted">
             {TYPE_LABEL[p.type]} · {p.ref} · {statusLabel(p.status)}
             {p.revision_state ? ` · ${REVISION_LABEL[p.revision_state]}` : ""} ·{" "}

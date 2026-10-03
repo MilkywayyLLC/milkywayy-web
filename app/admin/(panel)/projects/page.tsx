@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import Link from "next/link";
+import { EmailAttachedBadge } from "@/components/admin/EmailAttachedBadge";
 import { StatusButtons, type StatusTarget } from "@/components/admin/ProjectStatus";
 import { portalAdminPage, portalAdminReady, type ProjectListRow } from "@/lib/portal/admin";
 import { originFrom } from "@/lib/portal/invite";
@@ -190,6 +191,7 @@ export default async function Projects({ searchParams }: Props) {
                     prefetch={false}
                   >
                     <span className="ad-eb">{r.ref}</span>
+                    {r.meta.attached_by_email && <EmailAttachedBadge />}
                     <b>{r.title}</b>
                     <span className="ad-muted">
                       {r.account_name ?? r.client_name ?? "Not claimed yet"}
@@ -228,7 +230,7 @@ export default async function Projects({ searchParams }: Props) {
             <Link href={`/admin/projects/${r.id}`} className="ad-row-main" prefetch={false}>
               <span>
                 <span className="ad-row-title">
-                  {r.ref} · {r.title}
+                  {r.ref} · {r.title} {r.meta.attached_by_email && <EmailAttachedBadge />}
                 </span>
                 <span className="ad-row-meta" style={{ display: "block" }}>
                   {[

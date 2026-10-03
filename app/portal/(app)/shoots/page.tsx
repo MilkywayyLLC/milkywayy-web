@@ -74,7 +74,9 @@ export default async function Shoots() {
               className="pt-card pt-card-link"
             >
               <div className="pt-row">
-                <span className="pt-eb">{p.ref}</span>
+                <span className="pt-eb" style={{ whiteSpace: "nowrap" }}>
+                  {p.ref}
+                </span>
                 <Badge tone={p.status === "delivered" ? "gold" : undefined}>
                   {clientStatus(p)}
                 </Badge>
@@ -97,7 +99,7 @@ export default async function Shoots() {
                 </span>
               </div>
               <Stepper steps={stepsFor("shoot")} now={statusLabel(p.status)} />
-              {p.status === "requested" && (
+              {p.status === "requested" && !p.meta.attached_by_email && (
                 <span className="pt-meta">
                   We confirm the date and slot by email, usually within a few hours.
                 </span>

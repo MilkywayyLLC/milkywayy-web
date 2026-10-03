@@ -310,6 +310,16 @@
     background: var(--fg);
     color: var(--bg);
   }
+  .ad-pill.warn {
+    border-color: #b42318;
+    color: #b42318;
+    height: auto;
+    min-height: 24px;
+    padding-block: 3px;
+    white-space: normal;
+    justify-self: start;
+    max-width: 100%;
+  }
   .ad-pill.draft {
     border-style: dashed;
     color: var(--muted);
@@ -845,6 +855,8 @@
     color: var(--fg);
     text-decoration: none;
     font-size: 13px;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
   .ad-ticket:hover {
     border-color: var(--fg);

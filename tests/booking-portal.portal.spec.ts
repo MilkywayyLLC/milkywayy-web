@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { markTestLeads } from "./helpers/leads";
 import {
+  adminRpc,
   cleanup,
   clientAccount,
   createUser,
@@ -68,6 +69,9 @@ test("signed in without a number: prefilled, attached, and the number is saved o
   expect(text).toContain("in your client portal too");
   await page.goto("/portal/shoots");
   await expect(page.getByTestId("shoots")).toContainText(ref);
+  // Signed in: the normal wording.
+  await expect(page.getByTestId("shoots")).toContainText("We confirm the date and slot by email");
+  await expect(page.getByTestId("shoots")).not.toContainText("we’ll confirm on WhatsApp");
   const { data } = await c.db.from("profiles").select("phone_e164").single();
   expect(data?.phone_e164).toBe("+971500000009");
 
@@ -100,6 +104,23 @@ test("signed out, with the email of a portal account: attached, without saying s
   await expect
     .poll(async () => (await c.db.from("projects").select("ref").eq("ref", ref)).data?.length)
     .toBe(1);
+
+  // In their portal it says we'll confirm it, until the status changes (owner, 3 Oct 2026).
+  await signInUI(page, c.email);
+  await page.goto("/portal/shoots");
+  const card = page.getByTestId("shoots").getByRole("link", { name: new RegExp(ref) });
+  await expect(card).toContainText("Requested — we’ll confirm on WhatsApp");
+  await expect(card).not.toContainText("We confirm the date and slot by email");
+  const { data: p } = await c.db.from("projects").select("id").eq("ref", ref).single();
+  await adminRpc("portal_admin_set_status", {
+    p_id: p!.id,
+    p_status: "confirmed",
+    p_date: "2026-11-09",
+    p_slot: "Morning",
+  });
+  await page.reload();
+  await expect(card).toContainText("Confirmed");
+  await expect(card).not.toContainText("we’ll confirm on WhatsApp");
 });
 
 test("signed out, with a new email: it attaches when they first sign in with it", async ({

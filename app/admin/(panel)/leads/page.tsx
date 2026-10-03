@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EmailAttachedBadge } from "@/components/admin/EmailAttachedBadge";
 import { requireAdmin } from "@/lib/admin/auth";
 import { dubai } from "@/lib/admin/format";
 import {
@@ -82,7 +83,8 @@ export default async function Leads({ searchParams }: Props) {
             <span className="ad-row-main">
               <span>
                 <span className="ad-row-title">
-                  {l.name || l.email || "No name"} · {LEAD_TYPES[l.type] ?? l.type}
+                  {l.name || l.email || "No name"} · {LEAD_TYPES[l.type] ?? l.type}{" "}
+                  {l.data?.attached_by_email === true && <EmailAttachedBadge />}
                 </span>
                 <span className="ad-row-meta" style={{ display: "block" }}>
                   {l.ref} · {dubai(l.created_at)} · {l.preferred_reply ?? "—"}

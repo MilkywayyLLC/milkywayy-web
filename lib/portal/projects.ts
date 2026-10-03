@@ -102,6 +102,8 @@ export type Project = {
     notes?: string;
     references?: string[];
     script_by?: "milkywayy" | "client";
+    /** Booked with this account's email while signed out (owner, 3 Oct 2026). */
+    attached_by_email?: boolean;
   };
   due_at: string | null;
   shoot_date: string | null;
@@ -164,6 +166,9 @@ export type ProjectMessage = {
 /** What the client is waiting on, in one line. */
 export function clientStatus(p: Project) {
   if (p.status === "on_hold") return "On hold";
+  // Booked with their email while signed out: we confirm it with them first.
+  if (p.status === "requested" && p.meta.attached_by_email)
+    return "Requested — we’ll confirm on WhatsApp";
   if (p.revision_state && p.revision_state !== "delivered") return REVISION_LABEL[p.revision_state];
   if (p.status === "delivered" && p.revision_state === "delivered") return "Revision delivered";
   return statusLabel(p.status);
