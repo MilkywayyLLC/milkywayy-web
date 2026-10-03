@@ -921,3 +921,12 @@
     }
   }
 }
+
+/* Share pages (Phase 13): a reel's web version on the project page. */
+.ad-web summary {
+  cursor: pointer;
+  list-style: none;
+}
+.ad-web summary::-webkit-details-marker {
+  display: none;
+}

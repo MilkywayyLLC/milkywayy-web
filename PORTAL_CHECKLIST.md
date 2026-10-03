@@ -23,7 +23,7 @@ Things to do or undo when the portal moves from the `portal` branch and the dev 
 - [ ] (Phone sign-in only) Raise "Rate limit for sending SMS messages" from 30/hour to what real sign-ins need.
 - [ ] (Phone sign-in only) Decide on a CAPTCHA for the code request (Cloudflare Turnstile is free; it's a new service, so owner's call). Until then the SMS rate limit, Twilio Fraud Guard and geo permissions are the protection against SMS fraud.
 - [ ] Custom SMTP (Resend, `portal@milkywayy.com`), the code email templates with `{{ .Token }}` (Magic Link and Confirm signup), OTP length 6, a higher email rate limit; Site URL and Redirect URLs for milkywayy.com. Same steps as the dev project.
-- [ ] Apply `20261006090000_portal_email_notifications.sql`, `20261007090000_portal_projects.sql` (projects, deliveries, retention) and `20261008090000_portal_edit_avatar.sql` (batches, avatar scripts) `20261009090000_portal_qa_fixes.sql` (admin create/attach, WhatsApp numbers, photo previews) `20261010090000_booking_attach_by_email.sql`, `20261011090000_booking_email_flag.sql` and `20261012090000_portal_billing.sql` (billing).
+- [ ] Apply `20261006090000_portal_email_notifications.sql`, `20261007090000_portal_projects.sql` (projects, deliveries, retention) and `20261008090000_portal_edit_avatar.sql` (batches, avatar scripts) `20261009090000_portal_qa_fixes.sql` (admin create/attach, WhatsApp numbers, photo previews) `20261010090000_booking_attach_by_email.sql`, `20261011090000_booking_email_flag.sql` and `20261012090000_portal_billing.sql` (billing) and `20261013090000_portal_listings.sql` (share pages).
 
 ## Email (Resend)
 - [ ] `RESEND_API_KEY` (Sensitive) and `PORTAL_EMAIL_FROM` (`Milkywayy <portal@milkywayy.com>`) in Vercel **Production** too (Preview first, for testing).
@@ -33,6 +33,11 @@ Things to do or undo when the portal moves from the `portal` branch and the dev 
 - [ ] Set the real rates in Admin → Billing → Rate card (the seeded AED values are USD × 3.67), and each client's currency.
 - [ ] Production R2 CORS must allow PUT from the admin's origin for invoice PDFs (same rule as deliveries).
 - [ ] Suggestions stay off until you switch them on (Admin → Billing → Suggestions).
+
+## Share pages (Phase 13)
+- [ ] Production R2 CORS must allow PUT from the portal's origin too (clients upload the permit QR, contact photos and their logo) and from the admin's (web versions of photos and reels).
+- [ ] Decide what old share links do at launch: set `OLD_PORTAL_ORIGIN` to the old portal while it runs, or leave it unset ("This listing isn't available"). Phase 14 can fill `share_aliases`.
+- [ ] Open one live listing link in WhatsApp on a phone and check the preview (the preview deployments are behind Vercel login, so WhatsApp can't fetch them).
 
 ## App
 - [ ] Production must **not** set `LEADS_DB` (previews only); bookings and the portal share the website's project there.

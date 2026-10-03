@@ -21,6 +21,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: "/admin/projects", label: "Projects", owner: true },
       { href: "/admin/accounts", label: "Client accounts", owner: true },
       { href: "/admin/billing", label: "Billing", owner: true },
+      { href: "/admin/listings", label: "Listings", owner: true },
     ],
   },
   {

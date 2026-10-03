@@ -1,0 +1,490 @@
+/*
+ * Public share pages (/l/, /c/): Viewfinder light, phone first. Square corners, 1px lines,
+ * Archivo + DM Mono. Only what these pages need, so they stay fast. Classes prefixed `sh-`.
+ */
+@layer components {
+  .sh {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--fg);
+    font: 400 16px/1.55 var(--font-sans);
+  }
+  .sh > main {
+    flex: 1 0 auto;
+    width: 100%;
+  }
+  .sh-page {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .sh-eb {
+    display: block;
+    margin: 0;
+    font: 500 11px/1.4 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .sh-h1 {
+    margin: 0;
+    font: 700 26px/1.05 var(--font-display);
+    font-variation-settings: "wdth" 80;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+  }
+  .sh-h2 {
+    font: 700 18px/1.1 var(--font-display);
+    font-variation-settings: "wdth" 85;
+    text-transform: uppercase;
+  }
+  .sh-muted {
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .sh-mono {
+    font: 500 15px/1.3 var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .sh-price {
+    margin: 4px 0 0;
+    font: 700 30px/1 var(--font-display);
+    font-variation-settings: "wdth" 82;
+  }
+  .sh-price-s {
+    font-size: 22px;
+  }
+  .sh-card {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- agent's brand ---------- */
+  .sh-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 52px;
+    padding: 10px 16px;
+    font-weight: 700;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+  .sh-brand img {
+    height: 32px;
+    width: auto;
+    max-width: 140px;
+    object-fit: contain;
+  }
+
+  /* ---------- photos ---------- */
+  .sh-hero {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    padding: 0;
+    border: 0;
+    background: var(--surface-2);
+    cursor: zoom-in;
+    overflow: hidden;
+  }
+  .sh-hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .sh-hero-empty {
+    display: block;
+    aspect-ratio: 4 / 3;
+    background: var(--surface-2);
+  }
+  .sh-count {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    padding: 7px 10px;
+    background: var(--ink);
+    color: var(--paper);
+    font: 500 11px/1 var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .sh-strip {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 42%;
+    gap: 6px;
+    padding: 6px 16px 0;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .sh-strip button {
+    padding: 0;
+    border: 0;
+    aspect-ratio: 4 / 3;
+    background: var(--surface-2);
+    scroll-snap-align: start;
+    cursor: zoom-in;
+  }
+  .sh-strip img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  @media (min-width: 760px) {
+    .sh-strip {
+      grid-auto-columns: 24%;
+      padding: 6px 0 0;
+    }
+  }
+
+  /* Full-screen viewer */
+  .sh-viewer {
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: #0b0b0b;
+    color: var(--paper);
+  }
+  .sh-viewer::backdrop {
+    background: #0b0b0b;
+  }
+  .sh-viewer-track {
+    display: flex;
+    height: calc(100dvh - 60px);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .sh-viewer-track figure {
+    flex: 0 0 100%;
+    margin: 0;
+    display: grid;
+    place-items: center;
+    scroll-snap-align: center;
+  }
+  .sh-viewer-track img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  .sh-viewer-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    padding: 0 16px calc(env(safe-area-inset-bottom));
+    font: 500 12px/1 var(--font-mono);
+    letter-spacing: 0.06em;
+  }
+  .sh-viewer-nav {
+    display: flex;
+    gap: 6px;
+  }
+  .sh-viewer-nav button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 12px;
+    background: transparent;
+    color: var(--paper);
+    border: 1px solid #3a3936;
+    font: 500 12px/1 var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .sh-viewer-nav button:disabled {
+    opacity: 0.35;
+  }
+
+  /* ---------- body ---------- */
+  .sh-body {
+    display: grid;
+    gap: 20px;
+    padding: 20px 16px;
+  }
+  @media (min-width: 760px) {
+    .sh-body {
+      padding: 24px 0;
+    }
+  }
+  .sh-top {
+    display: grid;
+    gap: 6px;
+  }
+  .sh-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .sh-facts li {
+    padding: 12px 8px;
+    border-left: 1px solid var(--line);
+    text-align: center;
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.2;
+  }
+  .sh-facts li:first-child {
+    border-left: 0;
+  }
+  .sh-desc {
+    margin: 0;
+    white-space: pre-line;
+  }
+  .sh-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .sh-chips li {
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    font: 500 12px/1.2 var(--font-mono);
+    letter-spacing: 0.03em;
+  }
+
+  /* ---------- video, 360 ---------- */
+  .sh-media {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .sh-media > :only-child {
+    grid-column: 1 / -1;
+  }
+  .sh-reel {
+    width: 100%;
+    aspect-ratio: 9 / 16;
+    max-height: 70dvh;
+    background: #000;
+    object-fit: cover;
+  }
+  .sh-embed {
+    grid-column: 1 / -1;
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: var(--ink);
+  }
+  .sh-embed iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+  .sh-embed-off {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 10px;
+    width: 100%;
+    border: 0;
+    color: var(--paper);
+    cursor: pointer;
+    font: 600 15px/1.2 var(--font-sans);
+  }
+  .sh-play {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border: 1px solid var(--paper);
+    font-size: 20px;
+  }
+  .sh-tour {
+    align-content: center;
+    justify-items: center;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  /* ---------- permit ---------- */
+  .sh-permit {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+  .sh-permit div {
+    display: grid;
+    gap: 4px;
+  }
+  .sh-permit img {
+    width: 88px;
+    height: 88px;
+    background: #fff;
+    padding: 4px;
+    border: 1px solid var(--line);
+    image-rendering: pixelated;
+  }
+
+  /* ---------- agent ---------- */
+  .sh-agent {
+    display: grid;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+  .sh-agent:first-of-type {
+    padding-top: 0;
+    border-top: 0;
+  }
+  .sh-agent-who {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .sh-agent-who img,
+  .sh-face {
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    background: var(--surface-2);
+  }
+  .sh-face {
+    display: grid;
+    place-items: center;
+    font: 600 14px/1 var(--font-mono);
+  }
+  .sh-agent-who span {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .sh-agent-who small {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .sh-agent-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .sh-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+  }
+  .sh-bar .btn {
+    min-height: 48px;
+  }
+  @media (min-width: 760px) {
+    .sh-bar {
+      left: 50%;
+      right: auto;
+      width: 720px;
+      transform: translateX(-50%);
+      border: 1px solid var(--line);
+      border-bottom: 0;
+    }
+  }
+
+  /* ---------- collections ---------- */
+  .sh-home {
+    padding: 0;
+    gap: 0;
+    text-decoration: none;
+    color: inherit;
+  }
+  .sh-home img,
+  .sh-home .sh-hero-empty {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    background: var(--surface-2);
+  }
+  .sh-home-text {
+    display: grid;
+    gap: 4px;
+    padding: 14px;
+  }
+
+  /* ---------- report, byline, unavailable ---------- */
+  .sh-report {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .sh-report summary {
+    cursor: pointer;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .sh-report form {
+    display: grid;
+    gap: 8px;
+    max-width: 440px;
+  }
+  .sh-report textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--surface);
+    color: var(--fg);
+    font: inherit;
+  }
+  .sh-report button {
+    justify-self: start;
+  }
+  .sh-byline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 16px calc(84px + env(safe-area-inset-bottom));
+    background: var(--ink);
+    color: var(--paper);
+    font: 500 11px/1.4 var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .sh-byline a {
+    color: var(--champagne);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .sh-gone {
+    display: grid;
+    gap: 14px;
+    align-content: center;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 32px 16px;
+  }
+  .sh-gone p {
+    margin: 0;
+    color: var(--muted);
+  }
+  .sh-gone + .sh-byline {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+}

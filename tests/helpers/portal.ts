@@ -205,3 +205,61 @@ export async function deliveredItems(
   await must(adminRpc("portal_admin_set_status", { p_id: p.id, p_status: "delivered" }));
   return p;
 }
+
+/**
+ * A delivered property shoot for a client (Phase 13): photos "uploaded" to R2 keys (the files
+ * needn't exist for the database), with previews, published as Delivery 1.
+ */
+export async function deliveredShoot(
+  account: string,
+  title: string,
+  photos = 3,
+  extra: Record<string, unknown> = {},
+) {
+  const p = await must<{ id: string; ref: string }>(
+    adminRpc("portal_admin_create_project", {
+      p_account: account,
+      p_type: "shoot",
+      p_title: title,
+      p_area: "Downtown Dubai",
+      p_building: "Burj Vista 1",
+      p_unit: "5101",
+      p_services: ["photo"],
+      ...extra,
+    }),
+  );
+  const ids: string[] = [];
+  for (let i = 1; i <= photos; i++) {
+    const key = `projects/${p.ref}/d1/IMG_${i}.jpg`;
+    const id = await must<string>(
+      adminRpc("portal_admin_add_file", {
+        p_id: p.id,
+        p_delivery_no: 1,
+        p_delivery_label: "Delivery 1",
+        p_kind: "photos",
+        p_source: "r2",
+        p_url: null,
+        p_r2_key: key,
+        p_label: `IMG_${i}.jpg`,
+        p_bytes: 1000,
+        p_content_type: "image/jpeg",
+      }),
+    );
+    await must(
+      adminRpc("portal_admin_set_thumb", { p_file: id, p_thumb_key: `${key}.thumb.webp` }),
+    );
+    ids.push(id);
+  }
+  await must(adminRpc("portal_admin_publish_delivery", { p_id: p.id, p_delivery_no: 1 }));
+  return { ...p, photos: ids };
+}
+
+/** An old share-link slug that should now open a test listing (dev-only helper). */
+export const shareAlias = (slug: string, listing: string) =>
+  must(
+    portalClient().rpc("e2e_share_alias", { p_secret: secret(), p_slug: slug, p_listing: listing }),
+  );
+
+/** A phone browser's user agent: share-page counting ignores headless browsers and bots. */
+export const PHONE_UA =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";

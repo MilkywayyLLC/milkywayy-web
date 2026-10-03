@@ -29,12 +29,11 @@ const nextConfig: NextConfig = {
       { source: "/contact-us", destination: "/contact", statusCode: 301 },
       { source: "/terms-and-conditions", destination: "/terms", statusCode: 301 },
       { source: "/services", destination: "/", statusCode: 301 },
-      // The old client portal and its share links: temporary until the portal moves to its
-      // subdomain (CLIENT_PORTAL_GUIDE §11), so browsers don't remember these.
+      // The old client portal: temporary until it's switched off (CLIENT_PORTAL_GUIDE §11), so
+      // browsers don't remember it. Its share links (/l/, /c/) are the new share pages now; a slug
+      // we don't know goes to OLD_PORTAL_ORIGIN if set, else shows "isn't available" (Phase 13).
       { source: "/dashboard", destination: "/client-login", permanent: false },
       { source: "/dashboard/:path*", destination: "/client-login", permanent: false },
-      { source: "/c/:path*", destination: "/client-login", permanent: false },
-      { source: "/l/:path*", destination: "/client-login", permanent: false },
     ];
   },
   async headers() {

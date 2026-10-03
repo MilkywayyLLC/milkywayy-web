@@ -5,10 +5,12 @@ import {
   ProfileForm,
   RecipientsForm,
 } from "@/components/portal/SettingsForms";
+import { BrandForm } from "@/components/portal/BrandForm";
 import { phoneSignIn } from "@/lib/portal/flags";
 import { requireAccount } from "@/lib/portal/auth";
 import { industryLabel, type NotifyPrefs } from "@/lib/portal/options";
 import { isManager } from "@/lib/portal/shell";
+import { presign, r2Ready } from "@/lib/r2";
 
 export const metadata = { title: "Settings" };
 
@@ -79,6 +81,25 @@ export default async function Settings() {
           </span>
         </section>
       </div>
+
+      {isManager(current) && (
+        <section className="pt-card" aria-labelledby="brand">
+          <h2 id="brand" className="pt-h2">
+            Share pages
+          </h2>
+          <span className="pt-meta">
+            Your company name and logo at the top of your listing pages (optional).
+          </span>
+          <BrandForm
+            name={a.brand_name ?? ""}
+            logoKey={a.brand_logo_key ?? null}
+            logoPreview={
+              a.brand_logo_key && r2Ready() ? presign("GET", a.brand_logo_key, 3600) : null
+            }
+            fallbackName={a.type === "company" ? a.name : "e.g. Harbourline Properties"}
+          />
+        </section>
+      )}
 
       <section className="pt-card" aria-labelledby="notify">
         <h2 id="notify" className="pt-h2">

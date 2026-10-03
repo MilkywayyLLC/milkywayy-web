@@ -188,7 +188,7 @@ Select several listings to make one link ("3 homes picked for you"), curated by 
 - Admin can disable any link (abuse or takedown).
 
 ### 6.5 Media for listings
-Delivered photos are stored on R2 in full resolution for downloads, plus WebP versions sized for the web, generated on upload for share pages. Videos on share pages stream from Bunny/Mux; downloads come from R2.
+Delivered photos are stored on R2 in full resolution for downloads, plus WebP versions sized for the web, generated on upload for share pages. *(v2, owner 3 Oct 2026: no Bunny/Mux for now. A reel plays as a web MP4 of up to 40 MB from R2, attached by the admin with a poster; long-form is an optional YouTube/Vimeo link; 360 is a link button.)* Downloads come from R2.
 
 ---
 
@@ -321,7 +321,7 @@ Each phase ends the same way: a staging deploy, tests green, a short how-to, and
 3. Packages (private to one client by default), account plans, usage meter.
 4. Suggestion rules plus the suggestion card, off globally by default, hideable per client.
 
-### Phase 13: Listing share pages
+### Phase 13: Listing share pages (built 3 Oct 2026, see DECISIONS.md)
 1. The create sheet, saved details, contact pills, photo picker.
 2. Public `/l/` and `/c/` pages: Viewfinder-light, fast, OG previews, noindex.
 3. Stats, pause/expire, admin disable.
@@ -364,8 +364,8 @@ If the old portal *can't* move, the fallback is: "Client login" opens a "Your po
 | Which currencies show in billing | AED for UAE clients, USD for overseas |
 | Should members (agents) see prices? | No. Owner/admin only. |
 | Does auto-complete after 7 days count as approval? | Yes |
-| DLD permit number on listing pages | Optional field until Akash confirms the rule |
-| Agent branding on listing pages | Company name + logo optional |
+| DLD permit number on listing pages | **Decided:** optional permit number + QR image, shown prominently with "Required by DLD for property adverts. Check your permit." |
+| Agent branding on listing pages | **Decided:** company name + logo, optional (Settings → Share pages) |
 | Referral line on the download screen ("Know an agent? You both get AED 100 off") | Off. Add later if wanted. |
 
 ---

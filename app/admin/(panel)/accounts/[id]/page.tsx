@@ -106,6 +106,13 @@ export default async function ClientPage({ params, searchParams }: Props) {
           >
             Invoices ({invoices.length})
           </Link>
+          <Link
+            className="ad-btn ghost small"
+            href={`/admin/listings?account=${a.id}`}
+            prefetch={false}
+          >
+            Share pages
+          </Link>
         </div>
         {billing.plan.package ? (
           <div className="stack" style={{ gap: 8 }}>

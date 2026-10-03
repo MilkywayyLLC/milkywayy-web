@@ -83,5 +83,9 @@ export default defineConfig({
           url: `http://localhost:${PORT}`,
           reuseExistingServer: !process.env.CI,
           timeout: 180_000,
+          // Share pages without R2 locally: media URLs point here (nothing needs to answer).
+          env: {
+            SHARE_DEV_MEDIA_ORIGIN: process.env.SHARE_DEV_MEDIA_ORIGIN ?? "http://127.0.0.1:3299",
+          },
         },
 });

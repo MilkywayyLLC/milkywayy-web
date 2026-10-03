@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- signed, short-lived R2 previews */
 import { useActionState, useState, useTransition } from "react";
 import { PhoneField } from "@/components/forms/PhoneField";
 import {
@@ -8,6 +9,8 @@ import {
   saveContact,
   type Result,
 } from "@/lib/portal/account-actions";
+import { contactPhotoUrl, setContactPhoto } from "@/lib/portal/listing-actions";
+import { makeThumb, putBlob } from "@/lib/upload-browser";
 import { initials } from "@/lib/portal/shell";
 import { Icon } from "./Icon";
 import { Badge, Sheet, useToast } from "./ui";
@@ -21,6 +24,8 @@ export type ContactRow = {
   brn: string | null;
   is_default: boolean;
   canEdit: boolean;
+  /** Signed preview of the contact's photo (shown on share pages). */
+  photo: string | null;
 };
 
 export function ContactsManager({ contacts }: { contacts: ContactRow[] }) {
@@ -59,7 +64,16 @@ export function ContactsManager({ contacts }: { contacts: ContactRow[] }) {
           <div className="pt-pills" data-testid="pills">
             {contacts.map((c) => (
               <span key={c.id} className="pt-pill" aria-pressed={c.is_default ? "true" : "false"}>
-                <span className="pt-pill-face">{initials(c.name)}</span>
+                {c.photo ? (
+                  <img
+                    src={c.photo}
+                    alt=""
+                    className="pt-pill-face"
+                    style={{ objectFit: "cover" }}
+                  />
+                ) : (
+                  <span className="pt-pill-face">{initials(c.name)}</span>
+                )}
                 <span>
                   {c.name}
                   <small>
@@ -175,6 +189,11 @@ function ContactSheet({
           RERA / BRN number (optional)
           <input type="text" name="brn" defaultValue={contact?.brn ?? ""} />
         </label>
+        {contact ? (
+          <ContactPhoto contact={contact} />
+        ) : (
+          <span className="pt-meta">You can add a photo after saving.</span>
+        )}
         <label className="pt-check">
           <input
             type="checkbox"
@@ -193,5 +212,58 @@ function ContactSheet({
         </button>
       </form>
     </Sheet>
+  );
+}
+
+/** Optional photo for share pages: shrunk to a small WebP in the browser, then straight to R2. */
+function ContactPhoto({ contact }: { contact: ContactRow }) {
+  const [preview, setPreview] = useState(contact.photo);
+  const [state, setState] = useState("");
+  async function upload(f: File) {
+    setState("Uploading…");
+    const small = await makeThumb(f, 320);
+    if (!small) return setState("Use a JPG, PNG or WebP photo.");
+    const r = await contactPhotoUrl(contact.id);
+    if (!r.ok || !r.url || !r.key) return setState(r.error ?? "Couldn’t upload.");
+    if (!(await putBlob(r.url, small))) return setState("Couldn’t upload. Try again.");
+    const saved = await setContactPhoto(contact.id, r.key);
+    if (!saved.ok) return setState(saved.error ?? "Couldn’t save.");
+    setPreview(URL.createObjectURL(small));
+    setState("Photo saved.");
+  }
+  return (
+    <div className="pt-field">
+      <label htmlFor={`photo-${contact.id}`}>Photo (optional, shown on share pages)</label>
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        {preview && <img src={preview} alt="" className="pt-avatar-img" />}
+        <input
+          id={`photo-${contact.id}`}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) void upload(f);
+          }}
+        />
+      </div>
+      {preview && (
+        <button
+          type="button"
+          className="lnk pt-small"
+          style={{ justifySelf: "start" }}
+          onClick={async () => {
+            const r = await setContactPhoto(contact.id, null);
+            if (r.ok) setPreview(null);
+            setState(r.ok ? "Photo removed." : (r.error ?? "Couldn’t remove."));
+          }}
+        >
+          Remove photo
+        </button>
+      )}
+      <span className="pt-meta" role="status">
+        {state}
+      </span>
+    </div>
   );
 }

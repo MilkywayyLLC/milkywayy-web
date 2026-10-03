@@ -22,7 +22,8 @@ import {
   type ProjectFile,
   type ProjectMessage,
 } from "@/lib/portal/projects";
-import { makeThumb, putBlob, uploadFile } from "@/lib/upload-browser";
+import { makeWebVersions, mediaUploadUrls, saveMedia } from "@/lib/portal/admin-listing-actions";
+import { makeImage, makeThumb, putBlob, uploadFile, videoPoster } from "@/lib/upload-browser";
 import { Confirm } from "./Confirm";
 import { WhatsAppButton, type StatusTarget } from "./ProjectStatus";
 
@@ -40,6 +41,19 @@ function Status({
       {pending ? busy : (r?.notice ?? r?.error)}
     </span>
   );
+}
+
+/** Share-page versions of a delivered photo, made in this browser (no-op if it can't). */
+async function photoWebVersions(projectId: string, fileId: string, f: File) {
+  const [web, og] = await Promise.all([
+    makeImage(f, 2048, "image/webp", 0.82),
+    makeImage(f, 1200, "image/jpeg", 0.8),
+  ]);
+  if (!web || !og) return;
+  const u = await mediaUploadUrls(projectId, fileId, "photo");
+  if (!u.ok || !u.urls) return;
+  if ((await putBlob(u.urls.web, web)) && (await putBlob(u.urls.og, og)))
+    await saveMedia(projectId, fileId, { web: true, og: true, bytes: web.size });
 }
 
 /**
@@ -86,6 +100,8 @@ function Uploader({
               const t = thumb ? await thumbUploadUrl(x.key) : null;
               if (thumb && t?.url && (await putBlob(t.url, thumb)))
                 await saveThumb(projectId, r.fileId, x.key);
+              // And the web versions share pages use (§6.5): a 2048px WebP, a 1200px JPEG preview.
+              if (kind === "photos" && thumb) await photoWebVersions(projectId, r.fileId, f);
             }
             return r;
           },
@@ -270,6 +286,9 @@ export function Deliveries({
                     </span>
                   </span>
                 </span>
+                {(f.kind === "reel" || f.kind === "long_form") && (
+                  <WebVersion projectId={project.id} file={f} />
+                )}
                 <RemoveFile
                   projectId={project.id}
                   fileId={f.id}
@@ -279,6 +298,9 @@ export function Deliveries({
               </div>
             ))}
           </div>
+          {g.files.some((f) => f.kind === "photos" && f.source === "r2" && !f.web_key) && (
+            <MakeWebVersions projectId={project.id} />
+          )}
         </div>
       ))}
 
@@ -588,5 +610,114 @@ export function ProjectNotes({ projectId, notes: initial }: { projectId: string;
         <Status r={r} pending={pending} />
       </div>
     </section>
+  );
+}
+
+/**
+ * A reel's web version for share pages (owner, 3 Oct 2026: no streaming service yet): an MP4 up
+ * to 40 MB that plays straight from R2, with a poster taken from the video (or chosen).
+ */
+function WebVersion({ projectId, file }: { projectId: string; file: ProjectFile }) {
+  const [state, setState] = useState("");
+  const [busy, setBusy] = useState(false);
+  const has = !!file.web_key;
+  async function upload(mp4: File, poster: File | null) {
+    if (!/^video\/mp4$/.test(mp4.type)) return setState("Choose an MP4.");
+    if (mp4.size > 40 * 1024 * 1024) return setState("Keep the web version under 40 MB.");
+    setBusy(true);
+    setState("Uploading…");
+    try {
+      const u = await mediaUploadUrls(projectId, file.id, "video");
+      if (!u.ok || !u.urls) return setState(u.error ?? "Couldn’t start.");
+      if (!(await putBlob(u.urls.web, mp4))) return setState("Upload failed. Try again.");
+      const still = poster ?? (await videoPoster(mp4));
+      const posterOk = still ? await putBlob(u.urls.poster, still) : false;
+      const r = await saveMedia(projectId, file.id, {
+        web: true,
+        poster: posterOk,
+        bytes: mp4.size,
+        video: true,
+      });
+      setState(r.ok ? (r.notice ?? "Saved.") : (r.error ?? "Couldn’t save."));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <details className="ad-web" data-testid="web-version">
+      <summary className={has ? "ad-pill live" : "ad-pill draft"}>
+        {has ? `Web version · ${bytes(file.web_bytes ?? null)}` : "Add web version"}
+      </summary>
+      <form
+        className="ad-form"
+        style={{ gap: 8, paddingTop: 8 }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          const mp4 = fd.get("mp4") as File | null;
+          const poster = fd.get("poster") as File | null;
+          if (mp4 && mp4.size) void upload(mp4, poster && poster.size ? poster : null);
+        }}
+      >
+        <div className="ad-field">
+          <label htmlFor={`mp4-${file.id}`}>Web version (MP4, up to 40 MB)</label>
+          <input id={`mp4-${file.id}`} name="mp4" type="file" accept="video/mp4" required />
+        </div>
+        <div className="ad-field">
+          <label htmlFor={`poster-${file.id}`}>Poster (optional: taken from the video)</label>
+          <input id={`poster-${file.id}`} name="poster" type="file" accept="image/jpeg" />
+        </div>
+        <div className="ad-btns" style={{ alignItems: "center" }}>
+          <button type="submit" className="ad-btn small" disabled={busy}>
+            {has ? "Replace" : "Upload"}
+          </button>
+          {has && (
+            <button
+              type="button"
+              className="ad-btn quiet small"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                const r = await saveMedia(projectId, file.id, { web: false, video: true });
+                setState(r.ok ? (r.notice ?? "Removed.") : (r.error ?? "Couldn’t remove."));
+                setBusy(false);
+              }}
+            >
+              Remove
+            </button>
+          )}
+          <span className="ad-status" role="status">
+            {state}
+          </span>
+        </div>
+      </form>
+    </details>
+  );
+}
+
+/** Older photos without share-page versions: made on the server, six at a time. */
+function MakeWebVersions({ projectId }: { projectId: string }) {
+  const [r, setR] = useState<{ ok: boolean; error?: string; notice?: string }>();
+  const [pending, start] = useTransition();
+  return (
+    <div className="ad-btns" style={{ alignItems: "center" }}>
+      <button
+        type="button"
+        className="ad-btn small ghost"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            let res = await makeWebVersions(projectId);
+            while (res.ok && res.left) res = await makeWebVersions(projectId);
+            setR(res);
+          })
+        }
+      >
+        Make web versions for share pages
+      </button>
+      <span className={r && !r.ok ? "ad-status error" : "ad-status"} role="status">
+        {pending ? "Making web versions…" : (r?.notice ?? r?.error)}
+      </span>
+    </div>
   );
 }

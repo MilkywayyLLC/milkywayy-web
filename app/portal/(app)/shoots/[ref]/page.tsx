@@ -93,6 +93,23 @@ export default async function ShootPage({ params }: { params: Promise<{ ref: str
         {...actionsFor(p)}
         hasDelivery={!!latest}
       />
+      {(p.status === "delivered" || p.status === "completed") &&
+        (files ?? []).some((f) => f.kind === "photos" && f.source === "r2") && (
+          <section className="pt-card pt-row" style={{ flexWrap: "wrap" }}>
+            <div>
+              <b>Share this property</b>
+              <div className="pt-meta">
+                One link with the photos, video, price and your contact. Looks right in WhatsApp.
+              </div>
+            </div>
+            <a
+              className="btn btn-p btn-s"
+              href={`/portal/listings/new?shoot=${encodeURIComponent(p.ref)}`}
+            >
+              Create share link
+            </a>
+          </section>
+        )}
       <DeliveryList files={(files ?? []) as ProjectFile[]} />
 
       <div className="pt-grid2">

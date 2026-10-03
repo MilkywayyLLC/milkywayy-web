@@ -143,7 +143,18 @@ export async function uploadFile(
 }
 
 /** A small WebP preview of a photo (longest side `max` px), or null if it isn't a photo. */
-export async function makeThumb(f: File, max = 800): Promise<Blob | null> {
+export const makeThumb = (f: File, max = 800) => makeImage(f, max, "image/webp", 0.8);
+
+/**
+ * A resized copy of a photo (longest side `max` px) as WebP or JPEG, or null if it isn't a
+ * photo the browser can read. Share pages use a 2048px WebP and a 1200px JPEG for previews.
+ */
+export async function makeImage(
+  f: Blob,
+  max: number,
+  type: "image/webp" | "image/jpeg",
+  quality: number,
+): Promise<Blob | null> {
   if (!/^image\/(jpeg|png|webp|avif)$/.test(f.type) || f.size > 80 * 1024 * 1024) return null;
   try {
     const bmp = await createImageBitmap(f);
@@ -151,11 +162,46 @@ export async function makeThumb(f: File, max = 800): Promise<Blob | null> {
     const c = document.createElement("canvas");
     c.width = Math.max(1, Math.round(bmp.width * scale));
     c.height = Math.max(1, Math.round(bmp.height * scale));
-    c.getContext("2d")?.drawImage(bmp, 0, 0, c.width, c.height);
+    const ctx = c.getContext("2d");
+    if (ctx && type === "image/jpeg") {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, c.width, c.height);
+    }
+    ctx?.drawImage(bmp, 0, 0, c.width, c.height);
     bmp.close();
-    return await new Promise<Blob | null>((res) => c.toBlob(res, "image/webp", 0.8));
+    const out = await new Promise<Blob | null>((res) => c.toBlob(res, type, quality));
+    // Safari without WebP encoding hands back a PNG: not what we asked for.
+    return out && out.type === type ? out : null;
   } catch {
     return null;
+  }
+}
+
+/** A JPEG still from a video (about 1 second in), for a reel's poster. */
+export async function videoPoster(f: Blob, max = 1080): Promise<Blob | null> {
+  const url = URL.createObjectURL(f);
+  try {
+    const v = document.createElement("video");
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = "auto";
+    v.src = url;
+    await new Promise<void>((res, rej) => {
+      v.onloadeddata = () => res();
+      v.onerror = () => rej(new Error("video"));
+    });
+    v.currentTime = Math.min(1, (v.duration || 2) / 2);
+    await new Promise<void>((res) => (v.onseeked = () => res()));
+    const scale = Math.min(1, max / Math.max(v.videoWidth, v.videoHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(v.videoWidth * scale));
+    c.height = Math.max(1, Math.round(v.videoHeight * scale));
+    c.getContext("2d")?.drawImage(v, 0, 0, c.width, c.height);
+    return await new Promise<Blob | null>((res) => c.toBlob(res, "image/jpeg", 0.8));
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
   }
 }
 

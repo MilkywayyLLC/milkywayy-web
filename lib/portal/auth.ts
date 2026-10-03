@@ -18,6 +18,9 @@ export type Account = {
   member_visibility: "own" | "all";
   services_interest: string[];
   notify_cc: Partial<Record<"projects" | "billing", string[]>>;
+  /** Share pages (Phase 13): the company name and logo shown on them. */
+  brand_name?: string | null;
+  brand_logo_key?: string | null;
 };
 export type Membership = { role: Role; account: Account };
 
@@ -44,7 +47,7 @@ export const getPortal = cache(async (): Promise<PortalState> => {
   const { data: rows } = await db
     .from("account_members")
     .select(
-      "role, created_at, account:accounts(id, type, name, industry, industry_other, volume_note, trn, billing_address, currency, member_visibility, services_interest, notify_cc)",
+      "role, created_at, account:accounts(id, type, name, industry, industry_other, volume_note, trn, billing_address, currency, member_visibility, services_interest, notify_cc, brand_name, brand_logo_key)",
     )
     .eq("user_id", user.id)
     .order("created_at");

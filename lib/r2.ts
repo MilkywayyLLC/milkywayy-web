@@ -29,8 +29,8 @@ const enc = (s: string) =>
 const path = (key: string) => `/${cfg().bucket}/${key.split("/").map(enc).join("/")}`;
 const host = () => `${cfg().account}.r2.cloudflarestorage.com`;
 
-function stamp() {
-  const amz = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
+function stamp(at = new Date()) {
+  const amz = at.toISOString().replace(/[:-]|\.\d{3}/g, "");
   return { amz, day: amz.slice(0, 8) };
 }
 function signingKey(day: string) {
@@ -48,9 +48,10 @@ export function presign(
   key: string,
   seconds: number,
   extra: Record<string, string> = {},
+  at?: Date,
 ) {
   const c = cfg();
-  const { amz, day } = stamp();
+  const { amz, day } = stamp(at);
   const scope = `${day}/auto/s3/aws4_request`;
   const q: Record<string, string> = {
     ...extra,
@@ -162,3 +163,47 @@ export const maxUploadGb = () => {
   return n > 0 && n <= 50 ? n : 5;
 };
 export const maxUploadBytes = () => maxUploadGb() * 1024 * 1024 * 1024;
+
+// ---------- media on public share pages (Phase 13) ----------
+
+const SIX_HOURS = 6 * 3600 * 1000;
+
+/**
+ * A GET link for an image or video shown on a public listing page. Signed from the start of the
+ * current 6-hour window and valid for 12 hours, so the same URL is served all window long:
+ * browsers, WhatsApp's preview fetcher and R2 can cache it, and a link copied from a page dies
+ * within half a day of the page going offline. Without R2 (local runs), SHARE_DEV_MEDIA_ORIGIN
+ * can point at a folder served locally; otherwise there is no URL.
+ */
+export function pageMediaUrl(key: string | null | undefined) {
+  if (!key) return null;
+  if (!r2Ready()) {
+    const dev = process.env.SHARE_DEV_MEDIA_ORIGIN;
+    return dev ? `${dev.replace(/\/$/, "")}/${key.split("/").map(enc).join("/")}` : null;
+  }
+  const at = new Date(Math.floor(Date.now() / SIX_HOURS) * SIX_HOURS);
+  return presign(
+    "GET",
+    key,
+    (2 * SIX_HOURS) / 1000,
+    { "response-cache-control": "public, max-age=21600, immutable" },
+    at,
+  );
+}
+
+/** Read an object on the server (e.g. the share-preview image); null if it isn't there. */
+export async function getObject(key: string) {
+  if (!r2Ready()) return null;
+  const res = await fetch(presign("GET", key, 60));
+  return res.ok ? res : null;
+}
+
+/** Write a small object from the server (web versions made with sharp). */
+export async function putObject(key: string, body: Buffer, contentType: string) {
+  const res = await fetch(presign("PUT", key, 600), {
+    method: "PUT",
+    body: new Uint8Array(body),
+    headers: { "Content-Type": contentType },
+  });
+  if (!res.ok) throw new Error(`R2 PUT ${res.status}`);
+}

@@ -127,6 +127,11 @@ export type ProjectFile = {
   url: string | null;
   r2_key: string | null;
   thumb_key?: string | null;
+  /** Share pages (Phase 13): photo WebP / video MP4, preview JPEG, video poster. */
+  web_key?: string | null;
+  og_key?: string | null;
+  poster_key?: string | null;
+  web_bytes?: number | null;
   label: string;
   bytes: number | null;
   content_type: string | null;
