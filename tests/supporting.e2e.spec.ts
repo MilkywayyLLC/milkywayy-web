@@ -62,15 +62,29 @@ test("legal pages are marked as drafts until reviewed", async ({ page }) => {
   }
 });
 
-test("Client login opens the portal; the old “portal is moving” page still works @mobile", async ({
+test("Client login opens the portal; old sign-in and booking paths redirect for good @mobile", async ({
   page,
+  request,
 }) => {
   await page.goto("/");
   const login = page.locator('a[href="/portal/login"]').first();
   await expect(login).toHaveCount(1);
-  await page.goto("/client-login");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Your portal");
-  const wa = page.getByRole("link", { name: "WhatsApp us for files" });
-  await expect(wa).toHaveAttribute("href", /^https:\/\/wa\.me\/971507263306\?text=/);
-  expect(await page.locator('meta[name="robots"]').getAttribute("content")).toContain("noindex");
+  for (const old of [
+    "/client-login",
+    "/login",
+    "/dashboard",
+    "/dashboard/bookings",
+    "/portal-login",
+  ]) {
+    const r = await request.get(old, { maxRedirects: 0 });
+    expect(r.status(), old).toBe(301);
+    expect(new URL(r.headers().location, "http://x").pathname, old).toBe("/portal/login");
+  }
+  for (const old of ["/booking", "/book-now", "/book", "/booking/success"]) {
+    const r = await request.get(old, { maxRedirects: 0 });
+    expect(r.status(), old).toBe(301);
+    expect(r.headers().location, old).toMatch(/\/property-shoots#booking$/);
+  }
+  // No more clickable mockup.
+  expect((await request.get("/portal-preview/home", { maxRedirects: 0 })).status()).toBe(404);
 });

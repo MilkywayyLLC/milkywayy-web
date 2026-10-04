@@ -12,10 +12,13 @@ export function SignInMethods({
   next,
   phone,
   startOn,
+  email = "",
 }: {
   next: string;
   phone: boolean;
   startOn: "code" | "password" | "whatsapp";
+  /** Prefilled from the invite email's link. */
+  email?: string;
 }) {
   const [method, setMethod] = useState<"email" | "whatsapp">(
     phone && startOn === "whatsapp" ? "whatsapp" : "email",
@@ -48,7 +51,11 @@ export function SignInMethods({
       {method === "whatsapp" ? (
         <PhoneLogin next={next} />
       ) : (
-        <LoginForm next={next} startOn={startOn === "password" ? "password" : "code"} />
+        <LoginForm
+          next={next}
+          startOn={startOn === "password" ? "password" : "code"}
+          initialEmail={email}
+        />
       )}
       <p className="pt-meta" style={{ margin: 0 }}>
         New here? Signing in creates your account. Bookings you made on the website with the same

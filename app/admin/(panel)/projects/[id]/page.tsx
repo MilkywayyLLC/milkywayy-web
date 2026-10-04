@@ -84,6 +84,21 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           </Link>
           <h1 className="ad-h1">{p.title}</h1>
           {p.meta.attached_by_email && <EmailAttachedBadge />}
+          {p.meta.past && (
+            <p className="ad-note" data-testid="past-note" style={{ margin: "6px 0" }}>
+              Past project (before the portal), delivered{" "}
+              {p.meta.original_date
+                ? new Date(`${p.meta.original_date}T12:00:00`).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "earlier"}
+              . Add the files below and publish them: they stay Completed, the client isn’t emailed
+              unless you tick it, and each file is kept for the client’s retention period from the
+              day it’s published (dates shown on the files).
+            </p>
+          )}
           <span className="ad-small ad-muted">
             {TYPE_LABEL[p.type]} · {p.ref} · {statusLabel(p.status)}
             {p.revision_state ? ` · ${REVISION_LABEL[p.revision_state]}` : ""} ·{" "}
@@ -227,7 +242,13 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
       {p.type === "avatar" && <ScriptPanel project={target} scripts={d.scripts} origin={origin} />}
       {!shoot && <FilesIn projectId={p.id} files={d.files} />}
-      <Deliveries project={target} groups={groups} revisionOpen={revisionOpen} origin={origin} />
+      <Deliveries
+        project={target}
+        groups={groups}
+        revisionOpen={revisionOpen}
+        origin={origin}
+        past={!!p.meta.past}
+      />
       {p.account_id && <LineItems project={p.id} items={d.line_items} />}
       <Thread project={target} messages={d.messages} origin={origin} />
       <ProjectNotes projectId={p.id} notes={d.notes ?? ""} />

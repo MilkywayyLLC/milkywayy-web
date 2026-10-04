@@ -254,12 +254,6 @@ export async function deliveredShoot(
   return { ...p, photos: ids };
 }
 
-/** An old share-link slug that should now open a test listing (dev-only helper). */
-export const shareAlias = (slug: string, listing: string) =>
-  must(
-    portalClient().rpc("e2e_share_alias", { p_secret: secret(), p_slug: slug, p_listing: listing }),
-  );
-
 /** A phone browser's user agent: share-page counting ignores headless browsers and bots. */
 export const PHONE_UA =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";

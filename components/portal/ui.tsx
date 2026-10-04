@@ -137,19 +137,3 @@ export function Back({ href, label }: { href: string; label: string }) {
 
 export const money = (cur: string, n: number) =>
   `${cur} ${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
-
-/** Shown when the "View as" client doesn't use this service (the tab wouldn't exist for them). */
-export function NotFor({ what }: { what: string }) {
-  return (
-    <div className="pt-card">
-      <span className="pt-eb">Not on this account</span>
-      <p>
-        This client doesn’t use {what}, so the tab isn’t shown to them. Switch “View as” at the top
-        to see it.
-      </p>
-      <a className="btn btn-g btn-s" href="/portal-preview/home">
-        Go to Home
-      </a>
-    </div>
-  );
-}

@@ -8,6 +8,7 @@ import { isEmail } from "@/lib/leads/rules";
 import { toE164 } from "@/lib/phone";
 import { portalAdminAction } from "./admin";
 import { inviteLinks, inviteText, originFrom } from "./invite";
+import { sendPortalInvite } from "./notify";
 import { INDUSTRIES, SERVICES } from "./options";
 
 /** Admin actions on client accounts (Owner only; every one is logged in the portal database). */
@@ -49,6 +50,41 @@ function contactOf(form: FormData) {
   if (!email && !phone) return { error: "Add their email or WhatsApp number." };
   return { email, phone };
 }
+
+/**
+ * "Your Milkywayy portal is ready" (owner, 4 Oct 2026): Milkywayy emails the invite itself, from
+ * the portal's address, with a sign-in link. Returns whether it went out.
+ */
+async function emailInvite(accountId: string, inviteId: string) {
+  const rpc = await portalAdminAction();
+  const open = await rpc<
+    {
+      id: string;
+      account_name: string;
+      name: string | null;
+      email: string | null;
+      role: string;
+    }[]
+  >("portal_admin_open_invites", { p_account: accountId });
+  const inv = open.find((i) => i.id === inviteId);
+  if (!inv?.email) return null;
+  const status = await sendPortalInvite(
+    accountId,
+    { email: inv.email, name: inv.name, role: inv.role, account_name: inv.account_name },
+    originFrom(await headers()),
+  );
+  // Only an email Resend accepted counts as sent.
+  if (status === "sent") await rpc("portal_admin_invite_sent", { p_invite: inviteId });
+  return status;
+}
+const sentNote = (status: string | null) =>
+  status === "sent"
+    ? " “Your Milkywayy portal is ready” emailed."
+    : status === "skipped"
+      ? " (Email not sent here: no RESEND_API_KEY, or a test address.)"
+      : status === "failed"
+        ? " The email didn’t go out: use Resend invite."
+        : "";
 
 /** The invite message, sent from Milkywayy's own WhatsApp (the chat number) or email. */
 async function share(
@@ -111,8 +147,19 @@ export async function createClientAccount(
   } catch (e) {
     return failed(e);
   }
+  let emailed = "";
+  if (form.get("email_invite") === "on" && c.email) {
+    try {
+      const rpc = await portalAdminAction();
+      const [owner] = await rpc<{ id: string }[]>("portal_admin_open_invites", { p_account: id });
+      if (owner) emailed = (await emailInvite(id, owner.id)) ?? "";
+    } catch (e) {
+      console.error("[admin/accounts] invite email:", e);
+      emailed = "failed";
+    }
+  }
   revalidatePath("/admin/accounts");
-  redirect(`/admin/accounts/${id}?created=1`);
+  redirect(`/admin/accounts/${id}?created=1${emailed ? `&emailed=${emailed}` : ""}`);
 }
 
 export async function updateClientAccount(
@@ -148,20 +195,26 @@ export async function adminInvite(
   const name = String(form.get("name") ?? "").trim() || null;
   const c = contactOf(form);
   if ("error" in c) return { ok: false, error: c.error };
+  let status: string | null = null;
   try {
     const rpc = await portalAdminAction();
-    await rpc("portal_admin_invite", {
+    const invite = await rpc<string>("portal_admin_invite", {
       p_id: id,
       p_name: name,
       p_email: c.email,
       p_phone: c.phone,
       p_role: role,
     });
+    if (form.get("email_invite") === "on" && c.email) status = await emailInvite(id, invite);
   } catch (e) {
     return failed(e);
   }
   revalidatePath(`/admin/accounts/${id}`);
-  return { ok: true, notice: "Invited.", share: await share(accountName, name, c.email, c.phone) };
+  return {
+    ok: true,
+    notice: `Invited.${sentNote(status)}`,
+    share: await share(accountName, name, c.email, c.phone),
+  };
 }
 
 export async function adminCancelInvite(accountId: string, inviteId: string): Promise<AdminResult> {
@@ -173,4 +226,23 @@ export async function adminCancelInvite(accountId: string, inviteId: string): Pr
   }
   revalidatePath(`/admin/accounts/${accountId}`);
   return { ok: true, notice: "Invite cancelled." };
+}
+
+/** Send "Your Milkywayy portal is ready" again to someone who hasn't joined yet. */
+export async function resendInvite(accountId: string, inviteId: string): Promise<AdminResult> {
+  try {
+    const status = await emailInvite(accountId, inviteId);
+    revalidatePath(`/admin/accounts/${accountId}`);
+    if (status === null) return { ok: false, error: "That invite has no email address." };
+    if (status === "failed") return { ok: false, error: "The email didn’t go out. Try again." };
+    return {
+      ok: true,
+      notice:
+        status === "sent"
+          ? "Invite emailed again."
+          : "Logged, but not sent here (no email set up).",
+    };
+  } catch (e) {
+    return failed(e);
+  }
 }

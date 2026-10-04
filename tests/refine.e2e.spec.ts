@@ -92,6 +92,23 @@ test("dashboard showcase: click selects, screens follow, keyboard works", async 
   await expect(tabs.nth(3)).toHaveAttribute("aria-selected", "true");
   const panel = page.getByRole("tabpanel");
   await expect(panel.locator(".dsh-screen.on")).toContainText("INV-2026-031");
+  // Invoiced at month end: September's invoice, due in October.
+  await expect(panel.locator(".dsh-screen.on")).toContainText("September · 3 shoots");
+  await expect(panel.locator(".dsh-screen.on")).toContainText("Due 10 Oct");
+  // Never two screens at once: the old one is gone (140ms) before the new one starts (150ms).
+  const timing = await panel.evaluate(() => {
+    const on = document.querySelector<HTMLElement>(".dsh-screen.on")!;
+    const off = document.querySelector<HTMLElement>(".dsh-screen:not(.on)")!;
+    const secs = (v: string) => Math.max(...v.split(",").map((x) => parseFloat(x)));
+    const a = getComputedStyle(off);
+    const b = getComputedStyle(on);
+    return {
+      outEnds: secs(a.transitionDuration) + 0, // opacity 0.14s, no delay
+      inStarts: Math.min(...b.transitionDelay.split(",").map((x) => parseFloat(x))),
+    };
+  });
+  expect(timing.outEnds).toBeLessThanOrEqual(0.15);
+  expect(timing.inStarts).toBeGreaterThanOrEqual(timing.outEnds);
   await tabs.nth(3).press("ArrowDown");
   await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
   await expect(tabs.first()).toBeFocused();

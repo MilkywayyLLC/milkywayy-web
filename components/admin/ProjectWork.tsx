@@ -239,11 +239,14 @@ export function Deliveries({
   groups,
   revisionOpen,
   origin,
+  past = false,
 }: {
   project: StatusTarget;
   groups: { no: number; label: string; files: ProjectFile[]; published: boolean }[];
   revisionOpen: boolean;
   origin: string;
+  /** A past project: no client email unless ticked (owner, 4 Oct 2026). */
+  past?: boolean;
 }) {
   const nextNo = (groups[0]?.no ?? 0) + 1;
   const revisions = groups.filter((g) => g.label.startsWith("Revision")).length;
@@ -253,7 +256,7 @@ export function Deliveries({
     (draft && !groups.some((g) => g.no === draft.no)
       ? { ...draft, files: [], published: false }
       : null);
-  const [notify, setNotify] = useState(project.inPortal);
+  const [notify, setNotify] = useState(project.inPortal && !past);
   const [r, setR] = useState<ActionResult>();
   const [pending, start] = useTransition();
   const [published, setPublished] = useState<string | null>(null);
@@ -283,6 +286,13 @@ export function Deliveries({
                     <span className="ad-row-title">{f.label}</span>
                     <span className="ad-row-meta" style={{ display: "block" }}>
                       {f.source === "link" ? f.url : bytes(f.bytes)}
+                      {f.expires_at && f.source === "r2"
+                        ? ` · kept until ${new Date(f.expires_at).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}`
+                        : ""}
                     </span>
                   </span>
                 </span>
@@ -324,7 +334,9 @@ export function Deliveries({
               onChange={(e) => setNotify(e.target.checked)}
             />
             {project.inPortal
-              ? "Email the client when published"
+              ? past
+                ? "Notify client (email them that the files are in their portal)"
+                : "Email the client when published"
               : "Not in the portal yet: send the WhatsApp after publishing"}
           </label>
           <div className="ad-btns" style={{ alignItems: "center" }}>

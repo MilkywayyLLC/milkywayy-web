@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   emailFor,
   invoiceEmail,
+  portalReadyEmail,
   type BillingEmail,
   type MessageEvent,
   type ProjectInfo,
@@ -199,4 +200,36 @@ export async function alertMilkywayyBilling(
     p_error: "error" in res ? (res.error ?? null) : null,
   });
   if (error) console.error("[notify] couldn't log billing alert:", error.message);
+}
+
+/** "Your Milkywayy portal is ready" to one invited person, logged. Returns the send status. */
+export async function sendPortalInvite(
+  account: string,
+  invite: { email: string; name: string | null; role: string; account_name: string },
+  origin: string,
+) {
+  const link = `${origin}/portal/login?email=${encodeURIComponent(invite.email)}`;
+  const m = portalReadyEmail({
+    name: invite.name,
+    account: invite.account_name,
+    role: invite.role,
+    link,
+  });
+  const { text, html } = renderEmail(m.lines, m.button, link);
+  const res = await sendEmail(invite.email, m.subject, text, html);
+  if (process.env.PORTAL_ADMIN_SECRET) {
+    const db = createClient(portalUrl, portalKey, { auth: { persistSession: false } });
+    const { error } = await db.rpc("portal_admin_log_billing_notification", {
+      p_secret: process.env.PORTAL_ADMIN_SECRET,
+      p_actor: "admin",
+      p_account: account,
+      p_template: "portal_invite",
+      p_to: invite.email,
+      p_status: res.status,
+      p_provider_id: "id" in res ? (res.id ?? null) : null,
+      p_error: "error" in res ? (res.error ?? null) : null,
+    });
+    if (error) console.error("[notify] couldn't log the invite email:", error.message);
+  }
+  return res.status;
 }

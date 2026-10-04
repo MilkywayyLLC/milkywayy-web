@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   CancelInvite,
+  ResendInvite,
   ClientEditor,
   ClientInviteForm,
   RetentionSelect,
@@ -25,7 +26,10 @@ import { industryLabel, serviceLabel } from "@/lib/portal/options";
 
 export const metadata = { title: "Client" };
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ created?: string; emailed?: string }>;
+};
 
 const ROLE: Record<string, string> = { owner: "Owner", admin: "Admin", member: "Member" };
 const ACTION: Record<string, string> = {
@@ -41,14 +45,18 @@ export default async function ClientPage({ params, searchParams }: Props) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const rpc = await portalAdminPage();
-  const [c, billing, invoices] = await Promise.all([
+  const [c, billing, invoices, openInvites] = await Promise.all([
     rpc<ClientDetail | null>("portal_admin_client", { p_id: id, p_view_as: false }),
     rpc<ClientBilling>("portal_admin_client_billing", { p_account: id }),
     rpc<InvoiceRowData[]>("portal_admin_invoices", { p_account: id }),
+    rpc<{ id: string; last_sent_at: string | null }[]>("portal_admin_open_invites", {
+      p_account: id,
+    }),
   ]);
+  const sentAt = new Map(openInvites.map((i) => [i.id, i.last_sent_at]));
   if (!c) notFound();
   const a = c.account;
-  const { created } = await searchParams;
+  const { created, emailed } = await searchParams;
 
   return (
     <div className="ad-page">
@@ -72,8 +80,15 @@ export default async function ClientPage({ params, searchParams }: Props) {
         </div>
       </div>
       {created && (
-        <p className="ad-note">
-          Client created. Send the Owner invite below so they know where to sign in.
+        <p className="ad-note" role="status">
+          Client created.{" "}
+          {emailed === "sent"
+            ? "“Your Milkywayy portal is ready” is on its way to the Owner."
+            : emailed === "skipped"
+              ? "The invite email isn’t sent here (no email set up, or a test address)."
+              : emailed === "failed"
+                ? "The invite email didn’t go out: use Resend invite below."
+                : "Send the Owner invite below so they know where to sign in."}
         </p>
       )}
 
@@ -189,6 +204,13 @@ export default async function ClientPage({ params, searchParams }: Props) {
           </Link>
           <Link
             className="ad-btn ghost small"
+            href={`/admin/accounts/${a.id}/past`}
+            prefetch={false}
+          >
+            Add past project
+          </Link>
+          <Link
+            className="ad-btn ghost small"
             href={`/admin/projects?q=${encodeURIComponent(a.name)}&view=list`}
             prefetch={false}
           >
@@ -243,9 +265,15 @@ export default async function ClientPage({ params, searchParams }: Props) {
                       <span className="ad-row-meta" style={{ display: "block" }}>
                         {[i.email, i.phone].filter(Boolean).join(" · ")} · invited{" "}
                         {dubai(i.created_at)}
+                        {sentAt.get(i.id)
+                          ? ` · emailed ${dubai(sentAt.get(i.id)!)}`
+                          : i.email
+                            ? " · not emailed yet"
+                            : ""}
                       </span>
                     </span>
                   </span>
+                  {i.email && <ResendInvite accountId={a.id} inviteId={i.id} />}
                   <CancelInvite accountId={a.id} inviteId={i.id} />
                 </div>
               ))}

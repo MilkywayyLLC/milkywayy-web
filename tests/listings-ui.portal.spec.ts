@@ -8,7 +8,6 @@ import {
   hasPortalAdmin,
   newRun,
   PHONE_UA,
-  shareAlias,
   signedIn,
   signInUI,
 } from "./helpers/portal";
@@ -202,7 +201,7 @@ test("views and WhatsApp/Call taps count for people, not bots", async ({ browser
   expect(await plus()).toMatchObject({ views: 1, wa: 1, call: 1 });
 });
 
-test("paused, expired, turned off or unknown: a friendly page, not an error; old slugs redirect", async ({
+test("paused, expired, turned off or unknown: a friendly page, not an error", async ({
   page,
   browser,
 }) => {
@@ -267,12 +266,6 @@ test("paused, expired, turned off or unknown: a friendly page, not an error; old
   await gone(`/l/nothing-here-${RUN.slice(-4)}`);
   await gone(`/c/nothing-here-${RUN.slice(-4)}`);
 
-  // An old portal slug (Phase 14 fills these) lands on the new page.
-  const old = `akash-${RUN.slice(-4)}`;
-  await shareAlias(old, listingId);
-  await v.goto(`/l/${old}`);
-  await expect(v).toHaveURL(new RegExp(`/l/${slug}$`));
-  await expect(v.getByRole("heading", { level: 1 })).toHaveText("Sky-high 3 bed penthouse");
   await v.context().close();
 });
 

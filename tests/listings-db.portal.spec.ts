@@ -155,7 +155,7 @@ test("a Member makes their own; can't change the owner's; never reads line items
   expect(seen.map((x) => x.id)).toEqual([mine.id]);
 });
 
-test("paused, expired and turned-off pages aren't served; old slugs redirect", async () => {
+test("paused, expired and turned-off pages aren't served; unknown slugs are missing", async () => {
   await ok(c.db.rpc("set_share_status", { p_kind: "l", p_id: listing, p_status: "paused" }));
   expect((await page("l", slug)).state).toBe("unavailable");
   await ok(c.db.rpc("set_share_status", { p_kind: "l", p_id: listing, p_status: "live" }));

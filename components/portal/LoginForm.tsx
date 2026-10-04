@@ -16,9 +16,18 @@ const RESEND_AFTER = 30;
  * Email sign-in (owner, 3 Oct 2026): a 6-digit code by email is the main way in and creates the
  * account the first time; a password is optional ("Sign in with a password instead").
  */
-export function LoginForm({ next, startOn }: { next: string; startOn: "code" | "password" }) {
+export function LoginForm({
+  next,
+  startOn,
+  initialEmail = "",
+}: {
+  next: string;
+  startOn: "code" | "password";
+  /** From the invite email's link (?email=…), so they only press "Send code". */
+  initialEmail?: string;
+}) {
   const [mode, setMode] = useState(startOn);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   return mode === "code" ? (
     <CodeSignIn
       next={next}

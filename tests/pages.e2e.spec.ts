@@ -87,7 +87,12 @@ test.describe("navigation", () => {
     for (const from of ["/production/property-shoots", "/book", "/booking"]) {
       const res = await request.get(from, { maxRedirects: 0 });
       expect(res.status(), from).toBe(301);
-      expect(res.headers()["location"], from).toMatch(/\/property-shoots$/);
+      // Old booking links land on the booking builder itself (owner, 4 Oct 2026).
+      expect(res.headers()["location"], from).toMatch(
+        from === "/production/property-shoots"
+          ? /\/property-shoots$/
+          : /\/property-shoots#booking$/,
+      );
     }
   });
 

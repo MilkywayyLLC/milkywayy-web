@@ -156,6 +156,9 @@ export function BookingBuilder({
     return out;
   }, [state, errors]);
 
+  // A property line with every service off can't be sent (owner, 4 Oct 2026).
+  const noService = state.properties.some((p) => !p.photo && !p.video && !p.tour);
+
   function openSheet() {
     const d = sheet.current;
     if (!d || d.open) return;
@@ -288,7 +291,19 @@ export function BookingBuilder({
               send it.
             </p>
           )}
-          <button type="button" className="btn btn-p" onClick={send} disabled={sending}>
+          {noService && (
+            <p className="fine bk-warn" id="bk-need-service" role="status">
+              Pick at least one service
+              {state.properties.length > 1 ? " for every property" : ""}.
+            </p>
+          )}
+          <button
+            type="button"
+            className="btn btn-p"
+            onClick={send}
+            disabled={sending || noService}
+            aria-describedby={noService ? "bk-need-service" : undefined}
+          >
             {sending ? "Sending…" : "Send request on WhatsApp"}
           </button>
         </div>

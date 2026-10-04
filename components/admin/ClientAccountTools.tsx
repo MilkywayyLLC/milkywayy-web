@@ -7,6 +7,7 @@ import {
   adminInvite,
   updateClientAccount,
   type AdminResult,
+  resendInvite,
 } from "@/lib/portal/admin-actions";
 import { setRetention } from "@/lib/portal/admin-project-actions";
 
@@ -128,6 +129,10 @@ function InviteRound({ id, name, again }: { id: string; name: string; again: () 
               <option value="member">Member</option>
             </select>
           </div>
+          <label className="ad-check">
+            <input type="checkbox" name="email_invite" defaultChecked />
+            Email them “Your Milkywayy portal is ready” (needs an email)
+          </label>
           {state?.error && (
             <p className="ad-status error" role="alert">
               {state.error}
@@ -141,6 +146,34 @@ function InviteRound({ id, name, again }: { id: string; name: string; again: () 
         </form>
       )}
     </section>
+  );
+}
+
+/** Send "Your Milkywayy portal is ready" again (invites with an email). */
+export function ResendInvite({ accountId, inviteId }: { accountId: string; inviteId: string }) {
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<{ ok: boolean; text?: string }>();
+  return (
+    <>
+      <button
+        type="button"
+        className="ad-btn ghost small"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            const r = await resendInvite(accountId, inviteId);
+            setMsg({ ok: r.ok, text: r.ok ? r.notice : r.error });
+          })
+        }
+      >
+        {pending ? "Sending…" : "Resend invite"}
+      </button>
+      {msg && (
+        <span className={msg.ok ? "ad-status" : "ad-status error"} role="status">
+          {msg.text}
+        </span>
+      )}
+    </>
   );
 }
 

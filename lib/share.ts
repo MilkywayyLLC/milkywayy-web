@@ -52,8 +52,7 @@ export type ListingPage =
       contacts: ShareContact[];
       brand: ShareBrand;
     }
-  | { state: "unavailable" | "missing" }
-  | { state: "moved"; slug: string | null };
+  | { state: "unavailable" | "missing" };
 export type CollectionItem = Pick<
   ShareListing,
   "slug" | "title" | "purpose" | "price" | "currency" | "location" | "beds" | "baths" | "size_sqft"
@@ -66,8 +65,7 @@ export type CollectionPage =
       contacts: ShareContact[];
       brand: ShareBrand;
     }
-  | { state: "unavailable" | "missing" }
-  | { state: "moved"; slug: string | null };
+  | { state: "unavailable" | "missing" };
 
 export const shareReady = () => !!(portalUrl && portalKey && process.env.PORTAL_ADMIN_SECRET);
 

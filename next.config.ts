@@ -16,11 +16,13 @@ const nextConfig: NextConfig = {
     // Property shoots and the booking builder merged into /property-shoots (owner, 1 Oct 2026).
     return [
       { source: "/production/property-shoots", destination: "/property-shoots", statusCode: 301 },
-      { source: "/book", destination: "/property-shoots", statusCode: 301 },
       // The current milkywayy.com (crawled 2 Oct 2026; its pages are noindex, so this is about
-      // bookmarks and shared links rather than rankings). See DECISIONS.md "Phase 7".
-      { source: "/booking", destination: "/property-shoots", statusCode: 301 },
-      { source: "/booking/:path*", destination: "/property-shoots", statusCode: 301 },
+      // bookmarks and shared links rather than rankings). See DECISIONS.md "Phase 7". Booking
+      // links land on the booking builder itself (owner, 4 Oct 2026).
+      { source: "/book", destination: "/property-shoots#booking", statusCode: 301 },
+      { source: "/book-now", destination: "/property-shoots#booking", statusCode: 301 },
+      { source: "/booking", destination: "/property-shoots#booking", statusCode: 301 },
+      { source: "/booking/:path*", destination: "/property-shoots#booking", statusCode: 301 },
       { source: "/portfolio", destination: "/work", statusCode: 301 },
       { source: "/portfolio/:path*", destination: "/work", statusCode: 301 },
       { source: "/privacy-policy", destination: "/privacy", statusCode: 301 },
@@ -29,11 +31,14 @@ const nextConfig: NextConfig = {
       { source: "/contact-us", destination: "/contact", statusCode: 301 },
       { source: "/terms-and-conditions", destination: "/terms", statusCode: 301 },
       { source: "/services", destination: "/", statusCode: 301 },
-      // The old client portal: temporary until it's switched off (CLIENT_PORTAL_GUIDE §11), so
-      // browsers don't remember it. Its share links (/l/, /c/) are the new share pages now; a slug
-      // we don't know goes to OLD_PORTAL_ORIGIN if set, else shows "isn't available" (Phase 13).
-      { source: "/dashboard", destination: "/client-login", permanent: false },
-      { source: "/dashboard/:path*", destination: "/client-login", permanent: false },
+      // The old client portal is gone (owner, 4 Oct 2026: nothing imported, no redirects to it):
+      // its sign-in paths open the new portal's sign-in. Old share links (/l/, /c/) that aren't
+      // ours show "This listing isn't available".
+      { source: "/client-login", destination: "/portal/login", statusCode: 301 },
+      { source: "/login", destination: "/portal/login", statusCode: 301 },
+      { source: "/portal-login", destination: "/portal/login", statusCode: 301 },
+      { source: "/dashboard", destination: "/portal/login", statusCode: 301 },
+      { source: "/dashboard/:path*", destination: "/portal/login", statusCode: 301 },
     ];
   },
   async headers() {

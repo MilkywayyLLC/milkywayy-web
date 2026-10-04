@@ -45,6 +45,7 @@ export default async function Login({
           </p>
         )}
         <SignInMethods
+          email={/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(q.email ?? "") ? q.email!.slice(0, 200) : ""}
           next={next}
           phone={phoneSignIn && (await phoneSignInEnabled())}
           startOn={

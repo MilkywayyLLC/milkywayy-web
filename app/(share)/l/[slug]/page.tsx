@@ -1,6 +1,5 @@
 /* eslint-disable @next/next/no-img-element -- media is pre-sized WebP on R2 (signed URLs), not next/image */
 import type { Metadata } from "next";
-import { permanentRedirect, redirect } from "next/navigation";
 import { cache } from "react";
 import { preconnect, preload } from "react-dom";
 import { Gallery, ReportPage, TrackView, VideoFacade } from "@/components/share/ShareClient";
@@ -13,12 +12,6 @@ type Props = { params: Promise<{ slug: string }> };
 
 // One database read per request, shared by the metadata and the page.
 const load = cache((slug: string) => sharePage("l", slug));
-
-/** Old share links that aren't ours go to the old portal while it still runs (§11). */
-function elsewhere(slug: string) {
-  const old = process.env.OLD_PORTAL_ORIGIN;
-  if (old) redirect(`${old.replace(/\/$/, "")}/l/${encodeURIComponent(slug)}`);
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -50,8 +43,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ListingPage({ params }: Props) {
   const { slug } = await params;
   const d = await load(slug);
-  if (d.state === "moved" && d.slug) permanentRedirect(`/l/${d.slug}`);
-  if (d.state === "missing") elsewhere(slug);
   if (d.state !== "live") return <Unavailable kind="l" />;
 
   const { listing: l, contacts, brand } = d;

@@ -294,9 +294,10 @@ function Revision() {
 
 function Invoices() {
   const rows = [
-    ["INV-2026-031", "Oct · 3 shoots", "AED 3,200", "Due 15 Oct"],
-    ["INV-2026-024", "Sep · 2 shoots + reels", "AED 2,650", "Paid"],
-    ["INV-2026-017", "Aug · 1 shoot", "AED 1,050", "Paid"],
+    // Invoiced at month end: September's work, due in October.
+    ["INV-2026-031", "September · 3 shoots", "AED 3,200", "Due 10 Oct"],
+    ["INV-2026-024", "August · 2 shoots + reels", "AED 2,650", "Paid"],
+    ["INV-2026-017", "July · 1 shoot", "AED 1,050", "Paid"],
   ];
   return (
     <>

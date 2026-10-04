@@ -1,6 +1,5 @@
 /* eslint-disable @next/next/no-img-element -- media is pre-sized WebP on R2 (signed URLs), not next/image */
 import type { Metadata } from "next";
-import { permanentRedirect, redirect } from "next/navigation";
 import { cache } from "react";
 import { ReportPage, TrackView } from "@/components/share/ShareClient";
 import { Brand, Byline, Contacts, requestOrigin, Unavailable } from "@/components/share/ShareParts";
@@ -10,11 +9,6 @@ import { facts, price, sharePage } from "@/lib/share";
 type Props = { params: Promise<{ slug: string }> };
 
 const load = cache((slug: string) => sharePage("c", slug));
-
-function elsewhere(slug: string) {
-  const old = process.env.OLD_PORTAL_ORIGIN;
-  if (old) redirect(`${old.replace(/\/$/, "")}/c/${encodeURIComponent(slug)}`);
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -45,8 +39,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CollectionPage({ params }: Props) {
   const { slug } = await params;
   const d = await load(slug);
-  if (d.state === "moved" && d.slug) permanentRedirect(`/c/${d.slug}`);
-  if (d.state === "missing") elsewhere(slug);
   if (d.state !== "live" || d.listings.length === 0) return <Unavailable kind="c" />;
 
   const { collection: c, contacts, brand } = d;

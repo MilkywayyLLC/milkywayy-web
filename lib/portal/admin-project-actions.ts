@@ -579,3 +579,56 @@ export async function saveThumb(id: string, fileId: string, key: string): Promis
     return fail(e);
   }
 }
+
+// ---------- past projects (owner, 4 Oct 2026: replaces importing from the old portal) ----------
+
+export type PastProjectInput = {
+  account: string;
+  type: "shoot" | "edit" | "avatar";
+  title: string;
+  date: string;
+  area?: string;
+  building?: string;
+  unit?: string;
+  propertyType?: string;
+  size?: string;
+  kind?: string;
+  notes?: string;
+};
+
+/**
+ * A client's earlier work, added by hand: straight to Completed with its original date. Files are
+ * then uploaded or linked on the project page like any delivery (no client email unless ticked).
+ */
+export async function createPastProject(
+  p: PastProjectInput,
+): Promise<ActionResult & { id?: string; ref?: string }> {
+  if (!p.title.trim()) return { ok: false, error: "Give it a title." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(p.date)) return { ok: false, error: "Pick the original date." };
+  if (p.type === "shoot" && (!p.area?.trim() || !p.building?.trim()))
+    return { ok: false, error: "Add the building and area." };
+  try {
+    const rpc = await portalAdminAction();
+    const out = await rpc<{ id: string; ref: string }>("portal_admin_create_past_project", {
+      p_account: p.account,
+      p_type: p.type,
+      p_title: p.title.trim(),
+      p_date: p.date,
+      p_kind: p.kind?.trim() || null,
+      p_area: p.area?.trim() || null,
+      p_building: p.building?.trim() || null,
+      p_unit: p.unit?.trim() || null,
+      p_property_type: p.propertyType || null,
+      p_size: p.size?.trim() || null,
+      p_notes: p.notes?.trim() || null,
+    });
+    revalidatePath(`/admin/accounts/${p.account}`);
+    revalidatePath("/admin/projects");
+    return { ok: true, id: out.id, ref: out.ref, notice: `${out.ref} added.` };
+  } catch (e) {
+    const m = e instanceof Error ? e.message : "";
+    if (/must be in the past/.test(m)) return { ok: false, error: "The date must be in the past." };
+    if (/building and area/.test(m)) return { ok: false, error: "Add the building and area." };
+    return fail(e);
+  }
+}

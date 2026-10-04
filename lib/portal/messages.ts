@@ -252,3 +252,21 @@ export function invoiceEmail(
     button: "Open Billing",
   };
 }
+
+/** "Your Milkywayy portal is ready": the invite Milkywayy sends when it sets a client up. */
+export function portalReadyEmail(o: {
+  name?: string | null;
+  account: string;
+  role: string;
+  link: string;
+}) {
+  return {
+    subject: "Your Milkywayy portal is ready",
+    lines: [
+      `Hi ${firstName(o.name)},`,
+      `Your Milkywayy client portal for ${o.account} is ready${o.role === "owner" ? "" : `, and you've been added to it`}. Your shoots, edits, downloads and invoices are all in one place.`,
+      "Sign in with this email address: we'll send you a 6-digit code. No password needed.",
+    ],
+    button: "Sign in to your portal",
+  };
+}

@@ -104,6 +104,9 @@ export type Project = {
     script_by?: "milkywayy" | "client";
     /** Booked with this account's email while signed out (owner, 3 Oct 2026). */
     attached_by_email?: boolean;
+    /** Added by hand from before the portal (owner, 4 Oct 2026), with its original date. */
+    past?: boolean;
+    original_date?: string;
   };
   due_at: string | null;
   shoot_date: string | null;

@@ -3163,6 +3163,8 @@
     padding: 18px;
     min-height: 330px;
   }
+  /* Never two screens at once: the outgoing one fades out first (140ms, no movement), then the
+     new one fades and slides in from 150ms. */
   .dsh-screen {
     grid-area: 1 / 1;
     display: grid;
@@ -3173,18 +3175,18 @@
     transform: translateY(8px);
     visibility: hidden;
     transition:
-      opacity 0.35s ease,
-      transform 0.35s ease,
-      visibility 0s 0.35s;
+      opacity 0.14s ease-in,
+      transform 0s 0.14s,
+      visibility 0s 0.14s;
   }
   .dsh-screen.on {
     opacity: 1;
     transform: none;
     visibility: visible;
     transition:
-      opacity 0.35s ease 0.08s,
-      transform 0.35s ease 0.08s,
-      visibility 0s;
+      opacity 0.3s ease-out 0.15s,
+      transform 0.3s ease-out 0.15s,
+      visibility 0s 0.15s;
   }
   /* screen parts */
   .dsh-eb {
@@ -3870,5 +3872,13 @@
     font: inherit;
     cursor: pointer;
     text-align: left;
+  }
+}
+
+/* Booking: a property line with no services can't be sent. */
+@layer components {
+  .bk-warn {
+    color: var(--rec);
+    font-weight: 600;
   }
 }

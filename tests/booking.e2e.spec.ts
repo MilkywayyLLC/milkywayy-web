@@ -182,6 +182,14 @@ test.describe("desktop builder", () => {
     await expect(photo).toHaveAttribute("aria-pressed", "false");
     await expect(photoPanel).toHaveCount(0);
     await expect(total(b)).toHaveText("AED 0");
+    // Nothing selected: the request can't be sent.
+    const send = page.getByRole("button", { name: "Send request on WhatsApp" }).first();
+    await expect(send).toBeDisabled();
+    await expect(page.getByText("Pick at least one service").first()).toBeVisible();
+    await photo.click();
+    await expect(send).toBeEnabled();
+    await expect(page.getByText("Pick at least one service")).toHaveCount(0);
+    await photo.click();
     await photo.click();
     await expect(photo).toHaveAttribute("aria-pressed", "true");
     await expect(total(b)).toHaveText("AED 500");

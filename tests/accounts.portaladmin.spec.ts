@@ -28,10 +28,10 @@ test.describe("Owner", () => {
     await page.getByLabel("Billing currency").selectOption("USD");
     await page.getByRole("checkbox", { name: "Post-production" }).check();
     await page.getByLabel("Contact name").fill("Hana Holiday");
-    await page.getByLabel("Email").fill(`${RUN}-hana@example.com`);
+    await page.getByLabel("Email", { exact: true }).fill(`${RUN}-hana@example.com`);
     await page.getByRole("button", { name: "Create client" }).click();
 
-    await expect(page).toHaveURL(/\/admin\/accounts\/[0-9a-f-]{36}\?created=1$/);
+    await expect(page).toHaveURL(/\/admin\/accounts\/[0-9a-f-]{36}\?created=1(&emailed=\w+)?$/);
     await expect(page.getByRole("heading", { name: NAME })).toBeVisible();
     await expect(page.getByText("Client created.")).toBeVisible();
     await expect(page.getByTestId("invites")).toContainText("Hana Holiday");

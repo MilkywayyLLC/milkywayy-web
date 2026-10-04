@@ -17,7 +17,6 @@ const PAGES = [
   "/about",
   "/privacy",
   "/terms",
-  "/client-login",
 ];
 const WIDTHS = [360, 390, 768, 1440];
 const CHAT = "971507263306";

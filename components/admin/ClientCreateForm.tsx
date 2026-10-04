@@ -97,6 +97,10 @@ export function ClientCreateForm() {
           Either is enough. They join as Owner the first time they sign in with it.
         </span>
       </div>
+      <label className="ad-check">
+        <input type="checkbox" name="email_invite" defaultChecked />
+        Email the contact “Your Milkywayy portal is ready” with a sign-in link
+      </label>
       {state?.error && (
         <p className="ad-status error" role="alert">
           {state.error}
