@@ -98,7 +98,8 @@ test("a visitor reports a page; it shows under Reported; turned off with a reaso
   const off = page.getByTestId("shares").getByRole("group", { name: TITLE, exact: true });
   await expect(off).toContainText("Reason: Already rented (reported)");
   await off.getByRole("button", { name: "Turn back on" }).click();
-  await expect(off.getByRole("status")).toContainText("Turned back on");
+  // Back on: it leaves the "Turned off" list.
+  await expect(off).toHaveCount(0);
   await pub.reload();
   await expect(pub.getByRole("heading", { level: 1 })).toHaveText(TITLE);
   // Reports were cleared when it was turned off.
@@ -143,9 +144,13 @@ test("a photo uploaded in the admin gets its web versions, and the share page sh
   await expect(page.getByText(/IMG_9\.jpg .* Done/)).toBeVisible({ timeout: 60_000 });
   await page.getByRole("button", { name: "Publish Delivery 1" }).click();
   await expect(page.getByText("Make web versions for share pages")).toHaveCount(0);
-  const [file] = await ok<{ id: string; web_key: string; og_key: string }[]>(
-    c.db.from("project_files").select("id, web_key, og_key").eq("project_id", p.id),
-  );
+  // The client only sees published files: wait for the publish to land.
+  const files = () =>
+    ok<{ id: string; web_key: string; og_key: string }[]>(
+      c.db.from("project_files").select("id, web_key, og_key").eq("project_id", p.id),
+    );
+  await expect.poll(async () => (await files()).length, { timeout: 15_000 }).toBe(1);
+  const [file] = await files();
   expect(file.web_key).toBe(`projects/${p.id}/web/${file.id}.webp`);
   expect(file.og_key).toBe(`projects/${p.id}/web/${file.id}.og.jpg`);
 });

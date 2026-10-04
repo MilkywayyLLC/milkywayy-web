@@ -42,41 +42,58 @@ export type LineItem = {
   ref: string;
   title?: string;
 };
-/** A package client's month (billing add-on, owner 4 Oct 2026). */
+/**
+ * A package client's calendar month (owner, 4 Oct 2026): the first month is pro-rated when the
+ * package starts mid-month (price and inclusions by days), and work delivered before the start
+ * that month is pay as you go. The live view, statements and invoices share this.
+ */
 export type PlanView = {
   name: string;
   price: number;
+  full_price: number;
+  prorated: boolean;
+  days: number;
+  month_days: number;
   currency: string;
   inclusions: Inclusion[];
   term_months: 1 | 6;
   discount_pct: number | null;
-  month_no: number;
+  /** Month n of the contract; null in a pro-rated first month. */
+  month_no: number | null;
   started_on: string | null;
   ends_on: string | null;
+  month: string;
   renews_on: string;
   period_start: string;
   usage: Usage[];
   overage_total: number;
   extras: LineItem[];
   extras_total: number;
+  before: LineItem[];
+  before_total: number;
   estimate: number;
 };
+/**
+ * An offer for a client. `saving` is null without enough history (or on a package); a pinned
+ * offer that doesn't save money shows as "Your offer" without a saving (show_saving false).
+ */
 export type Offer = {
   package_id: string;
   package: string;
   inclusions: Inclusion[];
   currency: string;
   price: number;
-  average: number;
-  overage: number;
-  uncovered: number;
-  cost: number;
-  saving: number;
   discount_pct: number;
   price_6: number;
-  saving_6: number;
   pinned: boolean;
-  active_months: number;
+  show_saving: boolean;
+  saving: number | null;
+  saving_6: number | null;
+  average?: number;
+  overage?: number;
+  uncovered?: number;
+  cost?: number;
+  active_months?: number;
 };
 export type MyBilling = {
   currency: "AED" | "USD";

@@ -122,9 +122,11 @@ export default async function ClientPage({ params, searchParams }: Props) {
             <b>
               {billing.plan.package.name} ·{" "}
               {money(billing.plan.package.currency, billing.plan.package.price)}/month
-              {billing.plan.package.term_months === 6
-                ? ` · Month ${billing.plan.package.month_no} of 6${billing.plan.package.ends_on ? `, ends ${dateLabel(billing.plan.package.ends_on)}` : ""}`
-                : ""}{" "}
+              {billing.plan.package.prorated
+                ? ` · first month pro-rated (${billing.plan.package.days}/${billing.plan.package.month_days} days)`
+                : billing.plan.package.term_months === 6
+                  ? ` · Month ${billing.plan.package.month_no} of 6${billing.plan.package.ends_on ? `, ends ${dateLabel(billing.plan.package.ends_on)}` : ""}`
+                  : ""}{" "}
               · renews {dateLabel(billing.plan.package.renews_on)}
             </b>
             {billing.plan.package.usage.map((u) => (

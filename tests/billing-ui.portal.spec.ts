@@ -91,8 +91,11 @@ test("Owner on a package: plan name, usage meter, renewal date; the badge says s
       p_account: c.account,
       p_mode: "package",
       p_package: pkg,
-      p_started: day(-5),
-      p_renews: day(25),
+      p_started:
+        new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" })
+          .format(new Date())
+          .slice(0, 8) + "01",
+      p_renews: null,
     }),
   );
   await deliveredItems(c.account, "More reels", [{ kind: "reel", qty: 4, price: 0 }]);

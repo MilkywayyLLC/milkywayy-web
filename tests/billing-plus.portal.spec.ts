@@ -11,6 +11,7 @@ import {
   deliveredItems,
   hasPortalAdmin,
   newRun,
+  setDeliveredAt,
   signedIn,
   signInUI,
 } from "./helpers/portal";
@@ -205,6 +206,38 @@ test("the minimum is set in admin; the switches hide it; a pinned offer override
     cost: 2200,
     saving: 1100,
   });
+  // Pinned offers always show (owner, 4 Oct 2026): even with the switch off or under the minimum…
+  await admin("portal_admin_save_billing_settings", {
+    p: { suggestions_enabled: false, min_saving_aed: 5000 },
+  });
+  expect((await mine()).suggestion).toMatchObject({
+    package: `E2E Offer ${TAG}`,
+    show_saving: true,
+  });
+  await admin("portal_admin_save_billing_settings", {
+    p: { suggestions_enabled: true, min_saving_aed: 500 },
+  });
+  // …and one that doesn't save money is "Your offer", without a saving.
+  const dear = await pkg({
+    p_account: account,
+    p_name: `E2E Dear ${TAG}`,
+    p_price: 9000,
+    p_inclusions: [{ key: "reel", label: "Reels", qty: 20 }],
+  });
+  await admin("portal_admin_set_client_billing", {
+    p_account: account,
+    p: { pinned_package_id: dear },
+  });
+  expect((await mine()).suggestion).toMatchObject({
+    package: `E2E Dear ${TAG}`,
+    pinned: true,
+    show_saving: false,
+    saving: -6600, // 3,300 − (9,000 + the 900 avatar video it doesn't cover)
+  });
+  // "Never show" still wins.
+  await admin("portal_admin_hide_suggestions", { p_account: account, p_hide: true });
+  expect((await mine()).suggestion).toBeNull();
+  await admin("portal_admin_hide_suggestions", { p_account: account, p_hide: false });
   await admin("portal_admin_set_client_billing", {
     p_account: account,
     p: { pinned_package_id: null },
@@ -302,8 +335,7 @@ test("a 6-month package: Month n of 6, end date, usage left, overage and the mon
   ).plan;
   expect(plan.price).toBe(2700); // 3,000 less 10% for the 6-month term
   expect(plan.term_months).toBe(6);
-  expect(plan.month_no).toBeGreaterThanOrEqual(2);
-  expect(plan.month_no).toBeLessThanOrEqual(3);
+  expect(plan.month_no).toBe(3); // started on the 1st two months ago
   expect(plan.ends_on).toBeTruthy();
   const reels = plan.usage.find((u) => u.key === "reel")!;
   const days = plan.usage.find((u) => u.key === "shoot_day")!;
@@ -321,6 +353,69 @@ test("a 6-month package: Month n of 6, end date, usage left, overage and the mon
     p_started: null,
     p_renews: null,
   });
+});
+
+test("calendar months: a mid-month start pro-rates the first month (price and inclusions); earlier work is pay as you go; the statement matches", async () => {
+  const pro = await clientAccount(RUN, "pro", "Pro Realty");
+  const last = monthStart(1);
+  const ym = last.slice(0, 8);
+  const dim = new Date(Date.UTC(+last.slice(0, 4), +last.slice(5, 7), 0)).getUTCDate();
+  const p = await pkg({
+    p_account: pro.account,
+    p_name: `Pro Monthly ${TAG}`,
+    p_price: 3100,
+    p_inclusions: [{ key: "reel", label: "Reels", qty: 10 }],
+    p_overage: [{ key: "reel", label: "Extra reel", amount: 200 }],
+  });
+  await admin("portal_admin_set_plan", {
+    p_account: pro.account,
+    p_mode: "package",
+    p_package: p,
+    p_started: `${ym}16`,
+    p_renews: null,
+  });
+  const before = await deliveredItems(pro.account, "Before the package", [
+    { kind: "reel", qty: 2, price: 150 },
+  ]);
+  await setDeliveredAt(before.id, `${ym}05T10:00:00+04:00`);
+  const within = await deliveredItems(pro.account, "On the package", [
+    { kind: "reel", qty: 7, price: 0 },
+    { kind: "avatar_video", qty: 1, price: 900 },
+  ]);
+  await setDeliveredAt(within.id, `${ym}20T10:00:00+04:00`);
+  await admin("portal_admin_freeze_statements", { p_month: last, p_account: pro.account });
+  const st = await admin<{
+    mode: string;
+    total: number;
+    package: { prorated: boolean; price: number; full_price: number; before_total: number };
+    overage: { key: string; qty: number; used: number; over: number }[];
+  }>("portal_admin_statement", { p_account: pro.account, p_month: last });
+  const frac = (dim - 15) / dim;
+  const price = Math.round(3100 * frac * 100) / 100;
+  const reels = Math.round(10 * frac);
+  const over = Math.max(0, 7 - reels);
+  expect(st.mode).toBe("package");
+  expect(st.package).toMatchObject({ prorated: true, full_price: 3100, price, before_total: 300 });
+  expect(st.overage[0]).toMatchObject({ key: "reel", qty: reels, used: 7, over });
+  expect(Number(st.total)).toBeCloseTo(price + over * 200 + 900 + 300, 2);
+  // This month is the first full one: full price, full inclusions.
+  const now = await must<{
+    mode: string;
+    plan: { prorated: boolean; price: number; month_no: number };
+  }>(pro.db.rpc("my_billing", { p_account: pro.account }));
+  expect(now.mode).toBe("package");
+  expect(now.plan).toMatchObject({ prorated: false, price: 3100, month_no: 1 });
+  // A package starting next month: this month is still pay as you go.
+  await admin("portal_admin_set_plan", {
+    p_account: pro.account,
+    p_mode: "package",
+    p_package: p,
+    p_started: monthStart(-1),
+    p_renews: null,
+  });
+  expect(
+    (await must<{ mode: string }>(pro.db.rpc("my_billing", { p_account: pro.account }))).mode,
+  ).toBe("payg");
 });
 
 test("Stripe: Paid only when the session, amount and currency match", async () => {
@@ -576,6 +671,22 @@ test("pay as you go: the suggestion card (monthly and 6-month), last month's fin
     await expect(row).toContainText("We couldn’t confirm your transfer: Reference missing");
   }
 
+  // Pinned but not cheaper: "Your offer", no saving line.
+  const dear = await pkg({
+    p_account: ui.account,
+    p_name: `Plus Premium ${TAG}`,
+    p_price: 8000,
+    p_inclusions: [{ key: "reel", label: "Reels", qty: 30 }],
+  });
+  await admin("portal_admin_set_client_billing", {
+    p_account: ui.account,
+    p: { pinned_package_id: dear },
+  });
+  await page.reload();
+  await expect(card).toContainText("Your offer");
+  await expect(card).toContainText(`Plus Premium ${TAG}: AED 8,000 a month`);
+  await expect(card).not.toContainText("save ~");
+
   // A Member: no Billing tab, no prices.
   const m = await browser.newPage();
   await signInUI(m, uiMember);
@@ -591,6 +702,11 @@ test("pay as you go: the suggestion card (monthly and 6-month), last month's fin
 test("a package client: Month n of 6, usage left and over, other work, the month's estimate", async ({
   page,
 }) => {
+  // No pinned offer (a pinned one shows to package clients too).
+  await admin("portal_admin_set_client_billing", {
+    p_account: ui.account,
+    p: { pinned_package_id: null },
+  });
   const contract = await pkg({
     p_account: ui.account,
     p_name: `Plus Contract ${TAG}`,

@@ -32,8 +32,8 @@ const fail = (e: unknown): BillingResult => {
     return { ok: false, error: "The due date can’t be before the invoice date." };
   if (/a client is on this package/.test(m))
     return { ok: false, error: "A client is on this package. Move them to another plan first." };
-  if (/choose the package and its renewal date/.test(m))
-    return { ok: false, error: "Choose the package and its renewal date." };
+  if (/choose the package and its (renewal|start) date/.test(m))
+    return { ok: false, error: "Choose the package and its start date." };
   if (/each inclusion needs/.test(m))
     return { ok: false, error: "Each inclusion needs a kind and a quantity above 0." };
   if (/no rate for that kind/.test(m))

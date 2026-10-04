@@ -263,3 +263,13 @@ export const shareAlias = (slug: string, listing: string) =>
 /** A phone browser's user agent: share-page counting ignores headless browsers and bots. */
 export const PHONE_UA =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+
+/** Put a test project's delivery (and its line items' month) on an exact date (dev-only). */
+export const setDeliveredAt = (project: string, at: string) =>
+  must(
+    portalClient().rpc("e2e_set_delivered_at", {
+      p_secret: secret(),
+      p_project: project,
+      p_at: at,
+    }),
+  );

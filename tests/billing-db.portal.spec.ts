@@ -28,6 +28,10 @@ const must = async <T>(p: PromiseLike<{ data: unknown; error: { message: string 
   if (error) throw new Error(error.message);
   return data as T;
 };
+/** The 1st of this month (Dubai): packages run by calendar month. */
+const firstOfMonth =
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" }).format(new Date()).slice(0, 8) +
+  "01";
 const day = (offset: number) => new Date(Date.now() + offset * 864e5).toISOString().slice(0, 10);
 
 test.beforeAll(async () => {
@@ -151,8 +155,8 @@ test("a package's usage meter counts delivered items of each kind in the period"
       p_account: account,
       p_mode: "package",
       p_package: pkg,
-      p_started: day(-10),
-      p_renews: day(20),
+      p_started: firstOfMonth,
+      p_renews: null,
     }),
   );
   await deliveredItems(account, "More reels", [{ kind: "reel", qty: 4, price: 0 }]);

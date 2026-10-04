@@ -1065,7 +1065,7 @@ export function PlanForm({ account, billing }: { account: string; billing: Clien
             mode,
             mode === "package" ? String(f.get("package") ?? "") || null : null,
             String(f.get("started") ?? "") || null,
-            String(f.get("renews") ?? "") || null,
+            null,
             term,
             String(f.get("ends") ?? "") || null,
           );
@@ -1116,29 +1116,24 @@ export function PlanForm({ account, billing }: { account: string; billing: Clien
               <option value={6}>6-month contract (package’s discount applies)</option>
             </select>
           </div>
-          <div className="ad-grid2">
-            <div className="ad-field">
-              <label htmlFor="plan-start">Started</label>
-              <input
-                id="plan-start"
-                name="started"
-                type="date"
-                defaultValue={billing.plan.started_on ?? ""}
-              />
-            </div>
-            <div className="ad-field">
-              <label htmlFor="plan-renews">Renews on</label>
-              <input
-                id="plan-renews"
-                name="renews"
-                type="date"
-                defaultValue={billing.plan.renews_on ?? ""}
-              />
-            </div>
+          <div className="ad-field">
+            <label htmlFor="plan-start">Starts on</label>
+            <input
+              id="plan-start"
+              name="started"
+              type="date"
+              defaultValue={billing.plan.started_on ?? ""}
+            />
+            <span className="ad-small ad-muted">
+              Packages run by calendar month and renew on the 1st. Starting mid-month pro-rates the
+              first month (price and inclusions by days).
+            </span>
           </div>
           {term === 6 && (
             <div className="ad-field">
-              <label htmlFor="plan-ends">Contract ends (blank: 6 months from the start)</label>
+              <label htmlFor="plan-ends">
+                Contract ends (blank: 6 full months after a pro-rated first month)
+              </label>
               <input
                 id="plan-ends"
                 name="ends"
@@ -1299,30 +1294,33 @@ export function ClientOffer({ account, billing }: { account: string; billing: Cl
 /** What the engine would suggest, and why the client does or doesn't see it. */
 export function OfferPreview({ billing }: { billing: ClientBilling }) {
   const o = billing.best_offer;
-  if (billing.plan.mode === "package") return null;
-  if (!o)
+  if (!o) {
+    if (billing.plan.mode === "package") return null;
     return (
       <p className="ad-small ad-muted" style={{ margin: 0 }} data-testid="offer-preview">
         No suggestion: needs work in at least 2 of the last 3 complete months.
       </p>
     );
-  const why = billing.suggestion
-    ? "The client sees this."
-    : billing.hide_suggestions
-      ? "Hidden for this client."
-      : "Not shown: suggestions are off, or the saving is under the minimum.";
+  }
+  const why = billing.hide_suggestions
+    ? "Hidden for this client (“never show”)."
+    : o.pinned
+      ? "Pinned: the client always sees it."
+      : billing.suggestion
+        ? "The client sees this."
+        : "Not shown: suggestions are off, or the saving is under the minimum.";
   return (
     <div className="ad-note" style={{ margin: 0 }} data-testid="offer-preview">
       <b>
-        Best offer: {o.package}
-        {o.pinned ? " (pinned)" : ""}
+        {o.pinned ? "Pinned offer" : "Best offer"}: {o.package}
       </b>{" "}
       · {inclusionsText(o.inclusions)}
       <div className="ad-small">
-        Average {money(o.currency, o.average)}/month · with the package {money(o.currency, o.cost)}{" "}
-        ({money(o.currency, o.price)} + overage {money(o.currency, o.overage)} + not covered{" "}
-        {money(o.currency, o.uncovered)}) · saving {money(o.currency, o.saving)}/month; 6 months{" "}
-        {money(o.currency, o.price_6)}/month, saving {money(o.currency, o.saving_6)}. {why}
+        {money(o.currency, o.price)}/month; 6 months {money(o.currency, o.price_6)}/month.{" "}
+        {o.saving != null && o.average != null
+          ? `Average ${money(o.currency, o.average)}/month · with the package ${money(o.currency, o.cost ?? 0)} (overage ${money(o.currency, o.overage ?? 0)} + not covered ${money(o.currency, o.uncovered ?? 0)}) · saving ${money(o.currency, o.saving)}/month${o.show_saving ? "" : " (none: shown as “Your offer”)"}. `
+          : "No saving worked out (on a package, or not enough history): shown as “Your offer”. "}
+        {why}
       </div>
     </div>
   );

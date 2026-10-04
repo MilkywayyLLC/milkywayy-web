@@ -115,9 +115,13 @@ test("a private package, the client on it, and line items counting towards usage
   await billing
     .getByLabel("Package", { exact: true })
     .selectOption({ label: "Growth · AED 4,000/month" });
+  // Calendar months: start on the 1st (mid-month would pro-rate the first month).
   await billing
-    .getByLabel("Renews on")
-    .fill(new Date(Date.now() + 20 * 864e5).toISOString().slice(0, 10));
+    .getByLabel("Starts on")
+    .fill(
+      new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" }).format(new Date()).slice(0, 8) +
+        "01",
+    );
   await billing.getByRole("button", { name: "Save plan" }).click();
   await expect(billing.getByRole("status").filter({ hasText: "Plan saved" })).toBeVisible();
 
@@ -210,12 +214,12 @@ test("the invoice form takes the amount from the frozen statement and warns if i
   await page.goto("/admin/billing");
   const form = page.getByRole("form", { name: "New invoice" });
   await form.getByLabel("Client", { exact: true }).selectOption({ label: NAME });
-  // On the Growth package (above): 5 reels are inside its 10, so the month is the package price.
-  await expect(form.getByTestId("statement-note")).toContainText("AED 4,000");
-  await expect(form.getByLabel("Amount", { exact: true })).toHaveValue("4000");
+  // The Growth package (above) starts this month, so last month was pay as you go: 5 × 300.
+  await expect(form.getByTestId("statement-note")).toContainText("AED 1,500");
+  await expect(form.getByLabel("Amount", { exact: true })).toHaveValue("1500");
   await expect(form.getByRole("alert")).toHaveCount(0);
-  await form.getByLabel("Amount", { exact: true }).fill("4100");
-  await expect(form.getByRole("alert")).toContainText("Differs from the statement (AED 4,000)");
+  await form.getByLabel("Amount", { exact: true }).fill("1600");
+  await expect(form.getByRole("alert")).toContainText("Differs from the statement (AED 1,500)");
 
   // The client says they've paid by transfer; the admin confirms it.
   const inv = await adminRpc("portal_admin_create_invoice", {
@@ -223,7 +227,7 @@ test("the invoice form takes the amount from the frozen statement and warns if i
     p_number: `TR-${RUN.slice(-5)}`,
     p_issued: last,
     p_due: new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10),
-    p_amount: 4000,
+    p_amount: 1500,
     p_currency: "AED",
     p_status: "due",
     p_pdf_key: null,
@@ -254,6 +258,6 @@ test("the invoice form takes the amount from the frozen statement and warns if i
   await page.goto(`/admin/accounts/${c.account}`);
   const billing = page.getByTestId("client-billing");
   await billing.getByText("Monthly statements").click();
-  await expect(billing.getByTestId("statements")).toContainText("AED 4,000");
+  await expect(billing.getByTestId("statements")).toContainText("AED 1,500");
   await expect(billing.getByLabel("How they pay")).toHaveValue("");
 });

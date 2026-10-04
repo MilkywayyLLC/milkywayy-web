@@ -76,11 +76,13 @@ export default async function Billing({
             <div className="pt-row">
               <span className="pt-eb">
                 Your plan ·{" "}
-                {b.plan.term_months === 6
-                  ? b.plan.month_no <= 6
-                    ? `Month ${b.plan.month_no} of 6`
-                    : "6-month contract"
-                  : "monthly"}
+                {b.plan.prorated
+                  ? "first month, pro-rated"
+                  : b.plan.term_months === 6
+                    ? b.plan.month_no && b.plan.month_no <= 6
+                      ? `Month ${b.plan.month_no} of 6`
+                      : "6-month contract"
+                    : "monthly"}
               </span>
               <span className="pt-meta">Renews {dateLabel(b.plan.renews_on)}</span>
             </div>
@@ -88,11 +90,18 @@ export default async function Billing({
               {b.plan.name}
             </h2>
             <span className="pt-meta">
-              {money(b.plan.currency, b.plan.price)} a month
+              {money(b.plan.currency, b.plan.full_price)} a month
               {b.plan.term_months === 6 && b.plan.ends_on
                 ? ` · 6-month contract until ${dateLabel(b.plan.ends_on)}`
                 : ""}
             </span>
+            {b.plan.prorated && (
+              <span className="pt-meta" data-testid="prorated">
+                Started {dateLabel(b.plan.started_on)}: this month is {Number(b.plan.days)} of{" "}
+                {Number(b.plan.month_days)} days, so {money(b.plan.currency, b.plan.price)} and the
+                inclusions below are pro-rated. Full months from {dateLabel(b.plan.renews_on)}.
+              </span>
+            )}
             <div className="pt-meters">
               {b.plan.usage.map((u) => {
                 const used = Number(u.used);
@@ -125,6 +134,27 @@ export default async function Billing({
                 );
               })}
             </div>
+            {b.plan.before.length > 0 && (
+              <>
+                <span className="pt-eb">Before your package started (pay as you go)</span>
+                <ul className="pt-lines">
+                  {b.plan.before.map((i, n) => (
+                    <li key={n}>
+                      <span>
+                        {i.description}
+                        <span className="pt-meta">
+                          {" "}
+                          · {i.ref} · {Number(i.qty)} × {money(b.plan!.currency, i.unit_price)}
+                        </span>
+                      </span>
+                      <span className="pt-mono">
+                        {money(b.plan!.currency, Number(i.qty) * Number(i.unit_price))}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
             {b.plan.extras.length > 0 && (
               <>
                 <span className="pt-eb">Other work this month</span>
@@ -156,6 +186,9 @@ export default async function Billing({
                     : ""}
                   {Number(b.plan.extras_total) > 0
                     ? ` + ${money(b.plan.currency, Number(b.plan.extras_total))} other work`
+                    : ""}
+                  {Number(b.plan.before_total) > 0
+                    ? ` + ${money(b.plan.currency, Number(b.plan.before_total))} before the start`
                     : ""}
                   {" · final invoice after month end"}
                 </span>
@@ -206,34 +239,46 @@ export default async function Billing({
 
         {b?.suggestion ? (
           <section className="pt-card pt-suggest" aria-labelledby="sug-h" data-testid="suggestion">
-            <span className="pt-eb">A package would save you money</span>
+            <span className="pt-eb">
+              {b.suggestion.show_saving ? "A package would save you money" : "Your offer"}
+            </span>
             <h2 id="sug-h" className="pt-h2">
               {b.suggestion.package}: {money(b.suggestion.currency, b.suggestion.price)} a month
             </h2>
             <span>Includes {inclusionsText(b.suggestion.inclusions)} every month.</span>
-            <span className="pt-meta">
-              Over your last 3 months you averaged{" "}
-              {money(b.suggestion.currency, b.suggestion.average)} a month. With{" "}
-              {b.suggestion.package}, the same work would be about{" "}
-              {money(b.suggestion.currency, b.suggestion.cost)}
-              {Number(b.suggestion.overage) + Number(b.suggestion.uncovered) > 0
-                ? " (including extras at your rates)"
-                : ""}
-              .
-            </span>
+            {b.suggestion.show_saving &&
+              b.suggestion.average != null &&
+              b.suggestion.cost != null && (
+                <span className="pt-meta">
+                  Over your last 3 months you averaged{" "}
+                  {money(b.suggestion.currency, b.suggestion.average)} a month. With{" "}
+                  {b.suggestion.package}, the same work would be about{" "}
+                  {money(b.suggestion.currency, b.suggestion.cost)}
+                  {Number(b.suggestion.overage) + Number(b.suggestion.uncovered) > 0
+                    ? " (including extras at your rates)"
+                    : ""}
+                  .
+                </span>
+              )}
             <dl className="pt-offer">
               <div>
                 <dt>Monthly</dt>
                 <dd>
                   {money(b.suggestion.currency, b.suggestion.price)}
-                  <small>save ~{money(b.suggestion.currency, b.suggestion.saving)} a month</small>
+                  {b.suggestion.show_saving && b.suggestion.saving != null && (
+                    <small>save ~{money(b.suggestion.currency, b.suggestion.saving)} a month</small>
+                  )}
                 </dd>
               </div>
               <div>
                 <dt>6 months ({Number(b.suggestion.discount_pct)}% off)</dt>
                 <dd>
                   {money(b.suggestion.currency, b.suggestion.price_6)}
-                  <small>save ~{money(b.suggestion.currency, b.suggestion.saving_6)} a month</small>
+                  {b.suggestion.show_saving && b.suggestion.saving_6 != null && (
+                    <small>
+                      save ~{money(b.suggestion.currency, b.suggestion.saving_6)} a month
+                    </small>
+                  )}
                 </dd>
               </div>
             </dl>
