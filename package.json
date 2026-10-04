@@ -16,7 +16,7 @@
     "db:seed:sql": "node scripts/seed.mts",
     "db:parity": "node --env-file=.env.local scripts/db-parity.mts",
     "test:ios": "playwright test --project=ios-safari",
-    "test:portal": "LEADS_DB=portal playwright test --project=portal && playwright test --project=admin-setup --project=portal-admin --no-deps",
+    "test:portal": "LEADS_DB=portal playwright test --project=portal --workers=3 && playwright test --project=admin-setup --project=portal-admin --no-deps",
     "deploy:portal-preview": "bash scripts/deploy-portal-preview.sh"
   },
   "dependencies": {
