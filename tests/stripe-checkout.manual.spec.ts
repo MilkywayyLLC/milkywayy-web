@@ -45,22 +45,19 @@ test("Pay now → Stripe test Checkout (4242) → the preview's webhook marks it
   const row = page.getByRole("group", { name: `Invoice ${number}`, exact: true });
   await row.getByRole("button", { name: `Pay invoice ${number} now` }).click();
   await page.waitForURL(/checkout\.stripe\.com/, { timeout: 60_000 });
-  await expect(page.getByText("TEST MODE", { exact: false }).first()).toBeVisible({
-    timeout: 30_000,
-  });
+  // Stripe marks test mode as "Sandbox" (formerly "Test mode"): never a live payment.
+  await expect(page.getByText(/^(sandbox|test mode)$/i).first()).toBeVisible({ timeout: 30_000 });
 
   // Stripe's published test card.
-  const email = page.locator("#email");
-  if (await email.isVisible().catch(() => false)) await email.fill(c.email);
-  const card = page.locator('[data-testid="card-accordion-item-button"]');
-  if (await card.isVisible().catch(() => false)) await card.click();
-  await page.locator("#cardNumber").fill("4242 4242 4242 4242");
-  await page.locator("#cardExpiry").fill("12 / 34");
-  await page.locator("#cardCvc").fill("123");
-  await page.locator("#billingName").fill("Test Card");
-  const zip = page.locator("#billingPostalCode");
+  const card = page.getByRole("textbox", { name: "Card number" });
+  await card.waitFor({ timeout: 30_000 });
+  await card.fill("4242 4242 4242 4242");
+  await page.getByRole("textbox", { name: "Expiration" }).fill("12 / 34");
+  await page.getByRole("textbox", { name: /CVC/ }).fill("123");
+  await page.getByRole("textbox", { name: "Cardholder name" }).fill("Test Card");
+  const zip = page.getByRole("textbox", { name: /ZIP|Postal/i });
   if (await zip.isVisible().catch(() => false)) await zip.fill("10001");
-  await page.locator('[data-testid="hosted-payment-submit-button"]').click();
+  await page.getByRole("button", { name: /^Pay/ }).click();
 
   await page.waitForURL(/\/portal\/billing\?paid=/, { timeout: 90_000 });
   await expect(page.getByRole("status").first()).toContainText(number);
