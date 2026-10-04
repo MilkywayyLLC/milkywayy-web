@@ -95,17 +95,39 @@ export type Offer = {
   cost?: number;
   active_months?: number;
 };
+/**
+ * What the client's Billing page gets (owner, 4 Oct 2026): money only on invoices. A package is
+ * usage as counts; a suggestion is the package, its prices and the saving, never their spend.
+ */
+export type ClientPlan = {
+  name: string;
+  prorated: boolean;
+  term_months: 1 | 6;
+  month_no: number | null;
+  started_on: string | null;
+  ends_on: string | null;
+  renews_on: string;
+  usage: Pick<Usage, "key" | "label" | "qty" | "used" | "remaining" | "over">[];
+};
+export type ClientOffer = Pick<
+  Offer,
+  | "package_id"
+  | "package"
+  | "inclusions"
+  | "currency"
+  | "price"
+  | "price_6"
+  | "discount_pct"
+  | "pinned"
+  | "show_saving"
+  | "saving"
+  | "saving_6"
+>;
 export type MyBilling = {
   currency: "AED" | "USD";
   mode: "payg" | "package";
-  plan: PlanView | null;
-  payg: {
-    month: string;
-    total: number;
-    items: LineItem[];
-    last_month: { month: string; total: number; final: boolean } | null;
-  };
-  suggestion: Offer | null;
+  plan: ClientPlan | null;
+  suggestion: ClientOffer | null;
   pay_online: boolean;
   bank: {
     account_name: string | null;
@@ -113,7 +135,35 @@ export type MyBilling = {
     iban: string;
     swift: string | null;
   } | null;
-  statements: { month: string; total: number; currency: string; vat: number }[];
+};
+
+/** A frozen month-end statement: the breakdown behind a monthly invoice. */
+export type StatementRow = {
+  month: string;
+  currency: "AED" | "USD";
+  mode: "payg" | "package";
+  package: {
+    name: string;
+    price: number;
+    full_price: number;
+    prorated: boolean;
+    term_months: number;
+    overage_total: number;
+    extras_total: number;
+    before_total: number;
+  } | null;
+  lines: (LineItem & { amount: number })[];
+  overage: Usage[];
+  subtotal: number;
+  vat_rate: number;
+  vat: number;
+  total: number;
+};
+
+/** "2 extra reels", "1 extra shoot day". */
+export const extraCount = (n: number, label: string) => {
+  const l = label.toLowerCase();
+  return `${n} extra ${n === 1 ? l.replace(/s$/, "") : l}`;
 };
 
 /** Today in Dubai, as YYYY-MM-DD. */

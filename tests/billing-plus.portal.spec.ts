@@ -166,11 +166,13 @@ test("the math: price + overage beyond inclusions + the client's own rates for w
   const s = (await mine()).suggestion!;
   expect(s).toMatchObject({
     package: `E2E Scale ${TAG}`,
-    cost: 2400,
     saving: 900,
     price_6: 1350, // default 10% off for 6 months
     saving_6: 1050,
   });
+  // The client gets the saving, never their own spend or the cost workings.
+  for (const k of ["average", "cost", "overage", "uncovered"]) expect(s).not.toHaveProperty(k);
+  expect((await billing()).best_offer).toMatchObject({ cost: 2400, average: 3300 });
 });
 
 test("the minimum is set in admin; the switches hide it; a pinned offer overrides the templates", async () => {
@@ -203,7 +205,6 @@ test("the minimum is set in admin; the switches hide it; a pinned offer override
   expect((await mine()).suggestion).toMatchObject({
     package: `E2E Offer ${TAG}`,
     pinned: true,
-    cost: 2200,
     saving: 1100,
   });
   // Pinned offers always show (owner, 4 Oct 2026): even with the switch off or under the minimum…
@@ -232,8 +233,10 @@ test("the minimum is set in admin; the switches hide it; a pinned offer override
     package: `E2E Dear ${TAG}`,
     pinned: true,
     show_saving: false,
-    saving: -6600, // 3,300 − (9,000 + the 900 avatar video it doesn't cover)
+    saving: null, // no saving line, so no figure
   });
+  // The admin sees why: 3,300 − (9,000 + the 900 avatar video it doesn't cover).
+  expect((await billing()).best_offer).toMatchObject({ saving: -6600, pinned: true });
   // "Never show" still wins.
   await admin("portal_admin_hide_suggestions", { p_account: account, p_hide: true });
   expect((await mine()).suggestion).toBeNull();
@@ -285,11 +288,14 @@ test("month-end statement: frozen once; later changes don't move it; VAT after e
   await expect(
     admin("portal_admin_freeze_statements", { p_month: monthStart(0), p_account: account }),
   ).rejects.toThrow(/only complete months/);
-  // The client sees last month as final.
-  const b = await must<{ payg: { last_month: { total: number; final: boolean } } }>(
-    O.rpc("my_billing", { p_account: account }),
+  // The client reads the frozen statement (the breakdown behind the month's invoice), and gets no
+  // running month at all.
+  const [mineSt] = await must<{ total: number }[]>(
+    O.from("statements").select("total").eq("month", last),
   );
-  expect(b.payg.last_month).toMatchObject({ total: 6930, final: true });
+  expect(Number(mineSt.total)).toBe(6930);
+  const b = await must<Record<string, unknown>>(O.rpc("my_billing", { p_account: account }));
+  expect(b).not.toHaveProperty("payg");
 });
 
 test("a 6-month package: Month n of 6, end date, usage left, overage and the month estimate", async () => {
@@ -318,21 +324,23 @@ test("a 6-month package: Month n of 6, end date, usage left, overage and the mon
     { kind: "shoot_day", qty: 1, price: 0 },
     { kind: "avatar_video", qty: 1, price: 900 },
   ]);
+  // The admin's view: prices, overage and the estimate.
   const plan = (
-    await must<{
+    await admin<{
       plan: {
-        price: number;
-        term_months: number;
-        month_no: number;
-        ends_on: string;
-        usage: { key: string; used: number; remaining: number; over: number; overage: number }[];
-        overage_total: number;
-        extras_total: number;
-        estimate: number;
+        package: {
+          price: number;
+          term_months: number;
+          month_no: number;
+          ends_on: string;
+          usage: { key: string; used: number; remaining: number; over: number; overage: number }[];
+          overage_total: number;
+          extras_total: number;
+          estimate: number;
+        };
       };
-      suggestion: unknown;
-    }>(O.rpc("my_billing", { p_account: account }))
-  ).plan;
+    }>("portal_admin_client_billing", { p_account: account })
+  ).plan.package;
   expect(plan.price).toBe(2700); // 3,000 less 10% for the 6-month term
   expect(plan.term_months).toBe(6);
   expect(plan.month_no).toBe(3); // started on the 1st two months ago
@@ -344,6 +352,23 @@ test("a 6-month package: Month n of 6, end date, usage left, overage and the mon
   expect(days).toMatchObject({ used: 1, remaining: 1, over: 0 });
   expect(plan.extras_total).toBe(900);
   expect(plan.estimate).toBe(2700 + 7200 + 900);
+  // The client's view: counts only.
+  const client = (
+    await must<{ plan: Record<string, unknown> & { usage: Record<string, unknown>[] } }>(
+      O.rpc("my_billing", { p_account: account }),
+    )
+  ).plan;
+  expect(client).toMatchObject({ term_months: 6, month_no: 3 });
+  for (const k of ["price", "full_price", "estimate", "overage_total", "extras", "extras_total"])
+    expect(client).not.toHaveProperty(k);
+  expect(client.usage.find((u) => u.key === "reel")).toEqual({
+    key: "reel",
+    label: "Reels",
+    qty: 10,
+    used: 50,
+    remaining: 0,
+    over: 40,
+  });
   // On a package: no suggestion.
   expect((await mine()).suggestion).toBeNull();
   await admin("portal_admin_set_plan", {
@@ -401,10 +426,18 @@ test("calendar months: a mid-month start pro-rates the first month (price and in
   // This month is the first full one: full price, full inclusions.
   const now = await must<{
     mode: string;
-    plan: { prorated: boolean; price: number; month_no: number };
+    plan: { prorated: boolean; month_no: number };
   }>(pro.db.rpc("my_billing", { p_account: pro.account }));
   expect(now.mode).toBe("package");
-  expect(now.plan).toMatchObject({ prorated: false, price: 3100, month_no: 1 });
+  expect(now.plan).toMatchObject({ prorated: false, month_no: 1 });
+  expect(
+    (
+      await admin<{ plan: { package: { price: number; prorated: boolean } } }>(
+        "portal_admin_client_billing",
+        { p_account: pro.account },
+      )
+    ).plan.package,
+  ).toMatchObject({ price: 3100, prorated: false });
   // A package starting next month: this month is still pay as you go.
   await admin("portal_admin_set_plan", {
     p_account: pro.account,
@@ -621,24 +654,38 @@ test("pay as you go: the suggestion card (monthly and 6-month), last month's fin
     p_currency: "AED",
     p_status: "due",
     p_pdf_key: null,
+    p_statement_month: monthStart(1),
   });
 
   await signInUI(page, ui.email);
   await page.goto("/portal/billing");
   const card = page.getByTestId("suggestion");
-  await expect(card).toContainText(`Plus Offer ${TAG}: AED 2,200 a month`);
+  await expect(card).toContainText("Package suggestion");
+  await expect(card.getByRole("heading")).toHaveText(`Plus Offer ${TAG}`);
   await expect(card).toContainText("Includes 12 reels, 1 avatar videos every month.");
-  await expect(card).toContainText("save ~AED 1,100 a month");
-  await expect(card).toContainText("6 months (10% off)");
-  await expect(card).toContainText("AED 1,980");
-  await expect(card).toContainText("save ~AED 1,320 a month");
+  await expect(card).toContainText(
+    `Based on your usage, Plus Offer ${TAG} could save you about AED 1,100 a month.`,
+  );
+  await expect(card).toContainText("On a 6-month plan (10% off): about AED 1,320 a month.");
+  // Never their spend.
+  await expect(card).not.toContainText("3,300");
   const talk = card.getByRole("link", { name: "Talk to us →" });
   const href = (await talk.getAttribute("href")) ?? "";
   expect(href).toMatch(/^https:\/\/wa\.me\/971507263306\?text=/);
   expect(decodeURIComponent(href.split("text=")[1])).toContain(`Plus Offer ${TAG} package`);
-  await expect(page.getByTestId("last-month")).toContainText("Final total");
-  await expect(page.getByTestId("last-month")).toContainText("AED 3,300");
-  await expect(page.getByTestId("statements")).toContainText("AED 3,300");
+  // Pay as you go: invoices only. No running month, no last-month total outside an invoice.
+  await expect(page.getByTestId("payg")).toHaveCount(0);
+  await expect(page.getByText(/so far/i)).toHaveCount(0);
+  // The invoice opens to its breakdown, from the statement frozen for its month.
+  const row0 = page.getByRole("group", { name: `Invoice INV-UI-${TAG}`, exact: true });
+  await expect(row0.getByTestId("breakdown")).toBeHidden();
+  await row0.getByText("Breakdown").click();
+  const bd = row0.getByTestId("breakdown");
+  await expect(bd).toContainText("× AED 200");
+  await expect(bd).toContainText("AED 2,400");
+  await expect(bd).toContainText("AED 900");
+  await expect(bd).toContainText("total");
+  await expect(bd).toContainText("AED 3,300");
 
   // AED → bank transfer: the details, then "I've paid" with the receipt.
   const bank = page.getByTestId("bank");
@@ -684,8 +731,9 @@ test("pay as you go: the suggestion card (monthly and 6-month), last month's fin
   });
   await page.reload();
   await expect(card).toContainText("Your offer");
-  await expect(card).toContainText(`Plus Premium ${TAG}: AED 8,000 a month`);
-  await expect(card).not.toContainText("save ~");
+  await expect(card.getByRole("heading")).toHaveText(`Plus Premium ${TAG}`);
+  await expect(card).toContainText("AED 8,000 a month, or AED 7,200 a month on a 6-month plan");
+  await expect(card).not.toContainText("save");
 
   // A Member: no Billing tab, no prices.
   const m = await browser.newPage();
@@ -699,7 +747,7 @@ test("pay as you go: the suggestion card (monthly and 6-month), last month's fin
   await m.close();
 });
 
-test("a package client: Month n of 6, usage left and over, other work, the month's estimate", async ({
+test("a package client sees counts only: Month n of 6, usage left, extras as a count, no money", async ({
   page,
 }) => {
   // No pinned offer (a pinned one shows to package clients too).
@@ -735,13 +783,17 @@ test("a package client: Month n of 6, usage left and over, other work, the month
   const plan = page.getByTestId("plan");
   await expect(plan).toContainText(`Plus Contract ${TAG}`);
   await expect(plan).toContainText(/Month [23] of 6/);
-  await expect(plan).toContainText("AED 2,700 a month · 6-month contract until");
+  await expect(plan).toContainText("6-month contract until");
   await expect(plan.getByRole("meter", { name: "Reels: 12 of 10" })).toBeVisible();
-  await expect(plan).toContainText("2 over · AED 360 at AED 180 each");
+  await expect(plan).toContainText("2 extra reels");
   await expect(plan.getByRole("meter", { name: "Shoot days: 1 of 2" })).toBeVisible();
   await expect(plan).toContainText("1 left this month");
-  await expect(plan).toContainText("Other work this month");
-  await expect(page.getByTestId("estimate")).toContainText("AED 3,960"); // 2,700 + 360 + 900
+  await expect(page.getByTestId("extras-note")).toHaveText(
+    "Billed at your agreed rate on your next invoice.",
+  );
+  // No money outside invoices: no price, overage amount, other work or estimate.
+  await expect(plan).not.toContainText("AED");
+  await expect(page.getByTestId("estimate")).toHaveCount(0);
   await expect(page.getByTestId("suggestion")).toHaveCount(0);
 });
 

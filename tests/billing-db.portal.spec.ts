@@ -112,7 +112,7 @@ test("Overdue: the day after the due date it shows Overdue, and housekeeping rec
   expect(row.status).toBe("overdue");
 });
 
-test("this month so far = the sum of this month's delivered line items; Members see no price", async () => {
+test("this month so far = the sum of this month's delivered line items (admin only); Members see no price", async () => {
   await deliveredItems(account, "October reels", [
     { kind: "reel", qty: 3, price: 200 },
     { kind: "photo", qty: 40, price: 3 },
@@ -121,12 +121,15 @@ test("this month so far = the sum of this month's delivered line items; Members 
     { kind: "reel", qty: 10, price: 200 },
   ]);
   await backdateDelivery(old.id, 2); // not this month
-  const b = await must<{ payg: { total: number; items: unknown[] }; mode: string }>(
-    O.rpc("my_billing", { p_account: account }),
+  // The admin sees the month so far; the client doesn't (owner, 4 Oct 2026: money only on invoices).
+  const adm = await must<{ payg: { total: number; items: unknown[] } }>(
+    adminRpc("portal_admin_client_billing", { p_account: account }),
   );
+  expect(Number(adm.payg.total)).toBe(3 * 200 + 40 * 3);
+  expect(adm.payg.items).toHaveLength(2);
+  const b = await must<Record<string, unknown>>(O.rpc("my_billing", { p_account: account }));
   expect(b.mode).toBe("payg");
-  expect(Number(b.payg.total)).toBe(3 * 200 + 40 * 3);
-  expect(b.payg.items).toHaveLength(2);
+  expect(b).not.toHaveProperty("payg");
   // Members: no billing, no line items, no plan.
   expect((await M.rpc("my_billing", { p_account: account })).error?.message).toMatch(
     /owners and admins/,

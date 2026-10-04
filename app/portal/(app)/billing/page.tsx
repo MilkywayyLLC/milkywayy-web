@@ -7,6 +7,7 @@ import { requireAccount } from "@/lib/portal/auth";
 import {
   chatLink,
   dateLabel,
+  extraCount,
   inclusionsText,
   money,
   monthLabel,
@@ -14,19 +15,20 @@ import {
   STATUS_LABEL,
   type Invoice,
   type MyBilling,
+  type StatementRow,
 } from "@/lib/portal/billing";
 import { isManager } from "@/lib/portal/shell";
 
 export const metadata = { title: "Billing" };
 
 /**
- * Billing (§5.5; owner decisions 3–4 Oct 2026). Owner and Admins only: Members never see a price
- * (the database refuses them too).
- * - A package: usage per inclusion, what's left, overage, other work, the month's estimate,
- *   renewal, "Month 3 of 6" on a 6-month contract.
- * - Pay as you go: this month so far (an estimate) and last month's total; a package suggestion
- *   when one would save them enough.
- * - Invoices with the PDF; "Pay now" (card) or bank transfer with "I've paid".
+ * Billing (§5.5; owner decisions 3–4 Oct 2026). Owner and Admins only (the database refuses
+ * Members). Money shows only on invoices:
+ * - Invoices (unpaid first): number, month, amount, status, PDF, Pay now / I've paid; each opens
+ *   to its breakdown from the frozen month-end statement.
+ * - A package: usage per inclusion as counts, what's left, extras as a count, renewal, "Month n
+ *   of 6". Extras are billed on the next invoice.
+ * - A package suggestion when one would save them money (or an offer pinned for them).
  */
 export default async function Billing({
   searchParams,
@@ -43,16 +45,27 @@ export default async function Billing({
       </div>
     );
   const a = current.account;
-  const [{ data: billing, error }, { data: invoiceRows }] = await Promise.all([
-    db.rpc("my_billing", { p_account: a.id }),
-    db.from("invoices").select("*").eq("account_id", a.id).order("issued_on", { ascending: false }),
-  ]);
+  const [{ data: billing, error }, { data: invoiceRows }, { data: statementRows }] =
+    await Promise.all([
+      db.rpc("my_billing", { p_account: a.id }),
+      db.from("invoices").select("*").eq("account_id", a.id),
+      db.from("statements").select("*").eq("account_id", a.id),
+    ]);
   if (error) console.error("[portal] my_billing:", error.message);
   const b = billing as MyBilling | null;
-  const cur = b?.currency ?? a.currency;
-  const invoices = (invoiceRows ?? []) as Invoice[];
-  const month = new Date().toLocaleDateString("en-GB", { month: "long", timeZone: "Asia/Dubai" });
+  const statements = new Map(
+    ((statementRows ?? []) as StatementRow[]).map((s) => [s.month.slice(0, 10), s]),
+  );
+  // Unpaid first (soonest due on top), then paid (newest first).
+  const invoices = ((invoiceRows ?? []) as Invoice[]).sort((x, y) => {
+    const px = x.status === "paid" ? 1 : 0;
+    const py = y.status === "paid" ? 1 : 0;
+    if (px !== py) return px - py;
+    return px ? y.issued_on.localeCompare(x.issued_on) : x.due_on.localeCompare(y.due_on);
+  });
   const unpaid = invoices.some((i) => i.status !== "paid");
+  const plan = b?.plan;
+  const anyOver = !!plan?.usage.some((u) => Number(u.over) > 0);
 
   return (
     <>
@@ -71,39 +84,35 @@ export default async function Billing({
       )}
 
       <div className="pt-grid2">
-        {b?.plan ? (
+        {plan && (
           <section className="pt-card" aria-labelledby="plan-h" data-testid="plan">
             <div className="pt-row">
               <span className="pt-eb">
                 Your plan ·{" "}
-                {b.plan.prorated
+                {plan.prorated
                   ? "first month, pro-rated"
-                  : b.plan.term_months === 6
-                    ? b.plan.month_no && b.plan.month_no <= 6
-                      ? `Month ${b.plan.month_no} of 6`
+                  : plan.term_months === 6
+                    ? plan.month_no && plan.month_no <= 6
+                      ? `Month ${plan.month_no} of 6`
                       : "6-month contract"
                     : "monthly"}
               </span>
-              <span className="pt-meta">Renews {dateLabel(b.plan.renews_on)}</span>
+              <span className="pt-meta">Renews {dateLabel(plan.renews_on)}</span>
             </div>
             <h2 id="plan-h" className="pt-h2">
-              {b.plan.name}
+              {plan.name}
             </h2>
-            <span className="pt-meta">
-              {money(b.plan.currency, b.plan.full_price)} a month
-              {b.plan.term_months === 6 && b.plan.ends_on
-                ? ` · 6-month contract until ${dateLabel(b.plan.ends_on)}`
-                : ""}
-            </span>
-            {b.plan.prorated && (
+            {plan.term_months === 6 && plan.ends_on && (
+              <span className="pt-meta">6-month contract until {dateLabel(plan.ends_on)}</span>
+            )}
+            {plan.prorated && (
               <span className="pt-meta" data-testid="prorated">
-                Started {dateLabel(b.plan.started_on)}: this month is {Number(b.plan.days)} of{" "}
-                {Number(b.plan.month_days)} days, so {money(b.plan.currency, b.plan.price)} and the
-                inclusions below are pro-rated. Full months from {dateLabel(b.plan.renews_on)}.
+                Started {dateLabel(plan.started_on)}: this month’s inclusions are pro-rated. Full
+                months from {dateLabel(plan.renews_on)}.
               </span>
             )}
             <div className="pt-meters">
-              {b.plan.usage.map((u) => {
+              {plan.usage.map((u) => {
                 const used = Number(u.used);
                 const qty = Number(u.qty);
                 const pct = Math.min(100, (used / Math.max(1, qty)) * 100);
@@ -127,112 +136,17 @@ export default async function Billing({
                     </span>
                     <span className="pt-meta">
                       {Number(u.over) > 0
-                        ? `${Number(u.over)} over · ${money(b.plan!.currency, Number(u.overage))}${u.rate != null ? ` at ${money(b.plan!.currency, Number(u.rate))} each` : ""}`
+                        ? extraCount(Number(u.over), u.label)
                         : `${Number(u.remaining)} left this month`}
                     </span>
                   </div>
                 );
               })}
             </div>
-            {b.plan.before.length > 0 && (
-              <>
-                <span className="pt-eb">Before your package started (pay as you go)</span>
-                <ul className="pt-lines">
-                  {b.plan.before.map((i, n) => (
-                    <li key={n}>
-                      <span>
-                        {i.description}
-                        <span className="pt-meta">
-                          {" "}
-                          · {i.ref} · {Number(i.qty)} × {money(b.plan!.currency, i.unit_price)}
-                        </span>
-                      </span>
-                      <span className="pt-mono">
-                        {money(b.plan!.currency, Number(i.qty) * Number(i.unit_price))}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            {b.plan.extras.length > 0 && (
-              <>
-                <span className="pt-eb">Other work this month</span>
-                <ul className="pt-lines">
-                  {b.plan.extras.map((i, n) => (
-                    <li key={n}>
-                      <span>
-                        {i.description}
-                        <span className="pt-meta">
-                          {" "}
-                          · {i.ref} · {Number(i.qty)} × {money(b.plan!.currency, i.unit_price)}
-                        </span>
-                      </span>
-                      <span className="pt-mono">
-                        {money(b.plan!.currency, Number(i.qty) * Number(i.unit_price))}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            <div className="pt-total" data-testid="estimate">
-              <span>
-                This month, estimated
-                <span className="pt-meta" style={{ display: "block" }}>
-                  {money(b.plan.currency, b.plan.price)} plan
-                  {Number(b.plan.overage_total) > 0
-                    ? ` + ${money(b.plan.currency, Number(b.plan.overage_total))} overage`
-                    : ""}
-                  {Number(b.plan.extras_total) > 0
-                    ? ` + ${money(b.plan.currency, Number(b.plan.extras_total))} other work`
-                    : ""}
-                  {Number(b.plan.before_total) > 0
-                    ? ` + ${money(b.plan.currency, Number(b.plan.before_total))} before the start`
-                    : ""}
-                  {" · final invoice after month end"}
-                </span>
+            {anyOver && (
+              <span className="pt-meta" data-testid="extras-note">
+                Billed at your agreed rate on your next invoice.
               </span>
-              <b className="pt-mono">{money(b.plan.currency, Number(b.plan.estimate))}</b>
-            </div>
-          </section>
-        ) : (
-          <section className="pt-card" aria-labelledby="payg-h" data-testid="payg">
-            <span className="pt-eb">Pay as you go · {month} so far</span>
-            <h2 id="payg-h" className="pt-h2" style={{ fontSize: 34 }}>
-              {money(cur, b?.payg.total ?? 0)}
-            </h2>
-            <span className="pt-meta">Estimate · final invoice after month end</span>
-            {b && b.payg.items.length > 0 ? (
-              <ul className="pt-lines">
-                {b.payg.items.map((i, n) => (
-                  <li key={n}>
-                    <span>
-                      {i.description}
-                      <span className="pt-meta">
-                        {" "}
-                        · {i.ref} · {Number(i.qty)} × {money(cur, i.unit_price)}
-                      </span>
-                    </span>
-                    <span className="pt-mono">
-                      {money(cur, Number(i.qty) * Number(i.unit_price))}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <span className="pt-meta">Nothing delivered yet this month.</span>
-            )}
-            {b?.payg.last_month && (
-              <div className="pt-total" data-testid="last-month">
-                <span>
-                  {monthLabel(b.payg.last_month.month)}
-                  <span className="pt-meta" style={{ display: "block" }}>
-                    {b.payg.last_month.final ? "Final total" : "Total so far (not final yet)"}
-                  </span>
-                </span>
-                <b className="pt-mono">{money(cur, Number(b.payg.last_month.total))}</b>
-              </div>
             )}
           </section>
         )}
@@ -240,48 +154,32 @@ export default async function Billing({
         {b?.suggestion ? (
           <section className="pt-card pt-suggest" aria-labelledby="sug-h" data-testid="suggestion">
             <span className="pt-eb">
-              {b.suggestion.show_saving ? "A package would save you money" : "Your offer"}
+              {b.suggestion.show_saving ? "Package suggestion" : "Your offer"}
             </span>
             <h2 id="sug-h" className="pt-h2">
-              {b.suggestion.package}: {money(b.suggestion.currency, b.suggestion.price)} a month
+              {b.suggestion.package}
             </h2>
             <span>Includes {inclusionsText(b.suggestion.inclusions)} every month.</span>
-            {b.suggestion.show_saving &&
-              b.suggestion.average != null &&
-              b.suggestion.cost != null && (
-                <span className="pt-meta">
-                  Over your last 3 months you averaged{" "}
-                  {money(b.suggestion.currency, b.suggestion.average)} a month. With{" "}
-                  {b.suggestion.package}, the same work would be about{" "}
-                  {money(b.suggestion.currency, b.suggestion.cost)}
-                  {Number(b.suggestion.overage) + Number(b.suggestion.uncovered) > 0
-                    ? " (including extras at your rates)"
-                    : ""}
-                  .
+            {b.suggestion.show_saving && b.suggestion.saving != null ? (
+              <>
+                <span>
+                  Based on your usage, {b.suggestion.package} could save you about{" "}
+                  {money(b.suggestion.currency, b.suggestion.saving)} a month.
                 </span>
-              )}
-            <dl className="pt-offer">
-              <div>
-                <dt>Monthly</dt>
-                <dd>
-                  {money(b.suggestion.currency, b.suggestion.price)}
-                  {b.suggestion.show_saving && b.suggestion.saving != null && (
-                    <small>save ~{money(b.suggestion.currency, b.suggestion.saving)} a month</small>
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt>6 months ({Number(b.suggestion.discount_pct)}% off)</dt>
-                <dd>
-                  {money(b.suggestion.currency, b.suggestion.price_6)}
-                  {b.suggestion.show_saving && b.suggestion.saving_6 != null && (
-                    <small>
-                      save ~{money(b.suggestion.currency, b.suggestion.saving_6)} a month
-                    </small>
-                  )}
-                </dd>
-              </div>
-            </dl>
+                {b.suggestion.saving_6 != null && (
+                  <span className="pt-meta">
+                    On a 6-month plan ({Number(b.suggestion.discount_pct)}% off): about{" "}
+                    {money(b.suggestion.currency, b.suggestion.saving_6)} a month.
+                  </span>
+                )}
+              </>
+            ) : (
+              <span>
+                {money(b.suggestion.currency, b.suggestion.price)} a month, or{" "}
+                {money(b.suggestion.currency, b.suggestion.price_6)} a month on a 6-month plan (
+                {Number(b.suggestion.discount_pct)}% off).
+              </span>
+            )}
             <a
               className="btn btn-p btn-s"
               style={{ justifySelf: "start" }}
@@ -324,43 +222,62 @@ export default async function Billing({
               const st = shownStatus(i);
               const open = st !== "paid";
               const submitted = open && i.payment_state === "submitted";
+              const month = i.statement_month ?? i.issued_on.slice(0, 8) + "01";
+              const statement = i.statement_month
+                ? statements.get(i.statement_month.slice(0, 10))
+                : undefined;
               return (
-                <div key={i.id} className="pt-inv" role="group" aria-label={`Invoice ${i.number}`}>
-                  <div>
-                    <b>{i.number}</b>
-                    <div className="pt-meta">
-                      {dateLabel(i.issued_on)} · due {dateLabel(i.due_on)}
-                      {i.paid_via === "stripe" ? " · paid by card" : ""}
-                      {i.paid_via === "bank" ? " · paid by bank transfer" : ""}
-                    </div>
-                    {open && i.payment_state === "rejected" && (
-                      <div className="pt-meta pt-warn-text">
-                        We couldn’t confirm your transfer: {i.reject_reason}. Upload the proof
-                        again.
+                <div
+                  key={i.id}
+                  className="pt-inv-wrap"
+                  role="group"
+                  aria-label={`Invoice ${i.number}`}
+                >
+                  <div className="pt-inv">
+                    <div>
+                      <b>{i.number}</b>
+                      <div className="pt-meta">
+                        {monthLabel(month)} · due {dateLabel(i.due_on)}
+                        {i.paid_via === "stripe" ? " · paid by card" : ""}
+                        {i.paid_via === "bank" ? " · paid by bank transfer" : ""}
                       </div>
-                    )}
+                      {open && i.payment_state === "rejected" && (
+                        <div className="pt-meta pt-warn-text">
+                          We couldn’t confirm your transfer: {i.reject_reason}. Upload the proof
+                          again.
+                        </div>
+                      )}
+                    </div>
+                    <span className="pt-mono">{money(i.currency, i.amount)}</span>
+                    <Badge
+                      tone={
+                        st === "paid"
+                          ? "ok"
+                          : submitted
+                            ? undefined
+                            : st === "overdue"
+                              ? "warn"
+                              : "gold"
+                      }
+                    >
+                      {submitted ? "Payment submitted" : STATUS_LABEL[st]}
+                    </Badge>
+                    <span className="pt-inv-actions">
+                      {open && !submitted && b?.pay_online && (
+                        <PayNow id={i.id} number={i.number} />
+                      )}
+                      {open && !submitted && b && !b.pay_online && (
+                        <PaidByTransfer id={i.id} number={i.number} />
+                      )}
+                      {i.pdf_key && <InvoiceDownload id={i.id} number={i.number} />}
+                    </span>
                   </div>
-                  <span className="pt-mono">{money(i.currency, i.amount)}</span>
-                  <Badge
-                    tone={
-                      st === "paid"
-                        ? "ok"
-                        : submitted
-                          ? undefined
-                          : st === "overdue"
-                            ? "warn"
-                            : "gold"
-                    }
-                  >
-                    {submitted ? "Payment submitted" : STATUS_LABEL[st]}
-                  </Badge>
-                  <span className="pt-inv-actions">
-                    {open && !submitted && b?.pay_online && <PayNow id={i.id} number={i.number} />}
-                    {open && !submitted && b && !b.pay_online && (
-                      <PaidByTransfer id={i.id} number={i.number} />
-                    )}
-                    {i.pdf_key && <InvoiceDownload id={i.id} number={i.number} />}
-                  </span>
+                  {statement && (
+                    <details className="pt-breakdown">
+                      <summary>Breakdown</summary>
+                      <Breakdown s={statement} />
+                    </details>
+                  )}
                 </div>
               );
             })}
@@ -407,30 +324,56 @@ export default async function Billing({
           </div>
         )}
       </section>
-
-      {b && b.statements.length > 0 && (
-        <section className="pt-card" aria-labelledby="st-h" data-testid="statements">
-          <h2 id="st-h" className="pt-h2">
-            Monthly statements
-          </h2>
-          <ul className="pt-lines">
-            {b.statements.map((s) => (
-              <li key={s.month}>
-                <span>
-                  {monthLabel(s.month)}
-                  {Number(s.vat) > 0 && (
-                    <span className="pt-meta"> · incl. VAT {money(s.currency, Number(s.vat))}</span>
-                  )}
-                </span>
-                <span className="pt-mono">{money(s.currency, Number(s.total))}</span>
-              </li>
-            ))}
-          </ul>
-          <span className="pt-meta">
-            Each month’s statement is final on the 1st; the invoice follows it.
-          </span>
-        </section>
-      )}
     </>
+  );
+}
+
+/** An invoice's month, as frozen on the 1st: what was delivered and how it adds up. */
+function Breakdown({ s }: { s: StatementRow }) {
+  const c = s.currency;
+  const rows: [string, number][] = [];
+  if (s.package) {
+    rows.push([
+      `${s.package.name}${s.package.prorated ? " (pro-rated first month)" : ""}`,
+      Number(s.package.price),
+    ]);
+    for (const u of s.overage)
+      if (Number(u.over) > 0) rows.push([extraCount(Number(u.over), u.label), Number(u.overage)]);
+    if (Number(s.package.extras_total) > 0)
+      rows.push(["Other work at your rates", Number(s.package.extras_total)]);
+    if (Number(s.package.before_total) > 0)
+      rows.push(["Before the package started", Number(s.package.before_total)]);
+  } else {
+    for (const l of s.lines)
+      rows.push([
+        `${l.description} · ${l.ref} · ${Number(l.qty)} × ${money(c, Number(l.unit_price))}`,
+        Number(l.amount),
+      ]);
+  }
+  return (
+    <ul className="pt-lines" data-testid="breakdown">
+      {rows.map(([label, amount], n) => (
+        <li key={n}>
+          <span>{label}</span>
+          <span className="pt-mono">{money(c, amount)}</span>
+        </li>
+      ))}
+      {Number(s.vat) > 0 && (
+        <>
+          <li>
+            <span>Subtotal</span>
+            <span className="pt-mono">{money(c, Number(s.subtotal))}</span>
+          </li>
+          <li>
+            <span>VAT {Number(s.vat_rate)}%</span>
+            <span className="pt-mono">{money(c, Number(s.vat))}</span>
+          </li>
+        </>
+      )}
+      <li className="pt-lines-total">
+        <b>{monthLabel(s.month)} total</b>
+        <b className="pt-mono">{money(c, Number(s.total))}</b>
+      </li>
+    </ul>
   );
 }

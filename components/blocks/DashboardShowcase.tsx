@@ -302,7 +302,7 @@ function Invoices() {
     <>
       <div className="dsh-row">
         <span className="dsh-eb">Billing</span>
-        <span className="dsh-mono">This month so far: AED 3,200</span>
+        <span className="dsh-mono">1 due · pay by card or bank transfer</span>
       </div>
       <div className="dsh-list-ui">
         {rows.map((r) => (

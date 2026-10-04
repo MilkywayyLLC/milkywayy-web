@@ -50,29 +50,46 @@ test.afterAll(async () => {
   await cleanup(RUN);
 });
 
-test("Owner: Billing tab, this month so far (an estimate), invoices with Overdue, no suggestion", async ({
+test("Owner: Billing is invoices only (unpaid first), no running totals; Home shows the invoice without an amount", async ({
   page,
 }) => {
+  await ok(
+    adminRpc("portal_admin_create_invoice", {
+      p_account: c.account,
+      p_number: "INV-PAID",
+      p_issued: day(-60),
+      p_due: day(-45),
+      p_amount: 900,
+      p_currency: "AED",
+      p_status: "paid",
+      p_pdf_key: null,
+    }),
+  );
   await signInUI(page, c.email);
   await page
     .getByRole("navigation", { name: "Portal sections" })
     .getByRole("link", { name: "Billing" })
     .click();
   await expect(page.getByRole("heading", { name: "Billing", level: 1 })).toBeVisible();
-  const payg = page.getByTestId("payg");
-  await expect(payg).toContainText("AED 600");
-  await expect(payg).toContainText("Estimate · final invoice after month end");
-  await expect(payg).toContainText("3 × AED 200");
   const inv = page.getByTestId("invoices");
   await expect(inv).toContainText("INV-OLD");
   await expect(inv).toContainText("Overdue"); // due 10 days ago, still marked Due
+  await expect(inv).toContainText("AED 750");
+  // Unpaid first, then paid.
+  await expect(inv.getByRole("group")).toHaveText([/INV-OLD/, /INV-PAID/]);
+  // No running month: not the total, not the line items in progress.
+  await expect(page.getByTestId("payg")).toHaveCount(0);
+  await expect(page.getByText(/so far/i)).toHaveCount(0);
+  await expect(page.getByText("AED 600")).toHaveCount(0);
+  await expect(page.getByText(/3 × AED 200/)).toHaveCount(0);
   // One active month: too little history for a package suggestion.
   await expect(page.getByTestId("suggestion")).toHaveCount(0);
   await page.goto("/portal");
-  await expect(page.getByTestId("attention")).toContainText("Invoice overdue: AED 750");
+  await expect(page.getByTestId("attention")).toContainText("Invoice overdue");
+  await expect(page.getByTestId("attention")).not.toContainText("AED");
 });
 
-test("Owner on a package: plan name, usage meter, renewal date; the badge says so", async ({
+test("Owner on a package: plan name, usage as counts, renewal date; the badge says so", async ({
   page,
 }) => {
   const pkg = await ok(
@@ -103,9 +120,10 @@ test("Owner on a package: plan name, usage meter, renewal date; the badge says s
   await page.goto("/portal/billing");
   const plan = page.getByTestId("plan");
   await expect(plan).toContainText("Growth");
-  await expect(plan).toContainText("AED 4,000 a month");
   await expect(plan.getByRole("meter", { name: "Reels: 7 of 10" })).toBeVisible();
-  await expect(plan).toContainText("7 of 10");
+  await expect(plan).toContainText("3 left this month");
+  // Counts only: no price, no estimate.
+  await expect(plan).not.toContainText("AED");
   await expect(page.locator(".pt-plan")).toHaveText("Monthly: Growth");
 });
 

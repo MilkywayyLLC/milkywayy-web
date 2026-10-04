@@ -1,4 +1,4 @@
-import { dateLabel, money, shownStatus, type Invoice } from "@/lib/portal/billing";
+import { dateLabel, shownStatus, type Invoice } from "@/lib/portal/billing";
 import Link from "next/link";
 import { Icon } from "@/components/portal/Icon";
 import { getSiteSettings } from "@/lib/data";
@@ -52,7 +52,7 @@ export default async function PortalHome({
     isManager(current)
       ? db
           .from("invoices")
-          .select("id, number, amount, currency, due_on, status")
+          .select("id, number, due_on, status")
           .eq("account_id", a.id)
           .neq("status", "paid")
           .order("due_on")
@@ -60,7 +60,7 @@ export default async function PortalHome({
   ]);
   const unpaid = (invoiceRows ?? []) as Pick<
     Invoice,
-    "id" | "number" | "amount" | "currency" | "due_on" | "status"
+    "id" | "number" | "due_on" | "status"
   >[];
   const projects = (projectRows ?? []) as Project[];
   const waiting = projects.filter(
@@ -202,12 +202,10 @@ export default async function PortalHome({
             >
               <div style={{ display: "grid", gap: 4 }}>
                 <span className="pt-eb">Billing · {i.number}</span>
-                <b>
-                  {shownStatus(i) === "overdue" ? "Invoice overdue" : "Invoice due"}:{" "}
-                  {money(i.currency, i.amount)}
-                </b>
+                {/* No amounts on Home (owner, 4 Oct 2026): money only on the invoice itself. */}
+                <b>{shownStatus(i) === "overdue" ? "Invoice overdue" : "Invoice due"}</b>
                 <span className="pt-meta">
-                  Due {dateLabel(i.due_on)}. Download it from Billing.
+                  Due {dateLabel(i.due_on)}. Open Billing to see it and pay.
                 </span>
               </div>
             </Link>

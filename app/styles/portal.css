@@ -1509,3 +1509,27 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* ---------- client billing: invoices with their breakdown (owner, 4 Oct 2026) ---------- */
+@layer components {
+  .pt-inv-wrap {
+    display: grid;
+    gap: 6px;
+  }
+  .pt-breakdown summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--acc);
+    font-weight: 600;
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .pt-breakdown .pt-lines {
+    margin-top: 4px;
+  }
+  .pt-lines-total {
+    border-top: 1px solid var(--line);
+    padding-top: 6px;
+  }
+}
