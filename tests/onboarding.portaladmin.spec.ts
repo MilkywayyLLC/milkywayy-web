@@ -7,7 +7,6 @@ import {
   clientAccount,
   hasPortalAdmin,
   newRun,
-  portalClient,
   signInUI,
 } from "./helpers/portal";
 

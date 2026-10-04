@@ -58,10 +58,7 @@ export default async function PortalHome({
           .order("due_on")
       : Promise.resolve({ data: [] }),
   ]);
-  const unpaid = (invoiceRows ?? []) as Pick<
-    Invoice,
-    "id" | "number" | "due_on" | "status"
-  >[];
+  const unpaid = (invoiceRows ?? []) as Pick<Invoice, "id" | "number" | "due_on" | "status">[];
   const projects = (projectRows ?? []) as Project[];
   const waiting = projects.filter(
     (p) =>
