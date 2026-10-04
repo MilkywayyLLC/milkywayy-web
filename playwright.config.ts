@@ -44,6 +44,13 @@ export default defineConfig({
       testMatch: /.*\.portal\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], channel: "chrome" },
     },
+    // One-off, by hand only (never in the suites): a real Stripe TEST-mode Checkout from the local
+    // app, paid by the preview's webhook. npx playwright test --project=stripe-manual
+    {
+      name: "stripe-manual",
+      testMatch: /.*\.manual\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], channel: "chrome" },
+    },
     // Admin → Client accounts (portal, step 6): signs in like the admin tests.
     {
       name: "portal-admin",
