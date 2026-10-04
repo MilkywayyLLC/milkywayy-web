@@ -46,6 +46,7 @@ import { alert } from "@/lib/monitoring/alert";
 import { publicDb } from "@/lib/supabase/public";
 import { TAGS, type Tag } from "./tags";
 import * as map from "./rows";
+import { realFirst, REAL_REVIEWS_NEEDED } from "./sample";
 
 const HOUR = 3600;
 
@@ -301,18 +302,23 @@ export async function getFaqs(page: PageKey) {
 }
 
 export async function getReviews(page: PageKey) {
-  return (await loadReviews()).filter((r) => r.placements.includes(page));
+  return realFirst(
+    (await loadReviews()).filter((r) => r.placements.includes(page)),
+    REAL_REVIEWS_NEEDED,
+  );
 }
 
 export async function getPortfolio(placement?: PortfolioPlacement) {
   const rowsAll = await loadPortfolio();
-  if (!placement) return rowsAll;
+  if (!placement) return realFirst(rowsAll);
   const pos = (p: PortfolioItem) => p.placementOrder?.[placement] ?? p.sortOrder;
-  return rowsAll.filter((p) => p.placements.includes(placement)).sort((a, b) => pos(a) - pos(b));
+  return realFirst(
+    rowsAll.filter((p) => p.placements.includes(placement)).sort((a, b) => pos(a) - pos(b)),
+  );
 }
 
 export async function getBeforeAfter() {
-  return loadBeforeAfter();
+  return realFirst(await loadBeforeAfter());
 }
 
 export async function getAvatarHero() {
@@ -320,7 +326,7 @@ export async function getAvatarHero() {
 }
 
 export async function getAvatars() {
-  return loadAvatars();
+  return realFirst(await loadAvatars());
 }
 
 export async function getPropertyPricing() {
@@ -332,11 +338,12 @@ export async function getOtherPricing() {
 }
 
 export async function getCaseStudies() {
-  return loadCaseStudies();
+  return realFirst(await loadCaseStudies());
 }
 
+/** A sample case study stops existing (404) once a real one is published. */
 export async function getCaseStudy(slug: string) {
-  return (await loadCaseStudies()).find((c) => c.slug === slug) ?? null;
+  return (await getCaseStudies()).find((c) => c.slug === slug) ?? null;
 }
 
 /** Admin overrides for a page's title, description and share image (seo_pages). */

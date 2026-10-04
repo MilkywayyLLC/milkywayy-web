@@ -328,7 +328,9 @@ Each phase ends the same way: a staging deploy, tests green, a short how-to, and
 3. Stats, pause/expire, admin disable.
 4. Performance: the listing page counts as a public page, so it must meet the site's performance budget.
 
-### Phase 14: Migration and switch-off
+### Phase 14: Migration and switch-off — *replaced (owner, 4 Oct 2026)*
+*Nothing is imported and nothing redirects to the old portal. Clients are created in the admin and invited by email; earlier work is added as past projects; the old portal is switched off after launch. See DECISIONS.md "Launch preparation" and LAUNCH.md. The plan below is kept for the record.*
+
 1. Import from the old portal (needs an export from the old developer): clients, bookings, invoices, delivered file links, share links.
 2. Redirect old share-link URLs to the new `/l/` and `/c/` pages.
 3. Invite existing clients (from the old portal's client list export: names, phones, emails, companies) with a "Your new Milkywayy portal" email, plus a WhatsApp from the admin if wanted. No old bookings, invoices or share links are imported (owner, 3 Oct 2026).

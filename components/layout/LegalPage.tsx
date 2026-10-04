@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { LAUNCH } from "@/content/launch";
 import { SampleLabel } from "@/components/ui/SampleLabel";
 
 /** Plain legal page layout (Privacy, Terms): title, updated date, draft notice, readable prose. */
@@ -19,8 +20,8 @@ export function LegalPage({
           {title}
         </h1>
         <p className="fine">Last updated {updated}</p>
-        {/* TODO(owner): have the final text reviewed before launch (CONTENT_TODO.md). */}
-        <SampleLabel>Draft · to be reviewed before launch</SampleLabel>
+        {/* Until Akash confirms the legal review (content/launch.ts; a production build refuses). */}
+        {!LAUNCH.legalReviewed && <SampleLabel>Draft · to be reviewed before launch</SampleLabel>}
         {children}
       </div>
     </section>

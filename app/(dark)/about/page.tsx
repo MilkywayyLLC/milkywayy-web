@@ -7,6 +7,7 @@ import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
+import { LAUNCH } from "@/content/launch";
 import { SampleLabel } from "@/components/ui/SampleLabel";
 import { Hl, SectionHead } from "@/components/ui/Section";
 import { getClients, getSiteSettings } from "@/lib/data";
@@ -18,7 +19,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata("about");
 }
 
-// TODO(owner): confirm the story wording; add team photos/roles if wanted (CONTENT_TODO.md).
 const STORY = [
   "Akash Praseed has been creating content since 2020: graphic design first, then content creation, then full production, for clients on site and remote.",
   "Before Milkywayy he created content in-house for a Dubai real estate company, and saw where production slows down: quotes that take days, files chased over chat, revisions that never end.",
@@ -103,7 +103,7 @@ export default async function AboutPage() {
             <h2 className="d h2" id="story-title">
               From one creator to a studio.
             </h2>
-            <SampleLabel>Draft · owner to confirm</SampleLabel>
+            {!LAUNCH.aboutConfirmed && <SampleLabel>Draft · owner to confirm</SampleLabel>}
           </div>
           <div className="stack" style={{ gap: 18 }}>
             {STORY.map((p) => (

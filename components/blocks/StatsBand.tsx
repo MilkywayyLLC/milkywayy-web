@@ -4,7 +4,8 @@ import { StatValue } from "./StatValue";
 /**
  * Big condensed numbers with mono labels, 4 across (2 × 2 on phones). Numbers count up once when
  * the band scrolls into view (StatValue); a year fades in instead.
- * TODO(owner): every number is confirmed before launch (content/stats.ts, guide §6.1).
+ * Every number must be confirmed before launch: LAUNCH.statsConfirmed (content/launch.ts) gates
+ * the production build.
  */
 export function StatsBand({ stats }: { stats: Stat[] }) {
   if (!stats.length) return null;
