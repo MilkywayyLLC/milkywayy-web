@@ -2,9 +2,15 @@
 
 import { useId } from "react";
 import type { Media } from "@/content/types";
-import { getPath, type Field, type Option } from "@/lib/admin/fields";
-import { embedUrl } from "@/lib/video";
+import { getPath, type AdminCtx, type Field, type Option } from "@/lib/admin/fields";
+import { isInstagramUrl } from "@/lib/instagram-link";
+import { isFileVideo, MEDIA } from "@/lib/media-config";
+import { embedUrl, VIDEO_HINT, VIDEO_REFUSED } from "@/lib/video";
 import { ImageField } from "./ImageField";
+import { VideoUpload } from "./MediaParts";
+import { PortfolioMedia } from "./PortfolioMedia";
+
+const NO_CTX: AdminCtx = { portfolio: [], avatarOrder: [] };
 
 type Values = Record<string, unknown>;
 
@@ -16,6 +22,7 @@ export function FormFields({
   errors = {},
   isOwner,
   portfolio = [],
+  ctx = NO_CTX,
 }: {
   fields: Field[];
   values: Values;
@@ -24,11 +31,13 @@ export function FormFields({
   isOwner: boolean;
   /** Choices for "related portfolio items". */
   portfolio?: Option[];
+  /** The rest of the content, for "Used on". */
+  ctx?: AdminCtx;
 }) {
   return (
     <>
       {fields
-        .filter((f) => !f.ownerOnly || isOwner)
+        .filter((f) => (!f.ownerOnly || isOwner) && (!f.when || f.when(values)))
         .map((f) => (
           <FieldInput
             key={f.name}
@@ -37,6 +46,8 @@ export function FormFields({
             onChange={(v) => onChange(f.name, v)}
             error={errors[f.name]}
             portfolio={portfolio}
+            row={values}
+            ctx={ctx}
           />
         ))}
     </>
@@ -49,12 +60,16 @@ function FieldInput({
   onChange,
   error,
   portfolio,
+  row,
+  ctx,
 }: {
   field: Field;
   value: unknown;
   onChange: (v: unknown) => void;
   error?: string;
   portfolio: Option[];
+  row: Values;
+  ctx: AdminCtx;
 }) {
   const id = useId();
   const described =
@@ -75,10 +90,25 @@ function FieldInput({
           value={value as Media}
           onChange={onChange}
           error={error}
-          crops={f.crops}
+          kind={f.media}
+          usedOn={f.usedOn?.(row, ctx)}
           video={f.video}
+          upload={f.upload}
           bright={f.bright}
           required={f.required}
+        />
+      </div>
+    );
+
+  if (f.kind === "portfolio-media")
+    return (
+      <div data-field={f.name}>
+        <PortfolioMedia
+          value={value as Media}
+          onChange={onChange}
+          row={row}
+          ctx={ctx}
+          error={error}
         />
       </div>
     );
@@ -94,7 +124,8 @@ function FieldInput({
               label={`Image ${i + 1}`}
               value={m}
               onChange={(next) => onChange(list.map((x, j) => (j === i ? next : x)))}
-              crops={f.crops}
+              kind={f.media}
+              usedOn={i === 0 ? f.usedOn?.(row, ctx) : undefined}
               required
             />
             <button
@@ -234,6 +265,7 @@ function FieldInput({
   }
 
   let control;
+  let help = f.help;
   switch (f.kind) {
     case "textarea":
       control = (
@@ -290,19 +322,44 @@ function FieldInput({
       );
       break;
     case "video": {
-      const ok = !value || !!embedUrl(String(value));
+      const v = String(value ?? "");
+      const file = isFileVideo(v);
+      const ok = !v || file || !!embedUrl(v);
       control = (
-        <input
-          {...common}
-          type="url"
-          inputMode="url"
-          placeholder="Bunny, Mux, YouTube or Vimeo link"
-          value={String(value ?? "")}
-          onChange={(e) => onChange(e.target.value)}
-          aria-invalid={!ok || !!error}
-        />
+        <>
+          {file ? (
+            <div className="ad-btns">
+              <span className="ad-small">Uploaded video.</span>
+              <button type="button" className="ad-btn quiet small" onClick={() => onChange("")}>
+                Remove video
+              </button>
+            </div>
+          ) : (
+            <input
+              {...common}
+              type="url"
+              inputMode="url"
+              placeholder={VIDEO_HINT}
+              value={v}
+              onChange={(e) => onChange(e.target.value)}
+              aria-invalid={!ok || !!error}
+            />
+          )}
+          {f.upload && f.media && (
+            <VideoUpload
+              kind={f.media}
+              folder={f.upload}
+              label={file ? "Replace video" : "Or upload a video"}
+              onDone={(ref) => onChange(ref)}
+            />
+          )}
+        </>
       );
-      if (!ok && !error) error = "Link not recognised. Use a Bunny, Mux, YouTube or Vimeo link.";
+      if (!ok && !error)
+        error = isInstagramUrl(v)
+          ? "That’s an Instagram link. Instagram videos can’t play here: use a YouTube or Vimeo link, or upload the video."
+          : VIDEO_REFUSED;
+      if (f.media && !f.help) help = `${VIDEO_HINT}. Shown at ${MEDIA[f.media].ratioLabel}.`;
       break;
     }
     default:
@@ -331,9 +388,9 @@ function FieldInput({
     <div className="ad-field">
       <label htmlFor={id}>{label}</label>
       {control}
-      {f.help && (
+      {help && (
         <span className="ad-help" id={`${id}-help`}>
-          {f.help}
+          {help}
         </span>
       )}
       {error && (

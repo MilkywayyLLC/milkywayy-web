@@ -1,12 +1,30 @@
 import { AppLink as Link } from "@/components/ui/AppLink";
 import type { ReactNode } from "react";
-import type { PortfolioItem } from "@/content/types";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import type { Media, PortfolioItem } from "@/content/types";
+import { MediaFrame } from "@/components/media/MediaFrame";
+import { kindOf, type MediaKind } from "@/lib/media-config";
+
+/** The one media item a row shows, at its format's ratio. */
+export type RowMedia = { media: Media; kind: MediaKind; tag?: string; video?: boolean };
+
+export const rowMedia = (i: PortfolioItem | undefined): RowMedia | undefined =>
+  i && {
+    media: i.media,
+    kind: kindOf(i),
+    tag: i.tag,
+    video: kindOf(i) !== "photo",
+  };
+
+const SIZES: Partial<Record<MediaKind, string>> = {
+  reel: "(max-width: 860px) 70vw, 320px",
+  "ai-avatar": "(max-width: 860px) 70vw, 320px",
+};
 
 /**
- * Home "doors" (site-refine, 3 Oct 2026): one row per service with copy, a price line and ONE
- * media item at its own format's ratio (photo 3:2, reel 9:16, long-form 16:9). Rows alternate
- * the media left and right (`flip`).
+ * Full-width service rows (Home "Three services. One studio.", Post-production "Anything on your
+ * plate."): copy, a price line and ONE media item at its own format's ratio (photo 3:2, reel and
+ * AI avatar 9:16, long-form 16:9). Rows alternate the media left and right (`flip`); on phones
+ * the media sits on top. The whole row is the link, so the media is a picture, not a player.
  */
 export function ServiceRow({
   kicker,
@@ -24,10 +42,9 @@ export function ServiceRow({
   price: ReactNode;
   cta: string;
   href: string;
-  media: PortfolioItem[];
+  media?: RowMedia;
   flip?: boolean;
 }) {
-  const m = media[0];
   return (
     <Link className={flip ? "door flip" : "door"} href={href}>
       <div className="door-copy">
@@ -37,21 +54,17 @@ export function ServiceRow({
         <span className="price">{price}</span>
         <span className="lnk">{cta} →</span>
       </div>
-      {m && (
-        <div className={`door-media f-${m.format}`}>
-          <ViewfinderFrame
-            media={m.media}
-            format={m.format}
+      {media && (
+        <div className={`door-media f-${media.kind}`}>
+          <MediaFrame
+            media={media.media}
+            kind={media.kind}
             small
             corners={false}
-            clean={m.category === "ai-avatar" ? true : undefined}
-            tag={m.tag}
-            play={m.format === "reel" || m.format === "long-form" ? "icon" : undefined}
-            sizes={
-              m.format === "reel"
-                ? "(max-width: 860px) 70vw, 320px"
-                : "(max-width: 860px) 100vw, 50vw"
-            }
+            clean={media.kind === "ai-avatar" ? (media.media.bright ?? true) : undefined}
+            tag={media.tag}
+            play={media.video ? "icon" : undefined}
+            sizes={SIZES[media.kind] ?? "(max-width: 860px) 100vw, 50vw"}
           />
         </div>
       )}

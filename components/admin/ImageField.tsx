@@ -1,90 +1,61 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- admin previews of uploaded images, not site media */
-import { useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useId, useRef, useState } from "react";
 import type { Media } from "@/content/types";
-import type { Crop } from "@/lib/admin/fields";
-import { embedUrl } from "@/lib/video";
+import type { VideoFolder } from "@/lib/admin/fields";
+import { imageProblem, uploadImage } from "@/lib/admin/upload-image";
+import { isInstagramUrl } from "@/lib/instagram-link";
+import { isFileVideo, MEDIA, type MediaKind } from "@/lib/media-config";
+import { embedUrl, VIDEO_HINT, VIDEO_REFUSED } from "@/lib/video";
+import { FocalCrop, imageWarnings, MediaFacts, VideoUpload, Warnings } from "./MediaParts";
 
-const MAX_BYTES = 15 * 1024 * 1024;
-const PRE_EDGE = 2560;
-
-/** Shrinks a photo in the browser so it fits the upload limit; the server makes the WebP. */
-async function shrink(file: File): Promise<Blob> {
-  try {
-    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
-    const scale = Math.min(1, PRE_EDGE / Math.max(bmp.width, bmp.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bmp.width * scale);
-    canvas.height = Math.round(bmp.height * scale);
-    canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.9));
-    if (blob) return blob;
-  } catch {}
-  return file; // the server can still read it (e.g. a format the browser can't draw)
-}
-
-function upload(blob: Blob, onProgress: (p: number) => void) {
-  return new Promise<{ src: string; width: number; height: number }>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/admin/upload");
-    xhr.responseType = "json";
-    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
-    xhr.onload = () =>
-      xhr.status === 200
-        ? resolve(xhr.response)
-        : reject(new Error(xhr.response?.error ?? `Upload failed (${xhr.status}).`));
-    xhr.onerror = () => reject(new Error("Upload failed. Check your connection and try again."));
-    const form = new FormData();
-    form.append("file", blob, "upload.jpg");
-    xhr.send(form);
-  });
-}
-
-const parseFocus = (f?: string) => {
-  const m = f?.match(/^([\d.]+)% ([\d.]+)%$/);
-  return m ? { x: Number(m[1]), y: Number(m[2]) } : { x: 50, y: 50 };
-};
-
+/**
+ * One image (Media JSON) for a known format (lib/media-config): upload (WebP, 15 MB), alt text,
+ * a live crop at the format's ratio with a draggable focal point, warnings when the file is
+ * small or far off the ratio, and "Shown at / Recommended export / Used on". With `video` it
+ * also takes the video: a YouTube/Vimeo link, or (with `upload`) a file optimised and stored in R2.
+ */
 export function ImageField({
   label,
   value,
   onChange,
   error,
-  crops = [],
+  kind,
+  usedOn,
   video,
+  upload,
   bright,
   required,
+  hint,
 }: {
   label: string;
   value: Media | null | undefined;
   onChange: (m: Media) => void;
   error?: string;
-  crops?: Crop[];
+  kind: MediaKind;
+  usedOn?: string[];
   video?: boolean;
+  upload?: VideoFolder;
   bright?: boolean;
   required?: boolean;
+  /** Format-specific help under the label (defaults to the format's cover hint). */
+  hint?: string;
 }) {
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<null | "shrink" | number>(null);
   const [problem, setProblem] = useState<string>();
-  const m = (value ?? { alt: "" }) as Media & Record<string, unknown>;
-  const focus = parseFocus(m.focus);
+  const m = (value ?? { alt: "" }) as Media;
   const set = (patch: Partial<Media>) => onChange({ ...m, ...patch });
 
   async function pick(file: File | undefined) {
     if (!file) return;
     setProblem(undefined);
-    if (!file.type.startsWith("image/") && !/\.(heic|heif)$/i.test(file.name))
-      return setProblem("Choose an image file.");
-    if (file.size > MAX_BYTES) return setProblem("That image is over 15 MB. Choose a smaller one.");
+    const bad = imageProblem(file);
+    if (bad) return setProblem(bad);
     try {
-      setBusy("shrink");
-      const blob = await shrink(file);
-      setBusy(0);
-      const r = await upload(blob, (p) => setBusy(p));
-      const next: Media & Record<string, unknown> = {
+      const r = await uploadImage(file, setBusy);
+      const next: Media = {
         ...m,
         src: r.src,
         width: r.width,
@@ -101,24 +72,9 @@ export function ImageField({
     }
   }
 
-  function aim(e: PointerEvent<HTMLDivElement>) {
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = Math.round(Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100)));
-    const y = Math.round(Math.min(100, Math.max(0, ((e.clientY - r.top) / r.height) * 100)));
-    set({ focus: `${x}% ${y}%` });
-  }
-  function nudge(e: KeyboardEvent<HTMLDivElement>) {
-    const d = { ArrowLeft: [-5, 0], ArrowRight: [5, 0], ArrowUp: [0, -5], ArrowDown: [0, 5] }[
-      e.key
-    ];
-    if (!d) return;
-    e.preventDefault();
-    const x = Math.min(100, Math.max(0, focus.x + d[0]));
-    const y = Math.min(100, Math.max(0, focus.y + d[1]));
-    set({ focus: `${x}% ${y}%` });
-  }
-
-  const videoOk = !m.video || !!embedUrl(String(m.video));
+  const v = String(m.video ?? "");
+  const [moved, setMoved] = useState(false);
+  const videoOk = !v || isFileVideo(v) || !!embedUrl(v);
   return (
     <fieldset className="ad-field" aria-describedby={error ? `${id}-err` : undefined}>
       <legend className="ad-label">
@@ -126,40 +82,17 @@ export function ImageField({
         {required ? "" : " (optional)"}
       </legend>
       <div className="ad-image">
+        <p className="ad-small ad-muted">{hint ?? MEDIA[kind].coverHint}</p>
+        <MediaFacts kind={kind} usedOn={usedOn} />
         {m.src ? (
           <>
-            <div
-              className="ad-focal"
-              role="slider"
-              tabIndex={0}
-              aria-label="Focal point: tap the part of the image that must always stay in frame"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={focus.x}
-              aria-valuetext={`${focus.x}% across, ${focus.y}% down`}
-              onPointerDown={aim}
-              onKeyDown={nudge}
-            >
-              <img src={m.src} alt="" draggable={false} />
-              <span className="ad-focal-dot" style={{ left: `${focus.x}%`, top: `${focus.y}%` }} />
-            </div>
-            <p className="ad-small ad-muted">
-              Tap the face or the key detail. Every crop keeps that point in frame.
-            </p>
-            {crops.length > 0 && (
-              <div className="ad-crops" aria-label="How the site will crop it">
-                {crops.map((c) => (
-                  <div className="ad-crop" key={c.label}>
-                    <img
-                      src={m.src}
-                      alt=""
-                      style={{ aspectRatio: c.ratio, objectPosition: `${focus.x}% ${focus.y}%` }}
-                    />
-                    <span className="ad-eb">{c.label}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <FocalCrop
+              src={m.src}
+              focus={m.focus}
+              onFocus={(focus) => set({ focus })}
+              kind={kind}
+            />
+            <Warnings items={imageWarnings(kind, m)} />
           </>
         ) : (
           <p className="ad-small ad-muted">
@@ -219,20 +152,55 @@ export function ImageField({
         {video && (
           <div className="ad-field">
             <label htmlFor={`${id}-video`}>Video link (optional)</label>
-            <input
-              id={`${id}-video`}
-              type="url"
-              inputMode="url"
-              value={String(m.video ?? "")}
-              onChange={(e) => set({ video: e.target.value })}
-              placeholder="Bunny, Mux, YouTube or Vimeo link"
-              aria-invalid={!videoOk}
-            />
+            {isFileVideo(v) ? (
+              <div className="ad-btns">
+                <span className="ad-small">
+                  Uploaded video
+                  {m.file?.bytes ? ` (${(m.file.bytes / 1048576).toFixed(1)} MB)` : ""}.
+                </span>
+                <button
+                  type="button"
+                  className="ad-btn quiet small"
+                  onClick={() => set({ video: undefined, file: undefined })}
+                >
+                  Remove video
+                </button>
+              </div>
+            ) : (
+              <input
+                id={`${id}-video`}
+                type="url"
+                inputMode="url"
+                value={v}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  // An Instagram link isn't a video link: keep it as the item's Instagram link.
+                  if (isInstagramUrl(next)) {
+                    setMoved(true);
+                    return set({ video: undefined, instagramUrl: next.trim() });
+                  }
+                  setMoved(false);
+                  set({ video: next });
+                }}
+                placeholder={VIDEO_HINT}
+                aria-invalid={!videoOk}
+              />
+            )}
             <span className={videoOk ? "ad-help" : "ad-err"}>
-              {videoOk
-                ? "This image is the poster; the video loads when someone presses play."
-                : "Link not recognised. Use a Bunny, Mux, YouTube or Vimeo link."}
+              {!videoOk
+                ? VIDEO_REFUSED
+                : moved
+                  ? "That’s an Instagram link, so it was saved as the Instagram link instead."
+                  : `${VIDEO_HINT}. The cover image shows first; the video loads when someone presses play.`}
             </span>
+            {upload && (
+              <VideoUpload
+                kind={kind}
+                folder={upload}
+                label={isFileVideo(v) ? "Replace video" : "Or upload a video"}
+                onDone={(ref, meta) => set({ video: ref, file: meta })}
+              />
+            )}
           </div>
         )}
         {bright && (

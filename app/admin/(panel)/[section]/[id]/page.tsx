@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ItemEditor } from "@/components/admin/ItemEditor";
 import { requireAdmin } from "@/lib/admin/auth";
-import { getRow, listRows } from "@/lib/admin/data";
+import { adminCtx, getRow, listRows } from "@/lib/admin/data";
 import { sectionByKey, type Row } from "@/lib/admin/sections";
 
 type Props = {
@@ -44,6 +44,13 @@ export default async function EditItem({ params, searchParams }: Props) {
         }))
       : undefined;
 
+  // "Used on" needs the rest of the content (portfolio, before/after, avatars, case studies).
+  const ctx = section.fields.some(
+    (f) => f.kind === "image" || f.kind === "gallery" || f.kind === "portfolio-media",
+  )
+    ? await adminCtx(db)
+    : undefined;
+
   return (
     <ItemEditor
       key={id}
@@ -52,6 +59,7 @@ export default async function EditItem({ params, searchParams }: Props) {
       initial={row}
       isOwner={role === "owner"}
       portfolio={portfolio}
+      ctx={ctx}
       justCreated={!!created}
     />
   );

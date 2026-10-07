@@ -26,9 +26,12 @@ export function ListView({
   sectionKey,
   rows: initial,
   extra,
+  flags = {},
 }: {
   sectionKey: string;
   rows: Row[];
+  /** A warning per item id (e.g. an Instagram reel that can't play). */
+  flags?: Record<string, string>;
   /** Section-specific controls under the heading (e.g. proof-strip toggles on Clients). */
   extra?: ReactNode;
 }) {
@@ -246,6 +249,11 @@ export function ListView({
                 <div>
                   <div className="ad-row-title">{title}</div>
                   {section.meta_of && <div className="ad-row-meta">{section.meta_of(r)}</div>}
+                  {flags[r.id] && (
+                    <div className="ad-row-flag" data-testid="row-flag">
+                      {flags[r.id]}
+                    </div>
+                  )}
                 </div>
               </Link>
               <div className="ad-row-side">

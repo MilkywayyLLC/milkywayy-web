@@ -6,7 +6,10 @@ import { CTABand } from "@/components/blocks/CTABand";
 import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
 import { FAQ } from "@/components/blocks/FAQ";
 import { FormatGallery } from "@/components/blocks/FormatGallery";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { MediaFrame } from "@/components/media/MediaFrame";
+import { MediaOpen } from "@/components/media/MediaOpen";
+import { photosOf } from "@/lib/media-config";
+import { withPlayback } from "@/lib/playable";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -42,7 +45,12 @@ export default async function PropertyShootsPage() {
     getPropertyPricing(),
   ]);
   const whatsapp = pageWhatsappLink("Property shoots", site.whatsapp.number);
-  const heroItem = hero[0];
+  const [heroShown, samples] = await Promise.all([
+    withPlayback(hero.slice(0, 1)),
+    withPlayback([...photos, ...videos, ...tours]),
+  ]);
+  const heroItem = heroShown[0];
+  const heroCount = heroItem ? photosOf(heroItem.media).length : 0;
 
   return (
     <>
@@ -75,15 +83,17 @@ export default async function PropertyShootsPage() {
             </div>
           </div>
           {heroItem && (
-            <ViewfinderFrame
+            <MediaFrame
               media={heroItem.media}
-              format="photo"
+              kind="photo"
               topLeft="F/8 · ISO 100"
               tag={heroItem.tag}
-              tagRight="Photo 07 / 32"
+              tagRight={heroCount > 1 ? `${heroCount} photos` : undefined}
               priority
               sizes="(max-width: 900px) 100vw, 42vw"
-            />
+            >
+              {heroItem.play && <MediaOpen play={heroItem.play} />}
+            </MediaFrame>
           )}
         </section>
       </div>
@@ -94,7 +104,7 @@ export default async function PropertyShootsPage() {
         <div className="w">
           <SectionHead id="samples-title" eyebrow="Samples" title="What you'll get." />
           <FormatGallery
-            items={[...photos, ...videos, ...tours]}
+            items={samples}
             tabs={["photo", "reel", "long-form", "360"]}
             label="Sample type"
             captions={false}

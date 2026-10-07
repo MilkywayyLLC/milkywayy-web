@@ -7,7 +7,16 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   prettier,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "reference/**", "supabase/functions/**"]),
+  globalIgnores([
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    "reference/**",
+    "supabase/functions/**",
+    // ffmpeg.wasm, copied from node_modules at build (scripts/copy-ffmpeg.mjs).
+    "public/ffmpeg/**",
+  ]),
 ]);
 
 export default eslintConfig;

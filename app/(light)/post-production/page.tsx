@@ -5,20 +5,22 @@ import { BeforeAfterGallery } from "@/components/blocks/BeforeAfterGallery";
 import { FAQ } from "@/components/blocks/FAQ";
 import { ProofStrip } from "@/components/blocks/ProofStrip";
 import { RateCards } from "@/components/blocks/RateCards";
-import { ServiceCards4, type ServiceCard } from "@/components/blocks/ServiceCards4";
+import { rowMedia, ServiceRow, type RowMedia } from "@/components/blocks/ServiceRow";
 import { StatsBand } from "@/components/blocks/StatsBand";
 import { Steps, type Step } from "@/components/blocks/Steps";
 import { FreeTestSection } from "@/components/forms/FreeTestSection";
 import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
 import { FormatGallery } from "@/components/blocks/FormatGallery";
 import { SHOWCASE } from "@/lib/showcase";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { HeroMedia } from "@/components/blocks/HeroMedia";
 import { oneFormat } from "@/lib/media";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Hl, SectionHead } from "@/components/ui/Section";
 import type { Media, PortfolioFormat } from "@/content/types";
+import { kindOf } from "@/lib/media-config";
+import { withPlayback } from "@/lib/playable";
 import {
   getAvatars,
   getBeforeAfter,
@@ -70,7 +72,22 @@ const HERO_LABEL: Record<PortfolioFormat, string> = {
   "360": "360 tour",
 };
 
-const PLACEHOLDER: Media = { alt: "Placeholder edit sample", placeholder: "interior" };
+/** Until real work is placed, each row shows a placeholder at its own format's ratio. */
+const PLACEHOLDER: Record<"photo" | "reel" | "long-form", Media> = {
+  photo: { alt: "Placeholder HDR photo edit", placeholder: "interior" },
+  reel: { alt: "Placeholder social media reel", placeholder: "night" },
+  "long-form": { alt: "Placeholder walkthrough video still", placeholder: "villa-dusk" },
+};
+
+type Row = {
+  kicker: string;
+  title: string;
+  text: string;
+  price: string;
+  cta: string;
+  href: string;
+  media: RowMedia;
+};
 
 export default async function PostProductionPage() {
   const [site, clients, proof, pairs, stats, faqs, other, cardMedia, avatars, heroMedia] =
@@ -87,19 +104,28 @@ export default async function PostProductionPage() {
       getPortfolio("post-hero"),
     ]);
   const heroSet = oneFormat(heroMedia);
-  // Everything this page shows, once each, for the format gallery.
-  const work = [...heroMedia, ...cardMedia].filter(
-    (m, i, all) => all.findIndex((x) => x.id === m.id) === i,
-  );
+  const [hero, work] = await Promise.all([
+    withPlayback(heroSet.items),
+    // Everything this page shows, once each, for the format gallery.
+    withPlayback(
+      [...heroMedia, ...cardMedia].filter((m, i, all) => all.findIndex((x) => x.id === m.id) === i),
+    ),
+  ]);
   const rate = (k: "photo" | "short" | "long") =>
     other.postProduction.rates.find((r) => r.key === k);
   const from = (k: "photo" | "short" | "long") => {
     const r = rate(k);
     return r ? `From ${formatUSD(r.amount)} / ${r.unit}` : "";
   };
-  const media = (i: number) => cardMedia[i]?.media ?? PLACEHOLDER;
+  // Each row takes the first placed item of its own format (lib/used-on POST_ROWS).
+  const media = (k: "photo" | "reel" | "long-form"): RowMedia =>
+    rowMedia(cardMedia.find((m) => kindOf(m) === k)) ?? {
+      media: PLACEHOLDER[k],
+      kind: k,
+      video: k !== "photo",
+    };
 
-  const cards: ServiceCard[] = [
+  const rows: Row[] = [
     {
       kicker: "Photo edits",
       title: "HDR, twilight, sky, declutter",
@@ -107,8 +133,7 @@ export default async function PostProductionPage() {
       price: from("photo"),
       cta: "Free test",
       href: "#free-test",
-      media: media(0),
-      tag: cardMedia[0]?.tag,
+      media: media("photo"),
     },
     {
       kicker: "Short-form",
@@ -117,8 +142,7 @@ export default async function PostProductionPage() {
       price: from("short"),
       cta: "Free test",
       href: "#free-test",
-      media: media(1),
-      play: true,
+      media: media("reel"),
     },
     {
       kicker: "Long-form",
@@ -127,8 +151,7 @@ export default async function PostProductionPage() {
       price: from("long"),
       cta: "Free test",
       href: "#free-test",
-      media: media(2),
-      play: true,
+      media: media("long-form"),
     },
     {
       kicker: "AI avatars",
@@ -137,8 +160,15 @@ export default async function PostProductionPage() {
       price: "White-label",
       cta: "See AI avatars",
       href: "/ai-avatars",
-      media: avatars[0]?.poster ?? PLACEHOLDER,
-      clean: avatars[0]?.poster.bright,
+      media: {
+        media: avatars[0]?.poster ?? {
+          alt: "Placeholder AI avatar",
+          placeholder: "adam",
+          bright: true,
+        },
+        kind: "ai-avatar",
+        video: !!avatars[0]?.clip,
+      },
     },
   ];
 
@@ -166,33 +196,7 @@ export default async function PostProductionPage() {
               </ButtonLink>
             </Ctas>
           </div>
-          {heroSet.items.length > 1 ? (
-            <div className="trio">
-              {heroSet.items.map((m, i) => (
-                <ViewfinderFrame
-                  key={m.id}
-                  media={m.media}
-                  format="reel"
-                  small
-                  play="icon"
-                  tag={HERO_LABEL[m.format]}
-                  priority={i === 1}
-                  sizes="(max-width: 900px) 33vw, 18vw"
-                />
-              ))}
-            </div>
-          ) : heroSet.items[0] ? (
-            <div className={`hero-one f-${heroSet.format}`}>
-              <ViewfinderFrame
-                media={heroSet.items[0].media}
-                format={heroSet.format}
-                tag={HERO_LABEL[heroSet.items[0].format]}
-                play={heroSet.format === "photo" ? undefined : "icon"}
-                priority
-                sizes="(max-width: 900px) 100vw, 45vw"
-              />
-            </div>
-          ) : null}
+          <HeroMedia items={hero} labels={HERO_LABEL} trioSizes="(max-width: 900px) 33vw, 18vw" />
         </section>
       </div>
 
@@ -229,7 +233,11 @@ export default async function PostProductionPage() {
               </p>
             }
           />
-          <ServiceCards4 cards={cards} />
+          <div className="doors">
+            {rows.map((r, i) => (
+              <ServiceRow key={r.kicker} {...r} flip={i % 2 === 1} />
+            ))}
+          </div>
         </div>
       </section>
 

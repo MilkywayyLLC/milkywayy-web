@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { deleteItem, saveItem } from "@/lib/admin/actions";
-import { setPath, type Option } from "@/lib/admin/fields";
+import { setPath, type AdminCtx, type Option } from "@/lib/admin/fields";
 import { sectionByKey, type Row } from "@/lib/admin/sections";
 import { Confirm } from "./Confirm";
 import { FormFields } from "./FormFields";
@@ -22,6 +22,7 @@ export function ItemEditor({
   initial,
   isOwner,
   portfolio,
+  ctx,
   justCreated,
 }: {
   sectionKey: string;
@@ -29,6 +30,7 @@ export function ItemEditor({
   initial: Row;
   isOwner: boolean;
   portfolio?: Option[];
+  ctx?: AdminCtx;
   justCreated?: boolean;
 }) {
   const section = sectionByKey(sectionKey)!;
@@ -133,6 +135,7 @@ export function ItemEditor({
           errors={errors}
           isOwner={isOwner}
           portfolio={portfolio}
+          ctx={ctx}
           onChange={(name, v) =>
             setValues((cur) => ({ ...setPath(cur, name, v), ...section.derive?.(name, v, cur) }))
           }

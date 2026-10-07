@@ -1,6 +1,6 @@
 /*
  * Placeholder "photography" from the mockup, used until real media is supplied (LAUNCH.md → Content).
- * Keyed by content/types.ts PlaceholderKey: <ViewfinderFrame media={{ placeholder: "dusk" }} />.
+ * Keyed by content/types.ts PlaceholderKey: <MediaFrame media={{ placeholder: "dusk" }} />.
  */
 @layer components {
   .ph-dusk {

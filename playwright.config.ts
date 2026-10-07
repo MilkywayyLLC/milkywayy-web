@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import { env, WEBHOOK_SECRET } from "./tests/helpers/env";
 
 const PORT = 3200;
+const IG_MOCK = "http://127.0.0.1:3298";
 /** Set BASE_URL to test a deployed site (e.g. staging) instead of a local build. */
 const BASE_URL = process.env.BASE_URL;
 
@@ -86,16 +87,28 @@ export default defineConfig({
   webServer:
     process.env.PW_NO_SERVER || BASE_URL
       ? undefined
-      : {
-          command: `npm run build && npx next start -p ${PORT}`,
-          url: `http://localhost:${PORT}`,
-          reuseExistingServer: !process.env.CI,
-          timeout: 180_000,
-          // Share pages without R2 locally: media URLs point here (nothing needs to answer).
-          env: {
-            SHARE_DEV_MEDIA_ORIGIN: process.env.SHARE_DEV_MEDIA_ORIGIN ?? "http://127.0.0.1:3299",
-            // The Stripe webhook test signs its events with this when .env.local has no secret.
-            ...(env.STRIPE_WEBHOOK_SECRET ? {} : { STRIPE_WEBHOOK_SECRET: WEBHOOK_SECRET }),
+      : [
+          // The Instagram API, mocked (tests/mocks/instagram.mjs): tests never call Instagram.
+          {
+            command: "node tests/mocks/instagram.mjs",
+            url: `${IG_MOCK}/health`,
+            reuseExistingServer: !process.env.CI,
+            timeout: 30_000,
           },
-        },
+          {
+            command: `npm run build && npx next start -p ${PORT}`,
+            url: `http://localhost:${PORT}`,
+            reuseExistingServer: !process.env.CI,
+            timeout: 240_000,
+            env: {
+              // Share pages and site videos without R2 locally: media URLs point here (tests
+              // answer them with page.route; nothing else needs to).
+              SHARE_DEV_MEDIA_ORIGIN: process.env.SHARE_DEV_MEDIA_ORIGIN ?? "http://127.0.0.1:3299",
+              // The Stripe webhook test signs its events with this when .env.local has no secret.
+              ...(env.STRIPE_WEBHOOK_SECRET ? {} : { STRIPE_WEBHOOK_SECRET: WEBHOOK_SECRET }),
+              INSTAGRAM_GRAPH_URL: IG_MOCK,
+              INSTAGRAM_ACCESS_TOKEN: "test-token",
+            },
+          },
+        ],
 });

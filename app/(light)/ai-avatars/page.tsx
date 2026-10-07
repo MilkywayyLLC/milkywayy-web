@@ -8,8 +8,9 @@ import { FAQ } from "@/components/blocks/FAQ";
 import { Steps, type Step } from "@/components/blocks/Steps";
 import { DemoForm } from "@/components/forms/DemoForm";
 import { AvatarStage, RevealButton, RevealProvider } from "@/components/media/AvatarReveal";
-import { LiteVideo } from "@/components/media/LiteVideo";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { MediaFrame } from "@/components/media/MediaFrame";
+import { MediaOpen } from "@/components/media/MediaOpen";
+import { videoPlayable } from "@/lib/playable";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -58,7 +59,7 @@ const USES = [
 ];
 
 export default async function AiAvatarsPage() {
-  const [hero, avatars, faqs, other, site] = await Promise.all([
+  const [hero, avatarList, faqs, other, site] = await Promise.all([
     getAvatarHero(),
     getAvatars(),
     getFaqs("ai-avatars"),
@@ -66,6 +67,11 @@ export default async function AiAvatarsPage() {
     getSiteSettings(),
   ]);
   const whatsapp = pageWhatsappLink("AI avatars", site.whatsapp.number);
+  // Each example opens its clip in the 9:16 player.
+  const avatars = avatarList.map((a) => ({
+    ...a,
+    play: videoPlayable(a.clip, `${a.name}, AI avatar example`, "ai-avatar", a.poster.src),
+  }));
   const ai = other.aiAvatars;
 
   return (
@@ -138,14 +144,16 @@ export default async function AiAvatarsPage() {
             <div className="avs">
               {avatars.map((a) => (
                 <figure key={a.id}>
-                  <ViewfinderFrame
+                  <MediaFrame
                     media={a.poster}
+                    kind="ai-avatar"
                     small
                     corners={false}
+                    play={a.play ? undefined : "icon"}
                     sizes="(max-width: 860px) 50vw, 25vw"
                   >
-                    <LiteVideo video={a.clip} title={`${a.name}, AI avatar example`} />
-                  </ViewfinderFrame>
+                    {a.play && <MediaOpen play={a.play} preview />}
+                  </MediaFrame>
                   <figcaption>
                     <b>{a.name}</b>
                     <span>{a.niche}</span>

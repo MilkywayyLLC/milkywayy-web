@@ -71,3 +71,30 @@ export async function livePricing(db: SupabaseClient): Promise<PropertyPricing> 
     throw new Error("Couldn't read the price tables.");
   return map.propertyPricing(sizes.data, tiers.data, twilight.data, meta.data.value);
 }
+
+/**
+ * What the editors need to say where an item is "Used on" (lib/used-on): every portfolio item
+ * (light) and the published AI avatar examples in site order.
+ */
+export async function adminCtx(db: SupabaseClient): Promise<import("./fields").AdminCtx> {
+  const { sectionByKey } = await import("./sections");
+  const [items, avatars] = await Promise.all([
+    listRows(db, sectionByKey("portfolio")!),
+    db.from("avatars").select("id, published, sample, sort_order").order("sort_order"),
+  ]);
+  const live = (avatars.data ?? []).filter((a) => a.published);
+  const real = live.filter((a) => !a.sample);
+  return {
+    portfolio: items.map((r) => ({
+      id: r.id,
+      format: r.format as never,
+      category: r.category as never,
+      placements: (r.placements ?? []) as never,
+      placementOrder: (r.placement_order ?? {}) as never,
+      sortOrder: r.sort_order,
+      sample: !!r.sample,
+      published: !!r.published,
+    })),
+    avatarOrder: (real.length ? real : live).map((a) => a.id),
+  };
+}

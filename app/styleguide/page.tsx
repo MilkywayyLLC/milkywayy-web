@@ -16,8 +16,11 @@ import { PackagesBand } from "@/components/blocks/PackagesBand";
 import { PathCards } from "@/components/blocks/PathCards";
 import { ProofStrip } from "@/components/blocks/ProofStrip";
 import { RateCards } from "@/components/blocks/RateCards";
-import { ServiceCards4 } from "@/components/blocks/ServiceCards4";
-import { ServiceRow } from "@/components/blocks/ServiceRow";
+import { rowMedia, ServiceRow } from "@/components/blocks/ServiceRow";
+import { MEDIA_FIXTURES } from "@/lib/media-fixtures";
+import { MEDIA, exportSize, kindOf } from "@/lib/media-config";
+import { withPlayback } from "@/lib/playable";
+import { MediaOpen } from "@/components/media/MediaOpen";
 import { StatsBand } from "@/components/blocks/StatsBand";
 import { Steps } from "@/components/blocks/Steps";
 import { Testimonials } from "@/components/blocks/Testimonials";
@@ -30,7 +33,7 @@ import { MobileActionBar } from "@/components/layout/MobileActionBar";
 import { AvatarStage, RevealButton, RevealProvider } from "@/components/media/AvatarReveal";
 import { BeforeAfter } from "@/components/media/BeforeAfter";
 import { Timecode } from "@/components/media/Timecode";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { MediaFrame } from "@/components/media/MediaFrame";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { StaticChips } from "@/components/ui/ChipGroup";
@@ -144,6 +147,7 @@ const TOC = [
   ["controls", "Buttons and controls"],
   ["header", "Header and mobile bar"],
   ["media", "Media frames"],
+  ["formats", "Media formats"],
   ["beforeafter", "Before / after"],
   ["avatar", "Avatar reveal"],
   ["proof", "Proof, needs, services"],
@@ -195,7 +199,12 @@ export default async function StyleguidePage() {
     getOtherPricing(),
     getPortfolio("property-gallery-photo"),
   ]);
-  const heroPair = pairs.find((p) => p.inHero) ?? pairs[0];
+  const heroPair = pairs[0];
+  const [reelsShown, propertyShown, fixtures] = await Promise.all([
+    withPlayback(reels),
+    withPlayback([...gallery, ...reels.filter((r) => r.category === "property")]),
+    withPlayback(MEDIA_FIXTURES),
+  ]);
   const rate = (k: string) => other.postProduction.rates.find((r) => r.key === k)!;
 
   return (
@@ -376,25 +385,90 @@ export default async function StyleguidePage() {
       >
         {() => (
           <div className="w sg-media">
-            <ViewfinderFrame
+            <MediaFrame
               media={site.showreel}
-              aspect="4/5"
+              kind="showreel"
               topLeft="4K · 25P"
               timecode={<Timecode />}
               play="icon"
               tag="Showreel 2026"
               tagRight={site.showreel.duration}
             />
-            <ViewfinderFrame
+            <MediaFrame
               media={{ alt: "Placeholder: apartment interior", placeholder: "interior" }}
-              aspect="4/3"
+              kind="photo"
               topLeft="F/8 · ISO 100"
               tag="Dubai Marina · 2BR"
               tagRight="Photo 07 / 32"
             />
             <div className="trio">
               {reels.slice(0, 3).map((r) => (
-                <ViewfinderFrame key={r.id} media={r.media} small play="icon" />
+                <MediaFrame key={r.id} media={r.media} kind="reel" small play="icon" />
+              ))}
+            </div>
+          </div>
+        )}
+      </Both>
+
+      <Both
+        id="formats"
+        title="Media formats"
+        note="One item per format and source (lib/media-fixtures). Ratios, export sizes and what a click opens come from lib/media-config."
+      >
+        {() => (
+          <div className="w stack" style={{ gap: 32 }}>
+            <table className="sg-table">
+              <thead>
+                <tr>
+                  <th>Format</th>
+                  <th>Ratio</th>
+                  <th>Export</th>
+                  <th>Opens</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(MEDIA).map(([k, m]) => (
+                  <tr key={k}>
+                    <td>{m.label}</td>
+                    <td>{m.ratioLabel}</td>
+                    <td>{exportSize(k as keyof typeof MEDIA)}</td>
+                    <td>{m.opens}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="sg-formats" data-testid="media-fixtures">
+              {fixtures.map((f) => (
+                <figure key={f.id} data-fixture={f.id} style={{ margin: 0 }} className="stack">
+                  <MediaFrame
+                    media={f.media}
+                    kind={kindOf(f)}
+                    small
+                    corners={false}
+                    clean={f.category === "ai-avatar" ? true : undefined}
+                    badge={
+                      kindOf(f) === "360"
+                        ? "360°"
+                        : f.media.photos
+                          ? `${f.media.photos.length} photos`
+                          : undefined
+                    }
+                    sizes="240px"
+                  >
+                    {f.play && <MediaOpen play={f.play} preview={kindOf(f) === "reel"} />}
+                  </MediaFrame>
+                  <figcaption style={{ fontSize: 13 }}>{f.title}</figcaption>
+                  {f.instagramLink && (
+                    <a
+                      className="ig-link"
+                      href={f.instagramLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View on Instagram ↗
+                    </a>
+                  )}
+                </figure>
               ))}
             </div>
           </div>
@@ -476,7 +550,7 @@ export default async function StyleguidePage() {
                 }
                 cta="Explore production"
                 href="/production"
-                media={rowProd}
+                media={rowMedia(rowProd[0])}
               />
               <ServiceRow
                 kicker="02 · Post-production · Worldwide"
@@ -489,7 +563,7 @@ export default async function StyleguidePage() {
                 }
                 cta="Explore post-production"
                 href="/post-production"
-                media={rowPost}
+                media={rowMedia(rowPost[0])}
               />
               <ServiceRow
                 kicker="03 · AI avatars · Everyone"
@@ -502,7 +576,7 @@ export default async function StyleguidePage() {
                 }
                 cta="Explore AI avatars"
                 href="/ai-avatars"
-                media={rowAv}
+                media={rowMedia(rowAv[0])}
               />
             </div>
           </div>
@@ -517,7 +591,7 @@ export default async function StyleguidePage() {
         {() => (
           <div className="w stack" style={{ gap: 48 }}>
             <div>
-              <FormatGallery items={reels} />
+              <FormatGallery items={reelsShown} />
             </div>
             <StatsBand stats={statsHome} />
             <StatsBand stats={statsPost} />
@@ -680,7 +754,7 @@ export default async function StyleguidePage() {
         {() => (
           <div className="w stack" style={{ gap: 48 }}>
             <FormatGallery
-              items={[...gallery, ...reels.filter((r) => r.category === "property")]}
+              items={propertyShown}
               tabs={["photo", "reel", "long-form", "360"]}
               captions={false}
             />
@@ -733,50 +807,34 @@ export default async function StyleguidePage() {
       <Both id="post" title="Post-production blocks">
         {() => (
           <div className="w stack" style={{ gap: 48 }}>
-            <ServiceCards4
-              cards={[
-                {
-                  kicker: "Photo edits",
-                  title: "HDR, twilight, sky, declutter",
-                  text: "Bracket blending, window pulls, colour correction, virtual twilight and object removal.",
-                  price: `From ${formatUSD(rate("photo").amount)} / ${rate("photo").unit}`,
-                  cta: "Free test",
-                  href: "/post-production/free-test",
+            <div className="doors">
+              <ServiceRow
+                kicker="Photo edits"
+                title="HDR, twilight, sky, declutter"
+                text="Bracket blending, window pulls, colour correction, virtual twilight and object removal."
+                price={`From ${formatUSD(rate("photo").amount)} / ${rate("photo").unit}`}
+                cta="Free test"
+                href="/post-production#free-test"
+                media={{
                   media: { alt: "Placeholder: twilight edit", placeholder: "villa-dusk" },
-                  tag: "Twilight",
-                },
-                {
-                  kicker: "Short-form",
-                  title: "Social media reels",
-                  text: "Vertical edits for Instagram, TikTok and Shorts with music, captions and your branding.",
-                  price: `From ${formatUSD(rate("short").amount)} / ${rate("short").unit}`,
-                  cta: "Free test",
-                  href: "/post-production/free-test",
+                  kind: "photo",
+                }}
+              />
+              <ServiceRow
+                kicker="Short-form"
+                title="Social media reels"
+                text="Vertical edits for Instagram, TikTok and Shorts with music, captions and your branding."
+                price={`From ${formatUSD(rate("short").amount)} / ${rate("short").unit}`}
+                cta="Free test"
+                href="/post-production#free-test"
+                media={{
                   media: { alt: "Placeholder: short-form edit", placeholder: "night" },
-                  play: true,
-                },
-                {
-                  kicker: "Long-form",
-                  title: "YouTube and walkthroughs",
-                  text: "Tours, launches, vlogs and explainers, cut to hold attention with b-roll and graphics.",
-                  price: `From ${formatUSD(rate("long").amount)} / ${rate("long").unit}`,
-                  cta: "Free test",
-                  href: "/post-production/free-test",
-                  media: { alt: "Placeholder: long-form edit", placeholder: "salon" },
-                  play: true,
-                },
-                {
-                  kicker: "AI avatars",
-                  title: "Avatar generation",
-                  text: "Custom AI presenters for your clients, produced under your brand.",
-                  price: "White-label",
-                  cta: "See AI avatars",
-                  href: "/ai-avatars",
-                  media: { alt: "Placeholder: AI avatar", placeholder: "adam" },
-                  clean: true,
-                },
-              ]}
-            />
+                  kind: "reel",
+                  video: true,
+                }}
+                flip
+              />
+            </div>
             <div>
               <SectionHead
                 eyebrow="Starting rates"
@@ -795,7 +853,7 @@ export default async function StyleguidePage() {
             <div className="sg-avs">
               {avatars.map((a) => (
                 <figure key={a.id} style={{ margin: 0 }} className="stack">
-                  <ViewfinderFrame media={a.poster} small clean corners={false} aspect="3/4" />
+                  <MediaFrame media={a.poster} kind="ai-avatar" small clean corners={false} />
                   <figcaption>
                     <b style={{ display: "block", fontWeight: 600 }}>{a.name}</b>
                     <span className="muted" style={{ font: "400 12px/1.4 var(--font-mono)" }}>

@@ -1,4 +1,6 @@
 import type { NextConfig } from "next";
+import { TOUR_FRAME_HOSTS } from "./lib/tours";
+import { VIDEO_FRAME_HOSTS } from "./lib/video";
 
 const indexable = process.env.NEXT_PUBLIC_SITE_ENV === "production";
 
@@ -42,9 +44,21 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
+    // Which sites may be framed (owner, 7 Oct 2026): video players, the three 360 tour hosts,
+    // the Cal.com call calendar, and Vercel's preview toolbar. Only frame-src is set, so scripts,
+    // images and requests are unaffected.
+    const frames = [
+      "'self'",
+      ...VIDEO_FRAME_HOSTS,
+      ...TOUR_FRAME_HOSTS,
+      "https://cal.com",
+      "https://*.cal.com",
+      "https://vercel.live",
+    ].join(" ");
+    const headers = [{ key: "Content-Security-Policy", value: `frame-src ${frames}` }];
     // Staging lock (guide §12): belt and braces on top of the metadata robots tag.
-    if (indexable) return [];
-    return [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }];
+    if (!indexable) headers.push({ key: "X-Robots-Tag", value: "noindex, nofollow" });
+    return [{ source: "/:path*", headers }];
   },
 };
 

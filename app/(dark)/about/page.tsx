@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { CTABand } from "@/components/blocks/CTABand";
 import { ProofStrip } from "@/components/blocks/ProofStrip";
 import { Steps, type Step } from "@/components/blocks/Steps";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { MediaFrame } from "@/components/media/MediaFrame";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -85,7 +85,7 @@ export default async function AboutPage() {
             </Ctas>
           </div>
           <div className="hero-media-col">
-            <ViewfinderFrame
+            <MediaFrame
               media={site.founder.photo}
               corners={false}
               clean

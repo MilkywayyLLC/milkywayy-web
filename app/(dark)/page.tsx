@@ -5,13 +5,13 @@ import { FAQ } from "@/components/blocks/FAQ";
 import { FounderBlock } from "@/components/blocks/FounderBlock";
 import { NeedSelector, type Need } from "@/components/blocks/NeedSelector";
 import { ProofStrip } from "@/components/blocks/ProofStrip";
-import { ServiceRow } from "@/components/blocks/ServiceRow";
+import { rowMedia, ServiceRow } from "@/components/blocks/ServiceRow";
 import { StatsBand } from "@/components/blocks/StatsBand";
 import { Steps, type Step } from "@/components/blocks/Steps";
 import { Testimonials } from "@/components/blocks/Testimonials";
 import { LiteVideo } from "@/components/media/LiteVideo";
 import { Timecode } from "@/components/media/Timecode";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { MediaFrame } from "@/components/media/MediaFrame";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -123,28 +123,31 @@ export default async function HomePage() {
               <p className="lede">
                 We shoot in the UAE, edit for studios worldwide and build AI presenters for brands.
               </p>
-              <NeedSelector needs={NEEDS} />
             </div>
             <div className="hero-media-col">
-              <ViewfinderFrame
+              <MediaFrame
                 media={site.showreel}
+                kind="showreel"
                 topLeft="4K · 25P"
                 timecode={<Timecode start="00:14:08" />}
                 tag="Showreel 2026"
                 tagRight={site.showreel.duration}
                 priority
-                sizes="(max-width: 900px) 100vw, 45vw"
+                sizes="(max-width: 900px) 100vw, 640px"
               >
                 <LiteVideo video={site.showreel.video} title="Milkywayy showreel" />
-              </ViewfinderFrame>
+              </MediaFrame>
               {showreelIsSample && <SampleLabel>Placeholder · showreel coming</SampleLabel>}
+            </div>
+            <div className="hero-select">
+              <NeedSelector needs={NEEDS} />
             </div>
           </section>
         </div>
 
         {proof && <ProofStrip clients={clients} rating={site.googleRating.value} />}
 
-        <section className="sec" id="services" aria-labelledby="services-title">
+        <section className="sec alt" id="services" aria-labelledby="services-title">
           <div className="w">
             <SectionHead
               id="services-title"
@@ -170,7 +173,7 @@ export default async function HomePage() {
                 }
                 cta="Explore production"
                 href="/production"
-                media={rowProd}
+                media={rowMedia(rowProd[0])}
               />
               <ServiceRow
                 kicker="02 · Post-production · Worldwide"
@@ -184,7 +187,7 @@ export default async function HomePage() {
                 }
                 cta="Explore post-production"
                 href="/post-production"
-                media={rowPost}
+                media={rowMedia(rowPost[0])}
                 flip
               />
               <ServiceRow
@@ -198,14 +201,14 @@ export default async function HomePage() {
                 }
                 cta="Explore AI avatars"
                 href="/ai-avatars"
-                media={rowAv}
+                media={rowMedia(rowAv[0])}
               />
             </div>
           </div>
         </section>
 
         {stats.length > 0 && (
-          <section className="sec alt stats-sec" aria-label="Studio in numbers">
+          <section className="sec stats-sec" aria-label="Studio in numbers">
             <div className="w">
               <StatsBand stats={stats} />
             </div>
@@ -229,7 +232,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="sec" aria-labelledby="how-title">
+        <section className="sec alt" aria-labelledby="how-title">
           <div className="w">
             <SectionHead id="how-title" eyebrow="How we work" title="Brief to delivery." />
             <Steps steps={STEPS} />
@@ -237,7 +240,7 @@ export default async function HomePage() {
         </section>
 
         {reviews.length > 0 && (
-          <section className="sec alt" aria-labelledby="reviews-title">
+          <section className="sec" aria-labelledby="reviews-title">
             <div className="w">
               <SectionHead id="reviews-title" eyebrow="Client words" title="What clients say." />
               <Testimonials reviews={reviews} />
@@ -245,13 +248,13 @@ export default async function HomePage() {
           </section>
         )}
 
-        <section className="sec" id="founder" aria-label="From the founder">
+        <section className="sec alt" id="founder" aria-label="From the founder">
           <div className="w">
             <FounderBlock founder={site.founder} />
           </div>
         </section>
 
-        <section className="sec alt" aria-label="Questions">
+        <section className="sec" aria-label="Questions">
           <div className="w">
             <FAQ
               title="Before you ask."

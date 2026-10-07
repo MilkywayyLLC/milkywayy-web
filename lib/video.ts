@@ -21,3 +21,16 @@ export function embedUrl(video: string): string | null {
   if (mux) return `https://player.mux.com/${mux[1]}?autoplay=true`;
   return null;
 }
+
+/** What the admin asks for. Bunny and Mux links still play, but aren't offered any more. */
+export const VIDEO_HINT = "YouTube or Vimeo link (unlisted is fine)";
+export const VIDEO_REFUSED = "Link not recognised. Use a YouTube or Vimeo link.";
+
+/** Hosts the site may frame for video (next.config.ts frame-src). */
+export const VIDEO_FRAME_HOSTS = [
+  "https://www.youtube-nocookie.com",
+  "https://www.youtube.com",
+  "https://player.vimeo.com",
+  "https://iframe.mediadelivery.net",
+  "https://player.mux.com",
+];

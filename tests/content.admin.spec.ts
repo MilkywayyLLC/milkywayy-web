@@ -182,7 +182,7 @@ test("AI avatars, with an upload: WebP, resized, focal point kept", async ({ pag
   const id = await addDraft(page, "avatars", async () => {
     await page.getByLabel("Name", { exact: true }).fill(name);
     await page.getByLabel("Niche line").fill("Testing · uploads");
-    src = await upload(page, "Poster", `${RUN} avatar poster`);
+    src = await upload(page, "Cover image", `${RUN} avatar poster`);
     // Focal point: tap at 20% across, 30% down; every crop preview follows it.
     const picker = page.getByRole("slider", { name: /Focal point/ });
     const box = (await picker.boundingBox())!;
@@ -234,7 +234,13 @@ test("Portfolio", async ({ page, baseURL }) => {
   await addDraft(page, "portfolio", async () => {
     await page.getByLabel("Title").fill(`${RUN} portfolio`);
     await page.getByLabel("Format").selectOption("photo");
-    await upload(page, "Image or video poster", alt);
+    // A photo set of one (multi-photo sets: tests/media.admin.spec.ts).
+    await page
+      .getByTestId("photos-file")
+      .setInputFiles({ name: "photo.jpg", mimeType: "image/jpeg", buffer: photo });
+    await expect(page.getByTestId("photo-item")).toHaveCount(1, { timeout: 30_000 });
+    uploaded.push((await page.getByTestId("photo-item").getAttribute("data-src"))!);
+    await page.getByLabel("Describe the cover (alt text)").fill(alt);
     await page.getByRole("checkbox", { name: "Work page" }).check();
   });
   await notOnSite(baseURL!, "/work", html(alt));
@@ -251,7 +257,7 @@ test("Case studies", async ({ page, baseURL }) => {
     await page.getByLabel("Web address").fill(slug);
     await page.getByLabel("One-line summary (cards)").fill("A test case study.");
     await page.getByLabel("The brief").fill("Check that publishing works end to end.");
-    await upload(page, "Cover", `${RUN} cover`);
+    await upload(page, "Cover image", `${RUN} cover`);
   });
   await notOnSite(baseURL!, "/work", title);
   await publish(page);
@@ -271,8 +277,6 @@ test("validation: required fields and bad links are refused on the server", asyn
   await expect(page.getByText("Required.").first()).toBeVisible();
   await expect(page).toHaveURL(/\/admin\/faqs\/new$/);
   await page.goto("/admin/avatars/new");
-  await page
-    .getByLabel("Clip (Bunny, Mux, YouTube or Vimeo link)")
-    .fill("https://example.com/video.mp4");
+  await page.getByLabel("Clip (optional)").fill("https://example.com/video.mp4");
   await expect(page.getByText("Link not recognised").first()).toBeVisible();
 });

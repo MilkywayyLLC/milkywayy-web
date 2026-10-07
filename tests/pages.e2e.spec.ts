@@ -252,11 +252,13 @@ test.describe("layout rules", () => {
       await page.goto(path);
       await page.evaluate(() => document.fonts.ready);
       const [text, frame] = await page.locator(sel).evaluate((g) => {
-        const [a, b] = [...g.children] as HTMLElement[];
-        return [
-          a.getBoundingClientRect().height,
-          b.querySelector(".fr")!.getBoundingClientRect().height,
-        ];
+        // The text column: everything but the media column (Home: title and lede, then the
+        // "What do you need?" selector below them; owner, 7 Oct 2026).
+        const media = g.querySelector<HTMLElement>(".hero-media-col")!;
+        const rest = ([...g.children] as HTMLElement[]).filter((c) => c !== media);
+        const top = Math.min(...rest.map((c) => c.getBoundingClientRect().top));
+        const bottom = Math.max(...rest.map((c) => c.getBoundingClientRect().bottom));
+        return [bottom - top, media.querySelector(".fr")!.getBoundingClientRect().height];
       });
       expect(frame, path).toBeLessThanOrEqual(text + 1);
       expect(frame, path).toBeGreaterThan(text * 0.6); // still a substantial frame

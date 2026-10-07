@@ -136,3 +136,19 @@
 .sg .stack > .w {
   width: 100%;
 }
+.sg-formats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px 16px;
+  align-items: start;
+}
+.sg-table {
+  border-collapse: collapse;
+  font: 400 13px/1.5 var(--font-mono);
+}
+.sg-table th,
+.sg-table td {
+  text-align: left;
+  padding: 4px 16px 4px 0;
+  border-bottom: 1px solid var(--line);
+}

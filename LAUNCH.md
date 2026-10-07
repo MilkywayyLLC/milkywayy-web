@@ -83,6 +83,7 @@ Portal and billing set-up in the admin (no build check; do before inviting clien
   14. `20261015090000_portal_billing_calendar.sql`
   15. `20261016090000_portal_billing_client_view.sql`
   16. `20261017090000_portal_launch_prep.sql`
+  17. `20261018090000_site_instagram.sql` *(the website's Instagram token store)*
 - [ ] **Claude** — a new `PORTAL_ADMIN_SECRET`: added to Vercel Production by CLI (never printed) and its SHA-256 stored in `private.app_secrets` under `portal_admin`. Then the security advisor.
 - [ ] **Claude** — data hygiene check (read-only): no `e2e-portal-%` users, no "E2E …" or "Milkywayy Demo Realty" accounts, no "Sample: …" listings, no test invoices. No script can create them in production: the sample-listing script refuses anything but the dev project, the Stripe preview script takes test keys only, the e2e helpers need functions that exist only in dev (`supabase/dev/`), and `supabase/seed.sql` only fills empty content tables ("on conflict do nothing").
 - [ ] **Akash decides, Claude applies** — the website's e2e test accounts (`e2e-owner@`, `e2e-editor@`, `e2e-stranger@example.com`). Recommendation: delete `e2e-owner` (a second Owner key on Claude's laptop), keep the other two for the public/editor tests; Owner-level admin tests then run on a temporary Supabase branch when needed.
@@ -98,6 +99,20 @@ Portal and billing set-up in the admin (no build check; do before inviting clien
 - [ ] **Akash** — bucket `milkywayy-deliverables` (exists) with **its own API token**: Object Read & Write, that bucket only. The preview token stays on `milkywayy-portal-dev` (it already gets 403 on production).
 - [ ] **Akash** — CORS on `milkywayy-deliverables`: AllowedOrigins `https://milkywayy.com` (and `https://www.milkywayy.com`), methods GET and PUT, AllowedHeaders `*`, ExposeHeaders `ETag`, MaxAge 3600. That one rule covers everything the browser uploads: deliveries and web versions (admin), raw files, invoice PDFs, bank-transfer proofs, permit QRs, contact photos and logos (clients). Public development URL stays **off** (downloads and share pages use short-lived signed links).
 - [ ] **Claude** — after the env vars are in (section 5): upload, download and delete one test file from the admin on production; then check one share-page image and one invoice PDF.
+- [ ] **Akash** — the website's own videos (reel uploads, AI avatar clips, the showreel if uploaded) live in the same bucket under `site/`, served through `/media/file/…` with signed links. Upload them **on production** after launch: a video uploaded on a preview goes to the dev bucket and won't play on milkywayy.com.
+
+## 4b. Instagram (reels from @milkywayy.media)
+
+Reels on our own Instagram play in the site's player through the official Instagram API. Until
+this is done they show their cover with "View on Instagram ↗". Development mode is enough: the
+app only ever reads our own account.
+
+- [ ] **Akash** — make sure @milkywayy.media is a **Professional** account (Instagram → Settings → Account type and tools → Business or Creator).
+- [ ] **Akash** — [developers.facebook.com](https://developers.facebook.com) → My Apps → **Create app** → use case **"Manage messaging & content on Instagram"** → app name "Milkywayy Website" → create. Leave it in **Development** mode (no app review needed for our own account).
+- [ ] **Akash** — in the app: **Instagram → API setup with Instagram login** → step 1 **Generate access tokens** → **Add account** → sign in as @milkywayy.media and allow (it asks only for basic profile and media, `instagram_business_basic`). If Instagram shows a tester invite, accept it in Instagram → Settings → Website permissions → Apps and websites → Tester invites.
+- [ ] **Akash** — click **Generate token** next to @milkywayy.media and copy it (a long-lived token, 60 days). Don't paste it anywhere else.
+- [ ] **Akash** — Vercel → `milkywayy-web` → Settings → Environment Variables → `INSTAGRAM_ACCESS_TOKEN` = that token, **Sensitive**, for **Production** and **Preview**. Redeploy (or ask Claude to). No app secret or app id is needed.
+- [ ] **Claude** — check Admin → Portfolio shows "Instagram: Connected as @milkywayy.media". The daily cron renews the token every week and keeps it in the database (migration 17), so it never runs out. If Instagram ever refuses it, the admin says so; generate a new one (steps above) and replace the env var.
 
 ## 5. Vercel Production environment
 
@@ -113,11 +128,12 @@ adds the rest by CLI without printing them.
 - `PORTAL_ADMIN_SECRET` (Claude, section 2) · `PORTAL_EMAIL_FROM=Milkywayy <portal@milkywayy.com>` (Claude)
 - (A) `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` for the production token · `R2_BUCKET=milkywayy-deliverables` (Claude)
 - (A) `STRIPE_SECRET_KEY` = the **live** secret key (Stripe → Developers → API keys) · `STRIPE_WEBHOOK_SECRET` is stored by the live webhook script (section 7)
+- (A) `INSTAGRAM_ACCESS_TOKEN` (section 4b)
 - Optional: `NEXT_PUBLIC_CAL_LINK`, `PORTAL_UPLOAD_MAX_GB` (default 5), `LEAD_WEBHOOK_URL`, `SUPABASE_SERVER_URL`.
 
-**Must NOT be set in Production:** `LEADS_DB`, `NEXT_PUBLIC_PORTAL_SUPABASE_URL`, `NEXT_PUBLIC_PORTAL_SUPABASE_ANON_KEY` (the portal then uses the website's project), `SHARE_DEV_MEDIA_ORIGIN`, `META_TEST_EVENT_CODE`, any `E2E_*`, `NEXT_PUBLIC_PORTAL_PHONE_SIGNIN` (unless phone sign-in comes back), any `sk_test_…` key. Live Stripe keys are refused anywhere but production (`lib/stripe.ts`), and previews only ever get test keys (`scripts/deploy-portal-preview.sh`).
+**Must NOT be set in Production:** `LEADS_DB`, `NEXT_PUBLIC_PORTAL_SUPABASE_URL`, `NEXT_PUBLIC_PORTAL_SUPABASE_ANON_KEY` (the portal then uses the website's project), `SHARE_DEV_MEDIA_ORIGIN`, `INSTAGRAM_GRAPH_URL` (tests only), `META_TEST_EVENT_CODE`, any `E2E_*`, `NEXT_PUBLIC_PORTAL_PHONE_SIGNIN` (unless phone sign-in comes back), any `sk_test_…` key. Live Stripe keys are refused anywhere but production (`lib/stripe.ts`), and previews only ever get test keys (`scripts/deploy-portal-preview.sh`).
 
-**Crons** (in `vercel.json`, already scheduled, use `CRON_SECRET`): weekly leads email (Mon 09:00 Dubai) and portal housekeeping daily at 06:00 Dubai (auto-complete, retention deletes, expiry warnings, Overdue invoices, last month's statements).
+**Crons** (in `vercel.json`, already scheduled, use `CRON_SECRET`): weekly leads email (Mon 09:00 Dubai) and portal housekeeping daily at 06:00 Dubai (auto-complete, retention deletes, expiry warnings, Overdue invoices, last month's statements, the weekly Instagram token renewal).
 
 ## 6. Launch day (about an hour, a quiet morning)
 

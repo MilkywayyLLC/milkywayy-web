@@ -2,7 +2,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { headers } from "next/headers";
-import type { PropertyPricing } from "@/content/types";
+import type { Media, PropertyPricing } from "@/content/types";
+import { matchReel } from "@/lib/instagram";
 import { refresh } from "@/lib/data/refresh";
 import { ALL_TAGS } from "@/lib/data/tags";
 import { adminOrThrow } from "./auth";
@@ -60,6 +61,19 @@ const newId = (prefix: string) =>
 
 /* ---------- list sections ---------- */
 
+/**
+ * An Instagram reel plays in our player only if it's on our account: the server asks the
+ * Instagram API again on save (the browser's answer is a convenience). If Instagram can't be
+ * reached, the last known answer stays.
+ */
+async function confirmReel(value: Record<string, unknown>) {
+  const m = value.media as Media | undefined;
+  if (m?.source !== "instagram" || !m.instagram?.url) return;
+  const r = await matchReel(m.instagram.url);
+  if (r.state === "ours") m.instagram = { ...m.instagram, id: r.id };
+  else if (r.state === "other") m.instagram = { url: m.instagram.url, shortcode: r.shortcode };
+}
+
 export async function saveItem(
   sectionKey: string,
   id: string | null,
@@ -72,6 +86,7 @@ export async function saveItem(
     if (!section) return { ok: false, error: "Unknown section." };
     const { value, errors } = validate(section.fields, input, { isOwner: role === "owner" });
     if (Object.keys(errors).length) return { ok: false, errors };
+    if (section.key === "portfolio") await confirmReel(value);
 
     // Only the editable columns (first segment of each field name); never id, order or extras.
     const columns = [...new Set(section.fields.map((f) => f.name.split(".")[0]))].filter(
@@ -106,8 +121,6 @@ export async function saveItem(
 
     if (section.key === "portfolio")
       await savePlacements(db, itemId!, value.placements as string[]);
-    if (section.key === "before-after" && value.in_hero)
-      await db.from("before_after").update({ in_hero: false }).neq("id", itemId!);
 
     const title = section.title_of({ ...row, id: itemId! } as Row);
     const changes = before ? diff(section.fields, before, value) : [];

@@ -1,33 +1,29 @@
 import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
-import type { Media, PortfolioFormat } from "@/content/types";
+import type { Media } from "@/content/types";
 import { cx } from "@/lib/cx";
-
-/** One ratio per format, site-wide (site-refine, 3 Oct 2026). Images fill it with object-fit: cover. */
-export const FORMAT_RATIO: Record<PortfolioFormat, string> = {
-  photo: "3/2",
-  reel: "9/16",
-  "long-form": "16/9",
-  "360": "16/9",
-};
+import { MEDIA, type MediaKind } from "@/lib/media-config";
 
 /**
- * Media wrapper with the camera look: corner brackets, optional timecode (top right), top-left
- * meta, bottom tag and a square play button (guide §4.5). Shows a placeholder swatch until real
- * media exists. Video playback (poster first, player on click) arrives with LiteVideo in Phase 2.
+ * Every card, poster, player frame and hero frame on the site (owner, 7 Oct 2026). `kind` sets
+ * the ratio from lib/media-config (photo 3:2, reel 9:16, long-form and 360 16:9, …); the image
+ * always fills it with object-fit: cover at the focal point saved in the admin. Camera look on
+ * top: corner brackets, optional timecode, top-left meta, a bottom tag and a play button
+ * (guide §4.5). Shows a placeholder swatch until real media exists. Images load lazily unless
+ * `priority` (the hero's LCP image).
  */
-export function ViewfinderFrame({
+export function MediaFrame({
   media,
+  kind,
   corners = true,
   timecode,
   topLeft,
   tag,
   tagRight,
+  badge,
   play,
   small,
   clean,
-  aspect,
-  format,
   priority,
   sizes = "(max-width: 900px) 100vw, 50vw",
   className,
@@ -35,20 +31,21 @@ export function ViewfinderFrame({
   children,
 }: {
   media: Media;
+  /** The format: sets the ratio. Without it the frame takes its size from the layout. */
+  kind?: MediaKind;
   corners?: boolean;
   /** Static text or a <Timecode /> element. */
   timecode?: ReactNode;
   topLeft?: string;
   tag?: string;
   tagRight?: string;
-  /** "button" renders a real control (needs an onClick in a client wrapper); "icon" is decorative. */
-  play?: "icon" | "button";
+  /** A small label in the top-left corner, e.g. "360°" or "24 photos". */
+  badge?: string;
+  /** Decorative play icon (a real control comes from MediaOpen / LiteVideo children). */
+  play?: "icon";
   small?: boolean;
   /** Bright images: no dark gradient, dark tag text. */
   clean?: boolean;
-  aspect?: string;
-  /** Portfolio format: sets the frame's ratio (photo 3:2, reel 9:16, long-form/360 16:9). */
-  format?: PortfolioFormat;
   priority?: boolean;
   sizes?: string;
   className?: string;
@@ -64,13 +61,12 @@ export function ViewfinderFrame({
         small && "sm",
         bright && "clean",
         corners && "has-corners",
+        kind && `k-${kind}`,
         placeholder,
         className,
       )}
-      style={{
-        ...(aspect || format ? { aspectRatio: aspect ?? FORMAT_RATIO[format!] } : null),
-        ...style,
-      }}
+      style={{ ...(kind ? { aspectRatio: MEDIA[kind].ratio } : null), ...style }}
+      data-kind={kind}
       role={media.src ? undefined : "img"}
       aria-label={media.src ? undefined : media.alt}
     >
@@ -81,7 +77,7 @@ export function ViewfinderFrame({
           fill
           sizes={sizes}
           priority={priority}
-          style={media.focus ? { objectPosition: media.focus } : undefined}
+          style={{ objectFit: "cover", objectPosition: media.focus ?? "50% 50%" }}
         />
       )}
       {corners && (
@@ -92,6 +88,7 @@ export function ViewfinderFrame({
         />
       )}
       {topLeft && <span className="tl">{topLeft}</span>}
+      {badge && <span className="fr-badge">{badge}</span>}
       {timecode && (
         <span className="tc" style={bright ? { color: "#111" } : undefined}>
           <i className="rec-dot" aria-hidden="true" />

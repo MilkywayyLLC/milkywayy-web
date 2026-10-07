@@ -8,6 +8,8 @@ import { Eyebrow } from "@/components/ui/Eyebrow";
 import { SampleLabel } from "@/components/ui/SampleLabel";
 import { Hl, SectionHead } from "@/components/ui/Section";
 import { getCaseStudies, getPortfolio, getSiteSettings } from "@/lib/data";
+import { withPlayback } from "@/lib/playable";
+import { WORK_TABS } from "@/lib/used-on";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { pageMetadata } from "@/lib/seo/meta";
 import { PageLd } from "@/components/seo/JsonLd";
@@ -19,7 +21,8 @@ export async function generateMetadata(): Promise<Metadata> {
 /** Work (guide §6.7): title + filters → grid from the portfolio → case study cards. */
 export default async function WorkPage() {
   const site = await getSiteSettings();
-  const [items, cases] = await Promise.all([getPortfolio("work"), getCaseStudies()]);
+  const [placed, cases] = await Promise.all([getPortfolio("work"), getCaseStudies()]);
+  const items = await withPlayback(placed);
   const hasSamples = items.some((i) => i.sample);
 
   return (
@@ -43,7 +46,7 @@ export default async function WorkPage() {
           {hasSamples && (
             <SampleLabel className="mb-4">Placeholder work · real projects go here</SampleLabel>
           )}
-          <FormatGallery items={items} label="Work by format" />
+          <FormatGallery items={items} tabs={WORK_TABS} label="Work by format" />
         </div>
       </section>
 

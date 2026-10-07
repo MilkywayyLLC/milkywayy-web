@@ -1,5 +1,7 @@
 import type { Tag } from "@/lib/data/tags";
-import { CROPS, type Field, type Option } from "./fields";
+import { MEDIA } from "@/lib/media-config";
+import { VIDEO_HINT } from "@/lib/video";
+import type { Field, Option } from "./fields";
 
 /**
  * Every list the admin edits (guide §18.2). One config per table drives the list screen, the
@@ -52,7 +54,7 @@ export const PAGES: Option[] = [
 export const pagePath = (page: string) => (page === "home" ? "/" : `/${page}`);
 
 export const PLACEMENTS: Option[] = [
-  { value: "home-reels", label: "Home · reel strip" },
+  { value: "home-reels", label: "Home · reel strip (not on the page any more)" },
   { value: "home-row-production", label: "Home · Production row" },
   { value: "home-row-post", label: "Home · Post-production row" },
   { value: "home-row-avatars", label: "Home · AI avatars row" },
@@ -96,6 +98,13 @@ const list = (v: unknown) => (Array.isArray(v) ? (v as string[]) : []);
 const label = (opts: Option[], v: unknown) =>
   opts.find((o) => o.value === v)?.label ?? String(v ?? "");
 
+const FORMATS: Option[] = [
+  { value: "photo", label: `Photo set · ${MEDIA.photo.ratioLabel}` },
+  { value: "reel", label: `Reel · ${MEDIA.reel.ratioLabel}` },
+  { value: "long-form", label: `Long-form · ${MEDIA["long-form"].ratioLabel}` },
+  { value: "360", label: `360 tour · ${MEDIA["360"].ratioLabel} cover` },
+];
+
 /** Portfolio format from an image's shape: wide → long-form 16:9, tall → reel 9:16, else photo 3:2. */
 export function formatFromSize(width: number, height: number) {
   const r = width / height;
@@ -113,13 +122,13 @@ export const SECTIONS: Section[] = [
     defaults: {
       category: "property",
       format: "reel",
-      media: { alt: "" },
+      media: { alt: "", source: "instagram" },
       featured: false,
       sample: false,
       placements: [],
     },
     title_of: (r) => String(r.title ?? ""),
-    meta_of: (r) => `${label(CATEGORIES, r.category)} · ${r.format}`,
+    meta_of: (r) => `${label(CATEGORIES, r.category)} · ${label(FORMATS, r.format)}`,
     thumb: "media",
     filter: {
       label: "Where it shows",
@@ -128,14 +137,8 @@ export const SECTIONS: Section[] = [
       orderPerValue: true,
     },
     preview: (r) => placementPage(list(r?.placements)[0]),
-    // A new upload sets the format from its shape (site-refine, 3 Oct 2026); still editable.
-    derive: (name, next, prev) => {
-      const m = next as { src?: string; width?: number; height?: number } | null;
-      const was = prev.media as { src?: string } | undefined;
-      if (name !== "media" || !m?.width || !m.height || m.src === was?.src) return {};
-      if (prev.format === "360") return {};
-      return { format: formatFromSize(m.width, m.height) };
-    },
+    // The format is chosen first and decides the fields (owner, 7 Oct 2026); an upload no longer
+    // changes it. A cover far from the format's ratio gets a warning instead.
     fields: [
       { name: "title", kind: "text", label: "Title", required: true, max: 80 },
       { name: "client", kind: "text", label: "Client (optional)", max: 80 },
@@ -145,23 +148,18 @@ export const SECTIONS: Section[] = [
         kind: "select",
         label: "Format",
         required: true,
-        options: [
-          { value: "photo", label: "Photo 3:2" },
-          { value: "reel", label: "Reel 9:16" },
-          { value: "long-form", label: "Long-form 16:9" },
-          { value: "360", label: "360 tour" },
-        ],
+        options: FORMATS,
+        help: "Choose this first: it decides the fields below and how the item shows on the site.",
       },
+      { name: "media", kind: "portfolio-media", label: "Media", required: true },
       {
-        name: "media",
-        kind: "image",
-        label: "Image or video poster",
-        required: true,
-        video: true,
-        bright: true,
-        crops: [CROPS.reel, CROPS.photo, CROPS.wide],
+        name: "duration",
+        kind: "text",
+        label: "Duration label",
+        placeholder: "0:30",
+        max: 8,
+        when: (r) => r.format === "reel" || r.format === "long-form",
       },
-      { name: "duration", kind: "text", label: "Duration label", placeholder: "0:30", max: 8 },
       { name: "tag", kind: "text", label: "Tag in the frame", placeholder: "Marina 2BR", max: 28 },
       { name: "meta", kind: "text", label: "Caption", placeholder: "Property", max: 28 },
       { name: "placements", kind: "multi", label: "Where it shows", options: PLACEMENTS },
@@ -220,11 +218,18 @@ export const SECTIONS: Section[] = [
       {
         name: "cover",
         kind: "image",
-        label: "Cover",
+        label: "Cover image",
         required: true,
-        crops: [CROPS.wide, CROPS.photo],
+        media: "case-cover",
+        usedOn: (r) => ["/work → Case studies", `/work/${r.slug || "…"} → Top image`],
       },
-      { name: "gallery", kind: "gallery", label: "Gallery", crops: [CROPS.photo] },
+      {
+        name: "gallery",
+        kind: "gallery",
+        label: "Gallery",
+        media: "photo",
+        usedOn: (r) => [`/work/${r.slug || "…"} → Project media`],
+      },
       { name: "related", kind: "portfolio-picker", label: "Related portfolio items" },
       { name: "category", kind: "select", label: "Category", required: true, options: CATEGORIES },
       sample,
@@ -237,23 +242,32 @@ export const SECTIONS: Section[] = [
     singular: "before / after pair",
     tags: ["before-after"],
     idPrefix: "pair",
-    defaults: { before: { alt: "" }, after: { alt: "" }, in_hero: false, sample: false },
+    defaults: { before: { alt: "" }, after: { alt: "" }, sample: false },
     title_of: (r) => `${r.tab} · ${r.title}`,
-    meta_of: (r) => (r.in_hero ? "Shown in the hero" : ""),
     thumb: "after",
     preview: () => "/post-production",
     fields: [
       { name: "tab", kind: "text", label: "Tab", required: true, placeholder: "Sky", max: 16 },
       { name: "title", kind: "text", label: "Title", required: true, max: 60 },
       { name: "description", kind: "textarea", label: "Description", required: true, max: 300 },
-      { name: "before", kind: "image", label: "Before", required: true, crops: [CROPS.photo] },
-      { name: "after", kind: "image", label: "After", required: true, crops: [CROPS.photo] },
       {
-        name: "in_hero",
-        kind: "toggle",
-        label: "Show in the Post-production hero",
-        help: "Only one pair can be in the hero; choosing this one takes it off the others.",
+        name: "before",
+        kind: "image",
+        label: "Before",
+        required: true,
+        media: "before-after",
+        usedOn: () => ["Post-production → Before / after"],
       },
+      {
+        name: "after",
+        kind: "image",
+        label: "After",
+        required: true,
+        media: "before-after",
+        usedOn: () => ["Post-production → Before / after"],
+      },
+      // No "show in the hero" toggle: the Post-production hero takes portfolio items placed
+      // under "Post-production · hero frames" (owner, 7 Oct 2026). The in_hero column stays.
       sample,
     ],
   },
@@ -283,12 +297,25 @@ export const SECTIONS: Section[] = [
       {
         name: "poster",
         kind: "image",
-        label: "Poster",
+        label: "Cover image",
         required: true,
         bright: true,
-        crops: [CROPS.portrait, CROPS.reel],
+        media: "ai-avatar",
+        usedOn: (r, ctx) => [
+          "AI avatars → Avatar styles",
+          ...(ctx.avatarOrder[0] === r.id || (!ctx.avatarOrder.length && r.published)
+            ? ["Post-production → Services row (AI avatars)"]
+            : []),
+        ],
       },
-      { name: "clip", kind: "video", label: "Clip (Bunny, Mux, YouTube or Vimeo link)" },
+      {
+        name: "clip",
+        kind: "video",
+        label: "Clip (optional)",
+        media: "ai-avatar",
+        upload: "avatars",
+        help: `${VIDEO_HINT}, or upload the video (vertical, ${MEDIA["ai-avatar"].width}×${MEDIA["ai-avatar"].height}). It opens in the 9:16 player.`,
+      },
       sample,
     ],
   },

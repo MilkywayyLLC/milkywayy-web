@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/launch-check.mts",
+    "prebuild": "node scripts/copy-ffmpeg.mjs && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/launch-check.mts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -18,9 +18,13 @@
     "db:parity": "node --env-file=.env.local scripts/db-parity.mts",
     "test:ios": "playwright test --project=ios-safari",
     "test:portal": "LEADS_DB=portal playwright test --project=portal --workers=3 && playwright test --project=admin-setup --project=portal-admin --no-deps",
-    "deploy:portal-preview": "bash scripts/deploy-portal-preview.sh"
+    "deploy:portal-preview": "bash scripts/deploy-portal-preview.sh",
+    "predev": "node scripts/copy-ffmpeg.mjs"
   },
   "dependencies": {
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "next": "16.3.8",

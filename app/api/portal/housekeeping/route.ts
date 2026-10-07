@@ -3,6 +3,7 @@ import { env } from "@/lib/env";
 import { portalAdminReady, portalAdminSystem } from "@/lib/portal/admin";
 import { projectLink } from "@/lib/portal/messages";
 import { notifyClients, type Recipient } from "@/lib/portal/notify";
+import { refreshInstagramToken } from "@/lib/instagram";
 import { deleteObject, r2Ready } from "@/lib/r2";
 
 /**
@@ -11,7 +12,8 @@ import { deleteObject, r2Ready } from "@/lib/r2";
  *   2. files past their retention date are deleted from R2, then marked deleted;
  *   3. clients are emailed 14 days before their delivered files are deleted;
  *   4. Due invoices past their due date become Overdue;
- *   5. last month's statements are frozen (on the 1st, and any later day one is missing).
+ *   5. last month's statements are frozen (on the 1st, and any later day one is missing);
+ *   6. the website's Instagram token is renewed once a week (lib/instagram.ts).
  * Vercel calls it with `Authorization: Bearer $CRON_SECRET`.
  */
 export const dynamic = "force-dynamic";
@@ -79,7 +81,14 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  // The Instagram long-lived token lasts 60 days; renewing weekly keeps it alive indefinitely.
+  const instagram = await refreshInstagramToken().catch((e) => ({
+    error: e instanceof Error ? e.message : "failed",
+  }));
+  if ("error" in instagram) console.error("[housekeeping] instagram token:", instagram.error);
+
   return NextResponse.json({
+    instagram,
     auto_completed: out.auto_completed,
     files_deleted: deleted.length,
     files_waiting: out.expired.length - deleted.length,

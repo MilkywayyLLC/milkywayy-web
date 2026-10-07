@@ -1,5 +1,6 @@
 import type { Tag } from "@/lib/data/tags";
-import { CROPS, type Field } from "./fields";
+import { VIDEO_HINT } from "@/lib/video";
+import type { Field } from "./fields";
 
 /**
  * Single documents (one JSON value each) with a draft → preview → publish flow. Drafts live in
@@ -105,7 +106,8 @@ export const DOCS: Doc[] = [
             kind: "image",
             label: "Photo",
             required: true,
-            crops: [CROPS.portrait, CROPS.square, CROPS.wide],
+            media: "founder",
+            usedOn: () => ["Home → Founder", "About → Hero"],
           },
         ],
       },
@@ -115,10 +117,12 @@ export const DOCS: Doc[] = [
           {
             name: "showreel",
             kind: "image",
-            label: "Poster and video",
+            label: "Cover image and video",
             required: true,
             video: true,
-            crops: [CROPS.wide],
+            upload: "showreel",
+            media: "showreel",
+            usedOn: () => ["Home → Hero (plays in place)"],
           },
           { name: "showreel.duration", kind: "text", label: "Duration label", max: 8 },
         ],
@@ -212,12 +216,20 @@ export const DOCS: Doc[] = [
           {
             name: "poster",
             kind: "image",
-            label: "Poster",
+            label: "Cover image",
             required: true,
             bright: true,
-            crops: [CROPS.reel, CROPS.portrait],
+            media: "avatar-hero",
+            usedOn: () => ["AI avatars → Hero"],
           },
-          { name: "clip", kind: "video", label: "Clip (Bunny, Mux, YouTube or Vimeo link)" },
+          {
+            name: "clip",
+            kind: "video",
+            label: "Clip (optional)",
+            media: "avatar-hero",
+            upload: "avatars",
+            help: `${VIDEO_HINT}, or upload the video. It plays in place in the hero.`,
+          },
           { name: "timecode", kind: "text", label: "Timecode text", max: 24 },
           { name: "captionLead", kind: "text", label: "Caption", required: true, max: 90 },
           {

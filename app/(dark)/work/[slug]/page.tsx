@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CTABand } from "@/components/blocks/CTABand";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { MediaFrame } from "@/components/media/MediaFrame";
+import { kindOf } from "@/lib/media-config";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -67,9 +68,9 @@ export default async function CaseStudyPage({ params }: PageProps<"/work/[slug]"
               <SampleLabel>Sample case study · replace with a real project</SampleLabel>
             )}
           </div>
-          <ViewfinderFrame
+          <MediaFrame
             media={cs.cover}
-            aspect="16/10"
+            kind="case-cover"
             priority
             sizes="(max-width: 900px) 100vw, 42vw"
           />
@@ -100,9 +101,10 @@ export default async function CaseStudyPage({ params }: PageProps<"/work/[slug]"
         <section className="sec" aria-label="Project media">
           <div className="w cs-gallery">
             {cs.gallery.map((m, i) => (
-              <ViewfinderFrame
+              <MediaFrame
                 key={i}
                 media={m}
+                kind="photo"
                 small
                 corners={false}
                 sizes="(max-width: 760px) 50vw, 33vw"
@@ -149,8 +151,9 @@ export default async function CaseStudyPage({ params }: PageProps<"/work/[slug]"
             <div className="cs-gallery">
               {related.slice(0, 3).map((m) => (
                 <figure key={m.id} style={{ margin: 0 }} className="stack">
-                  <ViewfinderFrame
+                  <MediaFrame
                     media={m.media}
+                    kind={kindOf(m)}
                     small
                     corners={false}
                     sizes="(max-width: 760px) 50vw, 33vw"

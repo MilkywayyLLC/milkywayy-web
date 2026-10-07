@@ -782,21 +782,126 @@
     background: #fff;
     box-shadow: 0 0 0 1px #000;
   }
-  .ad-crops {
-    display: flex;
-    gap: 10px;
-    align-items: flex-end;
-    flex-wrap: wrap;
+  /* The image beside a live crop at the format's ratio (owner, 7 Oct 2026). */
+  .ad-focal-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+  }
+  @media (max-width: 640px) {
+    .ad-focal-wrap {
+      grid-template-columns: 1fr;
+    }
   }
   .ad-crop {
     display: grid;
     gap: 4px;
+    margin: 0;
+    justify-items: start;
   }
   .ad-crop img {
-    height: 96px;
-    width: auto;
+    display: block;
+    width: 100%;
+    max-height: 300px;
     object-fit: cover;
     background: var(--line);
+  }
+  .ad-crop img[style*="9 / 16"],
+  .ad-crop img[style*="4 / 5"] {
+    width: auto;
+    height: 300px;
+    max-width: 100%;
+  }
+  .ad-facts {
+    display: grid;
+    gap: 2px;
+    font: 400 13px/1.5 var(--font-mono);
+    padding: 8px 10px;
+    border-left: 2px solid var(--acc);
+    background: var(--surface);
+  }
+  .ad-facts b {
+    font-weight: 500;
+  }
+  .ad-used i {
+    color: var(--muted);
+  }
+  .ad-warn {
+    margin: 0;
+    padding: 8px 10px 8px 26px;
+    font-size: 13.5px;
+    background: #fff4dc;
+    color: #5a3d00;
+    border: 1px solid #ecd19a;
+  }
+  .ad-row-flag {
+    margin-top: 2px;
+    font-size: 12.5px;
+    color: #8a4b00;
+  }
+  .ad-video-up {
+    display: grid;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .ad-pm {
+    display: grid;
+    gap: 16px;
+  }
+  .ad-photos {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+  }
+  .ad-photos li {
+    display: grid;
+    gap: 6px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    cursor: grab;
+  }
+  .ad-photos li.dragging {
+    opacity: 0.5;
+  }
+  .ad-photos img {
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    display: block;
+    background: var(--line);
+  }
+  .ad-photos input {
+    font-size: 14px;
+    padding: 6px 8px;
+    min-height: 36px;
+  }
+  .ad-photo-tools {
+    display: flex;
+    gap: 4px;
+  }
+  .ad-photo-tools .ad-icon-btn,
+  .ad-star {
+    width: 34px;
+    height: 34px;
+  }
+  .ad-star {
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+  }
+  .ad-star.on {
+    background: var(--fg);
+    color: #e6d3a3;
+    border-color: var(--fg);
   }
   .ad-progress {
     height: 4px;

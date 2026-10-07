@@ -151,7 +151,7 @@ test("no page mixes ratios in a row of media @mobile", async ({ page }) => {
     await page.goto(path);
     const rows = await page.evaluate(() => {
       const bad: string[] = [];
-      for (const grid of document.querySelectorAll(".fg-grid, .trio, .svc4, .avs")) {
+      for (const grid of document.querySelectorAll(".fg-grid, .trio, .avs")) {
         const frames = [...grid.querySelectorAll(".fr")].filter((f) => f.getClientRects().length);
         const byTop = new Map<number, number[]>();
         for (const f of frames) {
