@@ -9,6 +9,7 @@ import {
   deliveredItems,
   hasPortalAdmin,
   newRun,
+  publishedInvoice,
   signedIn,
 } from "./helpers/portal";
 
@@ -74,8 +75,14 @@ test("invoices: the Owner sees them, a Member doesn't; a PDF key must be this cl
       p_pdf_key: `invoices/${account}/inv-1.pdf`,
     }),
   );
-  // "New invoice" goes to the Owner, not the Member.
-  expect(out.recipients.map((r) => r.email)).toEqual([`${RUN}-owner@example.com`]);
+  // A draft first (owner, 10 Oct 2026): nobody is emailed and the client sees nothing yet.
+  expect(out.recipients).toEqual([]);
+  expect(await must<unknown[]>(O.from("invoices").select("number"))).toEqual([]);
+  // Published: "New invoice" goes to the Owner, not the Member.
+  const pub = await must<{ recipients: { email: string }[] }>(
+    adminRpc("portal_admin_approve_invoice", { p_id: out.id, p_publish_now: true }),
+  );
+  expect(pub.recipients.map((r) => r.email)).toEqual([`${RUN}-owner@example.com`]);
   expect(await must<unknown[]>(O.from("invoices").select("number"))).toHaveLength(1);
   expect(await must<unknown[]>(M.from("invoices").select("number"))).toEqual([]);
   // Paid → "Payment received" to the Owner.
@@ -86,18 +93,16 @@ test("invoices: the Owner sees them, a Member doesn't; a PDF key must be this cl
 });
 
 test("Overdue: the day after the due date it shows Overdue, and housekeeping records it", async () => {
-  const out = await must<{ id: string }>(
-    adminRpc("portal_admin_create_invoice", {
-      p_account: account,
-      p_number: "INV-2",
-      p_issued: day(-30),
-      p_due: day(-1),
-      p_amount: 500,
-      p_currency: "AED",
-      p_status: "due",
-      p_pdf_key: null,
-    }),
-  );
+  const out = await publishedInvoice({
+    p_account: account,
+    p_number: "INV-2",
+    p_issued: day(-30),
+    p_due: day(-1),
+    p_amount: 500,
+    p_currency: "AED",
+    p_status: "due",
+    p_pdf_key: null,
+  });
   const list = await must<{ id: string; status: string; shown_status: string }[]>(
     adminRpc("portal_admin_invoices", { p_account: account }),
   );

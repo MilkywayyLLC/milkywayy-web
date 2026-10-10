@@ -280,3 +280,24 @@ begin
 end $$;
 revoke all on function public.e2e_set_delivered_at(text, uuid, timestamptz) from public, authenticated;
 grant execute on function public.e2e_set_delivered_at(text, uuid, timestamptz) to anon;
+
+-- Invoices are drafts first (owner, 10 Oct 2026). Tests written before that need a published
+-- invoice with given dates and status (e.g. already overdue): this sets them on a test client's
+-- invoice. Applied to the dev project as migration dev_portal_e2e_publish_invoice.
+create or replace function public.e2e_publish_invoice(p_secret text, p_id uuid, p_issued date, p_due date,
+  p_status text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  perform private.e2e_gate(p_secret, null);
+  if not exists (select 1 from public.invoices i join public.account_members m on m.account_id = i.account_id
+      join auth.users u on u.id = m.user_id where i.id = p_id and u.email like 'e2e-portal-%') then
+    raise exception 'test invoices only' using errcode = '42501';
+  end if;
+  update public.invoices set status = p_status, issued_on = p_issued, due_on = p_due,
+    number = coalesce(number, 'E2E-' || left(p_id::text, 8)), published_at = now(), approved_at = now(),
+    paid_at = case when p_status = 'paid' then now() end,
+    paid_via = case when p_status = 'paid' then 'manual' end
+    where id = p_id;
+end $$;
+revoke all on function public.e2e_publish_invoice(text, uuid, date, date, text) from public, authenticated;
+grant execute on function public.e2e_publish_invoice(text, uuid, date, date, text) to anon;

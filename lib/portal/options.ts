@@ -39,6 +39,7 @@ export const NOTIFY_EVENTS = [
     "projects",
   ],
   ["new_message", "New message on a project", true, false, "projects"],
+  ["inquiry_reply", "Reply to your inquiry", true, false, "projects"],
   ["invoice_issued", "New invoice", true, true, "billing"],
   ["payment_received", "Payment received", true, true, "billing"],
 ] as const;

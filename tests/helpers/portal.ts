@@ -267,3 +267,25 @@ export const setDeliveredAt = (project: string, at: string) =>
       p_at: at,
     }),
   );
+
+/**
+ * A published invoice with the given dates and status (owner, 10 Oct 2026: invoices are drafts
+ * first; the queue's own flow is in retainer-db.portal.spec.ts). Dev-only helper.
+ */
+export async function publishedInvoice(
+  args: Record<string, unknown> & { p_issued: string; p_due: string },
+) {
+  const out = await must<{ id: string; recipients: { email: string }[] }>(
+    adminRpc("portal_admin_create_invoice", args),
+  );
+  await must(
+    portalClient().rpc("e2e_publish_invoice", {
+      p_secret: secret(),
+      p_id: out.id,
+      p_issued: args.p_issued,
+      p_due: args.p_due,
+      p_status: (args.p_status as string) ?? "due",
+    }),
+  );
+  return out;
+}

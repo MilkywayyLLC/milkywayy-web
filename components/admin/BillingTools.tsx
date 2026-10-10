@@ -18,7 +18,6 @@ import {
   saveRate,
   setClientBilling,
   setInvoiceStatus,
-  setOverride,
   setPlan,
   setSuggestions,
   startInvoiceUpload,
@@ -68,7 +67,10 @@ type Client = { id: string; name: string; currency: "AED" | "USD" };
 
 /* ---------------- invoices ---------------- */
 
-/** New invoice: the client, number, dates, amount, status, and the PDF from Milkywayy Ledger. */
+/**
+ * A one-off invoice from a Milkywayy Ledger PDF: the client, number, dates, amount and the PDF.
+ * It becomes a draft in the queue (owner, 10 Oct 2026): nothing is sent until it's approved.
+ */
 export function NewInvoiceForm({
   clients,
   account: initial,
@@ -146,10 +148,10 @@ export function NewInvoiceForm({
             due: String(f.get("due") ?? ""),
             amount: Number(f.get("amount")),
             currency,
-            status: String(f.get("status")) as "due" | "paid" | "overdue",
+            status: "due",
             pdfKey: key,
             note: String(f.get("note") ?? ""),
-            notify: f.get("notify") === "on",
+            notify: false,
             statementMonth: month || null,
           });
           setR(res);
@@ -164,7 +166,10 @@ export function NewInvoiceForm({
         });
       }}
     >
-      <h2 className="ad-h2">New invoice</h2>
+      <h2 className="ad-h2">New invoice from a Ledger PDF</h2>
+      <span className="ad-small ad-muted">
+        Becomes a draft in the queue. Approve it there to publish and email it.
+      </span>
       <div className="ad-grid2">
         <div className="ad-field">
           <label htmlFor="inv-client">Client</label>
@@ -261,39 +266,22 @@ export function NewInvoiceForm({
           </select>
         </div>
       </div>
-      <div className="ad-grid2">
-        <div className="ad-field">
-          <label htmlFor="inv-status">Status</label>
-          <select id="inv-status" name="status" defaultValue="due">
-            <option value="due">Due</option>
-            <option value="paid">Paid</option>
-            <option value="overdue">Overdue</option>
-          </select>
-        </div>
-        <div className="ad-field">
-          <label htmlFor="inv-pdf">PDF</label>
-          <input
-            id="inv-pdf"
-            type="file"
-            accept="application/pdf,.pdf"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-        </div>
+      <div className="ad-field">
+        <label htmlFor="inv-pdf">PDF</label>
+        <input
+          id="inv-pdf"
+          type="file"
+          accept="application/pdf,.pdf"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        />
       </div>
       <div className="ad-field">
         <label htmlFor="inv-note">Note (optional, the client sees it)</label>
         <input id="inv-note" name="note" maxLength={500} />
       </div>
-      <label className="ad-check">
-        <input type="checkbox" name="notify" defaultChecked />
-        Email the client (“New invoice”)
-      </label>
-      <span className="ad-small ad-muted">
-        Due invoices turn Overdue by themselves the day after the due date.
-      </span>
       <div className="ad-btns" style={{ alignItems: "center" }}>
         <button type="submit" className="ad-btn" disabled={pending}>
-          Add invoice
+          Add as a draft
         </button>
         <Note r={r} pending={pending} busy={progress || "Saving…"} />
       </div>
@@ -953,6 +941,13 @@ export function BillingSettingsForm({ s }: { s: BillingSettings }) {
             bank_name: String(f.get("bank") ?? ""),
             bank_iban: String(f.get("iban") ?? ""),
             bank_swift: String(f.get("swift") ?? ""),
+            invoice_prefix: String(f.get("prefix") ?? ""),
+            next_invoice_no: Number(f.get("next_no")),
+            default_due_days: Number(f.get("due_days")),
+            company_name: String(f.get("company_name") ?? ""),
+            company_address: String(f.get("company_address") ?? ""),
+            company_trn: String(f.get("company_trn") ?? ""),
+            company_email: String(f.get("company_email") ?? ""),
           });
           setR(res);
           if (res.ok) router.refresh();
@@ -962,8 +957,86 @@ export function BillingSettingsForm({ s }: { s: BillingSettings }) {
       <h2 className="ad-h2">VAT</h2>
       <label className="ad-check">
         <input type="checkbox" name="vat" defaultChecked={s.vat_registered} />
-        VAT registered: add 5% VAT after everything on monthly statements
+        VAT registered: add 5% VAT to statements and invoice drafts (“Tax invoice” on the PDF)
       </label>
+      <h2 className="ad-h2">Invoices</h2>
+      <span className="ad-small ad-muted">
+        Numbers are given when you approve a draft. The PDF shows these company details.
+      </span>
+      <div className="ad-grid3">
+        <div className="ad-field">
+          <label htmlFor="in-prefix">Number prefix</label>
+          <input
+            id="in-prefix"
+            name="prefix"
+            maxLength={12}
+            defaultValue={s.invoice_prefix ?? "MW-"}
+          />
+        </div>
+        <div className="ad-field">
+          <label htmlFor="in-next">Next number</label>
+          <input
+            id="in-next"
+            name="next_no"
+            type="number"
+            min={1}
+            defaultValue={s.next_invoice_no ?? 1001}
+          />
+        </div>
+        <div className="ad-field">
+          <label htmlFor="in-due">Due after (days)</label>
+          <input
+            id="in-due"
+            name="due_days"
+            type="number"
+            min={0}
+            max={90}
+            defaultValue={s.default_due_days ?? 7}
+          />
+        </div>
+      </div>
+      <div className="ad-grid2">
+        <div className="ad-field">
+          <label htmlFor="co-name">Company name</label>
+          <input
+            id="co-name"
+            name="company_name"
+            maxLength={120}
+            defaultValue={s.company_name ?? ""}
+            placeholder="Milkywayy LLC"
+          />
+        </div>
+        <div className="ad-field">
+          <label htmlFor="co-email">Billing email</label>
+          <input
+            id="co-email"
+            name="company_email"
+            maxLength={160}
+            defaultValue={s.company_email ?? ""}
+          />
+        </div>
+      </div>
+      <div className="ad-grid2">
+        <div className="ad-field">
+          <label htmlFor="co-address">Company address</label>
+          <input
+            id="co-address"
+            name="company_address"
+            maxLength={300}
+            defaultValue={s.company_address ?? ""}
+          />
+        </div>
+        <div className="ad-field">
+          <label htmlFor="co-trn">TRN (shown when VAT registered)</label>
+          <input
+            id="co-trn"
+            name="company_trn"
+            maxLength={15}
+            inputMode="numeric"
+            defaultValue={s.company_trn ?? ""}
+          />
+        </div>
+      </div>
       <h2 className="ad-h2">Bank transfer details</h2>
       <span className="ad-small ad-muted">
         Shown to clients who pay by bank transfer (AED accounts by default), Owner and Admins only.
@@ -1151,64 +1224,6 @@ export function PlanForm({ account, billing }: { account: string; billing: Clien
         <Note r={r} pending={pending} />
       </div>
     </form>
-  );
-}
-
-export function ClientRates({ account, billing }: { account: string; billing: ClientBilling }) {
-  const router = useRouter();
-  const [r, setR] = useState<BillingResult>();
-  const [pending, start] = useTransition();
-  return (
-    <div className="ad-form" data-testid="client-rates" style={{ overflowX: "auto" }}>
-      <table className="ad-table">
-        <thead>
-          <tr>
-            <th>Rate</th>
-            <th>Card ({billing.currency})</th>
-            <th>This client</th>
-          </tr>
-        </thead>
-        <tbody>
-          {billing.rates.map((rate) => (
-            <tr key={rate.key}>
-              <td>
-                {rate.label} <span className="ad-muted">/ {rate.unit}</span>
-              </td>
-              <td>{rate.card === null ? "—" : money(billing.currency, rate.card)}</td>
-              <td>
-                <form
-                  className="ad-btns"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const v = num(new FormData(e.currentTarget).get("amount"));
-                    start(async () => {
-                      const res = await setOverride(account, rate.key, v);
-                      setR(res);
-                      if (res.ok) router.refresh();
-                    });
-                  }}
-                >
-                  <input
-                    name="amount"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    defaultValue={rate.override ?? ""}
-                    placeholder="Card rate"
-                    aria-label={`${rate.label} for this client`}
-                    style={{ width: 110 }}
-                  />
-                  <button type="submit" className="ad-btn ghost small" disabled={pending}>
-                    Save
-                  </button>
-                </form>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <Note r={r} pending={pending} />
-    </div>
   );
 }
 

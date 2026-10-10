@@ -9,6 +9,7 @@ import {
   deliveredItems,
   hasPortalAdmin,
   newRun,
+  publishedInvoice,
   signInUI,
 } from "./helpers/portal";
 
@@ -222,7 +223,7 @@ test("the invoice form takes the amount from the frozen statement and warns if i
   await expect(form.getByRole("alert")).toContainText("Differs from the statement (AED 1,500)");
 
   // The client says they've paid by transfer; the admin confirms it.
-  const inv = await adminRpc("portal_admin_create_invoice", {
+  const inv = await publishedInvoice({
     p_account: c.account,
     p_number: `TR-${RUN.slice(-5)}`,
     p_issued: last,
@@ -233,7 +234,7 @@ test("the invoice form takes the amount from the frozen statement and warns if i
     p_pdf_key: null,
     p_statement_month: last,
   });
-  const id = (inv.data as { id: string }).id;
+  const id = inv.id;
   const { error } = await c.db.rpc("submit_payment_proof", {
     p_invoice: id,
     p_key: `payments/${c.account}/${id}/receipt.pdf`,

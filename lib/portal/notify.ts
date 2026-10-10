@@ -202,6 +202,52 @@ export async function alertMilkywayyBilling(
   if (error) console.error("[notify] couldn't log billing alert:", error.message);
 }
 
+/**
+ * A note to Milkywayy (owner, 10 Oct 2026): a shoot booked in the portal, a revision asked on a
+ * deliverable, a new inquiry or a client reply, invoice drafts ready for review. Not logged per
+ * client (it isn't a client email).
+ */
+export async function alertMilkywayy(subject: string, lines: string[], link: string) {
+  const { text, html } = renderEmail(lines, "Open in the admin", link);
+  const res = await sendEmail(replyTo(), subject, text, html);
+  if (res.status !== "sent") console.info(`[notify] alert "${subject}": ${res.status}`);
+  return res.status;
+}
+
+/** "We replied to your inquiry" to whoever started it (their email choice applies), logged. */
+export async function notifyInquiryReply(
+  account: string,
+  subject: string,
+  recipients: Recipient[],
+  link: string,
+) {
+  let sent = 0;
+  for (const r of recipients) {
+    const hi = r.name ? `Hi ${r.name.split(" ")[0]},` : "Hi,";
+    const { text, html } = renderEmail(
+      [hi, `We replied to your inquiry “${subject}”.`, "Open it to read the reply and answer."],
+      "Read the reply",
+      link,
+    );
+    const res = await sendEmail(r.email, `Reply to your inquiry: ${subject}`, text, html);
+    if (res.status === "sent") sent++;
+    if (!process.env.PORTAL_ADMIN_SECRET) continue;
+    const db = createClient(portalUrl, portalKey, { auth: { persistSession: false } });
+    const { error } = await db.rpc("portal_admin_log_billing_notification", {
+      p_secret: process.env.PORTAL_ADMIN_SECRET,
+      p_actor: "admin",
+      p_account: account,
+      p_template: "inquiry_reply",
+      p_to: r.email,
+      p_status: res.status,
+      p_provider_id: "id" in res ? (res.id ?? null) : null,
+      p_error: "error" in res ? (res.error ?? null) : null,
+    });
+    if (error) console.error("[notify] couldn't log inquiry email:", error.message);
+  }
+  return sent;
+}
+
 /** "Your Milkywayy portal is ready" to one invited person, logged. Returns the send status. */
 export async function sendPortalInvite(
   account: string,

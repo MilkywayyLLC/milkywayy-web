@@ -1,40 +1,77 @@
 import Link from "next/link";
 import { BillingNav } from "@/components/admin/BillingNav";
-import {
-  InvoiceActions,
-  NewInvoiceForm,
-  PaymentReview,
-  type InvoiceRowData,
-} from "@/components/admin/BillingTools";
+import { NewInvoiceForm } from "@/components/admin/BillingTools";
+import { GenerateDrafts } from "@/components/admin/InvoiceDraft";
 import { portalAdminPage, portalAdminReady, type ClientListRow } from "@/lib/portal/admin";
-import { dateLabel, money, monthLabel, STATUS_LABEL } from "@/lib/portal/billing";
+import {
+  CATEGORY_LABEL,
+  dateLabel,
+  money,
+  monthLabel,
+  QUEUE_STATUS_LABEL,
+  type InvoiceCategory,
+  type QueueStatus,
+} from "@/lib/portal/billing";
 
-export const metadata = { title: "Billing" };
+export const metadata = { title: "Invoice queue" };
 
-type Props = { searchParams: Promise<{ account?: string; status?: string }> };
+type QueueRow = {
+  id: string;
+  account_id: string;
+  account_name: string;
+  number: string | null;
+  category: InvoiceCategory | null;
+  period_start: string | null;
+  amount: number;
+  currency: string;
+  status: QueueStatus;
+  shown_status: QueueStatus;
+  publish_on: string | null;
+  issued_on: string;
+  due_on: string;
+  advance: boolean;
+  changed: boolean;
+  payment_state: "submitted" | "rejected" | null;
+};
+
+const FILTERS = [
+  ["", "All"],
+  ["open", "To review"],
+  ["draft", "Drafts"],
+  ["approved", "Approved"],
+  ["due", "Published"],
+  ["overdue", "Overdue"],
+  ["paid", "Paid"],
+] as const;
 
 /**
- * Admin → Billing → Invoices (§7.3): upload the PDF made in Milkywayy Ledger with its number,
- * dates, amount, currency and status. Clients see and download it in their Billing tab. Owner only.
+ * Admin → Billing → Invoice queue (owner, 10 Oct 2026). Every invoice is a draft first: month-end
+ * drafts appear on the 25th (budget and fixed packages, pay as you go billed monthly, and next
+ * month's package for clients billed in advance); one-off drafts when a project is delivered.
+ * Open one to edit and approve it. Approved month-end invoices publish on the month's last day,
+ * one-offs on approval; publishing emails the client.
  */
-export default async function BillingInvoices({ searchParams }: Props) {
+export default async function InvoiceQueue({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; deleted?: string }>;
+}) {
   const rpc = await portalAdminPage();
   const f = await searchParams;
-  let invoices: InvoiceRowData[] = [];
+  const status = FILTERS.some(([k]) => k === f.status) ? (f.status ?? "") : "";
+  let rows: QueueRow[] = [];
   let clients: ClientListRow[] = [];
   let error = "";
   if (!portalAdminReady()) error = "PORTAL_ADMIN_SECRET isn’t set for this deployment.";
   else
-    [invoices, clients] = await Promise.all([
-      rpc<InvoiceRowData[]>("portal_admin_invoices", {
-        p_account: f.account || null,
-        p_status: f.status || null,
-      }),
+    [rows, clients] = await Promise.all([
+      rpc<QueueRow[]>("portal_admin_invoice_queue", { p_status: status || null }),
       rpc<ClientListRow[]>("portal_admin_clients", {}),
     ]);
   const list = clients
     .map((c) => ({ id: c.id, name: c.name, currency: c.currency }))
     .sort((a, b) => a.name.localeCompare(b.name));
+  const toReview = rows.filter((r) => r.status === "draft").length;
 
   return (
     <div className="ad-page">
@@ -43,84 +80,87 @@ export default async function BillingInvoices({ searchParams }: Props) {
           <span className="ad-eb">Portal</span>
           <h1 className="ad-h1">Billing</h1>
           <span className="ad-small ad-muted">
-            Invoices, rates, packages and suggestions. Clients’ Owners and Admins see their own;
-            Members never see prices.
+            Drafts are made on the 25th and when a one-off project is delivered. Nothing reaches a
+            client until you approve it.
           </span>
         </div>
       </div>
       <BillingNav current="/admin/billing" />
       {error && <p className="ad-note warn">{error}</p>}
-      <NewInvoiceForm clients={list} account={f.account} />
-      <form className="ad-filter" method="get" role="search">
-        <select name="account" defaultValue={f.account ?? ""} aria-label="Client">
-          <option value="">All clients</option>
-          {list.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select name="status" defaultValue={f.status ?? ""} aria-label="Status">
-          <option value="">Any status</option>
-          <option value="due">Due</option>
-          <option value="overdue">Overdue</option>
-          <option value="paid">Paid</option>
-          <option value="submitted">Payment submitted</option>
-        </select>
-        <button className="ad-btn small" type="submit">
-          Filter
-        </button>
-        {(f.account || f.status) && (
-          <Link className="ad-btn quiet small" href="/admin/billing" prefetch={false}>
-            Clear
-          </Link>
-        )}
-      </form>
-      <div className="ad-list" data-testid="invoices">
-        {invoices.map((i) => (
-          <div
-            key={i.id}
-            className="ad-row ad-lead"
-            style={{ gridTemplateColumns: "auto minmax(0,1fr)", alignItems: "start" }}
-          >
-            <span
-              className={
-                i.shown_status === "paid"
-                  ? "ad-pill"
-                  : i.payment_state === "submitted"
-                    ? "ad-pill draft"
-                    : i.shown_status === "overdue"
-                      ? "ad-pill warn"
-                      : "ad-pill live"
-              }
+      {f.deleted && (
+        <p className="ad-note" role="status">
+          Draft deleted.
+        </p>
+      )}
+      <div className="ad-card" style={{ gap: 10 }}>
+        <div className="ad-row-between">
+          <h2 className="ad-h2" style={{ margin: 0 }}>
+            Invoice queue{toReview ? ` · ${toReview} to review` : ""}
+          </h2>
+          <GenerateDrafts />
+        </div>
+        <nav className="ad-btns" aria-label="Filter invoices">
+          {FILTERS.map(([k, label]) => (
+            <Link
+              key={k}
+              href={k ? `/admin/billing?status=${k}` : "/admin/billing"}
+              prefetch={false}
+              className={k === status ? "ad-btn small" : "ad-btn small ghost"}
+              aria-current={k === status ? "page" : undefined}
             >
-              {i.shown_status !== "paid" && i.payment_state === "submitted"
-                ? "Payment submitted"
-                : STATUS_LABEL[i.shown_status]}
-            </span>
-            <span style={{ display: "grid", gap: 6, minWidth: 0 }}>
-              <span className="ad-row-title">
-                {i.number} · {i.account_name} · {money(i.currency, i.amount)}
-              </span>
-              <span className="ad-row-meta">
-                {dateLabel(i.issued_on)} · due {dateLabel(i.due_on)}
-                {i.statement_month ? ` · for ${monthLabel(i.statement_month)}` : ""}
-                {i.paid_via
-                  ? ` · paid by ${i.paid_via === "stripe" ? "card" : i.paid_via === "bank" ? "bank transfer" : "hand"}`
-                  : ""}
-                {i.payment_state === "rejected" && i.status !== "paid"
-                  ? ` · transfer rejected: ${i.reject_reason}`
-                  : ""}
-              </span>
-              <PaymentReview inv={i} />
-              <InvoiceActions inv={i} />
-            </span>
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <div className="ad-queue" role="table" aria-label="Invoices" data-testid="queue">
+          <div role="row" className="ad-queue-row head">
+            <span role="columnheader">Client</span>
+            <span role="columnheader">Category</span>
+            <span role="columnheader">Period</span>
+            <span role="columnheader">Amount</span>
+            <span role="columnheader">Status</span>
           </div>
-        ))}
-        {!invoices.length && !error && (
-          <p className="ad-empty">No invoices{f.account || f.status ? " match" : " yet"}.</p>
-        )}
+          {rows.map((r) => (
+            <Link
+              key={r.id}
+              role="row"
+              href={`/admin/billing/invoices/${r.id}`}
+              prefetch={false}
+              className="ad-queue-row"
+              data-testid="queue-row"
+              aria-label={`${r.account_name} ${r.category ? CATEGORY_LABEL[r.category] : ""} ${r.number ?? "draft"}`}
+            >
+              <span role="cell">
+                <b>{r.account_name}</b>
+                <span className="ad-small ad-muted">{r.number ?? "No number yet"}</span>
+              </span>
+              <span role="cell">
+                {r.category ? CATEGORY_LABEL[r.category] : "Invoice"}
+                {r.advance ? " · in advance" : ""}
+              </span>
+              <span role="cell" className="ad-small">
+                {r.period_start ? monthLabel(r.period_start) : dateLabel(r.issued_on)}
+              </span>
+              <span role="cell" className="ad-mono">
+                {money(r.currency, Number(r.amount))}
+              </span>
+              <span role="cell">
+                <span className={`ad-pill ${r.shown_status}`}>
+                  {r.payment_state === "submitted" && r.status !== "paid"
+                    ? "Payment submitted"
+                    : QUEUE_STATUS_LABEL[r.shown_status]}
+                </span>
+                {r.status === "approved" && r.publish_on && (
+                  <span className="ad-small ad-muted"> publishes {dateLabel(r.publish_on)}</span>
+                )}
+                {r.changed && <span className="ad-small ad-warn-text"> · activity changed</span>}
+              </span>
+            </Link>
+          ))}
+          {!rows.length && <p className="ad-empty">Nothing here.</p>}
+        </div>
       </div>
+      <NewInvoiceForm clients={list} />
     </div>
   );
 }

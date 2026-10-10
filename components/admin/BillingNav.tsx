@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const TABS = [
-  ["/admin/billing", "Invoices"],
+  ["/admin/billing", "Invoice queue"],
   ["/admin/billing/rates", "Rate card"],
   ["/admin/billing/packages", "Packages"],
   ["/admin/billing/suggestions", "Suggestions"],

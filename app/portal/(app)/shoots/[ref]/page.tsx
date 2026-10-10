@@ -22,12 +22,21 @@ import {
   type ProjectMessage,
 } from "@/lib/portal/projects";
 import { isManager } from "@/lib/portal/shell";
+import { Deliverables } from "@/components/portal/Deliverables";
+import { SERVICE_LABEL, type Deliverable } from "@/lib/portal/booking";
 
 export const metadata = { title: "Shoot" };
 
 /** One shoot (§5.2): status, deliveries and downloads, revision, approve, details, activity, messages. */
-export default async function ShootPage({ params }: { params: Promise<{ ref: string }> }) {
+export default async function ShootPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ ref: string }>;
+  searchParams: Promise<{ booked?: string }>;
+}) {
   const { ref } = await params;
+  const { booked } = await searchParams;
   const { db, current } = await requireAccount(`/portal/shoots/${ref}`);
   const { data } = await db
     .from("projects")
@@ -37,7 +46,7 @@ export default async function ShootPage({ params }: { params: Promise<{ ref: str
     .maybeSingle();
   if (!data) notFound();
   const p = data as Project;
-  const [{ data: files }, { data: events }, { data: messages }, { data: items }] =
+  const [{ data: files }, { data: events }, { data: messages }, { data: items }, { data: deliv }] =
     await Promise.all([
       db
         .from("project_files")
@@ -61,7 +70,9 @@ export default async function ShootPage({ params }: { params: Promise<{ ref: str
             .select("description, qty, unit_price, currency")
             .eq("project_id", p.id)
         : Promise.resolve({ data: [] }),
+      db.from("project_deliverables").select("*").eq("project_id", p.id).order("sort"),
     ]);
+  const booking = p.meta.booking;
   const groups = deliveries((files ?? []) as ProjectFile[]);
   const latest = groups[0];
   const zip = latest?.files.find((f) => f.kind === "zip");
@@ -85,6 +96,13 @@ export default async function ShootPage({ params }: { params: Promise<{ ref: str
         <Badge tone={p.status === "delivered" ? "gold" : undefined}>{clientStatus(p)}</Badge>
       </div>
       <Stepper steps={stepsFor("shoot")} now={statusLabel(p.status)} />
+      {booked && (
+        <p className="pt-note" role="status">
+          Requested. We’ll confirm the date and slot shortly; you’ll get an email when it’s
+          confirmed.
+        </p>
+      )}
+      <Deliverables items={(deliv ?? []) as Deliverable[]} />
 
       <ApprovalNote p={p} />
       <ProjectActions
@@ -120,13 +138,23 @@ export default async function ShootPage({ params }: { params: Promise<{ ref: str
               [
                 [
                   "Address",
-                  [p.meta.unit && `Unit ${p.meta.unit}`, p.meta.building, p.meta.area]
-                    .filter(Boolean)
-                    .join(", "),
+                  booking
+                    ? [booking.location.address, booking.location.unit].filter(Boolean).join(" · ")
+                    : [p.meta.unit && `Unit ${p.meta.unit}`, p.meta.building, p.meta.area]
+                        .filter(Boolean)
+                        .join(", "),
                 ],
                 [
                   "Services",
-                  (p.meta.services ?? []).map((s) => SHOOT_SERVICE_LABEL[s] ?? s).join(", "),
+                  booking
+                    ? booking.services
+                        .map((s) =>
+                          s.service === "property"
+                            ? SERVICE_LABEL.property
+                            : `${SERVICE_LABEL[s.service]} (${s.qty ?? 1})`,
+                        )
+                        .join(", ")
+                    : (p.meta.services ?? []).map((s) => SHOOT_SERVICE_LABEL[s] ?? s).join(", "),
                 ],
                 ["When", when || "To be confirmed"],
                 ...(isManager(current) && total > 0

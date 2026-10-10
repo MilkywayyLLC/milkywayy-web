@@ -33,6 +33,9 @@ export function LiveRefresh() {
       "project_messages",
       "project_files",
       "project_scripts",
+      "project_deliverables",
+      "inquiries",
+      "inquiry_messages",
     ])
       channel.on("postgres_changes", { event: "*", schema: "public", table }, refresh);
     channel.subscribe();

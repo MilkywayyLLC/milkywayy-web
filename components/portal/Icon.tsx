@@ -17,6 +17,7 @@ const P: Record<string, string> = {
   link: "M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1",
   plus: "M12 5v14M5 12h14",
   bell: "M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20h4",
+  chat: "M4 5h16v11H9l-5 4zM8 9h8M8 12h5",
   chevron: "M9 6l6 6-6 6",
   back: "M15 6l-6 6 6 6",
   close: "M6 6l12 12M18 6 6 18",

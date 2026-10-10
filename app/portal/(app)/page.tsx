@@ -25,6 +25,7 @@ export default async function PortalHome({
     chat,
     { data: eventRows },
     { data: invoiceRows },
+    { data: bookingOpts },
   ] = await Promise.all([
     db
       .from("projects")
@@ -57,7 +58,10 @@ export default async function PortalHome({
           .neq("status", "paid")
           .order("due_on")
       : Promise.resolve({ data: [] }),
+    db.rpc("my_booking_options", { p_account: a.id }),
   ]);
+  const canBook = !!(bookingOpts as { can_book?: boolean } | null)?.can_book;
+
   const unpaid = (invoiceRows ?? []) as Pick<Invoice, "id" | "number" | "due_on" | "status">[];
   const projects = (projectRows ?? []) as Project[];
   const waiting = projects.filter(
@@ -100,12 +104,19 @@ export default async function PortalHome({
           <h1 className="pt-h1">Home</h1>
         </div>
         <div className="pt-btns">
-          {(s.includes("shoots") ||
-            s.includes("production") ||
-            projects.some((p) => p.type === "shoot")) && (
-            <a href="/property-shoots" className="btn btn-p btn-s">
+          {/* Package clients book in the portal; others on the website. */}
+          {canBook ? (
+            <Link href="/portal/shoots/book" className="btn btn-p btn-s">
               <Icon name="plus" size={16} /> Book a shoot
-            </a>
+            </Link>
+          ) : (
+            (s.includes("shoots") ||
+              s.includes("production") ||
+              projects.some((p) => p.type === "shoot")) && (
+              <a href="/property-shoots" className="btn btn-p btn-s">
+                <Icon name="plus" size={16} /> Book a shoot
+              </a>
+            )
           )}
         </div>
       </div>
@@ -248,7 +259,10 @@ export default async function PortalHome({
             Start something
           </h2>
           <div className="pt-btns">
-            <a href="/property-shoots#booking" className="btn btn-g btn-s">
+            <a
+              href={canBook ? "/portal/shoots/book" : "/property-shoots#booking"}
+              className="btn btn-g btn-s"
+            >
               Book a shoot
             </a>
             <Link href="/portal/editing/new" className="btn btn-g btn-s">

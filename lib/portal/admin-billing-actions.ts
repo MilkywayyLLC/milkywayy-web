@@ -112,7 +112,7 @@ export async function createInvoice(i: NewInvoice): Promise<BillingResult> {
     return {
       ok: true,
       id: out.id,
-      notice: `Invoice ${i.number.trim()} added${emailed ? `, emailed ${emailed}` : ""}.`,
+      notice: `Draft added to the invoice queue${emailed ? `, emailed ${emailed}` : ""}.`,
     };
   } catch (e) {
     return fail(e);
@@ -145,7 +145,11 @@ export async function setInvoiceStatus(
       emailed = await notifyBilling(
         out.account,
         "payment_received",
-        { number: inv.number, amount: money(inv.currency, inv.amount), due: dateLabel(inv.due_on) },
+        {
+          number: inv.number ?? "",
+          amount: money(inv.currency, inv.amount),
+          due: dateLabel(inv.due_on),
+        },
         out.recipients,
         `${originFrom(await headers())}/portal/billing`,
       );
@@ -203,21 +207,6 @@ export async function saveRate(r: {
     });
     refresh("/admin/billing/rates");
     return { ok: true, notice: `${r.label} saved.` };
-  } catch (e) {
-    return fail(e);
-  }
-}
-
-export async function setOverride(
-  account: string,
-  key: string,
-  amount: number | null,
-): Promise<BillingResult> {
-  try {
-    const rpc = await portalAdminAction();
-    await rpc("portal_admin_set_override", { p_account: account, p_key: key, p_amount: amount });
-    revalidatePath(`/admin/accounts/${account}`);
-    return { ok: true, notice: amount === null ? "Back to the card rate." : "Rate saved." };
   } catch (e) {
     return fail(e);
   }
@@ -317,6 +306,13 @@ export type BillingSettings = {
   bank_name: string | null;
   bank_iban: string | null;
   bank_swift: string | null;
+  invoice_prefix?: string;
+  next_invoice_no?: number;
+  default_due_days?: number;
+  company_name?: string | null;
+  company_address?: string | null;
+  company_trn?: string | null;
+  company_email?: string | null;
 };
 
 /** Suggestions (switch, minimum saving), VAT, bank details: whichever fields are given. */
@@ -333,6 +329,17 @@ export async function saveBillingSettings(p: Partial<BillingSettings>): Promise<
     return { ok: false, error: "Check the SWIFT code (8 or 11 characters)." };
   for (const k of ["min_saving_aed", "min_saving_usd"] as const)
     if (k in p && !(Number(p[k]) >= 0)) return { ok: false, error: "Enter the minimum saving." };
+  if (p.company_trn && !/^\d{15}$/.test(p.company_trn.trim()))
+    return { ok: false, error: "The TRN is 15 digits." };
+  if (p.invoice_prefix && !/^[A-Z0-9-]{1,12}$/.test(p.invoice_prefix.trim().toUpperCase()))
+    return { ok: false, error: "The prefix can use letters, numbers and dashes (12 at most)." };
+  if ("next_invoice_no" in p && !(Number(p.next_invoice_no) >= 1))
+    return { ok: false, error: "The next invoice number must be 1 or more." };
+  if (
+    "default_due_days" in p &&
+    !(Number(p.default_due_days) >= 0 && Number(p.default_due_days) <= 90)
+  )
+    return { ok: false, error: "Due after: 0 to 90 days." };
   try {
     const rpc = await portalAdminAction();
     await rpc("portal_admin_save_billing_settings", { p });

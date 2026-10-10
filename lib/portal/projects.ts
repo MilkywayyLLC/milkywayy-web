@@ -107,6 +107,9 @@ export type Project = {
     /** Added by hand from before the portal (owner, 4 Oct 2026), with its original date. */
     past?: boolean;
     original_date?: string;
+    /** Booked in the portal (owner, 10 Oct 2026): location, services, estimate. */
+    source?: "portal";
+    booking?: import("./booking").PortalBooking;
   };
   due_at: string | null;
   shoot_date: string | null;

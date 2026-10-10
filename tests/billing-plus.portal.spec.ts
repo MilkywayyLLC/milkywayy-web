@@ -11,6 +11,7 @@ import {
   deliveredItems,
   hasPortalAdmin,
   newRun,
+  publishedInvoice,
   setDeliveredAt,
   signedIn,
   signInUI,
@@ -452,7 +453,7 @@ test("calendar months: a mid-month start pro-rates the first month (price and in
 });
 
 test("Stripe: Paid only when the session, amount and currency match", async () => {
-  const inv = await admin<{ id: string }>("portal_admin_create_invoice", {
+  const inv = await publishedInvoice({
     p_account: account,
     p_number: `INV-S-${TAG}`,
     p_issued: monthStart(0),
@@ -515,7 +516,7 @@ test("Stripe: Paid only when the session, amount and currency match", async () =
 });
 
 test("bank transfer: the owner submits proof; rejected with a reason; resubmitted; confirmed → Paid", async () => {
-  const inv = await admin<{ id: string }>("portal_admin_create_invoice", {
+  const inv = await publishedInvoice({
     p_account: account,
     p_number: `INV-B-${TAG}`,
     p_issued: monthStart(0),
@@ -645,7 +646,7 @@ test("pay as you go: the suggestion card (monthly and 6-month), last month's fin
       bank_swift: "BOMLAEAD",
     },
   });
-  const inv = await admin<{ id: string }>("portal_admin_create_invoice", {
+  const inv = await publishedInvoice({
     p_account: ui.account,
     p_number: `INV-UI-${TAG}`,
     p_issued: monthStart(0),
@@ -805,7 +806,7 @@ test("card payments: Pay now for online accounts; a signed Stripe webhook marks 
     p_account: ui.account,
     p: { pay_online: true },
   });
-  const inv = await admin<{ id: string }>("portal_admin_create_invoice", {
+  const inv = await publishedInvoice({
     p_account: ui.account,
     p_number: `INV-CARD-${TAG}`,
     p_issued: monthStart(0),

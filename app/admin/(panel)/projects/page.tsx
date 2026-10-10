@@ -121,6 +121,9 @@ export default async function Projects({ searchParams }: Props) {
           </span>
         </div>
         <div className="ad-btns">
+          <Link className="ad-btn ghost small" href="/admin/projects/calendar" prefetch={false}>
+            Calendar
+          </Link>
           <Link className="ad-btn small" href="/admin/projects/new" prefetch={false}>
             New project
           </Link>

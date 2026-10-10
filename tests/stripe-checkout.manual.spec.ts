@@ -1,6 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { env } from "./helpers/env";
-import { adminRpc, cleanup, clientAccount, newRun, signInUI } from "./helpers/portal";
+import {
+  adminRpc,
+  cleanup,
+  clientAccount,
+  newRun,
+  publishedInvoice,
+  signInUI,
+} from "./helpers/portal";
 
 /**
  * One real Stripe TEST-mode payment, end to end (billing add-on). By hand only:
@@ -28,7 +35,7 @@ test("Pay now → Stripe test Checkout (4242) → the preview's webhook marks it
   await adminRpc("portal_admin_update_client", { p_id: c.account, p_currency: "USD" });
   const number = `INV-STRIPE-${RUN.slice(-5).toUpperCase()}`;
   const due = new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10);
-  const { error } = await adminRpc("portal_admin_create_invoice", {
+  await publishedInvoice({
     p_account: c.account,
     p_number: number,
     p_issued: new Date().toISOString().slice(0, 10),
@@ -38,7 +45,6 @@ test("Pay now → Stripe test Checkout (4242) → the preview's webhook marks it
     p_status: "due",
     p_pdf_key: null,
   });
-  expect(error).toBeNull();
 
   await signInUI(page, c.email);
   await page.goto("/portal/billing");

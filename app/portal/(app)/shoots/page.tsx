@@ -18,7 +18,11 @@ export const metadata = { title: "Shoots" };
 /** Shoots (§5.2): every shoot with its stepper; completed ones below. Live. */
 export default async function Shoots() {
   const { db, current } = await requireAccount("/portal/shoots");
-  const all = await myProjects(db, current.account.id, "shoot");
+  const [all, { data: opts }] = await Promise.all([
+    myProjects(db, current.account.id, "shoot"),
+    db.rpc("my_booking_options", { p_account: current.account.id }),
+  ]);
+  const canBook = !!(opts as { can_book?: boolean } | null)?.can_book;
   const active = all.filter((p) => p.status !== "completed");
   const done = all.filter((p) => p.status === "completed");
   // Prices: Owners and Admins only (the database returns no line items to Members).
@@ -51,9 +55,15 @@ export default async function Shoots() {
           </span>
           <h1 className="pt-h1">Shoots</h1>
         </div>
-        <a href="/property-shoots" className="btn btn-p btn-s">
-          <Icon name="plus" size={16} /> Book another shoot
-        </a>
+        {canBook ? (
+          <Link href="/portal/shoots/book" className="btn btn-p btn-s">
+            <Icon name="plus" size={16} /> Book a shoot
+          </Link>
+        ) : (
+          <a href="/property-shoots" className="btn btn-p btn-s">
+            <Icon name="plus" size={16} /> Book another shoot
+          </a>
+        )}
       </div>
 
       {all.length === 0 && (

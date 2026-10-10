@@ -1,4 +1,10 @@
 import Link from "next/link";
+import {
+  BillingSwitches,
+  BudgetPanel,
+  ClientRateHistory,
+  type BillingHistory,
+} from "@/components/admin/BudgetTools";
 import { notFound } from "next/navigation";
 import {
   CancelInvite,
@@ -9,7 +15,6 @@ import {
 } from "@/components/admin/ClientAccountTools";
 import {
   ClientOffer,
-  ClientRates,
   HideSuggestions,
   OfferPreview,
   PlanForm,
@@ -45,13 +50,14 @@ export default async function ClientPage({ params, searchParams }: Props) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const rpc = await portalAdminPage();
-  const [c, billing, invoices, openInvites] = await Promise.all([
+  const [c, billing, invoices, openInvites, history] = await Promise.all([
     rpc<ClientDetail | null>("portal_admin_client", { p_id: id, p_view_as: false }),
     rpc<ClientBilling>("portal_admin_client_billing", { p_account: id }),
     rpc<InvoiceRowData[]>("portal_admin_invoices", { p_account: id }),
     rpc<{ id: string; last_sent_at: string | null }[]>("portal_admin_open_invites", {
       p_account: id,
     }),
+    rpc<BillingHistory>("portal_admin_billing_history", { p_account: id }),
   ]);
   const sentAt = new Map(openInvites.map((i) => [i.id, i.last_sent_at]));
   if (!c) notFound();
@@ -117,11 +123,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
       <section className="ad-card ad-form" aria-label="Billing" data-testid="client-billing">
         <div className="ad-row-main" style={{ justifyContent: "space-between" }}>
           <h2 className="ad-h2">Billing · {billing.currency}</h2>
-          <Link
-            className="ad-btn ghost small"
-            href={`/admin/billing?account=${a.id}`}
-            prefetch={false}
-          >
+          <Link className="ad-btn ghost small" href="/admin/billing" prefetch={false}>
             Invoices ({invoices.length})
           </Link>
           <Link
@@ -132,7 +134,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
             Share pages
           </Link>
         </div>
-        {billing.plan.package ? (
+        {history.mode === "budget" ? null : billing.plan.package ? (
           <div className="stack" style={{ gap: 8 }}>
             <b>
               {billing.plan.package.name} ·{" "}
@@ -175,6 +177,8 @@ export default async function ClientPage({ params, searchParams }: Props) {
               : ""}
           </span>
         )}
+        <BudgetPanel account={a.id} currency={billing.currency} h={history} />
+        <BillingSwitches account={a.id} h={history} />
         <OfferPreview billing={billing} />
         <PlanForm account={a.id} billing={billing} />
         <HideSuggestions account={a.id} hidden={billing.hide_suggestions} />
@@ -185,7 +189,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
         </details>
         <details>
           <summary className="ad-small">Rates for this client</summary>
-          <ClientRates account={a.id} billing={billing} />
+          <ClientRateHistory account={a.id} currency={billing.currency} h={history} />
         </details>
         <Link className="ad-small" href="/admin/billing/packages" prefetch={false}>
           Create a private package for this client →

@@ -502,10 +502,120 @@ function PropertyEditor({
   onDuplicate: () => void;
   onRemove: () => void;
 }) {
-  const prices = servicePrices(p, pricing);
   const sub = subtotal(p, pricing);
   const services = servicesText(p).join(" + ");
   const where = [p.building.trim(), p.area.trim()].filter(Boolean).join(", ");
+  const update = (patch: Partial<BookingProperty>) => dispatch({ type: "update", id: p.id, patch });
+  const fid = (f: string) => `bk-${p.id}-${f}`;
+
+  return (
+    <PropertyCard
+      index={index}
+      title={title(p, pricing)}
+      summary={`${where || "Location to add"} · ${services || "No services yet"} · ${dateLabel(p.date)}`}
+      subtotal={sub}
+      open={open}
+      invalid={!!errors}
+      onToggle={onToggleOpen}
+    >
+      <PropertyOptions p={p} pricing={pricing} dispatch={dispatch} errors={errors} />
+
+      <Group label="Location">
+        <div className="row3">
+          <label className="fld">
+            Community / area
+            <input
+              id={fid("area")}
+              value={p.area}
+              placeholder="e.g. Dubai Marina"
+              autoComplete="off"
+              aria-invalid={errors?.area ? true : undefined}
+              onChange={(e) => update({ area: e.target.value })}
+            />
+            {errors?.area && <span className="err">{errors.area}</span>}
+          </label>
+          <label className="fld">
+            Building / tower
+            <input
+              id={fid("building")}
+              value={p.building}
+              placeholder="e.g. Marina Heights"
+              autoComplete="off"
+              aria-invalid={errors?.building ? true : undefined}
+              onChange={(e) => update({ building: e.target.value })}
+            />
+            {errors?.building && <span className="err">{errors.building}</span>}
+          </label>
+          <label className="fld">
+            Unit number
+            <input
+              id={fid("unit")}
+              value={p.unit}
+              placeholder="Optional"
+              autoComplete="off"
+              onChange={(e) => update({ unit: e.target.value })}
+            />
+          </label>
+        </div>
+      </Group>
+
+      <Group label="Preferred date and time">
+        <div className="when">
+          <div className="when-in">
+            <MonthCalendar value={p.date} onChange={(v) => update({ date: v })} range={range} />
+            <div className="when-slots">
+              <span className="gl">Time</span>
+              <Seg
+                label="Time slot"
+                className="slots grid"
+                value={p.slot}
+                onChange={(v) => update({ slot: v })}
+                isDisabled={(v) => needsEvening(p) && v !== EVENING}
+                options={slots.map((s) => ({ value: s, label: s }))}
+              />
+              {needsEvening(p) && (
+                <p className="note">Evening only: night footage is part of this booking.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </Group>
+
+      <div className="prop-f">
+        <span style={{ display: "flex", gap: 18 }}>
+          <button type="button" className="txtbtn" onClick={onDuplicate}>
+            ⧉ Duplicate
+          </button>
+          {canRemove && (
+            <button type="button" className="txtbtn" onClick={onRemove}>
+              ✕ Remove
+            </button>
+          )}
+        </span>
+        <span className="tab-num" style={{ fontFamily: "var(--font-mono)" }}>
+          Subtotal {formatAED(sub)}
+        </span>
+      </div>
+    </PropertyCard>
+  );
+}
+
+/**
+ * Property type, size and services with their prices: the same builder on the website and in the
+ * portal's "Book a shoot" (owner, 10 Oct 2026). Prices come from the global property price list.
+ */
+export function PropertyOptions({
+  p,
+  pricing,
+  dispatch,
+  errors,
+}: {
+  p: BookingProperty;
+  pricing: PropertyPricing;
+  dispatch: React.Dispatch<Action>;
+  errors?: Partial<Record<"services" | "area" | "building", string>>;
+}) {
+  const prices = servicePrices(p, pricing);
   const tier = p.type === "commercial" ? pricing.commercial.tiers[p.size] : null;
   const longLocked = isLocked(p, "long", pricing);
   const tourLocked = isLocked(p, "tour", pricing);
@@ -528,17 +638,8 @@ function PropertyEditor({
         <span className="lbl-sm">{sm}</span>
       </>
     );
-
   return (
-    <PropertyCard
-      index={index}
-      title={title(p, pricing)}
-      summary={`${where || "Location to add"} · ${services || "No services yet"} · ${dateLabel(p.date)}`}
-      subtotal={sub}
-      open={open}
-      invalid={!!errors}
-      onToggle={onToggleOpen}
-    >
+    <>
       <Group label="Property type">
         <Seg
           label="Property type"
@@ -720,83 +821,6 @@ function PropertyEditor({
           </p>
         )}
       </Group>
-
-      <Group label="Location">
-        <div className="row3">
-          <label className="fld">
-            Community / area
-            <input
-              id={fid("area")}
-              value={p.area}
-              placeholder="e.g. Dubai Marina"
-              autoComplete="off"
-              aria-invalid={errors?.area ? true : undefined}
-              onChange={(e) => update({ area: e.target.value })}
-            />
-            {errors?.area && <span className="err">{errors.area}</span>}
-          </label>
-          <label className="fld">
-            Building / tower
-            <input
-              id={fid("building")}
-              value={p.building}
-              placeholder="e.g. Marina Heights"
-              autoComplete="off"
-              aria-invalid={errors?.building ? true : undefined}
-              onChange={(e) => update({ building: e.target.value })}
-            />
-            {errors?.building && <span className="err">{errors.building}</span>}
-          </label>
-          <label className="fld">
-            Unit number
-            <input
-              id={fid("unit")}
-              value={p.unit}
-              placeholder="Optional"
-              autoComplete="off"
-              onChange={(e) => update({ unit: e.target.value })}
-            />
-          </label>
-        </div>
-      </Group>
-
-      <Group label="Preferred date and time">
-        <div className="when">
-          <div className="when-in">
-            <MonthCalendar value={p.date} onChange={(v) => update({ date: v })} range={range} />
-            <div className="when-slots">
-              <span className="gl">Time</span>
-              <Seg
-                label="Time slot"
-                className="slots grid"
-                value={p.slot}
-                onChange={(v) => update({ slot: v })}
-                isDisabled={(v) => needsEvening(p) && v !== EVENING}
-                options={slots.map((s) => ({ value: s, label: s }))}
-              />
-              {needsEvening(p) && (
-                <p className="note">Evening only: night footage is part of this booking.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </Group>
-
-      <div className="prop-f">
-        <span style={{ display: "flex", gap: 18 }}>
-          <button type="button" className="txtbtn" onClick={onDuplicate}>
-            ⧉ Duplicate
-          </button>
-          {canRemove && (
-            <button type="button" className="txtbtn" onClick={onRemove}>
-              ✕ Remove
-            </button>
-          )}
-        </span>
-        <span className="tab-num" style={{ fontFamily: "var(--font-mono)" }}>
-          Subtotal {formatAED(sub)}
-        </span>
-      </div>
-    </PropertyCard>
+    </>
   );
 }

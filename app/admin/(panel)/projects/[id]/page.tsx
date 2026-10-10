@@ -9,6 +9,15 @@ import { StatusButtons, WhatsAppButton, type StatusTarget } from "@/components/a
 import { Deliveries, ProjectNotes, RevisionPanel, Thread } from "@/components/admin/ProjectWork";
 import { dubai } from "@/lib/admin/format";
 import { portalAdminPage, type ClientListRow, type ProjectDetail } from "@/lib/portal/admin";
+import { DeliverablesAdmin, ShootLog, type RateOption } from "@/components/admin/ShootLog";
+import { getPropertyPricing } from "@/lib/data";
+import {
+  logPrefill,
+  SERVICE_LABEL,
+  serviceSummary,
+  type Deliverable,
+  type LogLine,
+} from "@/lib/portal/booking";
 import { originFrom } from "@/lib/portal/invite";
 import {
   adminStatuses,
@@ -38,6 +47,8 @@ const EVENT_TEXT: Record<string, string> = {
   script_posted: "Script posted",
   script_approved: "Script approved",
   script_changes: "Script changes asked",
+  logged: "Logged what was shot",
+  deliverable: "Deliverable",
 };
 
 /** One project (§7.2): status, deliveries, revisions, messages, notes, notifications, activity. */
@@ -74,6 +85,54 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const groups = deliveries(d.files);
   const revisionOpen = p.revision_state === "requested" || p.revision_state === "in_progress";
   const total = d.line_items.reduce((t, i) => t + Number(i.qty) * Number(i.unit_price), 0);
+  // Booked shoots of a client: what was shot, at frozen prices, and the deliverables list.
+  type Logged = {
+    rate_key: string | null;
+    kind: string | null;
+    description: string;
+    qty: number;
+    unit_price: number;
+    price_basis: LogLine["basis"] | null;
+    list_price: number | null;
+    override_reason: string | null;
+    billed_invoice_id: string | null;
+  };
+  const work =
+    shoot && p.account_id
+      ? await rpc<{
+          deliverables: (Deliverable & {
+            revisions: {
+              round: number;
+              note: string;
+              requested_by_name: string | null;
+              at: string;
+            }[];
+          })[];
+          logged: Logged[];
+          rates: RateOption[];
+        }>("portal_admin_deliverables", { p_project: p.id })
+      : null;
+  const pricing = work ? await getPropertyPricing() : null;
+  const booking = p.meta.booking;
+  const logLines: LogLine[] = work?.logged.length
+    ? work.logged.map((l) => ({
+        key: l.rate_key ?? (l.kind === "shoot" ? "property" : (l.kind ?? "reel")),
+        kind: l.kind ?? undefined,
+        description: l.description,
+        qty: Number(l.qty),
+        basis:
+          l.price_basis === "override"
+            ? "override"
+            : l.price_basis === "price_list"
+              ? "price_list"
+              : "client_rate",
+        unit_price: Number(l.unit_price),
+        list_price: l.list_price != null ? Number(l.list_price) : undefined,
+        reason: l.override_reason ?? undefined,
+      }))
+    : booking && pricing
+      ? logPrefill(booking.services, pricing)
+      : [];
 
   return (
     <div className="ad-page">
@@ -156,14 +215,61 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                 <dd>{[shootDay(p.shoot_date), p.slot].filter(Boolean).join(" · ") || "—"}</dd>
                 <dt>Where</dt>
                 <dd>
-                  {[p.meta.unit && `Unit ${p.meta.unit}`, p.meta.building, p.meta.area]
-                    .filter(Boolean)
-                    .join(", ") || "—"}
+                  {booking ? (
+                    <>
+                      {booking.location.address}
+                      {booking.location.unit ? ` · ${booking.location.unit}` : ""}
+                      {booking.location.lat != null && (
+                        <>
+                          {" · "}
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${booking.location.lat},${booking.location.lng}${booking.location.place_id ? `&query_place_id=${booking.location.place_id}` : ""}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Map ↗
+                          </a>
+                        </>
+                      )}
+                      {booking.location.access && (
+                        <span className="ad-small ad-muted" style={{ display: "block" }}>
+                          Access: {booking.location.access}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    [p.meta.unit && `Unit ${p.meta.unit}`, p.meta.building, p.meta.area]
+                      .filter(Boolean)
+                      .join(", ") || "—"
+                  )}
                 </dd>
                 <dt>Services</dt>
                 <dd>
-                  {(p.meta.services ?? []).map((s) => SHOOT_SERVICE_LABEL[s] ?? s).join(", ") ||
-                    "—"}
+                  {booking && pricing
+                    ? booking.services.map((s, n) => (
+                        <span key={n} style={{ display: "block" }}>
+                          {SERVICE_LABEL[s.service]}: {serviceSummary(s, pricing)}
+                          {s.notes ? ` · “${s.notes}”` : ""}
+                          {(s.links ?? []).map((l) => (
+                            <a
+                              key={l}
+                              href={l}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ display: "block" }}
+                            >
+                              {l}
+                            </a>
+                          ))}
+                        </span>
+                      ))
+                    : (p.meta.services ?? []).map((s) => SHOOT_SERVICE_LABEL[s] ?? s).join(", ") ||
+                      "—"}
+                  {booking?.note && (
+                    <span className="ad-small ad-muted" style={{ display: "block" }}>
+                      {booking.note}
+                    </span>
+                  )}
                 </dd>
               </>
             ) : (
@@ -240,6 +346,26 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         />
       </div>
 
+      {work && (
+        <>
+          <ShootLog
+            key={`log-${p.id}`}
+            project={p.id}
+            currency={d.account?.currency ?? "AED"}
+            rates={work.rates}
+            initial={logLines}
+            logged={work.logged.length > 0}
+            hasDeliverables={work.deliverables.length > 0}
+            locked={work.logged.some((l) => l.billed_invoice_id)}
+          />
+          <DeliverablesAdmin
+            // Remounts only when the list itself changes (new ids), not on a status change.
+            key={work.deliverables.map((x) => x.id).join()}
+            project={p.id}
+            items={work.deliverables}
+          />
+        </>
+      )}
       {p.type === "avatar" && <ScriptPanel project={target} scripts={d.scripts} origin={origin} />}
       {!shoot && <FilesIn projectId={p.id} files={d.files} />}
       <Deliveries

@@ -2,8 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 import { portalAdminReady, portalAdminSystem } from "@/lib/portal/admin";
 import { projectLink } from "@/lib/portal/messages";
-import { notifyClients, type Recipient } from "@/lib/portal/notify";
+import { alertMilkywayy, notifyClients, type Recipient } from "@/lib/portal/notify";
 import { refreshInstagramToken } from "@/lib/instagram";
+import { emailPublished } from "@/lib/portal/invoice-actions";
 import { deleteObject, r2Ready } from "@/lib/r2";
 
 /**
@@ -13,7 +14,10 @@ import { deleteObject, r2Ready } from "@/lib/r2";
  *   3. clients are emailed 14 days before their delivered files are deleted;
  *   4. Due invoices past their due date become Overdue;
  *   5. last month's statements are frozen (on the 1st, and any later day one is missing);
- *   6. the website's Instagram token is renewed once a week (lib/instagram.ts).
+ *   6. the website's Instagram token is renewed once a week (lib/instagram.ts);
+ *   7. invoices (owner, 10 Oct 2026): from the 25th, month-end drafts for review (Milkywayy is
+ *      emailed when new ones are ready); approved invoices whose date has come are published and
+ *      the client gets the "New invoice" email.
  * Vercel calls it with `Authorization: Bearer $CRON_SECRET`.
  */
 export const dynamic = "force-dynamic";
@@ -81,6 +85,22 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  // Invoice drafts (from the 25th; safe to repeat) and scheduled publishing.
+  const drafts = await portalAdminSystem<{ created: number }>("portal_admin_generate_drafts").catch(
+    (e) => (console.error("[housekeeping] drafts:", e), { created: 0 }),
+  );
+  if (drafts.created)
+    await alertMilkywayy(
+      `${drafts.created} invoice draft${drafts.created === 1 ? "" : "s"} ready for review`,
+      ["Month-end invoice drafts are ready. Review, edit and approve them in the invoice queue."],
+      `${env.siteUrl}/admin/billing/queue`,
+    );
+  const published = await portalAdminSystem<Parameters<typeof emailPublished>[0][]>(
+    "portal_admin_publish_due",
+  ).catch((e) => (console.error("[housekeeping] publish:", e), []));
+  let invoiceEmails = 0;
+  for (const p of published) invoiceEmails += await emailPublished(p, env.siteUrl, "cron");
+
   // The Instagram long-lived token lasts 60 days; renewing weekly keeps it alive indefinitely.
   const instagram = await refreshInstagramToken().catch((e) => ({
     error: e instanceof Error ? e.message : "failed",
@@ -89,6 +109,9 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     instagram,
+    drafts_created: drafts.created,
+    invoices_published: published.length,
+    invoice_emails: invoiceEmails,
     auto_completed: out.auto_completed,
     files_deleted: deleted.length,
     files_waiting: out.expired.length - deleted.length,

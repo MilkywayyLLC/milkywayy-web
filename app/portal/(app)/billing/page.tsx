@@ -2,6 +2,7 @@ import { cx } from "@/lib/cx";
 import { InvoiceDownload } from "@/components/portal/InvoiceDownload";
 import { PaidByTransfer, PayNow } from "@/components/portal/InvoicePay";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
+import { ActivityList, BudgetCard } from "@/components/portal/Budget";
 import { Badge } from "@/components/portal/ui";
 import { requireAccount } from "@/lib/portal/auth";
 import {
@@ -14,6 +15,7 @@ import {
   shownStatus,
   STATUS_LABEL,
   type Invoice,
+  type InvoiceLine,
   type MyBilling,
   type StatementRow,
 } from "@/lib/portal/billing";
@@ -29,6 +31,9 @@ export const metadata = { title: "Billing" };
  * - A package: usage per inclusion as counts, what's left, extras as a count, renewal, "Month n
  *   of 6". Extras are billed on the next invoice.
  * - A package suggestion when one would save them money (or an offer pinned for them).
+ * - A budget package (owner, 10 Oct 2026): "This month" against the monthly package and the
+ *   month's activity by shoot, when the client's "Show budget and activity" switch is on.
+ * Only published invoices reach the client (drafts and approved ones are Milkywayy's).
  */
 export default async function Billing({
   searchParams,
@@ -82,6 +87,10 @@ export default async function Billing({
           moment, and we’ll email you.
         </p>
       )}
+
+      {b?.budget && <BudgetCard b={b.budget} currency={b.currency} />}
+      {b?.budget && <ActivityList rows={b.budget.activity} currency={b.currency} />}
+      {!b?.budget && b?.activity && <ActivityList rows={b.activity} currency={b.currency} />}
 
       <div className="pt-grid2">
         {plan && (
@@ -151,7 +160,7 @@ export default async function Billing({
           </section>
         )}
 
-        {b?.suggestion ? (
+        {b?.mode === "budget" ? null : b?.suggestion ? (
           <section className="pt-card pt-suggest" aria-labelledby="sug-h" data-testid="suggestion">
             <span className="pt-eb">
               {b.suggestion.show_saving ? "Package suggestion" : "Your offer"}
@@ -231,11 +240,11 @@ export default async function Billing({
                   key={i.id}
                   className="pt-inv-wrap"
                   role="group"
-                  aria-label={`Invoice ${i.number}`}
+                  aria-label={`Invoice ${i.number ?? ""}`}
                 >
                   <div className="pt-inv">
                     <div>
-                      <b>{i.number}</b>
+                      <b>{i.number ?? "Invoice"}</b>
                       <div className="pt-meta">
                         {monthLabel(month)} · due {dateLabel(i.due_on)}
                         {i.paid_via === "stripe" ? " · paid by card" : ""}
@@ -264,19 +273,36 @@ export default async function Billing({
                     </Badge>
                     <span className="pt-inv-actions">
                       {open && !submitted && b?.pay_online && (
-                        <PayNow id={i.id} number={i.number} />
+                        <PayNow id={i.id} number={i.number ?? ""} />
                       )}
                       {open && !submitted && b && !b.pay_online && (
-                        <PaidByTransfer id={i.id} number={i.number} />
+                        <PaidByTransfer id={i.id} number={i.number ?? ""} />
                       )}
-                      {i.pdf_key && <InvoiceDownload id={i.id} number={i.number} />}
+                      {i.pdf_source === "generated" ? (
+                        <a
+                          className="btn btn-g btn-s"
+                          href={`/portal/billing/invoice/${i.id}`}
+                          download={`${i.number}.pdf`}
+                        >
+                          PDF
+                        </a>
+                      ) : (
+                        i.pdf_key && <InvoiceDownload id={i.id} number={i.number ?? ""} />
+                      )}
                     </span>
                   </div>
-                  {statement && (
+                  {i.lines?.length ? (
                     <details className="pt-breakdown">
                       <summary>Breakdown</summary>
-                      <Breakdown s={statement} />
+                      <InvoiceLines inv={i} />
                     </details>
+                  ) : (
+                    statement && (
+                      <details className="pt-breakdown">
+                        <summary>Breakdown</summary>
+                        <Breakdown s={statement} />
+                      </details>
+                    )
                   )}
                 </div>
               );
@@ -373,6 +399,41 @@ function Breakdown({ s }: { s: StatementRow }) {
       <li className="pt-lines-total">
         <b>{monthLabel(s.month)} total</b>
         <b className="pt-mono">{money(c, Number(s.total))}</b>
+      </li>
+    </ul>
+  );
+}
+
+/** An invoice made from a draft: its own lines, VAT and total. */
+function InvoiceLines({ inv }: { inv: Invoice }) {
+  const c = inv.currency;
+  const lines = (inv.lines ?? []) as InvoiceLine[];
+  return (
+    <ul className="pt-lines" data-testid="breakdown">
+      {lines.map((l, n) => (
+        <li key={n}>
+          <span>
+            {l.description}
+            {Number(l.qty) !== 1 && ` · ${Number(l.qty)} × ${money(c, Number(l.unit_price))}`}
+          </span>
+          <span className="pt-mono">{money(c, Number(l.amount))}</span>
+        </li>
+      ))}
+      {Number(inv.vat) > 0 && (
+        <>
+          <li>
+            <span>Subtotal</span>
+            <span className="pt-mono">{money(c, Number(inv.subtotal))}</span>
+          </li>
+          <li>
+            <span>VAT {Number(inv.vat_rate)}%</span>
+            <span className="pt-mono">{money(c, Number(inv.vat))}</span>
+          </li>
+        </>
+      )}
+      <li className="pt-lines-total">
+        <b>Total</b>
+        <b className="pt-mono">{money(c, Number(inv.amount))}</b>
       </li>
     </ul>
   );

@@ -7,6 +7,7 @@ import {
   deliveredItems,
   hasPortalAdmin,
   newRun,
+  publishedInvoice,
   signedIn,
   signInUI,
 } from "./helpers/portal";
@@ -33,18 +34,16 @@ test.beforeAll(async () => {
   );
   await ok((await signedIn(member)).rpc("accept_my_invites"));
   await deliveredItems(c.account, "Marina reels", [{ kind: "reel", qty: 3, price: 200 }]);
-  await ok(
-    adminRpc("portal_admin_create_invoice", {
-      p_account: c.account,
-      p_number: "INV-OLD",
-      p_issued: day(-40),
-      p_due: day(-10),
-      p_amount: 750,
-      p_currency: "AED",
-      p_status: "due",
-      p_pdf_key: null,
-    }),
-  );
+  await publishedInvoice({
+    p_account: c.account,
+    p_number: "INV-OLD",
+    p_issued: day(-40),
+    p_due: day(-10),
+    p_amount: 750,
+    p_currency: "AED",
+    p_status: "due",
+    p_pdf_key: null,
+  });
 });
 test.afterAll(async () => {
   await cleanup(RUN);
@@ -53,18 +52,16 @@ test.afterAll(async () => {
 test("Owner: Billing is invoices only (unpaid first), no running totals; Home shows the invoice without an amount", async ({
   page,
 }) => {
-  await ok(
-    adminRpc("portal_admin_create_invoice", {
-      p_account: c.account,
-      p_number: "INV-PAID",
-      p_issued: day(-60),
-      p_due: day(-45),
-      p_amount: 900,
-      p_currency: "AED",
-      p_status: "paid",
-      p_pdf_key: null,
-    }),
-  );
+  await publishedInvoice({
+    p_account: c.account,
+    p_number: "INV-PAID",
+    p_issued: day(-60),
+    p_due: day(-45),
+    p_amount: 900,
+    p_currency: "AED",
+    p_status: "paid",
+    p_pdf_key: null,
+  });
   await signInUI(page, c.email);
   await page
     .getByRole("navigation", { name: "Portal sections" })

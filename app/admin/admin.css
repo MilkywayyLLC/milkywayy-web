@@ -1034,4 +1034,307 @@
 }
 .ad-web summary::-webkit-details-marker {
   display: none;
+
+  /* ---------- retainers, bookings, inquiries, invoice queue (owner, 10 Oct 2026) ---------- */
+  .ad-row-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .ad-grid3 {
+    display: grid;
+    gap: 12px;
+    align-items: end;
+  }
+  @media (min-width: 760px) {
+    .ad-grid3 {
+      grid-template-columns: 1fr 1fr 1.4fr;
+    }
+    .ad-grid3 > .ad-btns {
+      grid-column: 1 / -1;
+    }
+  }
+  .ad-h3 {
+    font: 700 15px/1.3 var(--font-sans);
+  }
+  .ad-mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .ad-warn-text {
+    color: #8a4b00;
+  }
+  .ad-pill.approved {
+    border-color: var(--fg);
+  }
+  .ad-pill.due {
+    background: #e6d3a3;
+    border-color: #e6d3a3;
+    color: #111;
+  }
+  .ad-pill.paid {
+    background: var(--fg);
+    color: var(--bg);
+  }
+  .ad-pill.overdue {
+    border-color: #b42318;
+    color: #b42318;
+  }
+  .ad-history {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 4px;
+    font-size: 13.5px;
+  }
+  .ad-lines {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+  }
+  .ad-lines li {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  /* Invoice queue: a table on desktop, stacked cards on phones. */
+  .ad-queue {
+    display: grid;
+  }
+  .ad-queue-row {
+    display: grid;
+    grid-template-columns: 1.6fr 1.1fr 0.9fr 0.9fr 1.3fr;
+    gap: 10px;
+    align-items: center;
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--line);
+    text-decoration: none;
+    color: inherit;
+  }
+  .ad-queue-row > span {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+  .ad-queue-row.head {
+    font: 500 11px/1 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  a.ad-queue-row:hover {
+    background: var(--surface);
+  }
+  @media (max-width: 760px) {
+    .ad-queue-row {
+      grid-template-columns: 1fr auto;
+    }
+    .ad-queue-row.head {
+      display: none;
+    }
+    .ad-queue-row > span:nth-child(2),
+    .ad-queue-row > span:nth-child(3) {
+      font-size: 13px;
+      color: var(--muted);
+    }
+  }
+  /* Draft editor lines. */
+  .ad-inv-lines {
+    display: grid;
+    gap: 6px;
+  }
+  .ad-inv-line {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 70px 110px 120px 44px;
+    gap: 8px;
+    align-items: center;
+  }
+  .ad-inv-line.head {
+    font: 500 11px/1 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  @media (max-width: 640px) {
+    .ad-inv-line {
+      grid-template-columns: 1fr 1fr 44px;
+    }
+    .ad-inv-line > :first-child {
+      grid-column: 1 / -1;
+    }
+    .ad-inv-line.head {
+      display: none;
+    }
+  }
+  .ad-inv-totals {
+    display: grid;
+    justify-content: end;
+    gap: 4px;
+    margin: 0;
+  }
+  .ad-inv-totals > div {
+    display: flex;
+    gap: 24px;
+    justify-content: space-between;
+    min-width: 240px;
+  }
+  .ad-inv-totals dd {
+    margin: 0;
+    font-family: var(--font-mono);
+  }
+  /* Log what we shot. */
+  .ad-log {
+    display: grid;
+    gap: 8px;
+  }
+  .ad-log-row {
+    display: grid;
+    grid-template-columns: 170px minmax(0, 1fr) 70px 120px auto 44px;
+    gap: 8px;
+    align-items: center;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .ad-log-reason {
+    grid-column: 2 / -1;
+  }
+  @media (max-width: 760px) {
+    .ad-log-row {
+      grid-template-columns: 1fr 1fr 44px;
+    }
+    .ad-log-row > :nth-child(2),
+    .ad-log-reason {
+      grid-column: 1 / -1;
+    }
+  }
+  .ad-rate-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 110px 150px auto;
+    gap: 8px;
+    align-items: center;
+  }
+  .ad-rate-row > :last-child:not(button) {
+    grid-column: 1 / -1;
+  }
+  @media (max-width: 640px) {
+    .ad-rate-row {
+      grid-template-columns: 1fr 1fr;
+    }
+    .ad-rate-row > :first-child {
+      grid-column: 1 / -1;
+    }
+  }
+  /* Deliverables. */
+  .ad-deliv {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1.3fr) 130px auto auto 44px;
+    gap: 8px;
+    align-items: center;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .ad-deliv-revs {
+    grid-column: 1 / -1;
+  }
+  @media (max-width: 900px) {
+    .ad-deliv {
+      grid-template-columns: 1fr 1fr;
+    }
+    .ad-deliv > :nth-child(3) {
+      grid-column: 1 / -1;
+    }
+  }
+  /* Shoot calendar. */
+  .ad-cal {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    border-left: 1px solid var(--line);
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .ad-cal-h {
+    padding: 6px 8px;
+    font: 500 11px/1 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .ad-cal-day {
+    min-height: 96px;
+    padding: 6px;
+    display: grid;
+    align-content: start;
+    gap: 4px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    min-width: 0;
+  }
+  .ad-cal-day.out {
+    background: var(--bg);
+    color: var(--muted);
+  }
+  .ad-cal-day.today .ad-cal-n {
+    background: var(--fg);
+    color: var(--bg);
+    padding: 1px 6px;
+  }
+  .ad-cal-n {
+    font: 500 12px/1.4 var(--font-mono);
+    justify-self: start;
+  }
+  .ad-cal-ev {
+    display: block;
+    font-size: 12px;
+    line-height: 1.3;
+    padding: 3px 5px;
+    border: 1px solid var(--fg);
+    background: var(--bg);
+    text-decoration: none;
+    color: inherit;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ad-cal-ev.requested {
+    border-style: dashed;
+    color: var(--muted);
+  }
+  @media (max-width: 640px) {
+    .ad-cal-day {
+      min-height: 64px;
+      padding: 3px;
+    }
+    .ad-cal-ev b {
+      display: none;
+    }
+  }
+  /* Threads. */
+  .ad-msg {
+    display: grid;
+    gap: 4px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    max-width: 680px;
+  }
+  .ad-msg.ours {
+    justify-self: end;
+    background: #f3ead2;
+    border-color: #e6d3a3;
+  }
+  .ad-row-link {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
 }

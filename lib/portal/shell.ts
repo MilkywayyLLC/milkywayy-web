@@ -16,6 +16,8 @@ export function portalTabs(m: Membership) {
     { href: "/portal/avatars", label: "Avatars", icon: "avatars" },
     // Listings (Phase 13): everyone; agents make the share pages. Never shows our prices.
     { href: "/portal/listings", label: "Listings", icon: "listings" },
+    // Inquiries (owner, 10 Oct 2026): everyone; a thread with Milkywayy, optionally about a shoot.
+    { href: "/portal/inquiries", label: "Inquiries", icon: "chat" },
     // Billing (Phase 12): Owner and Admins only; Members never see prices.
     ...(manager ? [{ href: "/portal/billing", label: "Billing", icon: "billing" }] : []),
   ];

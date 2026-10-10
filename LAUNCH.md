@@ -84,6 +84,7 @@ Portal and billing set-up in the admin (no build check; do before inviting clien
   15. `20261016090000_portal_billing_client_view.sql`
   16. `20261017090000_portal_launch_prep.sql`
   17. `20261018090000_site_instagram.sql` *(the website's Instagram token store)*
+  18. `20261019090000_portal_budget_bookings.sql` *(budget packages, portal booking, deliverables, inquiries, invoice drafts)*
 - [ ] **Claude** — a new `PORTAL_ADMIN_SECRET`: added to Vercel Production by CLI (never printed) and its SHA-256 stored in `private.app_secrets` under `portal_admin`. Then the security advisor.
 - [ ] **Claude** — data hygiene check (read-only): no `e2e-portal-%` users, no "E2E …" or "Milkywayy Demo Realty" accounts, no "Sample: …" listings, no test invoices. No script can create them in production: the sample-listing script refuses anything but the dev project, the Stripe preview script takes test keys only, the e2e helpers need functions that exist only in dev (`supabase/dev/`), and `supabase/seed.sql` only fills empty content tables ("on conflict do nothing").
 - [ ] **Akash decides, Claude applies** — the website's e2e test accounts (`e2e-owner@`, `e2e-editor@`, `e2e-stranger@example.com`). Recommendation: delete `e2e-owner` (a second Owner key on Claude's laptop), keep the other two for the public/editor tests; Owner-level admin tests then run on a temporary Supabase branch when needed.
@@ -114,6 +115,16 @@ app only ever reads our own account.
 - [ ] **Akash** — Vercel → `milkywayy-web` → Settings → Environment Variables → `INSTAGRAM_ACCESS_TOKEN` = that token, **Sensitive**, for **Production** and **Preview**. Redeploy (or ask Claude to). No app secret or app id is needed.
 - [ ] **Claude** — check Admin → Portfolio shows "Instagram: Connected as @milkywayy.media". The daily cron renews the token every week and keeps it in the database (migration 17), so it never runs out. If Instagram ever refuses it, the admin says so; generate a new one (steps above) and replace the env var.
 
+## 4c. Google Maps (Book a shoot's location)
+
+The portal's "Book a shoot" finds the address with Google Places (UAE only) and shows a map with a
+pin the client can drag. Without a key it falls back to a plain address field, so nothing breaks.
+
+- [ ] **Akash** — Google Cloud console → a project for Milkywayy → **APIs & Services → Library**: enable **Maps JavaScript API** and **Places API (New)**. (Not the old "Places API": new projects can't use it, and the portal doesn't.) Billing must be on for the project; Google's monthly free usage covers a portal this size.
+- [ ] **Akash** — **Credentials → Create credentials → API key**. Restrict it: *Application restrictions* → **Websites**: `https://milkywayy.com/*`, `https://www.milkywayy.com/*`, `https://*.vercel.app/*` (previews; remove after launch if you like) and `http://localhost:3000/*`; *API restrictions* → those two APIs only.
+- [ ] **Akash** — Vercel → Environment Variables → `NEXT_PUBLIC_GOOGLE_MAPS_KEY` for Production and Preview (it's a browser key, protected by the restrictions above, so it isn't "Sensitive"). Redeploy.
+- [ ] Optional — **Map Management → Create Map ID** (JavaScript, vector) and set `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`; until then the map uses Google's demo map style.
+
 ## 5. Vercel Production environment
 
 Names only; values are never written down here. **Akash** adds the ones marked (A); **Claude**
@@ -129,11 +140,12 @@ adds the rest by CLI without printing them.
 - (A) `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` for the production token · `R2_BUCKET=milkywayy-deliverables` (Claude)
 - (A) `STRIPE_SECRET_KEY` = the **live** secret key (Stripe → Developers → API keys) · `STRIPE_WEBHOOK_SECRET` is stored by the live webhook script (section 7)
 - (A) `INSTAGRAM_ACCESS_TOKEN` (section 4b)
+- (A) `NEXT_PUBLIC_GOOGLE_MAPS_KEY` (section 4c) · optional `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`
 - Optional: `NEXT_PUBLIC_CAL_LINK`, `PORTAL_UPLOAD_MAX_GB` (default 5), `LEAD_WEBHOOK_URL`, `SUPABASE_SERVER_URL`.
 
 **Must NOT be set in Production:** `LEADS_DB`, `NEXT_PUBLIC_PORTAL_SUPABASE_URL`, `NEXT_PUBLIC_PORTAL_SUPABASE_ANON_KEY` (the portal then uses the website's project), `SHARE_DEV_MEDIA_ORIGIN`, `INSTAGRAM_GRAPH_URL` (tests only), `META_TEST_EVENT_CODE`, any `E2E_*`, `NEXT_PUBLIC_PORTAL_PHONE_SIGNIN` (unless phone sign-in comes back), any `sk_test_…` key. Live Stripe keys are refused anywhere but production (`lib/stripe.ts`), and previews only ever get test keys (`scripts/deploy-portal-preview.sh`).
 
-**Crons** (in `vercel.json`, already scheduled, use `CRON_SECRET`): weekly leads email (Mon 09:00 Dubai) and portal housekeeping daily at 06:00 Dubai (auto-complete, retention deletes, expiry warnings, Overdue invoices, last month's statements, the weekly Instagram token renewal).
+**Crons** (in `vercel.json`, already scheduled, use `CRON_SECRET`): weekly leads email (Mon 09:00 Dubai) and portal housekeeping daily at 06:00 Dubai (auto-complete, retention deletes, expiry warnings, Overdue invoices, last month's statements, the weekly Instagram token renewal; from the 25th, month-end invoice drafts for review; approved invoices published on their date with the "New invoice" email).
 
 ## 6. Launch day (about an hour, a quiet morning)
 
