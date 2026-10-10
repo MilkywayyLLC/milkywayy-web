@@ -118,11 +118,11 @@ export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; 
           <span className="pt-eb">{c.eyebrow}</span>
           <h1 className="pt-h1">{c.title}</h1>
         </div>
-        <StartRequests cfg={cfg} only={type} label={c.newLabel} autoOpen />
+        <StartRequests cfg={cfg} only={type} label={c.newLabel} />
       </div>
       <DraftsRow
         drafts={drafts.filter((d) => d.kind === type)}
-        resumeHref={(k) => `${base}?new=${k}&draft=1`}
+        hrefs={{ [type]: `${base}?new=${type}&draft=1` }}
       />
 
       <div className="pt-tabs" role="tablist">

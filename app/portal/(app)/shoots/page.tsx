@@ -34,8 +34,8 @@ export default async function Shoots() {
     requestConfig(db, current),
     myDrafts(),
   ]);
-  const active = all.filter((p) => p.status !== "completed");
-  const done = all.filter((p) => p.status === "completed");
+  const active = all.filter((p) => p.status !== "completed" && p.status !== "cancelled");
+  const done = all.filter((p) => p.status === "completed" || p.status === "cancelled");
   // Prices: only for those who see billing (the database returns no line items to others).
   const price = new Map<string, string>();
   if (seesMoney(current) && all.length) {
@@ -66,12 +66,12 @@ export default async function Shoots() {
           </span>
           <h1 className="pt-h1">Shoots</h1>
         </div>
-        <StartRequests cfg={cfg} only="booking" autoOpen />
+        <StartRequests cfg={cfg} only="booking" />
       </div>
 
       <DraftsRow
         drafts={drafts.filter((d) => d.kind === "booking")}
-        resumeHref={() => "/portal/shoots?new=booking&draft=1"}
+        hrefs={{ booking: "/portal/shoots?new=booking&draft=1" }}
       />
       {all.length === 0 && (
         <div className="pt-card">

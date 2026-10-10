@@ -16,7 +16,6 @@ export const SLOTS = [
   ["morning", "Morning"],
   ["afternoon", "Afternoon"],
   ["full_day", "Full day"],
-  ["flexible", "Flexible"],
 ] as const;
 export type Slot = (typeof SLOTS)[number][0];
 

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getSiteSettings } from "@/lib/data";
 import { contactOf, requireAccount } from "@/lib/portal/auth";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
-import { StartRequests } from "@/components/portal/StartRequests";
+import { YourWork } from "@/components/portal/YourWork";
 import { requestConfig } from "@/lib/portal/requests";
 import { statusLabel, type Project } from "@/lib/portal/projects";
 import { isManager, seesMoney } from "@/lib/portal/shell";
@@ -71,7 +71,6 @@ export default async function PortalHome({
   );
   const scripts = projects.filter((p) => p.status === "script_ready");
   const onHold = projects.filter((p) => p.status === "on_hold");
-  const inProgress = projects.filter((p) => p.status !== "completed");
   const area = (t: string) => (t === "edit" ? "Editing" : t === "avatar" ? "Avatars" : "Shoots");
   const events = (eventRows ?? []) as unknown as {
     id: number;
@@ -102,10 +101,6 @@ export default async function PortalHome({
           </span>
           <h1 className="pt-h1">Home</h1>
         </div>
-        <div className="pt-btns">
-          {/* Every client books in the portal, in a modal (owner, 10 Oct 2026). */}
-          <StartRequests cfg={cfg} only="booking" />
-        </div>
       </div>
 
       {claimed > 0 && (
@@ -125,133 +120,102 @@ export default async function PortalHome({
         </p>
       )}
 
-      <section className="pt-card" aria-labelledby="attn">
-        <h2 id="attn" className="pt-h2">
-          Needs your attention
-        </h2>
-        {waiting.length + scripts.length + onHold.length + unpaid.length === 0 &&
-          openInvites === 0 && (
-            <p className="pt-meta" style={{ margin: 0 }}>
-              Nothing needs you right now. Approvals, deliveries and invoices show up here.
-            </p>
-          )}
-        <div className="pt-list" style={{ border: 0 }} data-testid="attention">
-          {scripts.map((p) => (
-            <Link
-              key={p.id}
-              href={`/portal/p/${encodeURIComponent(p.ref)}`}
-              className="pt-attn"
-              style={{ padding: "10px 0" }}
-            >
-              <div style={{ display: "grid", gap: 4 }}>
-                <span className="pt-eb">Avatars · {p.ref}</span>
-                <b>Approve the script</b>
-                <span className="pt-meta">{p.title}. Production starts once you approve.</span>
-              </div>
-            </Link>
-          ))}
-          {onHold.map((p) => (
-            <Link
-              key={p.id}
-              href={`/portal/p/${encodeURIComponent(p.ref)}`}
-              className="pt-attn"
-              style={{ padding: "10px 0" }}
-            >
-              <div style={{ display: "grid", gap: 4 }}>
-                <span className="pt-eb">
-                  {area(p.type)} · {p.ref}
-                </span>
-                <b>On hold: waiting on you</b>
-                <span className="pt-meta">
-                  {p.title}. {p.status_note}
-                </span>
-              </div>
-            </Link>
-          ))}
-          {waiting.map((p) => (
-            <Link
-              key={p.id}
-              href={`/portal/p/${encodeURIComponent(p.ref)}`}
-              className="pt-attn"
-              style={{ padding: "10px 0" }}
-            >
-              <div style={{ display: "grid", gap: 4 }}>
-                <span className="pt-eb">
-                  {area(p.type)} · {p.ref}
-                </span>
-                <b>
-                  {p.revision_state === "delivered" ? "Revision delivered" : "Your files are ready"}
-                </b>
-                <span className="pt-meta">
-                  {p.title}. Download, then approve or ask for a revision.
-                </span>
-              </div>
-            </Link>
-          ))}
-          {unpaid.map((i) => (
-            <Link
-              key={i.id}
-              href="/portal/billing"
-              className="pt-attn"
-              style={{ padding: "10px 0" }}
-            >
-              <div style={{ display: "grid", gap: 4 }}>
-                <span className="pt-eb">Billing · {i.number}</span>
-                {/* No amounts on Home (owner, 4 Oct 2026): money only on the invoice itself. */}
-                <b>{shownStatus(i) === "overdue" ? "Invoice overdue" : "Invoice due"}</b>
-                <span className="pt-meta">
-                  Due {dateLabel(i.due_on)}. Open Billing to see it and pay.
-                </span>
-              </div>
-            </Link>
-          ))}
-          {openInvites > 0 && (
-            <Link href="/portal/team" className="pt-attn" style={{ padding: "10px 0" }}>
-              <div style={{ display: "grid", gap: 4 }}>
-                <span className="pt-eb">Team</span>
-                <b>
-                  {openInvites} invite{openInvites === 1 ? "" : "s"} not accepted yet
-                </b>
-                <span className="pt-meta">
-                  They join once they sign in with the email you invited.
-                </span>
-              </div>
-            </Link>
-          )}
-        </div>
-      </section>
-
-      <div className="pt-grid2">
-        <section className="pt-card" aria-labelledby="prog">
-          <h2 id="prog" className="pt-h2">
-            In progress
+      {/* Only when something needs them (owner, 10 Oct 2026). */}
+      {waiting.length + scripts.length + onHold.length + unpaid.length + openInvites > 0 && (
+        <section className="pt-card" aria-labelledby="attn">
+          <h2 id="attn" className="pt-h2">
+            Needs your attention
           </h2>
-          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            {(
-              [
-                ["shoot", "/portal/shoots", "Shoots"],
-                ["edit", "/portal/editing", "Editing"],
-                ["avatar", "/portal/avatars", "Avatars"],
-              ] as const
-            )
-              .filter(([t]) =>
-                t === "shoot" ? cfg.shoots : t === "edit" ? cfg.editing : cfg.avatars,
-              )
-              .map(([t, href, label]) => (
-                <Link key={t} href={href} className="pt-stat" style={{ textDecoration: "none" }}>
-                  <b>{inProgress.filter((p) => p.type === t).length}</b>
-                  <span className="pt-meta">{label}</span>
-                </Link>
-              ))}
+          <div className="pt-list" style={{ border: 0 }} data-testid="attention">
+            {scripts.map((p) => (
+              <Link
+                key={p.id}
+                href={`/portal/p/${encodeURIComponent(p.ref)}`}
+                className="pt-attn"
+                style={{ padding: "10px 0" }}
+              >
+                <div style={{ display: "grid", gap: 4 }}>
+                  <span className="pt-eb">Avatars · {p.ref}</span>
+                  <b>Approve the script</b>
+                  <span className="pt-meta">{p.title}. Production starts once you approve.</span>
+                </div>
+              </Link>
+            ))}
+            {onHold.map((p) => (
+              <Link
+                key={p.id}
+                href={`/portal/p/${encodeURIComponent(p.ref)}`}
+                className="pt-attn"
+                style={{ padding: "10px 0" }}
+              >
+                <div style={{ display: "grid", gap: 4 }}>
+                  <span className="pt-eb">
+                    {area(p.type)} · {p.ref}
+                  </span>
+                  <b>On hold: waiting on you</b>
+                  <span className="pt-meta">
+                    {p.title}. {p.status_note}
+                  </span>
+                </div>
+              </Link>
+            ))}
+            {waiting.map((p) => (
+              <Link
+                key={p.id}
+                href={`/portal/p/${encodeURIComponent(p.ref)}`}
+                className="pt-attn"
+                style={{ padding: "10px 0" }}
+              >
+                <div style={{ display: "grid", gap: 4 }}>
+                  <span className="pt-eb">
+                    {area(p.type)} · {p.ref}
+                  </span>
+                  <b>
+                    {p.revision_state === "delivered"
+                      ? "Revision delivered"
+                      : "Your files are ready"}
+                  </b>
+                  <span className="pt-meta">
+                    {p.title}. Download, then approve or ask for a revision.
+                  </span>
+                </div>
+              </Link>
+            ))}
+            {unpaid.map((i) => (
+              <Link
+                key={i.id}
+                href="/portal/billing"
+                className="pt-attn"
+                style={{ padding: "10px 0" }}
+              >
+                <div style={{ display: "grid", gap: 4 }}>
+                  <span className="pt-eb">Billing · {i.number}</span>
+                  {/* No amounts on Home (owner, 4 Oct 2026): money only on the invoice itself. */}
+                  <b>{shownStatus(i) === "overdue" ? "Invoice overdue" : "Invoice due"}</b>
+                  <span className="pt-meta">
+                    Due {dateLabel(i.due_on)}. Open Billing to see it and pay.
+                  </span>
+                </div>
+              </Link>
+            ))}
+            {openInvites > 0 && (
+              <Link href="/portal/team" className="pt-attn" style={{ padding: "10px 0" }}>
+                <div style={{ display: "grid", gap: 4 }}>
+                  <span className="pt-eb">Team</span>
+                  <b>
+                    {openInvites} invite{openInvites === 1 ? "" : "s"} not accepted yet
+                  </b>
+                  <span className="pt-meta">
+                    They join once they sign in with the email you invited.
+                  </span>
+                </div>
+              </Link>
+            )}
           </div>
         </section>
-        <section className="pt-card" aria-labelledby="start">
-          <h2 id="start" className="pt-h2">
-            Start something
-          </h2>
-          <StartRequests cfg={cfg} autoOpen />
-        </section>
-      </div>
+      )}
+
+      <YourWork projects={projects} cfg={cfg} />
 
       <section className="pt-card" aria-labelledby="act">
         <h2 id="act" className="pt-h2">

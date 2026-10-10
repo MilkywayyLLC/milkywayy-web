@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useReducer, useState, useTransition } from "react";
 import { PropertyOptions } from "@/components/booking/PropertyOptions";
 import { blankProperty, reducer, type Action, type BookingProperty } from "@/lib/booking";
-import { bookShoot } from "@/lib/portal/book-actions";
+import { bookShoot, updateBooking } from "@/lib/portal/book-actions";
 import { dateLabel, money } from "@/lib/portal/billing";
 import {
   DAY_LABEL,
@@ -106,24 +106,42 @@ type Snap = {
  * estimate from this client's own rates (shown by who's looking), then Confirm: a Requested shoot
  * in Shoots, Milkywayy is emailed and confirms it. Autosaves as a draft.
  */
+export type BookingEdit = {
+  projectId: string;
+  ref: string;
+  status: "requested" | "confirmed";
+  date: string;
+  slot: Slot | "";
+  location: BookingLocation;
+  service: BookingService | null;
+  note: string;
+};
+
 export function BookingModal({
   cfg,
   resume,
   onClose,
+  onBack,
+  edit,
 }: {
   cfg: RequestConfig;
   resume?: boolean;
   onClose: () => void;
+  /** Back from step 1: to "What do you need?". */
+  onBack?: () => void;
+  /** Edit a Requested shoot, or ask to change a Confirmed one (owner, 10 Oct 2026). */
+  edit?: BookingEdit;
 }) {
   const { pricing } = cfg;
+  const s0 = edit?.service;
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [kind, setKind] = useState<Kind | "">("");
-  const [qty, setQty] = useState(4);
-  const [day, setDay] = useState<"half" | "full" | "">("");
-  const [date, setDate] = useState("");
-  const [slot, setSlot] = useState<Slot | "">("");
-  const [loc, setLoc] = useState<BookingLocation>({ address: "" });
-  const [note, setNote] = useState("");
+  const [kind, setKind] = useState<Kind | "">(s0?.service ?? "");
+  const [qty, setQty] = useState(s0?.qty ?? 4);
+  const [day, setDay] = useState<"half" | "full" | "">(s0?.day ?? "");
+  const [date, setDate] = useState(edit?.date ?? "");
+  const [slot, setSlot] = useState<Slot | "">(edit?.slot ?? "");
+  const [loc, setLoc] = useState<BookingLocation>(edit?.location ?? { address: "" });
+  const [note, setNote] = useState(edit?.note ?? "");
   const [touched, setTouched] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -131,7 +149,10 @@ export function BookingModal({
     (p: BookingProperty, a: Action) =>
       reducer(pricing)({ properties: [p], nextId: 2 }, a).properties[0],
     blankProperty(1, pricing, "", ""),
+    (p) => (s0?.property ? { ...p, ...s0.property } : p),
   );
+  // Reels and long-form: half day picks morning or afternoon; a full day has no time choice.
+  const fullDay = kind !== "" && kind !== "property" && day === "full";
   const touch =
     <A extends unknown[]>(f: (...a: A) => void) =>
     (...a: A) => {
@@ -173,6 +194,7 @@ export function BookingModal({
     touched: touched && !done,
     resume,
     onRestore: restore as unknown as (d: Record<string, unknown>) => void,
+    enabled: !edit,
   });
   const guard = useCloseGuard({
     dirty: touched && !done,
@@ -197,7 +219,7 @@ export function BookingModal({
       : step === 2
         ? {
             date: (!date && "Choose a date.") || (date < cfg.today && "Choose a date from today."),
-            slot: !slot && "Choose a time.",
+            slot: !fullDay && slot !== "morning" && slot !== "afternoon" && "Choose a time.",
             location: loc.address.trim().length < 3 && "Add the location.",
           }
         : {},
@@ -214,16 +236,17 @@ export function BookingModal({
   }
   function confirm() {
     if (!service) return;
+    const b = {
+      date,
+      slot: (fullDay ? "full_day" : slot) as Slot,
+      location: loc,
+      services: [service],
+      note,
+    };
     start(async () => {
-      const r = await bookShoot({
-        date,
-        slot: slot as Slot,
-        location: loc,
-        services: [service],
-        note,
-      });
+      const r = edit ? await updateBooking(edit.projectId, b) : await bookShoot(b);
       if (!r.ok) return form.fail(r.error ?? "Couldn’t send the booking. Try again.");
-      setDone(r.ref!);
+      setDone(edit ? edit.ref : r.ref!);
     });
   }
 
@@ -238,13 +261,24 @@ export function BookingModal({
 
   if (done)
     return (
-      <Modal title="Book a shoot" onClose={onClose} testId="booking-modal">
+      <Modal
+        title={edit ? "Shoot details" : "Book a shoot"}
+        onClose={onClose}
+        testId="booking-modal"
+      >
         <div className="pt-form" role="status">
           <span className="pt-eb">{done} · Requested</span>
-          <b style={{ fontSize: 20 }}>Booking request sent</b>
+          <b style={{ fontSize: 20 }}>
+            {edit?.status === "confirmed"
+              ? "Change requested"
+              : edit
+                ? "Details saved"
+                : "Booking request sent"}
+          </b>
           <p style={{ margin: 0 }}>
-            We’ll confirm the date and time, usually within the hour during working hours. You’ll
-            get an email when it’s confirmed.
+            {edit?.status === "confirmed"
+              ? "We’ll look at the change and confirm the shoot again. You’ll get an email."
+              : "We’ll confirm the date and time, usually within the hour during working hours. You’ll get an email when it’s confirmed."}
           </p>
           <div className="pt-btns">
             <Link
@@ -264,11 +298,25 @@ export function BookingModal({
 
   return (
     <Modal
-      title="Book a shoot"
+      title={
+        edit ? (edit.status === "confirmed" ? "Request a change" : "Edit details") : "Book a shoot"
+      }
       onClose={guard.request}
       testId="booking-modal"
       footer={
         <>
+          {step === 1 && onBack && (
+            <button
+              type="button"
+              className="btn btn-g btn-s"
+              onClick={() => {
+                if (touched) void draft.saveNow();
+                onBack();
+              }}
+            >
+              Back
+            </button>
+          )}
           {step > 1 && (
             <button
               type="button"
@@ -287,7 +335,13 @@ export function BookingModal({
             </button>
           ) : (
             <button type="button" className="btn btn-p btn-s" disabled={pending} onClick={confirm}>
-              {pending ? "Sending…" : "Confirm booking"}
+              {pending
+                ? "Sending…"
+                : edit?.status === "confirmed"
+                  ? "Send change request"
+                  : edit
+                    ? "Save changes"
+                    : "Confirm booking"}
             </button>
           )}
         </>
@@ -376,7 +430,7 @@ export function BookingModal({
                         aria-pressed={day === d}
                         onClick={touch(() => {
                           setDay(d);
-                          if (d === "full") setSlot("full_day");
+                          setSlot(d === "full" ? "full_day" : slot === "full_day" ? "" : slot);
                         })}
                       >
                         {DAY_LABEL[d]}
@@ -403,20 +457,29 @@ export function BookingModal({
                   )}
                 />
               </Field>
-              <Field name="slot" label="Time preference" required group error={form.errors.slot}>
-                <div className="pt-seg" role="group" aria-label="Time preference">
-                  {SLOTS.map(([k, label]) => (
-                    <button
-                      key={k}
-                      type="button"
-                      aria-pressed={slot === k}
-                      onClick={touch(() => setSlot(k))}
-                    >
-                      {label}
-                    </button>
-                  ))}
+              {fullDay ? (
+                <div className="pt-field">
+                  <span className="pt-field-label">Time</span>
+                  <p className="pt-note" style={{ margin: 0 }}>
+                    Full day, we’ll confirm the start time.
+                  </p>
                 </div>
-              </Field>
+              ) : (
+                <Field name="slot" label="Time" required group error={form.errors.slot}>
+                  <div className="pt-seg pt-seg-line" role="group" aria-label="Time">
+                    {SLOTS.filter(([k]) => k !== "full_day").map(([k, label]) => (
+                      <button
+                        key={k}
+                        type="button"
+                        aria-pressed={slot === k}
+                        onClick={touch(() => setSlot(k))}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              )}
             </div>
             <PlacesField
               value={loc}
@@ -451,7 +514,7 @@ export function BookingModal({
                 <span>When</span>
                 <b>
                   {dateLabel(date, { weekday: "short", year: undefined })} ·{" "}
-                  {SLOTS.find(([k]) => k === slot)?.[1]}
+                  {fullDay ? "Full day" : SLOTS.find(([k]) => k === slot)?.[1]}
                 </b>
               </li>
               <li>

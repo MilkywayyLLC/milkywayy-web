@@ -54,12 +54,20 @@ export async function discardDraft(kind: DraftKind) {
 
 /** Every draft of the signed-in person on this account (the list pages' "Drafts" row). */
 export async function myDrafts(): Promise<(Draft & { kind: DraftKind })[]> {
-  const { db, user, current } = await requireAccount("/portal");
-  const { data } = await db
-    .from("portal_drafts")
-    .select("kind, data, updated_at")
-    .eq("account_id", current.account.id)
-    .eq("user_id", user.id)
-    .order("updated_at", { ascending: false });
-  return (data ?? []) as (Draft & { kind: DraftKind })[];
+  // Fail safe: no drafts row rather than a broken page.
+  try {
+    const { db, user, current } = await requireAccount("/portal");
+    const { data, error } = await db
+      .from("portal_drafts")
+      .select("kind, data, updated_at")
+      .eq("account_id", current.account.id)
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false });
+    if (error) console.error("[portal] drafts:", error.message);
+    return (data ?? []) as (Draft & { kind: DraftKind })[];
+  } catch (e) {
+    if ((e as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) throw e;
+    console.error("[portal] drafts:", e);
+    return [];
+  }
 }

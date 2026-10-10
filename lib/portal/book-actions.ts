@@ -128,3 +128,127 @@ export async function bookShoot(b: {
   revalidatePath("/portal", "layout");
   return { ok: true, ref: out.ref };
 }
+
+type BookingInput = Parameters<typeof bookShoot>[0];
+const slotLabel = (k: string | null | undefined) => SLOTS.find(([s]) => s === k)?.[1] ?? k ?? "";
+
+/** Edit a Requested shoot, or ask to change a Confirmed one (back to Requested). Admin is told. */
+export async function updateBooking(projectId: string, b: BookingInput): Promise<BookResult> {
+  const { db, current } = await requireAccount("/portal/shoots");
+  if (!can(current, "shoots"))
+    return { ok: false, error: "Your access doesn’t include shoots. Ask the account owner." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return { ok: false, error: "Choose a date." };
+  if (!SLOTS.some(([k]) => k === b.slot)) return { ok: false, error: "Choose a time slot." };
+  if (!b.location.address?.trim()) return { ok: false, error: "Add the location." };
+  if (!b.services.length) return { ok: false, error: "Add at least one service." };
+  const { data: before } = await db
+    .from("projects")
+    .select("ref, title, shoot_date, slot, meta")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (!before) return { ok: false, error: "You don’t have access to that shoot." };
+  const pricing = await getPropertyPricing();
+  const { data: opts } = await db.rpc("my_booking_options", { p_account: current.account.id });
+  const rates = (opts as { rates: Rates | null } | null)?.rates ?? null;
+  const est = rates ? estimate(b.services, rates, pricing) : null;
+  const services = b.services.map((s) => ({
+    service: s.service,
+    ...(s.service === "property"
+      ? { property: s.property }
+      : { qty: Math.round(s.qty ?? 1), ...(s.day ? { day: s.day } : {}) }),
+  }));
+  const loc: BookingLocation = {
+    address: b.location.address.trim(),
+    ...(b.location.lat != null && b.location.lng != null
+      ? { lat: b.location.lat, lng: b.location.lng }
+      : {}),
+    ...(b.location.place_id ? { place_id: b.location.place_id } : {}),
+    ...(b.location.unit?.trim() ? { unit: b.location.unit.trim() } : {}),
+    ...(b.location.access?.trim() ? { access: b.location.access.trim() } : {}),
+  };
+  const { data, error } = await db.rpc("update_booking", {
+    p_project: projectId,
+    p_date: b.date,
+    p_slot: b.slot,
+    p_location: loc,
+    p_services: services,
+    p_note: b.note?.trim() || null,
+    p_estimate: est,
+  });
+  if (error) {
+    console.error("[portal] update_booking:", error.message);
+    return {
+      ok: false,
+      error: /changed any more/.test(error.message)
+        ? "This shoot can’t be changed any more. Send us a message instead."
+        : why(error.message),
+    };
+  }
+  const out = data as { ref: string; was: string; note: string };
+  // What changed, for the email.
+  const old = (
+    before.meta as {
+      booking?: { location?: BookingLocation; services?: BookingService[]; note?: string };
+    }
+  ).booking;
+  const svc = (list: BookingService[] | undefined) =>
+    (list ?? [])
+      .map((s) => `${SERVICE_LABEL[s.service]}: ${serviceSummary(s, pricing)}`)
+      .join("; ");
+  const changes = [
+    before.shoot_date !== b.date ? `Date: ${before.shoot_date ?? "—"} → ${b.date}` : "",
+    (before.slot ?? "") !== slotLabel(b.slot)
+      ? `Time: ${before.slot ?? "—"} → ${slotLabel(b.slot)}`
+      : "",
+    (old?.location?.address ?? "") !== loc.address
+      ? `Location: ${old?.location?.address ?? "—"} → ${loc.address}`
+      : "",
+    (old?.location?.unit ?? "") !== (loc.unit ?? "") ? `Unit: ${loc.unit ?? "—"}` : "",
+    (old?.location?.access ?? "") !== (loc.access ?? "")
+      ? `Access notes: ${loc.access ?? "—"}`
+      : "",
+    svc(old?.services) !== svc(services as BookingService[])
+      ? `Services: ${svc(old?.services) || "—"} → ${svc(services as BookingService[])}`
+      : "",
+    (old?.note ?? "") !== (b.note?.trim() ?? "") ? `Notes: ${b.note?.trim() || "—"}` : "",
+  ].filter(Boolean);
+  await notifyMilkywayy(
+    projectId,
+    "booking_changed",
+    `Booking changed: ${current.account.name} · ${out.ref}`,
+    [
+      `${current.account.name} ${out.was === "confirmed" ? "asked to change a confirmed shoot (it’s back to Requested; confirm it again)" : "edited a requested shoot"}: ${out.ref}.`,
+      ...(changes.length ? changes : ["No visible change."]),
+    ],
+    `${originFrom(await headers())}/admin/projects/${projectId}`,
+  ).catch((e) => console.error("[portal] booking change alert:", e));
+  revalidatePath("/portal", "layout");
+  return { ok: true, ref: out.ref };
+}
+
+/** Cancel a Requested or Confirmed shoot. Admin is told. */
+export async function cancelBooking(projectId: string): Promise<BookResult> {
+  const { db, current } = await requireAccount("/portal/shoots");
+  if (!can(current, "shoots"))
+    return { ok: false, error: "Your access doesn’t include shoots. Ask the account owner." };
+  const { data, error } = await db.rpc("cancel_booking", { p_project: projectId });
+  if (error)
+    return {
+      ok: false,
+      error: /changed any more/.test(error.message)
+        ? "This shoot can’t be cancelled any more. Send us a message instead."
+        : why(error.message),
+    };
+  const out = data as { ref: string; title: string; was: string };
+  await notifyMilkywayy(
+    projectId,
+    "booking_cancelled",
+    `Booking cancelled: ${current.account.name} · ${out.ref}`,
+    [
+      `${current.account.name} cancelled ${out.ref} ${out.title} (it was ${out.was === "confirmed" ? "Confirmed" : "Requested"}).`,
+    ],
+    `${originFrom(await headers())}/admin/projects/${projectId}`,
+  ).catch((e) => console.error("[portal] booking cancel alert:", e));
+  revalidatePath("/portal", "layout");
+  return { ok: true, ref: out.ref };
+}

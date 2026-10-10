@@ -243,7 +243,8 @@ export function useDraft<T extends Record<string, unknown>>(
     touched,
     resume,
     onRestore,
-  }: { touched: boolean; resume?: boolean; onRestore: (data: T) => void },
+    enabled = true,
+  }: { touched: boolean; resume?: boolean; onRestore: (data: T) => void; enabled?: boolean },
 ) {
   const [offer, setOffer] = useState<Draft | null>(null);
   const [ready, setReady] = useState(false);
@@ -253,6 +254,7 @@ export function useDraft<T extends Record<string, unknown>>(
   }, [onRestore]);
   useEffect(() => {
     let live = true;
+    if (!enabled) return;
     loadDraft(kind)
       .then((d) => {
         if (!live) return;
@@ -264,13 +266,13 @@ export function useDraft<T extends Record<string, unknown>>(
     return () => {
       live = false;
     };
-  }, [kind, resume]);
+  }, [kind, resume, enabled]);
   const json = JSON.stringify(snapshot);
   useEffect(() => {
-    if (!touched || offer || !ready) return;
+    if (!enabled || !touched || offer || !ready) return;
     const t = setTimeout(() => void saveDraft(kind, JSON.parse(json)), 900);
     return () => clearTimeout(t);
-  }, [json, touched, offer, ready, kind]);
+  }, [json, touched, offer, ready, kind, enabled]);
   const saveNow = useCallback(() => saveDraft(kind, JSON.parse(json)), [kind, json]);
   const discard = useCallback(() => discardDraft(kind), [kind]);
   return {

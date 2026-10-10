@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { PropertyPricing } from "@/content/types";
 import {
   TWILIGHT_QTYS,
@@ -54,6 +54,22 @@ export function PropertyOptions({
   const twi = twilightTable(p, pricing);
   const update = (patch: Partial<BookingProperty>) => dispatch({ type: "update", id: p.id, patch });
   const tog = (key: Toggle) => dispatch({ type: "toggle", id: p.id, key });
+  // One expanded panel at a time (owner, 10 Oct 2026): choosing Videography opens its options and
+  // folds Photography's away, and vice versa. Clicking a chosen card that's folded opens it;
+  // clicking the open one deselects it.
+  const [panel, setPanel] = useState<"photo" | "video" | null>(
+    p.video ? "video" : p.photo ? "photo" : null,
+  );
+  const pick = (key: "photo" | "video") => {
+    if (!p[key]) {
+      tog(key);
+      setPanel(key);
+    } else if (panel !== key) setPanel(key);
+    else {
+      tog(key);
+      setPanel(key === "photo" ? (p.video ? "video" : null) : p.photo ? "photo" : null);
+    }
+  };
   const fid = (f: string) => `bk-${p.id}-${f}`;
   /* Service cards toggle (owner, 3 Oct 2026): click to select, click again to deselect. A
    * selected service shows its options under it; deselecting resets them (lib/booking). */
@@ -128,15 +144,15 @@ export function PropertyOptions({
             col={0}
             id={fid("photo")}
             controls={p.photo ? fid("photo-opts") : undefined}
-            expanded={p.photo}
+            expanded={p.photo && panel === "photo"}
             title="Photography"
             sub={`Delivery ${pricing.delivery.photo}`}
             price={formatAED(prices.photo)}
             summary={photoSummary(p)}
             pressed={p.photo}
-            onClick={() => tog("photo")}
+            onClick={() => pick("photo")}
           />
-          {p.photo && (
+          {p.photo && panel === "photo" && (
             <SubPanel id={fid("photo-opts")} pointTo={0} label="Photography options">
               <ChoiceCards cols={2}>
                 <ChoiceCard
@@ -166,7 +182,7 @@ export function PropertyOptions({
           <ChoiceCard
             col={1}
             controls={p.video ? fid("video-opts") : undefined}
-            expanded={p.video}
+            expanded={p.video && panel === "video"}
             title="Videography"
             sub="Short-form, long-form or both"
             price={
@@ -179,9 +195,9 @@ export function PropertyOptions({
             }
             summary={videoSummary(p)}
             pressed={p.video}
-            onClick={() => tog("video")}
+            onClick={() => pick("video")}
           />
-          {p.video && (
+          {p.video && panel === "video" && (
             <SubPanel id={fid("video-opts")} pointTo={1} label="Videography options">
               <span className="gl">Video format</span>
               <ChoiceCards cols={2}>

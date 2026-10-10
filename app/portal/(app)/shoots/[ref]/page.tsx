@@ -23,6 +23,10 @@ import {
 } from "@/lib/portal/projects";
 import { seesMoney } from "@/lib/portal/shell";
 import { Deliverables } from "@/components/portal/Deliverables";
+import { ShootChanges } from "@/components/portal/ShootChanges";
+import { can } from "@/lib/portal/access";
+import { requestConfig } from "@/lib/portal/requests";
+import type { Slot } from "@/lib/portal/booking";
 import { ShootDeliveries, type DFile } from "@/components/portal/ShootDeliveries";
 import { downloadUrl, presign, r2Ready } from "@/lib/r2";
 import { SERVICE_LABEL, type Deliverable } from "@/lib/portal/booking";
@@ -75,6 +79,11 @@ export default async function ShootPage({
       db.from("project_deliverables").select("*").eq("project_id", p.id).order("sort"),
     ]);
   const booking = p.meta.booking;
+  // Before it's shot, the client can change or cancel it (owner, 10 Oct 2026).
+  const changeable =
+    (p.status === "requested" || p.status === "confirmed") && can(current, "shoots");
+  const cfg = changeable ? await requestConfig(db, current).catch(() => null) : null;
+  const slotKey = (p.slot ?? "").toLowerCase().replace(" ", "_") as Slot | "";
   // Deliveries grouped by kind (owner, 10 Oct 2026), with short-lived signed links.
   const GROUPED = ["photos", "reel", "long_form", "tour"];
   const r2 = r2Ready();
@@ -131,7 +140,31 @@ export default async function ShootPage({
         </div>
         <Badge tone={p.status === "delivered" ? "gold" : undefined}>{clientStatus(p)}</Badge>
       </div>
-      <Stepper steps={stepsFor("shoot")} now={statusLabel(p.status)} />
+      {p.status === "cancelled" ? (
+        <p className="pt-note" role="status">
+          Cancelled. Book again any time with Book media.
+        </p>
+      ) : (
+        <Stepper steps={stepsFor("shoot")} now={statusLabel(p.status)} />
+      )}
+      {changeable && cfg && (
+        <ShootChanges
+          cfg={cfg}
+          edit={{
+            projectId: p.id,
+            ref: p.ref,
+            status: p.status as "requested" | "confirmed",
+            date: p.shoot_date ?? "",
+            slot: ["morning", "afternoon", "full_day"].includes(slotKey) ? slotKey : "",
+            location: booking?.location ?? {
+              address: [p.meta.building, p.meta.area].filter(Boolean).join(", "),
+              unit: p.meta.unit,
+            },
+            service: booking?.services?.[0] ?? null,
+            note: booking?.note ?? "",
+          }}
+        />
+      )}
       {booked && (
         <p className="pt-note" role="status">
           Requested. We’ll confirm the date and slot shortly; you’ll get an email when it’s

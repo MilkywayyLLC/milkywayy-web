@@ -32,11 +32,13 @@ export type RequestConfig = {
 };
 
 export async function requestConfig(db: SupabaseClient, m: Membership): Promise<RequestConfig> {
-  const [{ data: opts }, { data: ta }, pricing] = await Promise.all([
+  // Fail safe: an error here means no prices and no turnaround, never a broken page.
+  const [{ data: opts, error: e1 }, { data: ta, error: e2 }, pricing] = await Promise.all([
     db.rpc("my_booking_options", { p_account: m.account.id }),
     db.from("service_turnaround").select("key, text"),
     getPropertyPricing(),
   ]);
+  if (e1 || e2) console.error("[portal] request config:", e1?.message ?? e2?.message);
   const o = (opts ?? {}) as {
     mode?: PriceView["mode"];
     currency?: string;

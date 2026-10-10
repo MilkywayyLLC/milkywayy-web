@@ -2078,3 +2078,91 @@
     }
   }
 }
+
+@layer components {
+  .pt-tiles-lg .pt-tile {
+    padding: 20px;
+    min-height: 110px;
+    align-content: start;
+  }
+  .pt-tiles-lg .pt-tile b {
+    font-size: 18px;
+  }
+}
+
+@layer components {
+  .pt-seg-line button {
+    white-space: nowrap;
+  }
+}
+
+@layer components {
+  .pt-seg-stack {
+    display: grid;
+    grid-auto-columns: 1fr;
+  }
+  @media (max-width: 560px) {
+    .pt-seg-stack {
+      grid-auto-flow: row;
+    }
+  }
+}
+
+/* ---------- Home: Your work (owner, 10 Oct 2026) ---------- */
+@layer components {
+  .pt-work {
+    display: grid;
+    gap: 18px;
+  }
+  .pt-work-row {
+    display: grid;
+    gap: 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  .pt-work-row:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+  .pt-work-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .pt-work-items a {
+    display: grid;
+    gap: 6px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: inherit;
+    text-decoration: none;
+  }
+  .pt-work-items a:hover {
+    border-color: var(--fg);
+  }
+  .pt-work-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .pt-mini-steps {
+    display: grid;
+    grid-template-columns: repeat(var(--n), 1fr);
+    gap: 3px;
+  }
+  .pt-mini-steps i {
+    height: 3px;
+    background: var(--line);
+  }
+  .pt-mini-steps i.done {
+    background: var(--fg);
+  }
+  .pt-mini-steps i.now {
+    background: var(--champagne);
+  }
+}

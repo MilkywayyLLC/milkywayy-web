@@ -28,6 +28,7 @@ export function Shell({
   currentId,
   plan,
   me,
+  action,
   children,
 }: {
   main: Tab[];
@@ -36,6 +37,8 @@ export function Shell({
   currentId: string;
   plan: string;
   me: { name: string; initials: string };
+  /** "Book media", top right on every page (owner, 10 Oct 2026). */
+  action?: ReactNode;
   children: ReactNode;
 }) {
   const path = usePathname();
@@ -91,6 +94,7 @@ export function Shell({
             <BrandLogo tone="light" />
           </Link>
           <div className="pt-top-right">
+            {action}
             {accounts.length > 1 ? (
               <div className="pt-pop-wrap">
                 <button

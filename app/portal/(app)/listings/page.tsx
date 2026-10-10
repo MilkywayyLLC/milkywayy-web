@@ -99,6 +99,12 @@ export default async function Listings() {
   const canEdit = (createdBy: string | null) => isManager(current) || createdBy === user.id;
   const day = today();
   const shootList = (shoots ?? []) as { id: string; ref: string; title: string }[];
+  const draftShoot = shootList.find(
+    (x) => x.id === drafts.find((d) => d.kind === "listing")?.data.project,
+  );
+  const listingResume = draftShoot
+    ? `/portal/listings/new?shoot=${encodeURIComponent(draftShoot.ref)}`
+    : "/portal/listings/new";
 
   return (
     <>
@@ -116,13 +122,7 @@ export default async function Listings() {
 
       <DraftsRow
         drafts={drafts.filter((d) => d.kind === "listing")}
-        resumeHref={() => {
-          const d = drafts.find((x) => x.kind === "listing");
-          const shoot = shootList.find((s) => s.id === d?.data.project);
-          return shoot
-            ? `/portal/listings/new?shoot=${encodeURIComponent(shoot.ref)}`
-            : "/portal/listings/new";
-        }}
+        hrefs={{ listing: listingResume }}
       />
       {listings.length === 0 ? (
         <div className="pt-card">

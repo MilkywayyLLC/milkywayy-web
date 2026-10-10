@@ -22,13 +22,14 @@ export const STATUS_LABEL: Record<string, string> = {
   brief_received: "Brief received",
   script_ready: "Script ready",
   in_production: "In production",
+  cancelled: "Cancelled",
 };
 export const statusLabel = (s: string) => STATUS_LABEL[s] ?? s;
 export const stepsFor = (type: ProjectType) => PIPELINES[type].map(statusLabel);
 /** Statuses the admin can set for a type (On hold for batches and avatar videos). */
 export const adminStatuses = (type: ProjectType): string[] =>
   type === "shoot"
-    ? [...PIPELINES.shoot]
+    ? [...PIPELINES.shoot, "cancelled"]
     : [...PIPELINES[type].slice(0, -2), "on_hold", ...PIPELINES[type].slice(-2)];
 
 export const TYPE_LABEL: Record<ProjectType, string> = {

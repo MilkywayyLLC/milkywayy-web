@@ -38,6 +38,7 @@ type Snap = {
   scriptBy: "milkywayy" | "client";
 };
 const isHttps = (u: string) => /^https:\/\/\S+$/.test(u.trim());
+const QTY_FOR: Record<string, number> = { hdr_photos: 50, short_form: 5, long_form: 2 };
 const EDIT_TURNAROUND: Record<string, string> = {
   hdr_photos: "hdr_edit",
   short_form: "short_edit",
@@ -56,11 +57,14 @@ export function ProjectRequestModal({
   cfg,
   resume,
   onClose,
+  onBack,
 }: {
   type: "edit" | "avatar";
   cfg: RequestConfig;
   resume?: boolean;
   onClose: () => void;
+  /** Back to "What do you need?". */
+  onBack?: () => void;
 }) {
   const avatar = type === "avatar";
   const [s, setS] = useState<Snap>({
@@ -72,7 +76,8 @@ export function ProjectRequestModal({
     reference: "",
     links: [{ label: avatar ? "Logo and assets" : "Raw files", url: "" }],
     mode: "links",
-    format: "",
+    // Short form is the usual one: chosen when the modal opens (owner, 10 Oct 2026).
+    format: avatar ? "short" : "",
     stop: 0,
     scriptBy: "milkywayy",
   });
@@ -202,14 +207,28 @@ export function ProjectRequestModal({
       onClose={guard.request}
       testId={`${type}-modal`}
       footer={
-        <button
-          type="button"
-          className="btn btn-p btn-s"
-          disabled={saving || busy}
-          onClick={() => void submit()}
-        >
-          {busy ? "Uploading…" : saving ? "Sending…" : avatar ? "Send brief" : "Send files"}
-        </button>
+        <>
+          {onBack && (
+            <button
+              type="button"
+              className="btn btn-g btn-s"
+              onClick={() => {
+                if (touched) void draft.saveNow();
+                onBack();
+              }}
+            >
+              Back
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-p btn-s"
+            disabled={saving || busy}
+            onClick={() => void submit()}
+          >
+            {busy ? "Uploading…" : saving ? "Sending…" : avatar ? "Send brief" : "Send files"}
+          </button>
+        </>
       }
     >
       <div className="pt-form">
@@ -223,7 +242,7 @@ export function ProjectRequestModal({
         {avatar ? (
           <>
             <Field name="format" label="Format" required group error={form.errors.format}>
-              <div className="pt-seg" role="group" aria-label="Format">
+              <div className="pt-seg pt-seg-stack" role="group" aria-label="Format">
                 {(Object.keys(AVATAR_FORMATS) as AvatarFormat[]).map((f) => (
                   <button
                     key={f}
@@ -311,7 +330,13 @@ export function ProjectRequestModal({
                     className="pt-pill"
                     style={{ padding: "4px 14px" }}
                     aria-pressed={s.kind === k}
-                    onClick={() => set({ kind: k })}
+                    onClick={() =>
+                      set({
+                        kind: k,
+                        // A starting quantity per type; theirs to change (empty for Other).
+                        quantity: String(QTY_FOR[k] ?? ""),
+                      })
+                    }
                   >
                     {l}
                   </button>
