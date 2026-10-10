@@ -67,9 +67,8 @@ export default async function Inquiries() {
         </div>
       ) : (
         <div className="pt-card">
-          <b>No inquiries yet</b>
           <span className="pt-meta">
-            Questions about a shoot, files, or anything else: start one and a real person replies.
+            No messages yet. Ask us anything about a shoot or your files and track the reply here.
           </span>
         </div>
       )}

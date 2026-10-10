@@ -111,9 +111,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
             <dt>Billing address</dt>
             <dd style={{ whiteSpace: "pre-wrap" }}>{a.billing_address ?? "—"}</dd>
             <dt>Members see</dt>
-            <dd>
-              {a.member_visibility === "all" ? "All company projects" : "Only their own projects"}
-            </dd>
+            <dd>Set per member by the client (Team → Access)</dd>
           </dl>
           <RetentionSelect accountId={a.id} months={a.retention_months ?? 12} />
         </section>

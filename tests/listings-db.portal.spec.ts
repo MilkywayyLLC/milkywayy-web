@@ -132,8 +132,26 @@ test("refused: photos from elsewhere, no contact, a shoot that isn't delivered",
 
 test("a Member makes their own; can't change the owner's; never reads line items", async () => {
   const m = await signedIn(member);
-  // Members see shoots they're on, or every shoot when the account is open.
-  await ok(c.db.from("accounts").update({ member_visibility: "all" }).eq("id", c.account));
+  const mid = (await m.auth.getUser()).data.user!.id;
+  // Members see shoots they're on, or every shoot with "See all company projects" (per member).
+  const access = (all: boolean) =>
+    ok(
+      c.db
+        .from("account_members")
+        .update({
+          access: {
+            preset: "custom",
+            shoots: true,
+            editing: true,
+            avatars: true,
+            listings: true,
+            all_projects: all,
+          },
+        })
+        .eq("account_id", c.account)
+        .eq("user_id", mid),
+    );
+  await access(true);
   const mine = await ok<{ id: string }>(
     m.rpc("save_listing", {
       p_id: null,
@@ -149,8 +167,8 @@ test("a Member makes their own; can't change the owner's; never reads line items
   ).rejects.toThrow(/not allowed/);
   await ok(m.rpc("set_share_status", { p_kind: "l", p_id: mine.id, p_status: "paused" }));
   expect(await ok<unknown[]>(m.from("line_items").select("id"))).toHaveLength(0);
-  // With the account set to "own", the Member sees only theirs.
-  await ok(c.db.from("accounts").update({ member_visibility: "own" }).eq("id", c.account));
+  // With "See all company projects" off, the Member sees only theirs.
+  await access(false);
   const seen = await ok<{ id: string }[]>(m.from("listings").select("id"));
   expect(seen.map((x) => x.id)).toEqual([mine.id]);
 });

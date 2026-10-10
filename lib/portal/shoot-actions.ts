@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { getPropertyPricing } from "@/lib/data";
 import { subtotal } from "@/lib/booking";
 import { portalAdminAction } from "./admin";
-import { asProperty, type DeliverableDraft, type LogLine } from "./booking";
+import {
+  asProperty,
+  servicesFromLog,
+  type BookingService,
+  type DeliverableDraft,
+  type LogLine,
+} from "./booking";
 
 /**
  * Admin: "Log what we shot" and the deliverables list (owner, 10 Oct 2026). Logging creates the
@@ -61,6 +67,17 @@ export async function logShoot(
       }),
       p_deliverables: deliverables,
     });
+    // On-site changes (reels added on the day): the booking's services follow the log.
+    const p = await rpc<{ project?: { meta?: { booking?: { services?: BookingService[] } } } }>(
+      "portal_admin_project",
+      { p_id: project },
+    ).catch(() => null);
+    const before = p?.project?.meta?.booking?.services;
+    if (before)
+      await rpc("portal_admin_set_booking_services", {
+        p_id: project,
+        p_services: servicesFromLog(lines, before),
+      });
     revalidatePath(`/admin/projects/${project}`);
     return { ok: true, notice: `Logged ${out.logged} item${out.logged === 1 ? "" : "s"}.` };
   } catch (e) {

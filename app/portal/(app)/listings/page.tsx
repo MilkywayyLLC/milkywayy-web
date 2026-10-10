@@ -2,8 +2,12 @@
 import Link from "next/link";
 import { Icon } from "@/components/portal/Icon";
 import { ShareControls } from "@/components/portal/ListingParts";
+import { DraftsRow } from "@/components/portal/StartRequests";
+import { ShareSelectedBar } from "@/components/portal/ShareSelected";
 import { Badge } from "@/components/portal/ui";
+import { can } from "@/lib/portal/access";
 import { requireAccount } from "@/lib/portal/auth";
+import { myDrafts } from "@/lib/portal/draft-actions";
 import {
   shareState,
   STATE_LABEL,
@@ -27,8 +31,15 @@ const tone = (s: ReturnType<typeof shareState>) =>
  */
 export default async function Listings() {
   const { db, user, current } = await requireAccount("/portal/listings");
+  if (!can(current, "listings"))
+    return (
+      <div className="pt-card">
+        <b>Your access doesn’t include listings</b>
+        <span className="pt-meta">Ask the account owner if you need it.</span>
+      </div>
+    );
   const a = current.account.id;
-  const [{ data: ls }, { data: cs }, { data: shoots }] = await Promise.all([
+  const [{ data: ls }, { data: cs }, { data: shoots }, drafts] = await Promise.all([
     db
       .from("listings")
       .select(
@@ -50,6 +61,7 @@ export default async function Listings() {
       .eq("type", "shoot")
       .in("status", ["delivered", "completed"])
       .order("delivered_at", { ascending: false }),
+    myDrafts(),
   ]);
   const listings = (ls ?? []) as ListingRow[];
   const collections = (cs ?? []) as CollectionRow[];
@@ -102,67 +114,90 @@ export default async function Listings() {
         )}
       </div>
 
+      <DraftsRow
+        drafts={drafts.filter((d) => d.kind === "listing")}
+        resumeHref={() => {
+          const d = drafts.find((x) => x.kind === "listing");
+          const shoot = shootList.find((s) => s.id === d?.data.project);
+          return shoot
+            ? `/portal/listings/new?shoot=${encodeURIComponent(shoot.ref)}`
+            : "/portal/listings/new";
+        }}
+      />
       {listings.length === 0 ? (
         <div className="pt-card">
-          <b>No share pages yet</b>
           <span className="pt-meta">
             {shootList.length
-              ? "Make one from a delivered shoot: photos, video, price and your contact on one link that looks right in WhatsApp."
-              : "When a shoot is delivered, you can make a share page from it here: photos, video, price and your contact on one link."}
+              ? "No share pages yet. Make one from a delivered shoot and send the link."
+              : "No share pages yet. Once a shoot is delivered, make one here."}
           </span>
         </div>
       ) : (
-        <div className="pt-grid2" data-testid="listings">
-          {listings.map((l) => {
-            const s = shareState(l, day);
-            const t = totals.get(l.id) ?? { views: 0, taps: 0 };
-            const src = cover.get(l.photo_ids[0]);
-            return (
-              <article key={l.id} className="pt-card" aria-label={l.title}>
-                <div className="pt-listing">
-                  {src ? (
-                    <img src={src} alt="" className="pt-listing-img" loading="lazy" />
-                  ) : (
-                    <span className="pt-listing-img" />
+        <>
+          {listings.length > 1 && <ShareSelectedBar />}
+          <div className="pt-grid2" data-testid="listings">
+            {listings.map((l) => {
+              const s = shareState(l, day);
+              const t = totals.get(l.id) ?? { views: 0, taps: 0 };
+              const src = cover.get(l.photo_ids[0]);
+              return (
+                <article key={l.id} className="pt-card" aria-label={l.title}>
+                  {listings.length > 1 && (
+                    <label className="pt-check pt-small">
+                      <input
+                        type="checkbox"
+                        name="pick"
+                        value={l.id}
+                        aria-label={`Select ${l.title}`}
+                      />{" "}
+                      Select
+                    </label>
                   )}
-                  <div style={{ display: "grid", gap: 2, alignContent: "start", minWidth: 0 }}>
-                    <span>
-                      <Badge tone={tone(s)}>{STATE_LABEL[s]}</Badge>
-                    </span>
-                    <b className="pt-title">{l.title}</b>
-                    <span className="pt-meta">
-                      {fmtPrice(l.price, "AED", l.purpose)}
-                      {l.expires_on && s !== "expired" ? ` · until ${l.expires_on}` : ""}
-                    </span>
-                    {s === "disabled" && l.disabled_reason && (
-                      <span className="pt-meta">Reason: {l.disabled_reason}. WhatsApp us.</span>
+                  <div className="pt-listing">
+                    {src ? (
+                      <img src={src} alt="" className="pt-listing-img" loading="lazy" />
+                    ) : (
+                      <span className="pt-listing-img" />
                     )}
+                    <div style={{ display: "grid", gap: 2, alignContent: "start", minWidth: 0 }}>
+                      <span>
+                        <Badge tone={tone(s)}>{STATE_LABEL[s]}</Badge>
+                      </span>
+                      <b className="pt-title">{l.title}</b>
+                      <span className="pt-meta">
+                        {fmtPrice(l.price, "AED", l.purpose)}
+                        {l.expires_on && s !== "expired" ? ` · until ${l.expires_on}` : ""}
+                      </span>
+                      {s === "disabled" && l.disabled_reason && (
+                        <span className="pt-meta">Reason: {l.disabled_reason}. WhatsApp us.</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div style={{ display: "flex", gap: 24 }}>
-                  <div className="pt-stat">
-                    <b>{t.views}</b>
-                    <span className="pt-meta">views</span>
+                  <div style={{ display: "flex", gap: 24 }}>
+                    <div className="pt-stat">
+                      <b>{t.views}</b>
+                      <span className="pt-meta">views</span>
+                    </div>
+                    <div className="pt-stat">
+                      <b>{t.taps}</b>
+                      <span className="pt-meta">WhatsApp/Call taps</span>
+                    </div>
                   </div>
-                  <div className="pt-stat">
-                    <b>{t.taps}</b>
-                    <span className="pt-meta">WhatsApp/Call taps</span>
-                  </div>
-                </div>
-                <ShareControls
-                  kind="l"
-                  id={l.id}
-                  slug={l.slug}
-                  title={l.title}
-                  status={l.status}
-                  canEdit={canEdit(l.created_by)}
-                  disabled={s === "disabled"}
-                  editHref={`/portal/listings/${l.id}`}
-                />
-              </article>
-            );
-          })}
-        </div>
+                  <ShareControls
+                    kind="l"
+                    id={l.id}
+                    slug={l.slug}
+                    title={l.title}
+                    status={l.status}
+                    canEdit={canEdit(l.created_by)}
+                    disabled={s === "disabled"}
+                    editHref={`/portal/listings/${l.id}`}
+                  />
+                </article>
+              );
+            })}
+          </div>
+        </>
       )}
 
       <section style={{ display: "grid", gap: 10 }} aria-labelledby="coll">

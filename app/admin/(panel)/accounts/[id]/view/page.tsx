@@ -87,11 +87,7 @@ export default async function ViewAs({ params }: { params: Promise<{ id: string 
                 ))}
                 {!c.members.length && <span className="pt-meta">Nobody has joined yet.</span>}
               </div>
-              <span className="pt-meta">
-                Members see{" "}
-                {a.member_visibility === "all" ? "all company projects" : "only their own projects"}
-                .
-              </span>
+              <span className="pt-meta">Each member’s access is set on the Team page.</span>
             </section>
             <section className="pt-card">
               <h2 className="pt-h2">Contacts</h2>

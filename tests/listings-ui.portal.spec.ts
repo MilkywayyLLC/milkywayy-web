@@ -78,8 +78,8 @@ test("from a delivered shoot: create the link; the public page shows the chosen 
   const form = page.getByRole("form", { name: "Create share link" });
   await expect(form).toContainText(shoot.ref);
   await expect(form.getByLabel("Location")).toHaveValue("Burj Vista 1, Downtown Dubai");
-  await form.getByLabel("Title *").fill("Sky-high 3 bed penthouse");
-  await form.getByLabel("Price * (AED)").fill("6,950,000");
+  await form.getByLabel("Title", { exact: true }).fill("Sky-high 3 bed penthouse");
+  await form.getByLabel("Price (AED)").fill("6,950,000");
   await form.getByLabel("Bedrooms").fill("3");
   await form.getByLabel("Bathrooms").fill("4");
   await form.getByLabel("Size (sq ft)").fill("2,410");
@@ -89,12 +89,10 @@ test("from a delivered shoot: create the link; the public page shows the chosen 
     form.getByText("Required by DLD for property adverts. Check your permit."),
   ).toBeVisible();
   await form.getByLabel("Permit number (Trakheesi)").fill("7120345678");
-  // The default contact is picked; leave photo 2 out.
-  await expect(form.getByRole("button", { name: /Rania Haddad/ })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await form.getByRole("button", { name: "Photo 2: IMG_2.jpg" }).click();
+  // The default contact is picked (a pill with edit and remove); leave photo 2 out.
+  await expect(form.getByLabel("Chosen contacts")).toContainText("Rania Haddad");
+  await expect(form.getByRole("button", { name: "Remove Rania Haddad" })).toBeVisible();
+  await form.getByRole("button", { name: "Leave out IMG_2.jpg" }).click();
   await expect(form).toContainText("(2 of 3)");
   await form.getByRole("button", { name: "Create link" }).click();
   const done = page.getByTestId("share-done");
@@ -152,7 +150,7 @@ test("from a delivered shoot: create the link; the public page shows the chosen 
 
   // The details were saved to the property: the next share starts filled in.
   await page.goto(`/portal/listings/new?shoot=${shoot.ref}`);
-  await expect(page.getByLabel("Title *")).toHaveValue("Sky-high 3 bed penthouse");
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Sky-high 3 bed penthouse");
 });
 
 test("views and WhatsApp/Call taps count for people, not bots", async ({ browser }) => {
@@ -296,8 +294,8 @@ test("a Member makes a share page, but sees no prices of ours and no Billing", a
   await page.getByRole("link", { name: "Create share link" }).click();
   const form = page.getByRole("form", { name: "Create share link" });
   // Starts from the details saved to the property.
-  await expect(form.getByLabel("Title *")).toHaveValue("Sky-high 3 bed penthouse");
-  await form.getByLabel("Title *").fill("Mia's penthouse page");
+  await expect(form.getByLabel("Title", { exact: true })).toHaveValue("Sky-high 3 bed penthouse");
+  await form.getByLabel("Title", { exact: true }).fill("Mia's penthouse page");
   await form.getByRole("button", { name: "Create link" }).click();
   await expect(page.getByTestId("share-done")).toContainText("Link ready");
   await page.goto("/portal/listings");

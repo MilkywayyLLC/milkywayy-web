@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getPropertyPricing } from "@/lib/data";
+import { can } from "./access";
 import { requireAccount } from "./auth";
 import {
+  DAY_LABEL,
   estimate,
   SERVICE_LABEL,
   serviceSummary,
@@ -18,15 +20,16 @@ import { originFrom } from "./invite";
 import { notifyMilkywayy } from "./notify";
 
 /**
- * "Book a shoot" (owner, 10 Oct 2026): the client's request becomes a Requested shoot project;
- * Milkywayy is emailed and confirms the date and slot. The estimate is worked out here from the
+ * "Book a shoot" (owner, 10 Oct 2026): every client can book in the portal (no checkout, no
+ * payment). The request becomes a Requested shoot; Milkywayy is emailed "New booking request" and
+ * confirms it in the admin (the client is emailed then). The estimate is worked out here from the
  * client's own rates and the property price list (only for those who may see money).
  */
 export type BookResult = { ok: boolean; error?: string; ref?: string };
 
 const why = (m: string) =>
-  /package clients/.test(m)
-    ? "Booking here is for clients on a package. Book on the website instead."
+  /include shoots/.test(m)
+    ? "Your access doesn’t include booking shoots. Ask the account owner."
     : /choose a date/.test(m)
       ? "Choose a date from today."
       : /time slot/.test(m)
@@ -50,7 +53,12 @@ export async function bookShoot(b: {
   services: BookingService[];
   note?: string;
 }): Promise<BookResult> {
-  const { db, current } = await requireAccount("/portal/shoots/book");
+  const { db, user, current } = await requireAccount("/portal/shoots");
+  if (!can(current, "shoots"))
+    return {
+      ok: false,
+      error: "Your access doesn’t include booking shoots. Ask the account owner.",
+    };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return { ok: false, error: "Choose a date." };
   if (!SLOTS.some(([k]) => k === b.slot)) return { ok: false, error: "Choose a time slot." };
   if (!b.location.address?.trim()) return { ok: false, error: "Add the location." };
@@ -61,7 +69,9 @@ export async function bookShoot(b: {
   const est = rates ? estimate(b.services, rates, pricing) : null;
   const services = b.services.map((s) => ({
     service: s.service,
-    ...(s.service === "property" ? { property: s.property } : { qty: Math.round(s.qty ?? 1) }),
+    ...(s.service === "property"
+      ? { property: s.property }
+      : { qty: Math.round(s.qty ?? 1), ...(s.day ? { day: s.day } : {}) }),
     ...(s.notes?.trim() ? { notes: s.notes.trim() } : {}),
     ...(s.links?.length ? { links: s.links.map((l) => l.trim()).filter(Boolean) } : {}),
   }));
@@ -93,11 +103,14 @@ export async function bookShoot(b: {
   await notifyMilkywayy(
     out.id,
     "booking_requested",
-    `Shoot requested: ${current.account.name} · ${b.date}`,
+    `New booking request: ${current.account.name} · ${b.date}`,
     [
       `${current.account.name} asked for a shoot on ${b.date} (${slot}).`,
       `Where: ${loc.address}${loc.unit ? ` · ${loc.unit}` : ""}`,
-      ...b.services.map((s) => `${SERVICE_LABEL[s.service]}: ${serviceSummary(s, pricing)}`),
+      ...b.services.map(
+        (s) =>
+          `${SERVICE_LABEL[s.service]}: ${serviceSummary(s, pricing)}${s.day ? ` (${DAY_LABEL[s.day]})` : ""}`,
+      ),
       ...(est != null
         ? [`Estimate at their rates: ${current.account.currency} ${est.toLocaleString("en-US")}`]
         : []),
@@ -105,6 +118,13 @@ export async function bookShoot(b: {
     ],
     `${origin}/admin/projects/${out.id}`,
   ).catch((e) => console.error("[portal] booking alert:", e));
-  revalidatePath("/portal/shoots");
+  // Sent: the booking draft goes.
+  await db
+    .from("portal_drafts")
+    .delete()
+    .eq("account_id", current.account.id)
+    .eq("user_id", user.id)
+    .eq("kind", "booking");
+  revalidatePath("/portal", "layout");
   return { ok: true, ref: out.ref };
 }

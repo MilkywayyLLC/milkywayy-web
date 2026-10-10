@@ -53,20 +53,24 @@ test("new batch with links: received, then the batch page shows the brief and th
 }) => {
   await signInUI(page, c.email);
   await page.goto("/portal/editing");
-  await page.getByRole("link", { name: "New batch" }).click();
-  await page.getByLabel("Title *").fill("Marina reels");
-  await page
-    .getByRole("group", { name: "What is it?" })
-    .getByRole("button", { name: "Short-form" })
+  // "Edit my files" opens a modal on the page (owner, 10 Oct 2026).
+  await page.getByRole("button", { name: "Edit my files" }).click();
+  const m = page.getByTestId("edit-modal");
+  await m
+    .getByRole("group", { name: "Type of edit" })
+    .getByRole("button", { name: "Short form (vertical reels)" })
     .click();
-  await page.getByLabel("Quantity (optional)").fill("6");
-  await page.getByLabel("Notes").fill("Fast cuts, trending audio");
-  await page.getByRole("button", { name: "Submit batch" }).click();
-  await expect(page.locator("p[role=alert]")).toContainText("Paste a link to the raw files");
-  await page.getByLabel("Link 1").fill("https://example.com/raw-footage");
-  await page.getByRole("button", { name: "Submit batch" }).click();
-  await expect(page.getByRole("heading", { name: "Batch received" })).toBeVisible();
-  await page.getByRole("link", { name: "Open the batch" }).click();
+  await m.getByLabel("Title", { exact: true }).fill("Marina reels");
+  await m.getByLabel("Quantity").fill("6");
+  await m.getByLabel("Notes").fill("Fast cuts, trending audio");
+  await m.getByRole("button", { name: "Send files" }).click();
+  // Nothing sent: the banner, and the raw-files field's own message.
+  await expect(m.getByText("Please fix the highlighted fields")).toBeVisible();
+  await expect(m.getByText("Paste a link to the raw files")).toBeVisible();
+  await m.getByLabel("Link 1").fill("https://example.com/raw-footage");
+  await m.getByRole("button", { name: "Send files" }).click();
+  await expect(m.getByText("Files received")).toBeVisible();
+  await m.getByRole("link", { name: "Open it" }).click();
   await expect(page.getByRole("heading", { name: "Marina reels" })).toBeVisible();
   await expect(page.getByTestId("files-in")).toContainText("https://example.com/raw-footage");
   await expect(page.getByText("Fast cuts, trending audio")).toBeVisible();
@@ -105,9 +109,14 @@ test("uploads go straight to storage (single and multipart) and download again",
   test.skip(!hasR2, "R2 not in .env.local");
   test.setTimeout(120_000);
   await signInUI(page, c.email);
-  await page.goto("/portal/editing/new");
-  await page.getByLabel("Title *").fill("Upload test");
-  await page
+  await page.goto("/portal/editing?new=edit");
+  const m = page.getByTestId("edit-modal");
+  await m
+    .getByRole("group", { name: "Type of edit" })
+    .getByRole("button", { name: "HDR photos" })
+    .click();
+  await m.getByLabel("Title", { exact: true }).fill("Upload test");
+  await m
     .getByRole("group", { name: "How to send files" })
     .getByRole("button", { name: "Upload" })
     .click();
@@ -116,10 +125,8 @@ test("uploads go straight to storage (single and multipart) and download again",
     { name: "small.txt", mimeType: "text/plain", buffer: Buffer.from("hello raw file") },
     { name: "big.bin", mimeType: "application/octet-stream", buffer: big },
   ]);
-  await page.getByRole("button", { name: "Submit batch" }).click();
-  await expect(page.getByRole("heading", { name: "Batch received" })).toBeVisible({
-    timeout: 90_000,
-  });
+  await m.getByRole("button", { name: "Send files" }).click();
+  await expect(m.getByText("Files received")).toBeVisible({ timeout: 90_000 });
   await expect(page.getByTestId("uploads")).toContainText("small.txt");
   await expect(page.getByText("Some files didn’t upload")).toHaveCount(0);
   await expect(page.getByTestId("uploads").getByText(/· Done/)).toHaveCount(2);
@@ -151,16 +158,18 @@ test("uploads go straight to storage (single and multipart) and download again",
 
 test("avatar video: brief, then approve the script; production starts", async ({ page }) => {
   await signInUI(page, c.email);
-  await page.goto("/portal/avatars/new");
-  await page.getByLabel("Title *").fill("Launch presenter");
-  await page
-    .getByRole("group", { name: "Length" })
-    .getByRole("button", { name: "Up to 30 seconds" })
+  await page.goto("/portal/avatars");
+  await page.getByRole("button", { name: "AI avatar video" }).click();
+  const m = page.getByTestId("avatar-modal");
+  await m
+    .getByRole("group", { name: "Format" })
+    .getByRole("button", { name: "Short form (Instagram reels, 9:16)" })
     .click();
-  await page.getByRole("button", { name: "I’ll send it" }).click();
-  await page.getByLabel("Brief").fill("Script: Welcome to JVC Heights…");
-  await page.getByRole("button", { name: "Send brief" }).click();
-  await expect(page.getByRole("heading", { name: "Brief received" })).toBeVisible();
+  await m.getByLabel("Title", { exact: true }).fill("Launch presenter");
+  await m.getByRole("button", { name: "I’ll send it" }).click();
+  await m.getByLabel("Brief").fill("Script: Welcome to JVC Heights…");
+  await m.getByRole("button", { name: "Send brief" }).click();
+  await expect(m.getByText("Brief received", { exact: true })).toBeVisible();
 
   const p = await projectByTitle("Launch presenter");
   // Its own "brief received" email, not the batch one (owner QA, 3 Oct 2026).

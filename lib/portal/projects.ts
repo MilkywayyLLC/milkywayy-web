@@ -43,24 +43,27 @@ export const TYPE_PATH: Record<ProjectType, string> = {
   avatar: "/portal/avatars",
 };
 
-/** What an editing batch is (the New batch form, §5.3). */
+/** What an editing batch is (the "Edit my files" form; owner, 10 Oct 2026). */
 export const EDIT_KINDS = [
   ["hdr_photos", "HDR photos"],
-  ["short_form", "Short-form"],
-  ["long_form", "Long-form"],
-  ["avatar_edit", "Avatar edit"],
+  ["short_form", "Short form (vertical reels)"],
+  ["long_form", "Long form (horizontal YouTube videos)"],
   ["other", "Other"],
 ] as const;
-/** How long an avatar video is (the brief form, §5.4). */
+/** How long an avatar video is (stored kind; the form picks a format and a length). */
 export const AVATAR_LENGTHS = [
   ["30s", "Up to 30 seconds"],
   ["60s", "Up to 60 seconds"],
   ["90s", "Up to 90 seconds"],
   ["longer", "Longer"],
 ] as const;
+const OLD_KINDS = [["avatar_edit", "Avatar edit"]] as const;
 export const briefKindLabel = (type: ProjectType, k?: string) =>
   (
-    (type === "avatar" ? AVATAR_LENGTHS : EDIT_KINDS) as readonly (readonly [string, string])[]
+    (type === "avatar" ? AVATAR_LENGTHS : [...EDIT_KINDS, ...OLD_KINDS]) as readonly (readonly [
+      string,
+      string,
+    ])[]
   ).find((x) => x[0] === k)?.[1] ?? "";
 
 export const REVISION_LABEL: Record<string, string> = {

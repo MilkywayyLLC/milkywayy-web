@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Icon } from "@/components/portal/Icon";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
+import { DraftsRow, StartRequests } from "@/components/portal/StartRequests";
 import { Badge, Stepper } from "@/components/portal/ui";
 import { requireAccount } from "@/lib/portal/auth";
 import {
@@ -11,23 +12,33 @@ import {
   statusLabel,
   stepsFor,
 } from "@/lib/portal/projects";
-import { isManager } from "@/lib/portal/shell";
+import { can } from "@/lib/portal/access";
+import { myDrafts } from "@/lib/portal/draft-actions";
+import { requestConfig } from "@/lib/portal/requests";
+import { seesMoney } from "@/lib/portal/shell";
 
 export const metadata = { title: "Shoots" };
 
 /** Shoots (§5.2): every shoot with its stepper; completed ones below. Live. */
 export default async function Shoots() {
   const { db, current } = await requireAccount("/portal/shoots");
-  const [all, { data: opts }] = await Promise.all([
+  if (!can(current, "shoots"))
+    return (
+      <div className="pt-card">
+        <b>Your access doesn’t include shoots</b>
+        <span className="pt-meta">Ask the account owner if you need it.</span>
+      </div>
+    );
+  const [all, cfg, drafts] = await Promise.all([
     myProjects(db, current.account.id, "shoot"),
-    db.rpc("my_booking_options", { p_account: current.account.id }),
+    requestConfig(db, current),
+    myDrafts(),
   ]);
-  const canBook = !!(opts as { can_book?: boolean } | null)?.can_book;
   const active = all.filter((p) => p.status !== "completed");
   const done = all.filter((p) => p.status === "completed");
-  // Prices: Owners and Admins only (the database returns no line items to Members).
+  // Prices: only for those who see billing (the database returns no line items to others).
   const price = new Map<string, string>();
-  if (isManager(current) && all.length) {
+  if (seesMoney(current) && all.length) {
     const { data } = await db
       .from("line_items")
       .select("project_id, qty, unit_price, currency")
@@ -51,27 +62,20 @@ export default async function Shoots() {
         <div>
           <span className="pt-eb">
             {active.length} active
-            {!isManager(current) && current.account.member_visibility === "own" ? " · yours" : ""}
+            {!can(current, "all_projects") ? " · yours" : ""}
           </span>
           <h1 className="pt-h1">Shoots</h1>
         </div>
-        {canBook ? (
-          <Link href="/portal/shoots/book" className="btn btn-p btn-s">
-            <Icon name="plus" size={16} /> Book a shoot
-          </Link>
-        ) : (
-          <a href="/property-shoots" className="btn btn-p btn-s">
-            <Icon name="plus" size={16} /> Book another shoot
-          </a>
-        )}
+        <StartRequests cfg={cfg} only="booking" autoOpen />
       </div>
 
+      <DraftsRow
+        drafts={drafts.filter((d) => d.kind === "booking")}
+        resumeHref={() => "/portal/shoots?new=booking&draft=1"}
+      />
       {all.length === 0 && (
         <div className="pt-card">
-          <b>No shoots yet</b>
-          <span className="pt-meta">
-            Book on the website with the email you sign in with, and it shows up here.
-          </span>
+          <span className="pt-meta">No shoots yet. Book one and track it here.</span>
         </div>
       )}
 

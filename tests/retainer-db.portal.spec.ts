@@ -107,7 +107,17 @@ test("a budget package: Owner/Admins see the month; Members get no money anywher
   expect(Number(own.rates.reel)).toBe(400);
 });
 
-test("booking: a package client books (a Member too); pay as you go is sent to the website", async () => {
+test("booking: every client books in the portal (a Member too), half or full day", async () => {
+  // Pay as you go books here too now (owner, 10 Oct 2026).
+  await must(
+    P.rpc("book_shoot", {
+      p_account: payg,
+      p_date: today,
+      p_slot: "morning",
+      p_location: { address: "Marina Gate 1, Dubai Marina" },
+      p_services: [{ service: "reels", qty: 2, day: "half" }],
+    }),
+  );
   expect(
     await fails(
       P.rpc("book_shoot", {
@@ -115,10 +125,10 @@ test("booking: a package client books (a Member too); pay as you go is sent to t
         p_date: today,
         p_slot: "morning",
         p_location: { address: "Marina Gate 1, Dubai Marina" },
-        p_services: [{ service: "reels", qty: 2 }],
+        p_services: [{ service: "reels", qty: 2, day: "week" }],
       }),
     ),
-  ).toMatch(/package clients/);
+  ).toMatch(/half day or full day/);
   expect(
     await fails(
       M.rpc("book_shoot", {

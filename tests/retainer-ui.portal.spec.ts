@@ -49,6 +49,8 @@ test.beforeAll(async () => {
   for (const [key, amount] of [
     ["reel", 400],
     ["long_form", 1200],
+    ["reel_shoot", 400],
+    ["half_day", 1000],
   ] as const)
     await must(
       adminRpc("portal_admin_set_client_rate", {
@@ -63,69 +65,56 @@ test.afterAll(async () => {
   await cleanup(RUN);
 });
 
-async function book(page: Page) {
-  await page.goto("/portal/shoots/book");
-  const flow = page.getByTestId("book-shoot");
-  await flow.getByLabel("Date").fill(today);
-  await flow.getByRole("button", { name: "Full day" }).click();
-  await flow.getByLabel("Location").fill("Marina Gate 1, Dubai Marina");
-  await flow.getByLabel("Access notes (optional)").fill("Concierge has the key");
-  await flow.getByRole("button", { name: "Continue" }).click();
-  return flow;
+/** Booking is a modal (owner, 10 Oct 2026): type, then when and where, then the summary. */
+async function book(page: Page, kind: RegExp) {
+  const m = page.getByTestId("booking-modal");
+  await m.getByRole("group", { name: "Type of shoot" }).getByRole("button", { name: kind }).click();
+  await m.getByRole("button", { name: "Continue" }).click();
+  await m.getByLabel("Date").fill(today);
+  await m.getByRole("button", { name: "Morning" }).click();
+  await m.getByLabel("Location", { exact: true }).fill("Marina Gate 1, Dubai Marina");
+  await m.getByLabel("Access notes (optional)").fill("Concierge has the key");
+  await m.getByRole("button", { name: "Continue" }).click();
+  return m;
 }
 
-test("Book a shoot: one service at a time, the property builder, a live estimate", async ({
+test("Book a shoot: a modal; nothing sent until it's filled in; the estimate from the client's rates", async ({
   page,
 }) => {
   await signInUI(page, owner);
   await page.goto("/portal/shoots");
-  await page.getByRole("link", { name: "Book a shoot" }).click();
-  await expect(page).toHaveURL(/\/portal\/shoots\/book$/);
-  const flow = await book(page);
-  // Pick reels: its panel opens and the other choices step aside.
-  await flow.getByRole("button", { name: /Social media reels/ }).click();
-  await expect(flow.getByTestId("service-panel")).toHaveCount(1);
-  await expect(flow.getByRole("group", { name: "Choose a service" })).toHaveCount(0);
-  await flow.getByLabel("Roughly how many?").fill("4");
-  await flow.getByLabel(/Notes/).fill("Golden hour, lifestyle");
-  await flow.getByRole("button", { name: "Done" }).click();
-  await expect(flow.getByTestId("service-chip")).toHaveText(/Social media reels · 4 reels/);
-  await expect(flow.getByTestId("service-panel")).toHaveCount(0);
-  await expect(flow.getByTestId("estimate")).toHaveText(
-    "Estimated ~AED 1,600. The final amount is set after the shoot.",
+  await page.getByRole("button", { name: "Book a shoot" }).click();
+  const m = page.getByTestId("booking-modal");
+  // Continue with nothing chosen: the banner and the field's own message, nothing sent.
+  await m.getByRole("button", { name: "Continue" }).click();
+  await expect(m.getByText("Please fix the highlighted fields")).toBeVisible();
+  await expect(m.getByText("Choose the type of shoot.")).toBeVisible();
+  await book(page, /Agent \/ social reels/);
+  // 4 reels shot and edited at 400, plus a half day at 1,000; a package client sees it counted.
+  await expect(m.getByTestId("estimate")).toContainText(
+    "Counts toward your monthly package (estimated ~AED 2,600)",
   );
-  // Another service, the website's property builder.
-  await flow.getByRole("button", { name: "+ Add another service" }).click();
-  await flow.getByRole("button", { name: /Property shoot/ }).click();
-  const panel = flow.getByTestId("service-panel");
-  await expect(panel.getByText("Property type")).toBeVisible();
-  await expect(panel.getByText("Services", { exact: true })).toBeVisible();
-  // Edit is disabled while a panel is open: one at a time.
-  await expect(flow.getByRole("button", { name: "Edit Social media reels" })).toBeDisabled();
-  await panel.getByRole("button", { name: "Done" }).click();
-  await expect(flow.getByTestId("service-chip")).toHaveCount(2);
-  const est = await flow.getByTestId("estimate").textContent();
-  expect(Number(est!.match(/AED ([\d,]+)/)![1].replace(/,/g, ""))).toBeGreaterThan(1600);
-  await flow.getByRole("button", { name: "Request the shoot" }).click();
-  await expect(page).toHaveURL(/\/portal\/shoots\/MW-\d+\?booked=1$/);
-  await expect(page.getByRole("status").filter({ hasText: "Requested" })).toBeVisible();
+  await m.getByRole("button", { name: "Confirm booking" }).click();
+  await expect(m.getByText("Booking request sent")).toBeVisible();
+  await m.getByRole("link", { name: "View in Shoots" }).click();
+  await expect(page).toHaveURL(/\/portal\/shoots\/MW-\d+$/);
   shootRef = decodeURIComponent(page.url().split("/shoots/")[1].split("?")[0]);
   const db = await signedIn(owner);
   const [p] = await must<
-    { id: string; status: string; meta: { booking: { services: unknown[]; estimate: number } } }[]
+    { id: string; status: string; meta: { booking: { services: { day?: string }[] } } }[]
   >(db.from("projects").select("id, status, meta").eq("ref", shootRef));
   shoot = p.id;
   expect(p.status).toBe("requested");
-  expect(p.meta.booking.services).toHaveLength(2);
+  expect(p.meta.booking.services).toHaveLength(1);
+  expect(p.meta.booking.services[0].day).toBe("half");
 });
 
 test("a Member books without seeing an estimate", async ({ page }) => {
   await signInUI(page, member);
-  const flow = await book(page);
-  await flow.getByRole("button", { name: /YouTube long-form/ }).click();
-  await flow.getByRole("button", { name: "Done" }).click();
-  await expect(flow.getByTestId("service-chip")).toHaveCount(1);
-  await expect(flow.getByTestId("estimate")).toHaveCount(0);
+  await page.goto("/portal/shoots?new=booking");
+  const m = await book(page, /Long-form walkthrough/);
+  await expect(m.getByText("Summary")).toBeVisible();
+  await expect(m.getByTestId("estimate")).toHaveCount(0);
 });
 
 test("Billing: the budget card and activity; past 100% the bar is full and the wording stays neutral", async ({

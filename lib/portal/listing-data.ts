@@ -34,7 +34,7 @@ export async function listingFormData(
       .order("created_at"),
     db
       .from("contacts")
-      .select("id, name, role, is_default")
+      .select("id, name, role, is_default, whatsapp, email, show_whatsapp")
       .eq("account_id", account.id)
       .order("is_default", { ascending: false })
       .order("name"),
@@ -51,7 +51,12 @@ export async function listingFormData(
     name: c.name,
     role: c.role,
     initials: initials(c.name),
+    whatsapp: c.whatsapp,
+    email: c.email,
+    show_whatsapp: c.show_whatsapp ?? true,
   }));
+  // Older shoots delivered only as a zip: no single photos to put on a page.
+  const zipOnly = !photos.length && fs.some((f) => f.kind === "zip");
   const tour = fs.find((f) => f.kind === "tour" && f.source === "link")?.url ?? "";
   const m = project.meta;
   const fromBooking: ListingInput = {
@@ -125,6 +130,7 @@ export async function listingFormData(
     photos,
     videos,
     contacts,
+    zipOnly,
     from,
     qrPreview: sign(initial.permit_qr_key || null),
     hasBrand: !!(account.brand_name || account.brand_logo_key || account.type === "company"),

@@ -270,3 +270,22 @@ export function portalReadyEmail(o: {
     button: "Sign in to your portal",
   };
 }
+
+/** A client invites a teammate (owner, 10 Oct 2026): "Accept invite", 14 days to use it. */
+export function teamInviteEmail(o: {
+  name?: string | null;
+  account: string;
+  inviter?: string | null;
+  expires: string;
+}) {
+  return {
+    subject: `You’re invited to ${o.account} on Milkywayy`,
+    lines: [
+      `Hi ${firstName(o.name)},`,
+      `${o.inviter ? `${o.inviter} invited you` : "You’ve been invited"} to join ${o.account} on the Milkywayy client portal: shoots, edits, downloads and share pages in one place.`,
+      "Sign in with this email address: we’ll send you a 6-digit code. No password needed.",
+      `The invite works until ${o.expires}.`,
+    ],
+    button: "Accept invite",
+  };
+}

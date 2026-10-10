@@ -193,10 +193,19 @@ test("invited members join by verified email and see less than owners", async ()
     (await M.from("account_members").update({ role: "admin" }).eq("user_id", mid).select()).data ??
       [],
   ).toEqual([]);
-  // "Members see only their own projects" by default: A's bookings stay hidden…
+  // Access is per member now (owner, 10 Oct 2026). With "See all company projects" off, A's
+  // bookings stay hidden…
+  const custom = { preset: "custom", shoots: true, editing: true, avatars: true, listings: true };
+  await A.from("account_members")
+    .update({ access: { ...custom, all_projects: false } })
+    .eq("account_id", acme)
+    .eq("user_id", mid);
   expect((await M.rpc("account_bookings", { p_account: acme })).data).toEqual([]);
-  // …until the owner shows them everything, and even then members get no prices.
-  await A.from("accounts").update({ member_visibility: "all" }).eq("id", acme);
+  // …until the owner turns it on, and even then members without billing get no prices.
+  await A.from("account_members")
+    .update({ access: { ...custom, all_projects: true } })
+    .eq("account_id", acme)
+    .eq("user_id", mid);
   const seen = (await M.rpc("account_bookings", { p_account: acme })).data;
   expect(seen.length).toBeGreaterThan(0);
   expect(seen[0].properties[0].subtotal).toBeUndefined();

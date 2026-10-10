@@ -44,6 +44,7 @@ export function Contacts({
 }) {
   if (!contacts.length) return null;
   const first = contacts.find((c) => c.whatsapp) ?? contacts[0];
+  const wa = (c: ShareContact) => !!c.whatsapp && c.show_whatsapp !== false;
   return (
     <>
       <section id="sh-contact" className="sh-card sh-agents" aria-labelledby="sh-agents">
@@ -72,12 +73,12 @@ export function Contacts({
                 </span>
               </div>
               <div className="sh-agent-btns">
-                {c.whatsapp && (
+                {wa(c) && (
                   <TapLink
                     kind={kind}
                     slug={slug}
                     event="wa"
-                    href={whatsappLink(c.whatsapp, title, url)}
+                    href={whatsappLink(c.whatsapp!, title, url)}
                     className="btn btn-p btn-s"
                     label={`WhatsApp ${c.name}`}
                   >
@@ -108,15 +109,17 @@ export function Contacts({
       </section>
       {first.whatsapp && (
         <StickyBar watch="sh-contact">
-          <TapLink
-            kind={kind}
-            slug={slug}
-            event="wa"
-            href={whatsappLink(first.whatsapp, title, url)}
-            className="btn btn-p"
-          >
-            WhatsApp
-          </TapLink>
+          {wa(first) && (
+            <TapLink
+              kind={kind}
+              slug={slug}
+              event="wa"
+              href={whatsappLink(first.whatsapp, title, url)}
+              className="btn btn-p"
+            >
+              WhatsApp
+            </TapLink>
+          )}
           <TapLink
             kind={kind}
             slug={slug}

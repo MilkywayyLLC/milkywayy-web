@@ -2,6 +2,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import type { Access } from "./access";
 import { portalDb } from "./supabase";
 
 export type Role = "owner" | "admin" | "member";
@@ -22,7 +23,8 @@ export type Account = {
   brand_name?: string | null;
   brand_logo_key?: string | null;
 };
-export type Membership = { role: Role; account: Account };
+/** Members have an access set (lib/portal/access); Owner and Admins can do everything. */
+export type Membership = { role: Role; access?: Access | null; account: Account };
 
 /** The account the client last chose (account switcher, step 4); else their own, else the first. */
 export const ACCOUNT_COOKIE = "mw-portal-account";
@@ -47,7 +49,7 @@ export const getPortal = cache(async (): Promise<PortalState> => {
   const { data: rows } = await db
     .from("account_members")
     .select(
-      "role, created_at, account:accounts(id, type, name, industry, industry_other, volume_note, trn, billing_address, currency, member_visibility, services_interest, notify_cc, brand_name, brand_logo_key)",
+      "role, access, created_at, account:accounts(id, type, name, industry, industry_other, volume_note, trn, billing_address, currency, member_visibility, services_interest, notify_cc, brand_name, brand_logo_key)",
     )
     .eq("user_id", user.id)
     .order("created_at");

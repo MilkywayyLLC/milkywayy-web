@@ -56,6 +56,34 @@ async function photoWebVersions(projectId: string, fileId: string, f: File) {
     await saveMedia(projectId, fileId, { web: true, og: true, bytes: web.size });
 }
 
+const isZip = (f: File) => /\.zip$/i.test(f.name) || f.type === "application/zip";
+const IMAGE = /\.(jpe?g|png|webp|heic|heif|tiff?)$/i;
+const IMAGE_TYPE: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  heic: "image/heic",
+  heif: "image/heif",
+  tif: "image/tiff",
+  tiff: "image/tiff",
+};
+/** The images inside a zip, as files (folders and macOS metadata skipped), in name order. */
+async function unzipImages(zip: File): Promise<File[]> {
+  const { default: JSZip } = await import("jszip");
+  const z = await JSZip.loadAsync(zip);
+  const entries = Object.values(z.files)
+    .filter((e) => !e.dir && IMAGE.test(e.name) && !/(^|\/)(__MACOSX|\.)/.test(e.name))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  const out: File[] = [];
+  for (const e of entries) {
+    const name = e.name.split("/").pop()!;
+    const ext = name.split(".").pop()!.toLowerCase();
+    out.push(new File([await e.async("blob")], name, { type: IMAGE_TYPE[ext] ?? "image/jpeg" }));
+  }
+  return out;
+}
+
 /**
  * Upload files into one delivery (lib/upload-browser: straight to R2, resumable).
  */
@@ -76,8 +104,29 @@ function Uploader({
   const set = (i: number, patch: Partial<(typeof rows)[number]>) =>
     setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
-  async function upload(files: File[]) {
+  async function upload(picked: File[]) {
     setBusy(true);
+    // Photos are always stored one image at a time (listings use them): a zip is unpacked here,
+    // in the browser, and each image uploaded on its own (owner, 10 Oct 2026).
+    let files = picked;
+    if (kind === "photos" && picked.some(isZip)) {
+      setRows(
+        picked.map((f) => ({
+          name: f.name,
+          size: f.size,
+          done: 0,
+          state: isZip(f) ? "Unzipping…" : "Waiting",
+        })),
+      );
+      files = (await Promise.all(picked.map((f) => (isZip(f) ? unzipImages(f) : [f])))).flat();
+      if (!files.length) {
+        setRows([
+          { name: "No images found in the zip", size: 0, done: 0, state: "Nothing to upload" },
+        ]);
+        setBusy(false);
+        return;
+      }
+    }
     setRows(files.map((f) => ({ name: f.name, size: f.size, done: 0, state: "Waiting" })));
     for (const [i, f] of files.entries()) {
       await uploadFile(

@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- signed, short-lived R2 previews */
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { qrUploadUrl, saveListing } from "@/lib/portal/listing-actions";
 import {
   FURNISHINGS,
@@ -11,12 +11,15 @@ import {
   type PurposeKey,
 } from "@/lib/portal/listings";
 import { putBlob } from "@/lib/upload-browser";
+import { DraftOffer, Field, FormBanner, useDraft, useFormCheck, useLeaveGuard } from "./forms";
 import { Icon } from "./Icon";
 import { ShareDone } from "./ListingParts";
+import { ContactsField, PhotoOrder, type PickContact, type PickPhoto } from "./ListingPickers";
 
-export type PickPhoto = { id: string; label: string; src: string | null };
-export type PickContact = { id: string; name: string; role: string | null; initials: string };
+export type { PickContact, PickPhoto } from "./ListingPickers";
 export type PickVideo = { id: string; label: string };
+const VIDEO =
+  /^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be|vimeo\.com|player\.vimeo\.com)\/\S+$/i;
 
 /**
  * Create / edit a share page (§6.1). The booking fills in what it knows; the client adds the
@@ -50,28 +53,53 @@ export function ListingForm({
     state: "",
     preview: qrPreview,
   });
-  const [error, setError] = useState("");
+  const [people, setPeople] = useState(contacts);
+  const [touched, setTouched] = useState(false);
   const [done, setDone] = useState<{ slug: string } | null>(null);
   const [pending, start] = useTransition();
-  const set = <K extends keyof ListingInput>(k: K, val: ListingInput[K]) =>
+  const set = <K extends keyof ListingInput>(k: K, val: ListingInput[K]) => {
+    setTouched(true);
     setV((x) => ({ ...x, [k]: val }));
+  };
+  // New links autosave as a draft (owner, 10 Oct 2026); edits of a live link don't.
+  const restore = useCallback(
+    (d: ListingInput & { project?: string }) => {
+      if (d.project && d.project !== projectId) return;
+      setV((x) => ({ ...x, ...d }));
+      setTouched(true);
+    },
+    [projectId],
+  );
+  const draft = useDraft(
+    "listing",
+    { ...v, project: projectId } as unknown as Record<string, unknown>,
+    {
+      touched: !id && touched && !done,
+      onRestore: restore as unknown as (d: Record<string, unknown>) => void,
+    },
+  );
+  const leave = useLeaveGuard({
+    dirty: !id && touched && !done,
+    saveNow: draft.saveNow,
+    discard: draft.discard,
+  });
+  const form = useFormCheck(() => ({
+    title: v.title.trim().length < 3 && "Add a title (3 characters or more).",
+    price: !(Number(v.price.replace(/[,\s]/g, "")) > 0) && "Enter the price as a number.",
+    contacts: !v.contact_ids.length && "Choose at least one contact.",
+    photos: !v.photo_ids.length && "Choose at least one photo.",
+    video_url:
+      v.video_url.trim() &&
+      !VIDEO.test(v.video_url.trim()) &&
+      "Long-form takes a YouTube or Vimeo link only.",
+    tour_url:
+      v.tour_url.trim() &&
+      !/^https:\/\/\S+$/.test(v.tour_url.trim()) &&
+      "Paste the tour link starting with https://",
+  }));
 
   if (done) return <ShareDone kind="l" slug={done.slug} title={v.title} edited={!!id} />;
 
-  const toggleContact = (cid: string) =>
-    set(
-      "contact_ids",
-      v.contact_ids.includes(cid)
-        ? v.contact_ids.filter((x) => x !== cid)
-        : v.contact_ids.length >= 2
-          ? [v.contact_ids[1], cid]
-          : [...v.contact_ids, cid],
-    );
-  const togglePhoto = (pid: string) =>
-    set(
-      "photo_ids",
-      v.photo_ids.includes(pid) ? v.photo_ids.filter((x) => x !== pid) : [...v.photo_ids, pid],
-    );
   const addChip = () => {
     const c = chip.trim().slice(0, 40);
     if (c && !v.highlights.includes(c) && v.highlights.length < 12)
@@ -94,16 +122,26 @@ export function ListingForm({
     <form
       className="pt-form"
       aria-label={id ? "Edit share page" : "Create share link"}
+      noValidate
       onSubmit={(e) => {
         e.preventDefault();
-        setError("");
+        if (!form.check()) return;
         start(async () => {
           const r = await saveListing(v, { id, project: projectId });
-          if (!r.ok) return setError(r.error ?? "Couldn’t save.");
+          if (!r.ok) return form.fail(r.error ?? "Couldn’t save. Try again.");
           setDone({ slug: r.slug! });
         });
       }}
     >
+      {leave}
+      {!id && (
+        <DraftOffer
+          offer={draft.offer}
+          onContinue={draft.continueOffer}
+          onFresh={draft.startFresh}
+        />
+      )}
+      <FormBanner text={form.banner} />
       <div className="pt-card" style={{ background: "var(--bg)", gap: 6 }}>
         <span className="pt-eb">From the booking</span>
         <b>{from}</b>
@@ -116,18 +154,15 @@ export function ListingForm({
         </span>
       </div>
 
-      <label className="pt-field">
-        Title *
+      <Field name="title" label="Title" required error={form.errors.title}>
         <input
           type="text"
-          required
-          minLength={3}
           maxLength={120}
           value={v.title}
           onChange={(e) => set("title", e.target.value)}
           placeholder="e.g. Sky-high 3 bed penthouse with Burj views"
         />
-      </label>
+      </Field>
       <div className="pt-field">
         <span id="purpose-l">Purpose *</span>
         <div className="pt-seg" role="group" aria-labelledby="purpose-l">
@@ -143,12 +178,15 @@ export function ListingForm({
           ))}
         </div>
       </div>
-      <label className="pt-field">
-        {PRICE_LABEL[v.purpose]}
+      <Field
+        name="price"
+        label={PRICE_LABEL[v.purpose].replace(" *", "")}
+        required
+        error={form.errors.price}
+      >
         <input
           type="text"
           inputMode="decimal"
-          required
           value={v.price}
           onChange={(e) => set("price", e.target.value)}
           placeholder={
@@ -159,7 +197,7 @@ export function ListingForm({
                 : "e.g. 950"
           }
         />
-      </label>
+      </Field>
       <label className="pt-field">
         Location
         <input
@@ -322,82 +360,20 @@ export function ListingForm({
         <span className="pt-meta">Both show on the page when filled in.</span>
       </fieldset>
 
-      <div className="pt-field">
-        <span id="contacts-l">Point of contact (up to 2) *</span>
-        {contacts.length === 0 ? (
-          <span className="pt-meta">
-            Add a contact first: <a href="/portal/contacts">Contacts</a>.
-          </span>
-        ) : (
-          <div className="pt-pills" role="group" aria-labelledby="contacts-l">
-            {contacts.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className="pt-pill"
-                aria-pressed={v.contact_ids.includes(c.id)}
-                onClick={() => toggleContact(c.id)}
-              >
-                <span className="pt-pill-face">{c.initials}</span>
-                <span>
-                  {c.name}
-                  {c.role && <small>{c.role}</small>}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <ContactsField
+        all={people}
+        chosen={v.contact_ids}
+        onChange={(ids) => set("contact_ids", ids)}
+        onContacts={setPeople}
+        error={form.errors.contacts}
+      />
 
-      <div className="pt-field">
-        <span className="pt-row">
-          <span>
-            Photos: tap to leave out ({v.photo_ids.length} of {photos.length})
-          </span>
-          <span style={{ display: "flex", gap: 12 }}>
-            <button
-              type="button"
-              className="lnk pt-small"
-              onClick={() =>
-                set(
-                  "photo_ids",
-                  photos.map((p) => p.id),
-                )
-              }
-            >
-              All
-            </button>
-            <button type="button" className="lnk pt-small" onClick={() => set("photo_ids", [])}>
-              None
-            </button>
-          </span>
-        </span>
-        <span className="pt-meta">
-          The first one is the cover. Tap again to add one back at the end.
-        </span>
-        <div className="pt-photos" data-testid="photo-picker">
-          {photos.map((p, i) => {
-            const at = v.photo_ids.indexOf(p.id);
-            return (
-              <button
-                key={p.id}
-                type="button"
-                className="pt-photo"
-                aria-pressed={at >= 0}
-                aria-label={`Photo ${i + 1}: ${p.label}`}
-                onClick={() => togglePhoto(p.id)}
-              >
-                {p.src ? (
-                  <img src={p.src} alt="" loading="lazy" decoding="async" />
-                ) : (
-                  <span className="pt-photo-none">{p.label}</span>
-                )}
-                {at >= 0 && <b>{at + 1}</b>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <PhotoOrder
+        photos={photos}
+        order={v.photo_ids}
+        onChange={(ids) => set("photo_ids", ids)}
+        error={form.errors.photos}
+      />
 
       <div className="pt-field">
         Video and tour
@@ -418,24 +394,26 @@ export function ListingForm({
             No reel ready for share pages on this shoot. Ask us in Messages if you want one.
           </span>
         )}
-        <label className="pt-field" style={{ fontWeight: 400 }}>
-          Long-form video (YouTube or Vimeo link, unlisted is fine)
+        <Field
+          name="video_url"
+          label="Long-form video (YouTube or Vimeo link, unlisted is fine)"
+          error={form.errors.video_url}
+        >
           <input
             type="url"
             value={v.video_url}
             onChange={(e) => set("video_url", e.target.value)}
             placeholder="https://youtu.be/…"
           />
-        </label>
-        <label className="pt-field" style={{ fontWeight: 400 }}>
-          360 tour link
+        </Field>
+        <Field name="tour_url" label="360 tour link" error={form.errors.tour_url}>
           <input
             type="url"
             value={v.tour_url}
             onChange={(e) => set("tour_url", e.target.value)}
             placeholder="https://…"
           />
-        </label>
+        </Field>
       </div>
 
       <div>
@@ -476,16 +454,7 @@ export function ListingForm({
         )}
       </div>
 
-      {error && (
-        <p className="pt-error" role="alert">
-          {error}
-        </p>
-      )}
-      <button
-        type="submit"
-        className="btn btn-p"
-        disabled={pending || v.contact_ids.length === 0 || v.photo_ids.length === 0}
-      >
+      <button type="submit" className="btn btn-p" disabled={pending}>
         {pending ? "Saving…" : id ? "Save changes" : "Create link"}
       </button>
     </form>

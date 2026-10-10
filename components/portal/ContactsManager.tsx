@@ -54,9 +54,8 @@ export function ContactsManager({ contacts }: { contacts: ContactRow[] }) {
       </p>
       {contacts.length === 0 ? (
         <div className="pt-card">
-          <b>No contacts yet</b>
           <span className="pt-meta">
-            Add the people buyers should WhatsApp or call about a listing.
+            No contacts yet. Add the people buyers should call or WhatsApp about a listing.
           </span>
         </div>
       ) : (

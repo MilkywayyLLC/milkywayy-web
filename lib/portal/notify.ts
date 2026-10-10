@@ -3,6 +3,7 @@ import {
   emailFor,
   invoiceEmail,
   portalReadyEmail,
+  teamInviteEmail,
   type BillingEmail,
   type MessageEvent,
   type ProjectInfo,
@@ -277,5 +278,33 @@ export async function sendPortalInvite(
     });
     if (error) console.error("[notify] couldn't log the invite email:", error.message);
   }
+  return res.status;
+}
+
+/** The team invite a client sends (owner, 10 Oct 2026); returns sent / skipped / failed. */
+export async function sendTeamInvite(
+  invite: {
+    email: string;
+    name: string | null;
+    account_name: string;
+    inviter: string | null;
+    expires_at: string;
+  },
+  origin: string,
+) {
+  const link = `${origin}/portal/login?email=${encodeURIComponent(invite.email)}&invite=1`;
+  const m = teamInviteEmail({
+    name: invite.name,
+    account: invite.account_name,
+    inviter: invite.inviter,
+    expires: new Date(invite.expires_at).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "Asia/Dubai",
+    }),
+  });
+  const { text, html } = renderEmail(m.lines, m.button, link);
+  const res = await sendEmail(invite.email, m.subject, text, html);
   return res.status;
 }

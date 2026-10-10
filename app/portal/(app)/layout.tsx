@@ -1,12 +1,12 @@
 import { Shell } from "@/components/portal/Shell";
 import { Hydrated } from "@/components/ui/Hydrated";
 import { contactOf, requireAccount } from "@/lib/portal/auth";
-import { initials, isManager, portalTabs } from "@/lib/portal/shell";
+import { initials, portalTabs, seesMoney } from "@/lib/portal/shell";
 
 /** Signed-in portal pages: the shell from the approved mockup around every tab. */
 export default async function PortalApp({ children }: { children: React.ReactNode }) {
   const { db, user, memberships, current } = await requireAccount("/portal");
-  const manager = isManager(current);
+  const manager = seesMoney(current);
   const [{ data: profile }, { data: plan }] = await Promise.all([
     db.from("profiles").select("full_name").eq("user_id", user.id).maybeSingle(),
     // The plan badge (§5.1): Owner and Admins only (RLS hides plans from Members).

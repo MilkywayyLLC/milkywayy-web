@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { abortMultipart, completeMultipart, downloadUrl, r2Ready } from "@/lib/r2";
+import { AREA_OF, can } from "./access";
 import { requireAccount } from "./auth";
+import { AVATAR_FORMATS, avatarKind, avatarLength, type AvatarFormat } from "./booking";
 import { originFrom } from "./invite";
 import { projectLink } from "./messages";
 import { notifyClients, notifyMilkywayy, type Recipient } from "./notify";
@@ -120,10 +122,13 @@ export type NewProject = {
   type: "edit" | "avatar";
   title: string;
   kind: string;
+  /** Editing "Other": what type of edit (required then). */
+  kindOther?: string;
+  /** Avatar videos: the format and length (owner, 10 Oct 2026). */
+  avatar?: { format: AvatarFormat; length: number };
   quantity?: number | null;
   notes?: string;
   references?: string[];
-  due?: string | null;
   scriptBy?: "milkywayy" | "client";
   links?: { label: string; url: string }[];
 };
@@ -133,8 +138,29 @@ export async function createProject(
   input: NewProject,
 ): Promise<ClientResult & { id?: string; ref?: string }> {
   const { db, user, current } = await requireAccount("/portal");
-  const title = input.title.trim();
+  if (!can(current, AREA_OF[input.type]))
+    return { ok: false, error: "Your access doesn’t include this. Ask the account owner." };
+  const av = input.type === "avatar" ? input.avatar : undefined;
+  if (input.type === "avatar" && (!av || !(av.format in AVATAR_FORMATS)))
+    return { ok: false, error: "Choose the format." };
+  const avLabel = av
+    ? `${av.format === "short" ? "Short form" : "Long form"} · ${avatarLength(av.format, av.length)}`
+    : "";
+  // Avatar titles are optional: "Short form · 60s" when left empty.
+  const title = input.title.trim() || avLabel;
   if (!title) return { ok: false, error: "Give it a title." };
+  if (input.type === "edit" && input.kind === "other" && !input.kindOther?.trim())
+    return { ok: false, error: "Say what type of edit." };
+  const kind = av ? avatarKind(av.format, av.length) : input.kind;
+  const notes = [
+    av ? `Format: ${AVATAR_FORMATS[av.format].label} · ${avatarLength(av.format, av.length)}` : "",
+    input.type === "edit" && input.kind === "other"
+      ? `Type of edit: ${input.kindOther!.trim()}`
+      : "",
+    input.notes?.trim() ?? "",
+  ]
+    .filter(Boolean)
+    .join("\n");
   const links = (input.links ?? []).filter((l) => l.url.trim());
   if (links.some((l) => !/^https:\/\/\S+$/.test(l.url.trim())))
     return { ok: false, error: "Paste full links starting with https://" };
@@ -142,11 +168,11 @@ export async function createProject(
     p_account: current.account.id,
     p_type: input.type,
     p_title: title,
-    p_kind: input.kind,
+    p_kind: kind,
     p_quantity: input.quantity || null,
-    p_notes: input.notes?.trim() || null,
+    p_notes: notes || null,
     p_references: (input.references ?? []).map((r) => r.trim()).filter(Boolean),
-    p_due: input.due || null,
+    p_due: null,
     p_script_by: input.type === "avatar" ? (input.scriptBy ?? "milkywayy") : null,
   });
   if (error) {
@@ -180,9 +206,9 @@ export async function createProject(
       `${user.email ?? "A client"} (${current.account.name}) started ${out.ref}:`,
       [
         title,
-        briefKindLabel(input.type as ProjectType, input.kind),
+        avLabel || briefKindLabel(input.type as ProjectType, kind),
+        input.type === "edit" && input.kind === "other" ? `Type: ${input.kindOther!.trim()}` : "",
         input.quantity ? `Quantity: ${input.quantity}` : "",
-        input.due ? `Deadline wish: ${input.due}` : "",
         links.length ? `${links.length} link${links.length === 1 ? "" : "s"} to raw files` : "",
       ]
         .filter(Boolean)
@@ -191,6 +217,13 @@ export async function createProject(
     ].filter(Boolean),
     `${origin}/admin/projects/${out.id}`,
   );
+  // Sent: its draft goes.
+  await db
+    .from("portal_drafts")
+    .delete()
+    .eq("account_id", current.account.id)
+    .eq("user_id", user.id)
+    .eq("kind", input.type);
   revalidatePath("/portal", "layout");
   return { ok: true, id: out.id, ref: out.ref, notice: "Received." };
 }

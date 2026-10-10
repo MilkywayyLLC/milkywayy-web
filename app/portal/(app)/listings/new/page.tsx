@@ -71,9 +71,11 @@ export default async function NewListing({
       <h1 className="pt-h1">Create share link</h1>
       {f.photos.length === 0 ? (
         <div className="pt-card">
-          <b>No photos on this shoot yet</b>
+          <b>No single photos on this shoot yet</b>
           <span className="pt-meta">
-            Share pages need the delivered photos. Ask us in Messages.
+            {f.zipOnly
+              ? "These photos are in a zip. Ask us in Messages to unpack them."
+              : "Share pages need the delivered photos. Ask us in Messages."}
           </span>
         </div>
       ) : (

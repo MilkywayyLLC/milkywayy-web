@@ -1,11 +1,12 @@
 import { dateLabel, shownStatus, type Invoice } from "@/lib/portal/billing";
 import Link from "next/link";
-import { Icon } from "@/components/portal/Icon";
 import { getSiteSettings } from "@/lib/data";
 import { contactOf, requireAccount } from "@/lib/portal/auth";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
+import { StartRequests } from "@/components/portal/StartRequests";
+import { requestConfig } from "@/lib/portal/requests";
 import { statusLabel, type Project } from "@/lib/portal/projects";
-import { isManager } from "@/lib/portal/shell";
+import { isManager, seesMoney } from "@/lib/portal/shell";
 
 export const metadata = { title: { absolute: "Home · Milkywayy portal" } };
 
@@ -25,7 +26,7 @@ export default async function PortalHome({
     chat,
     { data: eventRows },
     { data: invoiceRows },
-    { data: bookingOpts },
+    cfg,
   ] = await Promise.all([
     db
       .from("projects")
@@ -49,8 +50,8 @@ export default async function PortalHome({
       .eq("project.account_id", a.id)
       .order("at", { ascending: false })
       .limit(8),
-    // Invoices waiting for payment: Owner and Admins only (RLS returns none to Members).
-    isManager(current)
+    // Invoices waiting for payment: those who see billing only (RLS returns none to others).
+    seesMoney(current)
       ? db
           .from("invoices")
           .select("id, number, due_on, status")
@@ -58,9 +59,8 @@ export default async function PortalHome({
           .neq("status", "paid")
           .order("due_on")
       : Promise.resolve({ data: [] }),
-    db.rpc("my_booking_options", { p_account: a.id }),
+    requestConfig(db, current),
   ]);
-  const canBook = !!(bookingOpts as { can_book?: boolean } | null)?.can_book;
 
   const unpaid = (invoiceRows ?? []) as Pick<Invoice, "id" | "number" | "due_on" | "status">[];
   const projects = (projectRows ?? []) as Project[];
@@ -83,7 +83,6 @@ export default async function PortalHome({
   }[];
   const first = (profile?.full_name ?? "").split(" ")[0];
   const claimed = Number(q.claimed ?? 0);
-  const s = a.services_interest;
   const now = new Date().toLocaleDateString("en-GB", {
     weekday: "short",
     day: "numeric",
@@ -104,20 +103,8 @@ export default async function PortalHome({
           <h1 className="pt-h1">Home</h1>
         </div>
         <div className="pt-btns">
-          {/* Package clients book in the portal; others on the website. */}
-          {canBook ? (
-            <Link href="/portal/shoots/book" className="btn btn-p btn-s">
-              <Icon name="plus" size={16} /> Book a shoot
-            </Link>
-          ) : (
-            (s.includes("shoots") ||
-              s.includes("production") ||
-              projects.some((p) => p.type === "shoot")) && (
-              <a href="/property-shoots" className="btn btn-p btn-s">
-                <Icon name="plus" size={16} /> Book a shoot
-              </a>
-            )
-          )}
+          {/* Every client books in the portal, in a modal (owner, 10 Oct 2026). */}
+          <StartRequests cfg={cfg} only="booking" />
         </div>
       </div>
 
@@ -246,32 +233,23 @@ export default async function PortalHome({
                 ["edit", "/portal/editing", "Editing"],
                 ["avatar", "/portal/avatars", "Avatars"],
               ] as const
-            ).map(([t, href, label]) => (
-              <Link key={t} href={href} className="pt-stat" style={{ textDecoration: "none" }}>
-                <b>{inProgress.filter((p) => p.type === t).length}</b>
-                <span className="pt-meta">{label}</span>
-              </Link>
-            ))}
+            )
+              .filter(([t]) =>
+                t === "shoot" ? cfg.shoots : t === "edit" ? cfg.editing : cfg.avatars,
+              )
+              .map(([t, href, label]) => (
+                <Link key={t} href={href} className="pt-stat" style={{ textDecoration: "none" }}>
+                  <b>{inProgress.filter((p) => p.type === t).length}</b>
+                  <span className="pt-meta">{label}</span>
+                </Link>
+              ))}
           </div>
         </section>
         <section className="pt-card" aria-labelledby="start">
           <h2 id="start" className="pt-h2">
             Start something
           </h2>
-          <div className="pt-btns">
-            <a
-              href={canBook ? "/portal/shoots/book" : "/property-shoots#booking"}
-              className="btn btn-g btn-s"
-            >
-              Book a shoot
-            </a>
-            <Link href="/portal/editing/new" className="btn btn-g btn-s">
-              New editing batch
-            </Link>
-            <Link href="/portal/avatars/new" className="btn btn-g btn-s">
-              New avatar video
-            </Link>
-          </div>
+          <StartRequests cfg={cfg} autoOpen />
         </section>
       </div>
 

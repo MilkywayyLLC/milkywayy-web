@@ -80,38 +80,41 @@ test("Team: invite by email, share it, cancel; change a role; set what members s
 
   await page.getByRole("button", { name: "Invite", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: /Invite someone/ });
-  await sheet.getByLabel("Name").fill("Ivy Invitee");
-  await sheet.getByRole("button", { name: "Email" }).click();
-  await sheet.getByLabel("Their email").fill(`${RUN}-ivy@example.com`);
-  await sheet.getByRole("button", { name: "Invite", exact: true }).click();
-  const share = page.getByRole("dialog", { name: "Send the invite" });
-  await expect(share).toContainText("Ivy Invitee is invited");
-  await expect(share).toContainText("you’ve been added to Shell Homes");
-  await expect(share.getByRole("link", { name: "Send by email" })).toHaveAttribute(
-    "href",
-    new RegExp(`^mailto:${RUN}-ivy@example.com`),
-  );
-  await share.getByRole("button", { name: "Close" }).click();
+  // Nothing sent until the required fields are filled in (owner, 10 Oct 2026).
+  await sheet.getByRole("button", { name: "Send invite" }).click();
+  await expect(sheet.getByText("Please fix the highlighted fields")).toBeVisible();
+  await sheet.getByLabel("Full name").fill("Ivy Invitee");
+  await sheet.getByLabel("Email", { exact: true }).fill(`${RUN}-ivy@example.com`);
+  await sheet.getByRole("radio", { name: /Finance/ }).check({ force: true });
+  await sheet.getByRole("button", { name: "Send invite" }).click();
+  const sent = page.getByRole("dialog", { name: "Invite sent" });
+  await expect(sent).toContainText("Ivy Invitee is invited");
+  // No phone given: no WhatsApp option.
+  await expect(sent.getByRole("link", { name: "Send on WhatsApp" })).toHaveCount(0);
+  await sent.getByRole("button", { name: "Done" }).click();
   await expect(page.getByTestId("invites")).toContainText("Ivy Invitee");
+  await expect(page.getByTestId("invites")).toContainText("Finance");
+  await expect(page.getByTestId("invites")).toContainText("expires");
   // A fresh load with an invite pending renders on the server too.
   const fresh = await page.reload();
   expect(fresh?.status()).toBe(200);
-  await expect(
-    page.getByTestId("invites").getByRole("link", { name: "Send by email" }),
-  ).toHaveAttribute("href", /portal%2Flogin/);
+  await expect(page.getByTestId("invites").getByRole("button", { name: "Resend" })).toBeVisible();
   await page.getByTestId("invites").getByRole("button", { name: "Cancel" }).click();
   await expect(page.getByTestId("invites")).toHaveCount(0);
 
-  await page.getByRole("combobox", { name: "Role for Max Member" }).selectOption("admin");
-  await expect(page.getByRole("status")).toContainText("Role updated.");
+  // Per-member access: Admin, then back to Production.
+  await page.getByRole("button", { name: "Access for Max Member" }).click();
+  let acc = page.getByRole("dialog", { name: /Access: Max Member/ });
+  await acc.getByRole("radio", { name: /^Admin/ }).check({ force: true });
+  await acc.getByRole("button", { name: "Save access" }).click();
+  await expect(page.getByRole("status")).toContainText("Access updated.");
   await page.reload();
-  await expect(page.getByRole("combobox", { name: "Role for Max Member" })).toHaveValue("admin");
-  await page.getByRole("combobox", { name: "Role for Max Member" }).selectOption("member");
-
-  await page.getByRole("radio", { name: /All company projects/ }).check({ force: true });
-  await expect(page.getByRole("status")).toContainText("Saved.");
-  await page.reload();
-  await expect(page.getByRole("radio", { name: /All company projects/ })).toBeChecked();
+  await expect(page.getByTestId("members")).toContainText("Admin");
+  await page.getByRole("button", { name: "Access for Max Member" }).click();
+  acc = page.getByRole("dialog", { name: /Access: Max Member/ });
+  await acc.getByRole("radio", { name: /^Production/ }).check({ force: true });
+  await acc.getByRole("button", { name: "Save access" }).click();
+  await expect(page.getByRole("status")).toContainText("Access updated.");
 });
 
 test("a member sees fewer tabs, no prices, and switches accounts", async ({ page }) => {
@@ -134,9 +137,7 @@ test("a member sees fewer tabs, no prices, and switches accounts", async ({ page
   await expect(page.getByTestId("shoots")).toContainText("Marina Gate 1"); // visibility: all
   await expect(page.getByTestId("shoots")).not.toContainText("AED");
   await page.goto("/portal/team");
-  await expect(
-    page.getByText("The team is managed by the account’s owner and admins"),
-  ).toBeVisible();
+  await expect(page.getByText("Your access doesn’t include managing the team")).toBeVisible();
   // A forged account cookie is ignored: you only ever see accounts you belong to.
   await page.context().addCookies([
     {

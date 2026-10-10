@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddFiles } from "@/components/portal/ClientUpload";
-import { Icon } from "@/components/portal/Icon";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
 import {
   DownloadButton,
@@ -16,8 +15,12 @@ import {
   FilesInList,
 } from "@/components/portal/ProjectParts";
 import { AskAbout, ScriptReview } from "@/components/portal/ScriptReview";
+import { DraftsRow, StartRequests } from "@/components/portal/StartRequests";
 import { Back, Badge, Stepper } from "@/components/portal/ui";
+import { AREA_OF, can } from "@/lib/portal/access";
 import { requireAccount } from "@/lib/portal/auth";
+import { myDrafts } from "@/lib/portal/draft-actions";
+import { requestConfig } from "@/lib/portal/requests";
 import {
   briefKindLabel,
   clientStatus,
@@ -44,17 +47,16 @@ const COPY = {
   edit: {
     eyebrow: "Post-production",
     title: "Editing",
-    newLabel: "New batch",
+    newLabel: "Edit my files",
     noun: "batch",
-    empty: "Send us footage or photos and we edit them. Start with a new batch.",
+    empty: "No editing requests yet. Send your files and track them here.",
   },
   avatar: {
     eyebrow: "AI avatars",
     title: "Avatars",
-    newLabel: "New video",
+    newLabel: "AI avatar video",
     noun: "video",
-    empty:
-      "Videos with an AI presenter. Send a brief and we’ll write the script for your approval.",
+    empty: "No avatar videos yet. Send a brief and track it here.",
   },
 } as const;
 
@@ -69,7 +71,18 @@ export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; 
   const base = TYPE_PATH[type];
   const c = COPY[type];
   const { db, current } = await requireAccount(base);
-  const all = await myProjects(db, current.account.id, type);
+  if (!can(current, AREA_OF[type]))
+    return (
+      <div className="pt-card">
+        <b>Your access doesn’t include {c.title.toLowerCase()}</b>
+        <span className="pt-meta">Ask the account owner if you need it.</span>
+      </div>
+    );
+  const [all, cfg, drafts] = await Promise.all([
+    myProjects(db, current.account.id, type),
+    requestConfig(db, current),
+    myDrafts(),
+  ]);
   const active = all.filter((p) => p.status !== "completed");
   const query = (q ?? "").trim().toLowerCase();
   const done = all
@@ -105,10 +118,12 @@ export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; 
           <span className="pt-eb">{c.eyebrow}</span>
           <h1 className="pt-h1">{c.title}</h1>
         </div>
-        <Link href={`${base}/new`} className="btn btn-p btn-s">
-          <Icon name="plus" size={16} /> {c.newLabel}
-        </Link>
+        <StartRequests cfg={cfg} only={type} label={c.newLabel} autoOpen />
       </div>
+      <DraftsRow
+        drafts={drafts.filter((d) => d.kind === type)}
+        resumeHref={(k) => `${base}?new=${k}&draft=1`}
+      />
 
       <div className="pt-tabs" role="tablist">
         <Link href={base} role="tab" aria-selected={!showDone} prefetch={false}>
@@ -158,8 +173,9 @@ export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; 
           </div>
         ) : (
           <div className="pt-card">
-            <b>Nothing in progress</b>
-            <span className="pt-meta">{c.empty}</span>
+            <span className="pt-meta">
+              {all.length ? "Nothing in progress. Your earlier ones are under Completed." : c.empty}
+            </span>
           </div>
         )
       ) : (
@@ -206,7 +222,9 @@ export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; 
             })}
             {done.length === 0 && (
               <p className="pt-meta">
-                {query ? `Nothing matches “${q}”.` : "Nothing completed yet."}
+                {query
+                  ? `Nothing matches “${q}”.`
+                  : "Nothing completed yet. Finished work stays here to download."}
               </p>
             )}
           </div>

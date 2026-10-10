@@ -19,7 +19,7 @@ import {
   type MyBilling,
   type StatementRow,
 } from "@/lib/portal/billing";
-import { isManager } from "@/lib/portal/shell";
+import { seesMoney } from "@/lib/portal/shell";
 
 export const metadata = { title: "Billing" };
 
@@ -42,11 +42,11 @@ export default async function Billing({
 }) {
   const { paid } = await searchParams;
   const { db, current } = await requireAccount("/portal/billing");
-  if (!isManager(current))
+  if (!seesMoney(current))
     return (
       <div className="pt-card">
-        <b>Billing is for the account’s owner and admins</b>
-        <span className="pt-meta">Ask them if you need an invoice.</span>
+        <b>Your access doesn’t include billing</b>
+        <span className="pt-meta">Ask the account owner if you need an invoice.</span>
       </div>
     );
   const a = current.account;

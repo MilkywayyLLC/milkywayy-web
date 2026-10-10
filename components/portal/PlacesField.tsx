@@ -43,9 +43,12 @@ function loadMaps(): Promise<Maps> {
 export function PlacesField({
   value,
   onChange,
+  error,
 }: {
   value: BookingLocation;
   onChange: (v: BookingLocation) => void;
+  /** Shared form validation: a red border and message (owner, 10 Oct 2026). */
+  error?: string;
 }) {
   const id = useId();
   const [text, setText] = useState(value.address);
@@ -172,9 +175,13 @@ export function PlacesField({
   }
 
   return (
-    <div className="pt-places">
-      <label className="pt-field" htmlFor={`${id}-q`}>
+    <div className={`pt-places pt-field${error ? "is-bad" : ""}`} data-field="location">
+      <label className="pt-field-label" htmlFor={`${id}-q`}>
         Location
+        <span className="pt-req" aria-hidden="true">
+          {" "}
+          *
+        </span>
       </label>
       <div className="pt-places-in">
         <input
@@ -227,6 +234,7 @@ export function PlacesField({
           </ul>
         )}
       </div>
+      {error && <span className="pt-field-msg">{error}</span>}
       {KEY && mapsOk && (
         <>
           <div ref={mapEl} className="pt-map" aria-label="Map: drag the pin to the exact spot" />

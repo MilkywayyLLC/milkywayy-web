@@ -1,7 +1,8 @@
 import { BillingNav } from "@/components/admin/BillingNav";
 import { BillingSettingsForm } from "@/components/admin/BillingTools";
+import { TurnaroundForm } from "@/components/admin/TurnaroundForm";
 import { portalAdminPage, portalAdminReady } from "@/lib/portal/admin";
-import type { BillingSettings } from "@/lib/portal/admin-billing-actions";
+import type { BillingSettings, TurnaroundRow } from "@/lib/portal/admin-billing-actions";
 import { stripeReady } from "@/lib/stripe";
 
 export const metadata = { title: "Billing settings" };
@@ -9,9 +10,12 @@ export const metadata = { title: "Billing settings" };
 /** Admin → Billing → Settings (owner, 4 Oct 2026): VAT, bank details, how card payments are set up. */
 export default async function BillingSettingsPage() {
   const rpc = await portalAdminPage();
-  const s = portalAdminReady()
-    ? await rpc<BillingSettings>("portal_admin_billing_settings", {})
-    : null;
+  const [s, turnaround] = portalAdminReady()
+    ? await Promise.all([
+        rpc<BillingSettings>("portal_admin_billing_settings", {}),
+        rpc<TurnaroundRow[]>("portal_admin_turnaround", {}),
+      ])
+    : [null, []];
   return (
     <div className="ad-page">
       <div className="ad-head">
@@ -26,6 +30,7 @@ export default async function BillingSettingsPage() {
       ) : (
         <p className="ad-note warn">PORTAL_ADMIN_SECRET isn’t set for this deployment.</p>
       )}
+      {turnaround.length > 0 && <TurnaroundForm rows={turnaround} />}
       <section className="ad-card ad-form" aria-label="Card payments">
         <h2 className="ad-h2">Card payments (Stripe)</h2>
         <span className="ad-small">

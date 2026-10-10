@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { deleteObject, presign, r2Ready } from "@/lib/r2";
 import { embedUrl } from "@/lib/share";
+import { isEmail } from "@/lib/leads/rules";
+import { toE164 } from "@/lib/phone";
+import { can } from "./access";
 import { requireAccount } from "./auth";
 import type { ListingInput } from "./listings";
 import { isManager } from "./shell";
@@ -109,7 +112,9 @@ export async function saveListing(
   input: ListingInput,
   ids: { id?: string; project?: string },
 ): Promise<ShareResult> {
-  const { db, current } = await requireAccount("/portal/listings");
+  const { db, user, current } = await requireAccount("/portal/listings");
+  if (!can(current, "listings"))
+    return { ok: false, error: "Your access doesn’t include listings. Ask the account owner." };
   const parsed = Listing.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
   const v = parsed.data;
@@ -125,6 +130,13 @@ export async function saveListing(
     return { ok: false, error: why(error.message) };
   }
   const out = data as { id: string; slug: string };
+  if (!ids.id)
+    await db
+      .from("portal_drafts")
+      .delete()
+      .eq("account_id", current.account.id)
+      .eq("user_id", user.id)
+      .eq("kind", "listing");
   return done({ ok: true, ...out, notice: ids.id ? "Saved." : "Link ready." });
 }
 
@@ -278,4 +290,67 @@ export async function saveBrand(name: string, logoKey: string | null): Promise<S
   if (old && old !== logoKey && r2Ready()) await deleteObject(old).catch(() => undefined);
   revalidatePath("/portal", "layout");
   return { ok: true, notice: "Saved." };
+}
+
+/** A contact made or edited inside the listing form (owner, 10 Oct 2026): saved to Contacts too. */
+export type InlineContact = {
+  id?: string;
+  name: string;
+  phone: string;
+  email?: string;
+  show_whatsapp: boolean;
+};
+export async function saveInlineContact(
+  c: InlineContact,
+): Promise<ShareResult & { contact?: InlineContact & { id: string; whatsapp: string } }> {
+  const { db, current } = await requireAccount("/portal/listings");
+  if (!can(current, "listings"))
+    return { ok: false, error: "Your access doesn’t include listings and contacts." };
+  const name = c.name.trim();
+  if (!name || name.length > 120) return { ok: false, error: "Add the name." };
+  const phone = toE164(c.phone);
+  if (!phone) return { ok: false, error: "Check the phone number and the country code." };
+  const email = (c.email ?? "").trim().toLowerCase();
+  if (email && !isEmail(email)) return { ok: false, error: "That email looks incomplete." };
+  const row = { name, whatsapp: phone, email: email || null, show_whatsapp: !!c.show_whatsapp };
+  const { data, error } = c.id
+    ? await db.from("contacts").update(row).eq("id", c.id).select("id")
+    : await db
+        .from("contacts")
+        .insert({ ...row, account_id: current.account.id })
+        .select("id");
+  if (error) {
+    console.error("[portal] inline contact:", error.message);
+    return { ok: false, error: "Couldn’t save the contact. Check the details and try again." };
+  }
+  if (!data?.length) return { ok: false, error: "You can only edit contacts you added." };
+  revalidatePath("/portal/contacts");
+  return {
+    ok: true,
+    notice: c.id ? "Contact updated everywhere." : "Contact added to Contacts.",
+    contact: { ...row, email: row.email ?? "", phone, id: data[0].id as string },
+  };
+}
+
+/** "Share selected" on Listings (owner, 10 Oct 2026): one collection link for the ticked listings. */
+export async function shareSelected(listingIds: string[]): Promise<ShareResult> {
+  const { db, current } = await requireAccount("/portal/listings");
+  if (!can(current, "listings"))
+    return { ok: false, error: "Your access doesn’t include listings." };
+  const ids = [...new Set(listingIds)].slice(0, 30);
+  if (ids.length < 2) return { ok: false, error: "Tick two or more listings to share together." };
+  const { data: cs } = await db
+    .from("contacts")
+    .select("id")
+    .eq("account_id", current.account.id)
+    .order("is_default", { ascending: false })
+    .limit(1);
+  if (!cs?.length) return { ok: false, error: "Add a contact first (Contacts), then share." };
+  return saveCollection({
+    title: `${ids.length} homes picked for you`,
+    note: "",
+    listing_ids: ids,
+    contact_ids: [cs[0].id as string],
+    expires_on: "",
+  });
 }

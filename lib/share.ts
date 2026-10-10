@@ -10,6 +10,8 @@ export type ShareContact = {
   name: string;
   role: string | null;
   whatsapp: string | null;
+  /** The WhatsApp button (off: a call link only). Missing on older pages: on. */
+  show_whatsapp?: boolean;
   email: string | null;
   brn: string | null;
   photo: string | null;

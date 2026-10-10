@@ -7,7 +7,9 @@ import { isEmail } from "@/lib/leads/rules";
 import { DEFAULT_COUNTRY, toE164 } from "@/lib/phone";
 import { COUNTRIES } from "@/lib/phone/countries";
 import { ACCOUNT_COOKIE, getPortal, requireAccount } from "./auth";
+import { accessFor, PERMS, PRESETS, type Access, type PresetKey } from "./access";
 import { inviteLinks, inviteText, originFrom } from "./invite";
+import { sendTeamInvite } from "./notify";
 import { INDUSTRIES, NOTIFY_CATEGORIES, NOTIFY_EVENTS } from "./options";
 import { isManager } from "./shell";
 import { whatsappFrom } from "./whatsapp-number";
@@ -58,57 +60,169 @@ export async function switchAccount(id: string) {
 
 // ---------- team ----------
 
-export async function setVisibility(value: "own" | "all"): Promise<Result> {
-  const { db, current } = await requireAccount("/portal/team");
-  if (!isManager(current)) return fail("Only the owner and admins can change this.");
-  if (value !== "own" && value !== "all") return fail("Choose one of the two options.");
-  const { error } = await db
-    .from("accounts")
-    .update({ member_visibility: value })
-    .eq("id", current.account.id);
-  return error ? dbError(error, "visibility") : done("Saved.");
+/** The access an invite or member form sent: a preset, or the custom toggles. */
+function readAccess(form: FormData) {
+  const preset = String(form.get("preset") ?? "production") as PresetKey;
+  if (!(preset in PRESETS)) return null;
+  const custom: Access = {};
+  for (const [p] of PERMS) custom[p] = form.get(`perm_${p}`) === "on";
+  return {
+    preset,
+    role: preset === "admin" ? ("admin" as const) : ("member" as const),
+    access: accessFor(preset, custom),
+  };
 }
 
+async function emailTeamInvite(id: string) {
+  const { db, user, current } = await requireAccount("/portal/team");
+  const { data: inv } = await db
+    .from("account_invites")
+    .select("id, name, email, expires_at")
+    .eq("id", id)
+    .is("accepted_at", null)
+    .maybeSingle();
+  if (!inv?.email) return null;
+  const { data: me } = await db
+    .from("profiles")
+    .select("full_name")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const status = await sendTeamInvite(
+    {
+      email: inv.email,
+      name: inv.name,
+      account_name: current.account.name,
+      inviter: me?.full_name ?? null,
+      expires_at: inv.expires_at,
+    },
+    originFrom(await headers()),
+  );
+  if (status === "sent")
+    await db
+      .from("account_invites")
+      .update({ last_sent_at: new Date().toISOString() })
+      .eq("id", id);
+  return status;
+}
+const sentNote = (status: string | null) =>
+  status === "sent"
+    ? " The invite email is on its way."
+    : status === "skipped"
+      ? " (Email not sent here: no RESEND_API_KEY, or a test address.)"
+      : status === "failed"
+        ? " The email didn’t go out: use Resend."
+        : "";
+
+/**
+ * Invite (owner, 10 Oct 2026): full name, email (where the invite goes), optional phone, and the
+ * access they'll have. We email "Accept invite"; they sign in with that email and join this
+ * company. 14 days to accept. WhatsApp sharing is offered only when a phone is given.
+ */
 export async function inviteMember(_: Result | undefined, form: FormData): Promise<Result> {
   const { db, current } = await requireAccount("/portal/team");
-  if (!isManager(current)) return fail("Only the owner and admins can invite people.");
+  if (!isManager(current)) return fail("Your access doesn’t include managing the team.");
   const name = String(form.get("name") ?? "")
     .trim()
     .slice(0, 120);
-  const via = form.get("via") === "email" ? "email" : "whatsapp";
-  const role = form.get("role") === "admin" ? "admin" : "member";
-  if (name.length < 2) return fail("Add their name.");
-  let email: string | null = null;
-  let phone: string | null = null;
-  if (via === "email") {
-    email = String(form.get("email") ?? "")
-      .trim()
-      .toLowerCase();
-    if (!isEmail(email)) return fail("That email looks incomplete.");
-  } else {
-    const p = readPhone(form);
-    if (!p.phone) return fail("Add their WhatsApp number, with the right country code.");
-    phone = p.phone;
-  }
-  const { error } = await db
+  if (name.length < 2) return fail("Add their full name.");
+  const email = String(form.get("email") ?? "")
+    .trim()
+    .toLowerCase();
+  if (!isEmail(email)) return fail("Add their email: it’s where the invite goes.");
+  const p = readPhone(form);
+  if (p.bad) return fail("That phone number doesn’t look right. Check it and the country code.");
+  const a = readAccess(form);
+  if (!a) return fail("Choose their access.");
+  const { data, error } = await db
     .from("account_invites")
-    .insert({ account_id: current.account.id, name, email, phone_e164: phone, role });
+    .insert({
+      account_id: current.account.id,
+      name,
+      email,
+      phone_e164: p.phone,
+      role: a.role,
+      access: a.role === "member" ? a.access : {},
+    })
+    .select("id")
+    .single();
   if (error)
     return error.code === "23505" ? fail("They’re already invited.") : dbError(error, "invite");
-  const text = inviteText(current.account.name, name, !!phone, originFrom(await headers()));
+  const status = await emailTeamInvite(data.id);
+  const text = inviteText(current.account.name, name, false, originFrom(await headers()));
   revalidatePath("/portal", "layout");
   return {
     ok: true,
-    notice: `${name} is invited. They join as soon as they sign in with that ${phone ? "number" : "email"}.`,
+    notice: `${name} is invited.${sentNote(status)} They join when they sign in with ${email}.`,
     invite: {
       name,
       text,
-      ...inviteLinks(text, `You’re invited to ${current.account.name} on Milkywayy`, {
-        phone,
-        email,
-      }),
+      ...(p.phone
+        ? inviteLinks(text, `You’re invited to ${current.account.name} on Milkywayy`, {
+            phone: p.phone,
+          })
+        : {}),
     },
   };
+}
+
+/** Send the invite email again; it works for 14 more days. */
+export async function resendInvite(id: string): Promise<Result> {
+  const { db, current } = await requireAccount("/portal/team");
+  if (!isManager(current)) return fail("Your access doesn’t include managing the team.");
+  const { data, error } = await db
+    .from("account_invites")
+    .update({ expires_at: new Date(Date.now() + 14 * 864e5).toISOString() })
+    .eq("id", id)
+    .is("accepted_at", null)
+    .select("id, email");
+  if (error) return dbError(error, "resend invite");
+  if (!data?.length) return fail("That invite is gone already.");
+  if (!data[0].email) return fail("Add an email to send this invite.");
+  const status = await emailTeamInvite(id);
+  revalidatePath("/portal/team");
+  return status === "sent" || status === "skipped"
+    ? { ok: true, notice: `Invite sent again. It works for 14 more days.${sentNote(status)}` }
+    : fail("The email didn’t go out. Try again in a minute.");
+}
+
+/** Older phone-only invites: add the email the invite goes to, then send it. */
+export async function setInviteEmail(id: string, raw: string): Promise<Result> {
+  const { db, current } = await requireAccount("/portal/team");
+  if (!isManager(current)) return fail("Your access doesn’t include managing the team.");
+  const email = raw.trim().toLowerCase();
+  if (!isEmail(email)) return fail("That email looks incomplete.");
+  const { data, error } = await db
+    .from("account_invites")
+    .update({ email, expires_at: new Date(Date.now() + 14 * 864e5).toISOString() })
+    .eq("id", id)
+    .is("accepted_at", null)
+    .select("id");
+  if (error)
+    return error.code === "23505"
+      ? fail("That email is already invited.")
+      : dbError(error, "invite email");
+  if (!data?.length) return fail("That invite is gone already.");
+  const status = await emailTeamInvite(id);
+  revalidatePath("/portal/team");
+  return { ok: true, notice: `Email added.${sentNote(status)}` };
+}
+
+/** A member's access: Admin (everything), Finance, Production or Custom. Owners are untouchable. */
+export async function setMemberAccess(userId: string, form: FormData): Promise<Result> {
+  const { db, user, current } = await requireAccount("/portal/team");
+  if (!isManager(current)) return fail("Your access doesn’t include managing the team.");
+  if (userId === user.id) return fail("You can’t change your own access.");
+  const a = readAccess(form);
+  if (!a) return fail("Choose their access.");
+  const { data, error } = await db
+    .from("account_members")
+    .update({ role: a.role, access: a.role === "member" ? a.access : {} })
+    .eq("account_id", current.account.id)
+    .eq("user_id", userId)
+    .neq("role", "owner")
+    .select("user_id");
+  if (error) return dbError(error, "access");
+  return data?.length ? done("Access updated.") : fail("You can’t change that person’s access.");
 }
 
 export async function cancelInvite(id: string): Promise<Result> {
@@ -116,19 +230,6 @@ export async function cancelInvite(id: string): Promise<Result> {
   const { data, error } = await db.from("account_invites").delete().eq("id", id).select("id");
   if (error) return dbError(error, "cancel invite");
   return data?.length ? done("Invite cancelled.") : fail("That invite is gone already.");
-}
-
-export async function changeRole(userId: string, role: string): Promise<Result> {
-  const { db, current } = await requireAccount("/portal/team");
-  if (role !== "admin" && role !== "member") return fail("Choose Admin or Member.");
-  const { data, error } = await db
-    .from("account_members")
-    .update({ role })
-    .eq("account_id", current.account.id)
-    .eq("user_id", userId)
-    .select("user_id");
-  if (error) return dbError(error, "role");
-  return data?.length ? done("Role updated.") : fail("You can’t change that person’s role.");
 }
 
 export async function removeMember(userId: string): Promise<Result> {

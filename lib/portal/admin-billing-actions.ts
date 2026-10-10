@@ -534,3 +534,19 @@ export async function removeLineItem(project: string, id: string): Promise<Billi
     return fail(e);
   }
 }
+
+/** Turnaround texts shown in the clients' request forms (owner, 10 Oct 2026). */
+export type TurnaroundRow = { key: string; label: string; text: string };
+export async function saveTurnaround(items: Record<string, string>): Promise<BillingResult> {
+  for (const [, v] of Object.entries(items))
+    if (!v.trim() || v.trim().length > 120)
+      return { ok: false, error: "Each turnaround needs a short text (120 characters at most)." };
+  try {
+    const rpc = await portalAdminAction();
+    await rpc("portal_admin_set_turnaround", { p_items: items });
+    refresh("/admin/billing/settings");
+    return { ok: true, notice: "Saved. Clients see it in the request forms." };
+  } catch (e) {
+    return fail(e);
+  }
+}
