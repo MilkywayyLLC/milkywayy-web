@@ -73,7 +73,7 @@ test("Owner: Billing is invoices only (unpaid first), no running totals; Home sh
   await expect(inv).toContainText("Overdue"); // due 10 days ago, still marked Due
   await expect(inv).toContainText("AED 750");
   // Unpaid first, then paid.
-  await expect(inv.getByRole("group")).toHaveText([/INV-OLD/, /INV-PAID/]);
+  await expect(inv.getByRole("group", { name: /^Invoice / })).toHaveText([/INV-OLD/, /INV-PAID/]);
   // No running month: not the total, not the line items in progress.
   await expect(page.getByTestId("payg")).toHaveCount(0);
   await expect(page.getByText(/so far/i)).toHaveCount(0);

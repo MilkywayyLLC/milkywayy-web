@@ -6,7 +6,7 @@ import { MediaOpen } from "@/components/media/MediaOpen";
 import { Tabs } from "@/components/ui/Tabs";
 import { kindOf, photosOf, type MediaKind } from "@/lib/media-config";
 import type { Shown } from "@/lib/playable";
-import { inTab, TAB_LABEL, type GalleryTab } from "@/lib/used-on";
+import { inTab, TAB_LABEL, type GalleryTab } from "@/lib/gallery-tabs";
 
 export type { GalleryTab };
 

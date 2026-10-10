@@ -1,31 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import Link from "next/link";
 import type { PropertyPricing } from "@/content/types";
 import {
   EVENING,
-  TWILIGHT_QTYS,
   blankProperty,
   buildMessage,
   dateLabel,
-  isLocked,
   locationText,
   needsEvening,
   reducer,
-  servicePrices,
   servicesText,
   subtotal,
   title,
   total,
-  twilightNote,
-  twilightTable,
   validate,
   type Action,
   type BookingErrors,
   type BookingProperty,
   type BookingState,
-  type Toggle,
 } from "@/lib/booking";
 import { bookingWindow, firstBookable, type BookingWindow } from "@/lib/booking/dates";
 import { MENU_OPEN_EVENT } from "@/lib/events";
@@ -39,15 +33,8 @@ import { Field } from "@/components/ui/Field";
 import { CloseIcon } from "@/components/ui/Icons";
 import { Seg } from "@/components/ui/Seg";
 import { MonthCalendar } from "./MonthCalendar";
-import {
-  BookingSummary,
-  ChoiceCard,
-  ChoiceCards,
-  Group,
-  InclusionsStrip,
-  PropertyCard,
-  SubPanel,
-} from "./parts";
+import { BookingSummary, Group, PropertyCard } from "./parts";
+import { PropertyOptions } from "./PropertyOptions";
 
 export interface BookingBuilderProps {
   pricing: PropertyPricing;
@@ -459,22 +446,6 @@ type Me = {
   attaches: boolean;
 };
 
-type Panel = "photo" | "video";
-const LIGHTING_SHORT = { day: "day", night: "night", dayNight: "day + night" } as const;
-
-/** One-line summaries shown on selected service cards. */
-function photoSummary(p: BookingProperty) {
-  return p.twilight ? `+ ${p.twilightQty} twilight` : "No add-ons";
-}
-function videoSummary(p: BookingProperty) {
-  const parts: string[] = [];
-  if (p.short) parts.push("Short-form");
-  if (p.long) {
-    parts.push(p.type === "commercial" ? "Long-form" : `Long-form (${LIGHTING_SHORT[p.lighting]})`);
-  }
-  return parts.join(" + ");
-}
-
 function PropertyEditor({
   p,
   index,
@@ -597,230 +568,5 @@ function PropertyEditor({
         </span>
       </div>
     </PropertyCard>
-  );
-}
-
-/**
- * Property type, size and services with their prices: the same builder on the website and in the
- * portal's "Book a shoot" (owner, 10 Oct 2026). Prices come from the global property price list.
- */
-export function PropertyOptions({
-  p,
-  pricing,
-  dispatch,
-  errors,
-}: {
-  p: BookingProperty;
-  pricing: PropertyPricing;
-  dispatch: React.Dispatch<Action>;
-  errors?: Partial<Record<"services" | "area" | "building", string>>;
-}) {
-  const prices = servicePrices(p, pricing);
-  const tier = p.type === "commercial" ? pricing.commercial.tiers[p.size] : null;
-  const longLocked = isLocked(p, "long", pricing);
-  const tourLocked = isLocked(p, "tour", pricing);
-  const notIn = tier ? `Not in ${tier.label}` : "";
-  const twi = twilightTable(p, pricing);
-  const update = (patch: Partial<BookingProperty>) => dispatch({ type: "update", id: p.id, patch });
-  const tog = (key: Toggle) => dispatch({ type: "toggle", id: p.id, key });
-  const fid = (f: string) => `bk-${p.id}-${f}`;
-  const selected = { photo: p.photo, video: p.video, tour: p.tour };
-  /** Service cards toggle (owner, 3 Oct 2026): click to select, click again to deselect. A
-   *  selected service shows its options under it; deselecting resets them (lib/booking). */
-  const pick = (key: Panel | "tour") => tog(key);
-  const isOpen = (key: Panel) => selected[key];
-  const short = (lg: string, sm: string): ReactNode =>
-    lg === sm ? (
-      lg
-    ) : (
-      <>
-        <span className="lbl-lg">{lg}</span>
-        <span className="lbl-sm">{sm}</span>
-      </>
-    );
-  return (
-    <>
-      <Group label="Property type">
-        <Seg
-          label="Property type"
-          className="grid"
-          value={p.type}
-          onChange={(v) => dispatch({ type: "setType", id: p.id, value: v })}
-          options={[
-            {
-              value: "apartment",
-              label: pricing.apartment.label,
-              ariaLabel: pricing.apartment.label,
-            },
-            {
-              value: "villa",
-              label: short(pricing.villa.label, pricing.villa.label.split(" /")[0]),
-              ariaLabel: pricing.villa.label,
-            },
-            {
-              value: "commercial",
-              label: pricing.commercial.label,
-              ariaLabel: pricing.commercial.label,
-            },
-          ]}
-        />
-      </Group>
-
-      {p.type === "commercial" ? (
-        <Group label="Property scale">
-          <ChoiceCards cols={4}>
-            {pricing.commercial.tiers.map((t, i) => (
-              <ChoiceCard
-                key={t.label}
-                title={t.label}
-                sub={t.description}
-                badge={t.popular ? "Most popular" : undefined}
-                pressed={p.size === i}
-                onClick={() => update({ size: i })}
-              />
-            ))}
-          </ChoiceCards>
-          {tier && (
-            <InclusionsStrip
-              items={[
-                { label: "Photos", value: tier.includes.photos },
-                { label: "Reel", value: tier.includes.reel },
-                { label: "Walkthrough", value: tier.includes.walkthrough },
-                { label: "360 tour", value: tier.includes.tourHotspots },
-              ]}
-            />
-          )}
-        </Group>
-      ) : (
-        <Group label="Size">
-          <Seg
-            label="Size"
-            className="sizes grid"
-            value={p.size}
-            onChange={(v) => update({ size: v })}
-            options={pricing[p.type].sizes.map((s, i) => ({ value: i, label: s.label }))}
-          />
-        </Group>
-      )}
-
-      <Group label="Services">
-        <div className="svc-grid">
-          <ChoiceCard
-            col={0}
-            id={fid("photo")}
-            controls={p.photo ? fid("photo-opts") : undefined}
-            expanded={isOpen("photo")}
-            title="Photography"
-            sub={`Delivery ${pricing.delivery.photo}`}
-            price={formatAED(prices.photo)}
-            summary={photoSummary(p)}
-            pressed={p.photo}
-            onClick={() => pick("photo")}
-          />
-          {p.photo && (
-            <SubPanel id={fid("photo-opts")} pointTo={0} label="Photography options">
-              <ChoiceCards cols={2}>
-                <ChoiceCard
-                  title="Twilight images"
-                  sub="Edited from your daylight shots"
-                  price={`From ${formatAED(twi[TWILIGHT_QTYS[0]])}`}
-                  pressed={p.twilight}
-                  onClick={() => tog("twilight")}
-                />
-              </ChoiceCards>
-              {p.twilight && (
-                <>
-                  <Seg
-                    label="Twilight images"
-                    value={p.twilightQty}
-                    onChange={(v) => update({ twilightQty: v })}
-                    options={TWILIGHT_QTYS.map((q) => ({
-                      value: q,
-                      label: `${q} images · ${formatAED(twi[q])}`,
-                    }))}
-                  />
-                  <p className="note">{twilightNote(p, pricing)}</p>
-                </>
-              )}
-            </SubPanel>
-          )}
-          <ChoiceCard
-            col={1}
-            controls={p.video ? fid("video-opts") : undefined}
-            expanded={isOpen("video")}
-            title="Videography"
-            sub="Short-form, long-form or both"
-            price={
-              p.video
-                ? formatAED(
-                    (p.short ? prices.short : 0) +
-                      (p.long && prices.long !== null ? prices.long : 0),
-                  )
-                : `From ${formatAED(prices.short)}`
-            }
-            summary={videoSummary(p)}
-            pressed={p.video}
-            onClick={() => pick("video")}
-          />
-          {p.video && (
-            <SubPanel id={fid("video-opts")} pointTo={1} label="Videography options">
-              <span className="gl">Video format</span>
-              <ChoiceCards cols={2}>
-                <ChoiceCard
-                  title="Short-form"
-                  sub={`Social media reels · ${pricing.delivery.short}`}
-                  price={formatAED(prices.short)}
-                  pressed={p.short}
-                  onClick={() => tog("short")}
-                />
-                <ChoiceCard
-                  title="Long-form"
-                  sub={`YouTube walkthrough · ${pricing.delivery.long}`}
-                  price={longLocked ? notIn : formatAED(prices.long ?? 0)}
-                  pressed={p.long}
-                  disabled={longLocked}
-                  onClick={() => tog("long")}
-                />
-              </ChoiceCards>
-              {p.long && p.type !== "commercial" && (
-                <>
-                  <span className="gl">Lighting</span>
-                  <Seg
-                    label="Lighting"
-                    className="grid"
-                    value={p.lighting}
-                    onChange={(v) => update({ lighting: v })}
-                    options={[
-                      { value: "day", label: "Daylight" },
-                      { value: "night", label: "Night" },
-                      { value: "dayNight", label: "Day + night" },
-                    ]}
-                  />
-                  {p.lighting !== "day" && (
-                    <p className="note">
-                      Night footage needs an evening slot, so we&apos;ll book you in the evening.
-                    </p>
-                  )}
-                </>
-              )}
-            </SubPanel>
-          )}
-          <ChoiceCard
-            col={2}
-            title="360° tour"
-            sub={`Delivery ${pricing.delivery.tour}`}
-            price={tourLocked ? notIn : formatAED(prices.tour ?? 0)}
-            pressed={p.tour}
-            disabled={tourLocked}
-            onClick={() => pick("tour")}
-          />
-        </div>
-        {errors?.services && (
-          <p className="bk-err" role="alert">
-            {errors.services}
-          </p>
-        )}
-      </Group>
-    </>
   );
 }

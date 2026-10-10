@@ -57,16 +57,24 @@ test("upload an invoice PDF; the client sees it in Billing and downloads it; the
     .getByLabel("Due date")
     .fill(new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10));
   await form.getByLabel("Amount", { exact: true }).fill("1250");
-  await form.getByRole("button", { name: "Add invoice" }).click();
+  await form.getByRole("button", { name: "Add as a draft" }).click();
   await expect(form.getByRole("status")).toContainText("Choose the invoice PDF");
   await form
     .getByLabel("PDF")
     .setInputFiles({ name: `${NUMBER}.pdf`, mimeType: "application/pdf", buffer: PDF });
-  await form.getByRole("button", { name: "Add invoice" }).click();
-  await expect(form.getByRole("status")).toContainText(`Invoice ${NUMBER} added`, {
+  await form.getByRole("button", { name: "Add as a draft" }).click();
+  await expect(form.getByRole("status")).toContainText("Draft added to the invoice queue", {
     timeout: 30_000,
   });
-  await expect(page.getByTestId("invoices")).toContainText(`${NUMBER} · ${NAME} · AED 1,250`);
+  // Drafts first (owner, 10 Oct 2026): it waits in the queue until approved.
+  const queued = page.getByTestId("queue-row").filter({ hasText: NAME });
+  await expect(queued).toContainText("Draft");
+  await expect(queued).toContainText("AED 1,250");
+  await queued.click();
+  await page.getByRole("button", { name: "Approve & publish now" }).click();
+  await expect(page.getByTestId("invoice-status")).toHaveText("Published");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${NUMBER} · ${NAME}`);
+  const invoiceUrl = page.url();
 
   // The client downloads it.
   const ctx = await browser.newContext({ storageState: undefined });
@@ -83,20 +91,19 @@ test("upload an invoice PDF; the client sees it in Billing and downloads it; the
   expect(dl.suggestedFilename()).toBe(`${NUMBER}.pdf`);
 
   // Paid (the client is emailed "Payment received"; test addresses are skipped and logged).
-  await page.reload();
-  const row = page.getByTestId("invoices").locator(".ad-row", { hasText: NUMBER });
-  await row.getByLabel(`Status of ${NUMBER}`).selectOption("paid");
-  await expect(row.getByRole("status")).toContainText("Marked paid");
+  await page.goto(invoiceUrl);
+  await page.getByLabel(`Status of ${NUMBER}`).selectOption("paid");
+  await expect(page.getByRole("status").filter({ hasText: "Marked paid" })).toBeVisible();
   await p.reload();
   await expect(p.getByTestId("invoices")).toContainText("Paid");
   await ctx.close();
 
-  // Deleting it removes the PDF from storage too.
+  // Deleting it removes the PDF from storage too, and goes back to the queue.
   await page.reload();
-  const again = page.getByTestId("invoices").locator(".ad-row", { hasText: NUMBER });
-  await again.getByRole("button", { name: "Delete" }).click();
-  await again.getByRole("button", { name: "Really delete?" }).click();
-  await expect(page.getByTestId("invoices")).not.toContainText(NUMBER);
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Really delete?" }).click();
+  await expect(page).toHaveURL(/\/admin\/billing$/);
+  await expect(page.getByTestId("queue")).not.toContainText(NUMBER);
 });
 
 test("a private package, the client on it, and line items counting towards usage", async ({
@@ -189,7 +196,7 @@ test("suggestions (on by default, with minimums); a template in AED and USD; VAT
   await page.reload();
   await expect(set.getByLabel("IBAN")).toHaveValue("AE070331234567890123456");
   await expect(set.getByLabel("SWIFT")).toHaveValue("BOMLAEAD");
-  await expect(set.getByLabel(/VAT registered/)).not.toBeChecked();
+  await expect(set.getByRole("checkbox", { name: /VAT registered/ })).not.toBeChecked();
   await adminRpc("portal_admin_save_billing_settings", {
     p: { bank_account_name: "", bank_name: "", bank_iban: "", bank_swift: "" },
   });

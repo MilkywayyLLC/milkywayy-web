@@ -161,7 +161,7 @@ export function DraftEditor({ inv, vatOn }: { inv: DraftData; vatOn: boolean }) 
         </p>
       )}
       <div className="ad-inv-lines" role="table" aria-label="Lines">
-        <div role="row" className="ad-inv-line head">
+        <div role="row" className="ad-inv-line ad-th">
           <span role="columnheader">Description</span>
           <span role="columnheader">Qty</span>
           <span role="columnheader">Unit price</span>

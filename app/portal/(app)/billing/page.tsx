@@ -291,16 +291,17 @@ export default async function Billing({
                       )}
                     </span>
                   </div>
-                  {i.lines?.length ? (
+                  {/* A ledger invoice for a frozen month shows that month's statement; drafts carry their own lines. */}
+                  {statement ? (
                     <details className="pt-breakdown">
                       <summary>Breakdown</summary>
-                      <InvoiceLines inv={i} />
+                      <Breakdown s={statement} />
                     </details>
                   ) : (
-                    statement && (
+                    !!i.lines?.length && (
                       <details className="pt-breakdown">
                         <summary>Breakdown</summary>
-                        <Breakdown s={statement} />
+                        <InvoiceLines inv={i} />
                       </details>
                     )
                   )}

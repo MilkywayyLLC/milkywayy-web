@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { BillingNav } from "@/components/admin/BillingNav";
-import { NewInvoiceForm } from "@/components/admin/BillingTools";
+import {
+  NewInvoiceForm,
+  PaymentReview,
+  type InvoiceRowData,
+} from "@/components/admin/BillingTools";
 import { GenerateDrafts } from "@/components/admin/InvoiceDraft";
 import { portalAdminPage, portalAdminReady, type ClientListRow } from "@/lib/portal/admin";
 import {
@@ -42,6 +46,7 @@ const FILTERS = [
   ["due", "Published"],
   ["overdue", "Overdue"],
   ["paid", "Paid"],
+  ["submitted", "Payment submitted"],
 ] as const;
 
 /**
@@ -59,15 +64,24 @@ export default async function InvoiceQueue({
   const rpc = await portalAdminPage();
   const f = await searchParams;
   const status = FILTERS.some(([k]) => k === f.status) ? (f.status ?? "") : "";
+  // "Payment submitted": the transfers to confirm, each with its proof (as before the queue).
+  const submitted = status === "submitted";
   let rows: QueueRow[] = [];
   let clients: ClientListRow[] = [];
+  let proofs: InvoiceRowData[] = [];
   let error = "";
   if (!portalAdminReady()) error = "PORTAL_ADMIN_SECRET isn’t set for this deployment.";
   else
-    [rows, clients] = await Promise.all([
-      rpc<QueueRow[]>("portal_admin_invoice_queue", { p_status: status || null }),
+    [rows, clients, proofs] = await Promise.all([
+      rpc<QueueRow[]>("portal_admin_invoice_queue", {
+        p_status: submitted ? null : status || null,
+      }),
       rpc<ClientListRow[]>("portal_admin_clients", {}),
+      submitted
+        ? rpc<InvoiceRowData[]>("portal_admin_invoices", { p_account: null, p_status: "submitted" })
+        : Promise.resolve([]),
     ]);
+  if (submitted) rows = rows.filter((r) => proofs.some((i) => i.id === r.id));
   const list = clients
     .map((c) => ({ id: c.id, name: c.name, currency: c.currency }))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -112,8 +126,16 @@ export default async function InvoiceQueue({
             </Link>
           ))}
         </nav>
+        {proofs.map((i) => (
+          <div key={i.id} className="ad-row ad-lead" style={{ display: "grid", gap: 6 }}>
+            <span className="ad-row-title">
+              {i.number} · {i.account_name} · {money(i.currency, i.amount)}
+            </span>
+            <PaymentReview inv={i} />
+          </div>
+        ))}
         <div className="ad-queue" role="table" aria-label="Invoices" data-testid="queue">
-          <div role="row" className="ad-queue-row head">
+          <div role="row" className="ad-queue-row ad-th">
             <span role="columnheader">Client</span>
             <span role="columnheader">Category</span>
             <span role="columnheader">Period</span>

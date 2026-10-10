@@ -9,7 +9,7 @@ import { SampleLabel } from "@/components/ui/SampleLabel";
 import { Hl, SectionHead } from "@/components/ui/Section";
 import { getCaseStudies, getPortfolio, getSiteSettings } from "@/lib/data";
 import { withPlayback } from "@/lib/playable";
-import { WORK_TABS } from "@/lib/used-on";
+import { WORK_TABS } from "@/lib/gallery-tabs";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { pageMetadata } from "@/lib/seo/meta";
 import { PageLd } from "@/components/seo/JsonLd";

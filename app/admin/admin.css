@@ -445,6 +445,7 @@
   .ad input[type="url"],
   .ad input[type="search"],
   .ad input[type="tel"],
+  .ad input[type="date"],
   .ad input:not([type]),
   .ad textarea,
   .ad select {
@@ -1034,7 +1035,9 @@
 }
 .ad-web summary::-webkit-details-marker {
   display: none;
+}
 
+@layer components {
   /* ---------- retainers, bookings, inquiries, invoice queue (owner, 10 Oct 2026) ---------- */
   .ad-row-between {
     display: flex;
@@ -1105,6 +1108,7 @@
   /* Invoice queue: a table on desktop, stacked cards on phones. */
   .ad-queue {
     display: grid;
+    align-content: start;
   }
   .ad-queue-row {
     display: grid;
@@ -1120,8 +1124,9 @@
     min-width: 0;
     display: grid;
     gap: 2px;
+    justify-items: start;
   }
-  .ad-queue-row.head {
+  .ad-queue-row.ad-th {
     font: 500 11px/1 var(--font-mono);
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -1134,7 +1139,7 @@
     .ad-queue-row {
       grid-template-columns: 1fr auto;
     }
-    .ad-queue-row.head {
+    .ad-queue-row.ad-th {
       display: none;
     }
     .ad-queue-row > span:nth-child(2),
@@ -1154,7 +1159,7 @@
     gap: 8px;
     align-items: center;
   }
-  .ad-inv-line.head {
+  .ad-inv-line.ad-th {
     font: 500 11px/1 var(--font-mono);
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -1167,7 +1172,7 @@
     .ad-inv-line > :first-child {
       grid-column: 1 / -1;
     }
-    .ad-inv-line.head {
+    .ad-inv-line.ad-th {
       display: none;
     }
   }
@@ -1204,12 +1209,21 @@
     grid-column: 2 / -1;
   }
   @media (max-width: 760px) {
+    /* Phones: type and ✕ on top, then the description, quantity + price, and the price switch. */
     .ad-log-row {
-      grid-template-columns: 1fr 1fr 44px;
+      grid-template-columns: 90px minmax(0, 1fr) 44px;
+    }
+    .ad-log-row > :nth-child(1) {
+      grid-column: 1 / 3;
     }
     .ad-log-row > :nth-child(2),
+    .ad-log-row > :nth-child(5),
     .ad-log-reason {
       grid-column: 1 / -1;
+    }
+    .ad-log-row > :nth-child(6) {
+      grid-column: 3;
+      grid-row: 1;
     }
   }
   .ad-rate-row {

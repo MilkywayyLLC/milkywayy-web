@@ -147,6 +147,7 @@ test("Billing: the budget card and activity; past 100% the bar is full and the w
   );
   await signInUI(page, owner);
   await page.goto("/portal/billing");
+  await expect(page.locator(".pt-plan")).toHaveText("Monthly package");
   const card = page.getByTestId("budget");
   await expect(card.getByTestId("budget-total")).toHaveText("AED 3,200");
   await expect(card).toContainText("This month: AED 3,200");

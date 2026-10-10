@@ -636,6 +636,7 @@
   .pt input[type="number"],
   .pt input[type="search"],
   .pt input[type="date"],
+  .pt input:not([type]),
   .pt textarea,
   .pt select:not(.pt-mock select) {
     width: 100%;

@@ -29,7 +29,10 @@ export default async function ShootCalendar({
   const first = new Date(Date.UTC(y, mo - 1, 1));
   const start = new Date(first);
   start.setUTCDate(1 - ((first.getUTCDay() + 6) % 7)); // Monday on or before the 1st
-  const days = Array.from({ length: 42 }, (_, i) => {
+  // Whole weeks only: five rows for most months, six when the month needs them.
+  const lead = (first.getUTCDay() + 6) % 7;
+  const inMonthDays = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  const days = Array.from({ length: Math.ceil((lead + inMonthDays) / 7) * 7 }, (_, i) => {
     const d = new Date(start);
     d.setUTCDate(start.getUTCDate() + i);
     return d;

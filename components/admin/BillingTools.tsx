@@ -446,7 +446,8 @@ export function InvoiceActions({ inv }: { inv: InvoiceRowData }) {
             ? start(async () => {
                 const res = await deleteInvoice(inv.id);
                 setR(res);
-                if (res.ok) router.refresh();
+                // The invoice page is gone with it: back to the queue.
+                if (res.ok) router.push("/admin/billing");
               })
             : setSure(true)
         }

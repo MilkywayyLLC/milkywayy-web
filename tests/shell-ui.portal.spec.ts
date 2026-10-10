@@ -57,6 +57,7 @@ test("tabs: every service and Listings for everyone; Billing and Team for the ow
     "Editing",
     "Avatars",
     "Listings",
+    "Inquiries",
     "Billing",
     "Team",
     "Contacts",
@@ -125,6 +126,7 @@ test("a member sees fewer tabs, no prices, and switches accounts", async ({ page
     "Editing",
     "Avatars",
     "Listings",
+    "Inquiries",
     "Contacts",
     "Settings",
   ]);
@@ -257,6 +259,7 @@ test.describe("phone", () => {
     const more = page.getByRole("dialog", { name: "More" });
     await expect(more.getByRole("link")).toHaveText([
       "Listings",
+      "Inquiries",
       "Billing",
       "Team",
       "Contacts",

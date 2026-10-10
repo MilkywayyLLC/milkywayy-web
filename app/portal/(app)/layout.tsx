@@ -21,9 +21,11 @@ export default async function PortalApp({ children }: { children: React.ReactNod
   const pkg = (plan as { mode?: string; package?: { name: string } | null } | null) ?? null;
   const planLabel = !manager
     ? ""
-    : pkg?.mode === "package" && pkg.package
-      ? `Monthly: ${pkg.package.name}`
-      : "Pay as you go";
+    : pkg?.mode === "budget"
+      ? "Monthly package"
+      : pkg?.mode === "package" && pkg.package
+        ? `Monthly: ${pkg.package.name}`
+        : "Pay as you go";
   const tabs = portalTabs(current);
   const name = profile?.full_name || contactOf(user);
   return (

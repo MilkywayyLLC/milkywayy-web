@@ -2,6 +2,9 @@ import type { PortfolioItem, PortfolioPlacement } from "@/content/types";
 import { realFirst } from "@/lib/data/sample";
 import { kindOf } from "@/lib/media-config";
 import { oneFormat } from "@/lib/media";
+import { inTab, TAB_LABEL, WORK_TABS, type GalleryTab } from "@/lib/gallery-tabs";
+
+export { inTab, TAB_LABEL, WORK_TABS, type GalleryTab } from "@/lib/gallery-tabs";
 
 /**
  * "Used on" in the admin (owner, 7 Oct 2026): the exact places a portfolio item appears right
@@ -14,24 +17,8 @@ export type UsageItem = Pick<
   "id" | "format" | "category" | "placements" | "placementOrder" | "sortOrder" | "sample"
 > & { published: boolean };
 
-/** Gallery tab names, as the site shows them (components/blocks/FormatGallery). */
-export const TAB_LABEL = {
-  photo: "Photos",
-  reel: "Reels",
-  "long-form": "Long-form",
-  "360": "360° tours",
-  "ai-avatar": "AI avatars",
-} as const;
-export type GalleryTab = keyof typeof TAB_LABEL;
-
-export const inTab = (tab: GalleryTab, i: Pick<PortfolioItem, "category" | "format">) =>
-  tab === "ai-avatar" ? i.category === "ai-avatar" : i.category !== "ai-avatar" && i.format === tab;
-
 const tabOf = (i: Pick<PortfolioItem, "category" | "format">, tabs: GalleryTab[]) =>
   tabs.find((t) => inTab(t, i));
-
-/** /work shows every format, 360 tours included. */
-export const WORK_TABS: GalleryTab[] = ["photo", "reel", "long-form", "360", "ai-avatar"];
 
 /** What a placement shows, in order (getPortfolio). */
 function shown<T extends UsageItem>(all: T[], p: PortfolioPlacement): T[] {

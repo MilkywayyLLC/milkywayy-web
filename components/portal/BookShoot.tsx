@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useReducer, useState, useTransition } from "react";
-import { PropertyOptions } from "@/components/booking/BookingBuilder";
+import { PropertyOptions } from "@/components/booking/PropertyOptions";
 import type { PropertyPricing } from "@/content/types";
 import { blankProperty, reducer, type Action, type BookingProperty } from "@/lib/booking";
 import { bookShoot } from "@/lib/portal/book-actions";
@@ -17,7 +17,7 @@ import {
   type Rates,
   type Slot,
 } from "@/lib/portal/booking";
-import { money } from "@/lib/portal/billing";
+import { dateLabel, money } from "@/lib/portal/billing";
 import { PlacesField } from "./PlacesField";
 
 type Kind = BookingService["service"];
@@ -187,7 +187,8 @@ export function BookShoot({
       ) : (
         <section className="pt-card pt-form" aria-label="What we shoot">
           <p className="pt-meta" style={{ margin: 0 }}>
-            {date} · {SLOTS.find(([k]) => k === slot)?.[1]} · {loc.address}{" "}
+            {dateLabel(date, { weekday: "short", year: undefined })} ·{" "}
+            {SLOTS.find(([k]) => k === slot)?.[1]} · {loc.address}{" "}
             <button type="button" className="pt-link-btn" onClick={() => setStep(1)}>
               Change
             </button>
