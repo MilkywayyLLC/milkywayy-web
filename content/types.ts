@@ -118,6 +118,12 @@ export interface PortfolioItem extends Publishable {
   /** Position within a placement (mirrors portfolio_placements.sort_order); falls back to sortOrder. */
   placementOrder?: Partial<Record<PortfolioPlacement, number>>;
   featured?: boolean;
+  /** Media library fields (lib/placements); worked out from category/format when missing. */
+  mediaType?: "photo" | "video" | "avatar" | "tour";
+  orientation?: "9:16" | "16:9";
+  categoryId?: string;
+  showOnWork?: boolean;
+  createdAt?: string;
 }
 
 /* ---------- before / after ---------- */

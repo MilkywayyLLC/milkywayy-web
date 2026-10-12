@@ -18,6 +18,7 @@ import type {
   Stat,
   TwilightQty,
 } from "@/content/types";
+import { libFields as lib } from "@/lib/placements";
 
 // Supabase returns untyped JSON rows; each mapper reads the columns it knows.
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -116,6 +117,7 @@ export const portfolioItem = (r: Row): PortfolioItem => {
     featured: !!r.featured,
     placements: placements.map((p) => p.placement),
     placementOrder: Object.fromEntries(placements.map((p) => [p.placement, p.sort_order])),
+    ...lib(r),
   };
 };
 

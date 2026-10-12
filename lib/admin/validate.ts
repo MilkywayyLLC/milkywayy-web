@@ -330,6 +330,16 @@ export function validate(
         else set(f, v);
         break;
       }
+      case "category": {
+        const v = typeof raw === "string" ? raw.trim() : "";
+        const name = v.startsWith("new:") ? v.slice(4).trim() : v;
+        if (!name) {
+          if (f.required) fail("Choose a category or type a new one.");
+          set(f, null);
+        } else if (name.length > 40) fail("Keep it under 40 characters.");
+        else set(f, v.startsWith("new:") ? `new:${name}` : v);
+        break;
+      }
       case "portfolio-picker": {
         const v = (Array.isArray(raw) ? raw : []).map(String).filter(Boolean);
         if (v.length > 6) fail("Up to 6 related items.");

@@ -1,5 +1,17 @@
 import type { Tag } from "@/lib/data/tags";
+import type { Media } from "@/content/types";
 import { MEDIA } from "@/lib/media-config";
+import {
+  ALL_PLACEMENTS,
+  detectOrientation,
+  legacyFields,
+  MEDIA_TYPES,
+  ORIENTATIONS,
+  placementByKey,
+  typeLabel,
+  type MediaType,
+  type Orientation,
+} from "@/lib/placements";
 import { VIDEO_HINT } from "@/lib/video";
 import type { Field, Option } from "./fields";
 
@@ -53,37 +65,6 @@ export const PAGES: Option[] = [
 ];
 export const pagePath = (page: string) => (page === "home" ? "/" : `/${page}`);
 
-export const PLACEMENTS: Option[] = [
-  { value: "home-reels", label: "Home · reel strip (not on the page any more)" },
-  { value: "home-row-production", label: "Home · Production row" },
-  { value: "home-row-post", label: "Home · Post-production row" },
-  { value: "home-row-avatars", label: "Home · AI avatars row" },
-  { value: "production-hero", label: "Production · hero frames" },
-  { value: "property-hero", label: "Property shoots · hero (3 reels)" },
-  { value: "property-gallery-photo", label: "Property shoots · gallery: Photo" },
-  { value: "property-gallery-video", label: "Property shoots · gallery: Video" },
-  { value: "property-gallery-360", label: "Property shoots · gallery: 360" },
-  { value: "post-hero-reels", label: "Post-production hero (3 reels)" },
-  { value: "post-hero", label: "Post-production · gallery extras" },
-  { value: "post-service-cards", label: "Post-production · service cards" },
-  { value: "avatars-multilingual", label: "AI avatars: multilingual demo (16:9 video)" },
-  { value: "work", label: "Work page" },
-];
-const placementPage = (p?: string) =>
-  !p
-    ? "/work"
-    : p.startsWith("home")
-      ? "/"
-      : p.startsWith("production")
-        ? "/production"
-        : p.startsWith("property")
-          ? "/property-shoots"
-          : p.startsWith("post")
-            ? "/post-production"
-            : p.startsWith("avatars")
-              ? "/ai-avatars"
-              : "/work";
-
 const CATEGORIES: Option[] = [
   { value: "property", label: "Property" },
   { value: "brand", label: "Brand" },
@@ -102,13 +83,6 @@ const list = (v: unknown) => (Array.isArray(v) ? (v as string[]) : []);
 const label = (opts: Option[], v: unknown) =>
   opts.find((o) => o.value === v)?.label ?? String(v ?? "");
 
-const FORMATS: Option[] = [
-  { value: "photo", label: `Photo set · ${MEDIA.photo.ratioLabel}` },
-  { value: "reel", label: `Reel · ${MEDIA.reel.ratioLabel}` },
-  { value: "long-form", label: `Long-form · ${MEDIA["long-form"].ratioLabel}` },
-  { value: "360", label: `360 tour · ${MEDIA["360"].ratioLabel} cover` },
-];
-
 /** Portfolio format from an image's shape: wide → long-form 16:9, tall → reel 9:16, else photo 3:2. */
 export function formatFromSize(width: number, height: number) {
   const r = width / height;
@@ -124,37 +98,83 @@ export const SECTIONS: Section[] = [
     tags: ["portfolio", "case-studies"],
     idPrefix: "item",
     defaults: {
+      media_type: "photo",
       category: "property",
-      format: "reel",
-      media: { alt: "", source: "instagram" },
+      category_id: "property",
+      format: "photo",
+      media: { alt: "" },
       featured: false,
       sample: false,
+      show_on_work: true,
       placements: [],
     },
     title_of: (r) => String(r.title ?? ""),
-    meta_of: (r) => `${label(CATEGORIES, r.category)} · ${label(FORMATS, r.format)}`,
+    meta_of: (r) =>
+      [
+        typeLabel(String(r.media_type ?? "")),
+        r.media_type === "video" || r.media_type === "avatar" ? r.orientation : "",
+        r.category_label,
+      ]
+        .filter(Boolean)
+        .join(" · "),
     thumb: "media",
+    // "Where it shows" is worked out from lib/placements (rules + pins), set on each row by the
+    // list page as `placements`. Order lives on Admin → Placements now, so no per-value order.
     filter: {
       label: "Where it shows",
-      options: PLACEMENTS,
+      options: ALL_PLACEMENTS.map((p) => ({
+        value: p.key,
+        label: `${p.page.split(",")[0]} · ${p.title}`,
+      })),
       match: (r, v) => list(r.placements).includes(v),
-      orderPerValue: true,
     },
-    preview: (r) => placementPage(list(r?.placements)[0]),
-    // The format is chosen first and decides the fields (owner, 7 Oct 2026); an upload no longer
-    // changes it. A cover far from the format's ratio gets a warning instead.
+    preview: (r) => placementByKey(list(r?.placements)[0] ?? "work")?.path ?? "/work",
+    // Media type first (owner, 24 Oct 2026): it decides the fields. Orientation is preselected
+    // from the file or link (derive below) for the owner to confirm.
+    derive: (name, next, prev) => {
+      const type = (name === "media_type" ? next : prev.media_type) as MediaType;
+      let orientation = (name === "orientation" ? next : prev.orientation) as
+        Orientation | undefined;
+      const patch: Partial<Row> = {};
+      if (name === "media" && (type === "video" || type === "avatar")) {
+        const seen = detectOrientation(next as Media);
+        if (seen && seen !== orientation) orientation = patch.orientation = seen;
+      }
+      if (name === "media_type" && (type === "video" || type === "avatar") && !orientation)
+        orientation = patch.orientation = "9:16";
+      const legacy = legacyFields(
+        type,
+        type === "video" || type === "avatar" ? orientation : undefined,
+        String((name === "category_id" ? next : prev.category_id) ?? ""),
+      );
+      return { ...patch, ...legacy };
+    },
     fields: [
+      {
+        name: "media_type",
+        kind: "select",
+        label: "Media type",
+        required: true,
+        options: MEDIA_TYPES,
+        help: "Choose this first: it decides the fields below and the ratio the site uses.",
+      },
+      {
+        name: "orientation",
+        kind: "select",
+        label: "Orientation",
+        options: ORIENTATIONS,
+        when: (r) => r.media_type === "video" || r.media_type === "avatar",
+        help: "Preselected from the file or link once it’s added. Short form is 9:16, long form 16:9. Confirm it.",
+      },
+      {
+        name: "category_id",
+        kind: "category",
+        label: "Category",
+        required: true,
+        help: "Pick one, or type a new name to save it as a category for future uploads.",
+      },
       { name: "title", kind: "text", label: "Title", required: true, max: 80 },
       { name: "client", kind: "text", label: "Client (optional)", max: 80 },
-      { name: "category", kind: "select", label: "Category", required: true, options: CATEGORIES },
-      {
-        name: "format",
-        kind: "select",
-        label: "Format",
-        required: true,
-        options: FORMATS,
-        help: "Choose this first: it decides the fields below and how the item shows on the site.",
-      },
       { name: "media", kind: "portfolio-media", label: "Media", required: true },
       {
         name: "duration",
@@ -162,11 +182,16 @@ export const SECTIONS: Section[] = [
         label: "Duration label",
         placeholder: "0:30",
         max: 8,
-        when: (r) => r.format === "reel" || r.format === "long-form",
+        when: (r) => r.media_type === "video" || r.media_type === "avatar",
       },
       { name: "tag", kind: "text", label: "Tag in the frame", placeholder: "Marina 2BR", max: 28 },
       { name: "meta", kind: "text", label: "Caption", placeholder: "Property", max: 28 },
-      { name: "placements", kind: "multi", label: "Where it shows", options: PLACEMENTS },
+      {
+        name: "show_on_work",
+        kind: "toggle",
+        label: "Show on Work page",
+        help: "Off keeps it in the library to pin elsewhere (Admin → Placements).",
+      },
       { name: "featured", kind: "toggle", label: "Featured" },
       sample,
     ],

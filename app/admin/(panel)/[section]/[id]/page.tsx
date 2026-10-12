@@ -3,6 +3,7 @@ import { ItemEditor } from "@/components/admin/ItemEditor";
 import { requireAdmin } from "@/lib/admin/auth";
 import { adminCtx, getRow, listRows } from "@/lib/admin/data";
 import { sectionByKey, type Row } from "@/lib/admin/sections";
+import { legacyFields, placementByKey } from "@/lib/placements";
 
 type Props = {
   params: Promise<{ section: string; id: string }>;
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function EditItem({ params, searchParams }: Props) {
   const { section: key, id } = await params;
-  const { show, created } = await searchParams;
+  const { show, created, place } = await searchParams;
   const section = sectionByKey(key);
   if (!section) notFound();
   const { db, role } = await requireAdmin();
@@ -29,6 +30,23 @@ export default async function EditItem({ params, searchParams }: Props) {
     if (show && section.filter?.options.some((o) => o.value === show)) {
       if (section.fields.some((f) => f.name === "page")) preset.page = show;
       if (section.fields.some((f) => f.name === "placements")) preset.placements = [show];
+    }
+    // "Upload new" from Admin → Placements: that section's type, orientation and category, and
+    // the slot the new item takes once saved ("<section>:<slot>").
+    const def = key === "portfolio" ? placementByKey(String(place ?? "").split(":")[0]) : undefined;
+    if (def && def.source !== "before-after") {
+      const type = def.rule.types[0];
+      const orientation =
+        type === "video" || type === "avatar" ? (def.rule.orientation ?? "9:16") : undefined;
+      const category = def.rule.categories?.[0] ?? "property";
+      Object.assign(preset, {
+        media_type: type,
+        orientation: orientation ?? null,
+        category_id: category,
+        ...legacyFields(type, orientation, category),
+        show_on_work: true,
+        _place: place,
+      });
     }
     row = { id: "", published: false, sort_order: 0, ...section.defaults, ...preset } as Row;
   } else {

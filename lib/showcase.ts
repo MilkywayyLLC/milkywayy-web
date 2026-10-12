@@ -10,6 +10,21 @@ export function showcasePhotos(items: PortfolioItem[]): ShowcasePhoto[] {
 }
 
 /**
+ * The frames' photos from Placements → Dashboard preview frames (lib/placements); while that
+ * section is manual with nothing pinned, the newest real photos as before.
+ */
+export function placedShowcase(
+  placed: { legacy: boolean; items: PortfolioItem[] },
+  all: PortfolioItem[],
+): ShowcasePhoto[] {
+  if (placed.legacy) return showcasePhotos(all);
+  return placed.items
+    .filter((p) => p.media.src)
+    .slice(0, 9)
+    .map((p) => ({ src: p.media.src!, alt: p.media.alt }));
+}
+
+/**
  * The dashboard showcase per page (static frames, 13 Oct 2026). Each step is one still frame of a
  * real portal view; copy mirrors the portal. Icons are the portal's own (components/portal/Icon).
  */

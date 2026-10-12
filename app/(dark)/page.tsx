@@ -24,7 +24,9 @@ import {
   getOtherPricing,
   getPortfolio,
   getPropertyPricing,
+  getPlaced,
   getReviews,
+  getShowreel,
   getSiteSettings,
   getStats,
   showsProofStrip,
@@ -33,7 +35,7 @@ import { formatNumber, formatUSD } from "@/lib/format";
 import { lowestShootPrice } from "@/lib/pricing";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { pageMetadata } from "@/lib/seo/meta";
-import { SHOWCASE, showcasePhotos } from "@/lib/showcase";
+import { placedShowcase, SHOWCASE } from "@/lib/showcase";
 import { PageLd } from "@/components/seo/JsonLd";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -111,11 +113,12 @@ export default async function HomePage() {
     getOtherPricing(),
     getPortfolio(),
   ]);
+  const [showreel, showcase] = await Promise.all([getShowreel(), getPlaced("showcase-photos")]);
 
   const shootsFrom = lowestShootPrice(property);
   const photoRate = other.postProduction.rates.find((r) => r.key === "photo");
   const whatsapp = pageWhatsappLink("Home", site.whatsapp.number);
-  const showreelIsSample = !site.showreel.video;
+  const showreelIsSample = !showreel.video;
 
   return (
     <>
@@ -148,16 +151,16 @@ export default async function HomePage() {
               </div>
               <div className="hero-media-col">
                 <MediaFrame
-                  media={site.showreel}
+                  media={showreel}
                   kind="showreel"
                   topLeft="4K · 25P"
                   timecode={<Timecode start="00:14:08" />}
                   tag="Showreel 2026"
-                  tagRight={site.showreel.duration}
+                  tagRight={showreel.duration}
                   priority
                   sizes="(max-width: 900px) 100vw, 640px"
                 >
-                  <LiteVideo video={site.showreel.video} title="Milkywayy showreel" />
+                  <LiteVideo video={showreel.video} title="Milkywayy showreel" />
                 </MediaFrame>
                 {showreelIsSample && <SampleLabel>Placeholder · showreel coming</SampleLabel>}
               </div>
@@ -257,7 +260,10 @@ export default async function HomePage() {
                 </p>
               }
             />
-            <DashboardShowcase features={SHOWCASE.home} photos={showcasePhotos(portfolio)} />
+            <DashboardShowcase
+              features={SHOWCASE.home}
+              photos={placedShowcase(showcase, portfolio)}
+            />
           </div>
         </section>
 

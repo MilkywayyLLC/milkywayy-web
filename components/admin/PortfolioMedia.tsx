@@ -10,7 +10,7 @@ import type { ReelMatch } from "@/lib/instagram";
 import { instagramShortcode, isInstagramUrl, OUR_INSTAGRAM } from "@/lib/instagram-link";
 import { isFileVideo, kindOf, MEDIA } from "@/lib/media-config";
 import { TOUR_HINT, tourEmbed } from "@/lib/tours";
-import { usedOn, type UsageItem } from "@/lib/used-on";
+import { libFields, whereItShows } from "@/lib/placements";
 import { mb } from "@/lib/video-compress";
 import { ImageField } from "./ImageField";
 import { FocalCrop, imageWarnings, MediaFacts, VideoUpload, Warnings } from "./MediaParts";
@@ -18,20 +18,19 @@ import { FocalCrop, imageWarnings, MediaFacts, VideoUpload, Warnings } from "./M
 type Photo = NonNullable<Media["photos"]>[number];
 const MAX_PHOTOS = 60;
 
-/** The item as "Used on" sees it: the editor's current values, placed like the saved one. */
+/** Where the item shows, worked out from the editor's current values (lib/placements). */
 function usage(row: Record<string, unknown>, ctx: AdminCtx): string[] {
-  const saved = ctx.portfolio.find((p) => p.id === row.id);
-  const me: UsageItem = {
-    id: String(row.id ?? "new"),
-    format: (row.format as PortfolioItem["format"]) ?? "reel",
-    category: (row.category as PortfolioItem["category"]) ?? "property",
-    placements: (Array.isArray(row.placements) ? row.placements : []) as UsageItem["placements"],
-    placementOrder: saved?.placementOrder ?? {},
-    sortOrder: saved?.sortOrder ?? Number(row.sort_order ?? 1e6),
-    sample: !!row.sample,
+  const id = String(row.id || "new");
+  const saved = ctx.portfolio.find((p) => p.id === id);
+  const me = {
+    ...(saved ?? { sortOrder: Number(row.sort_order ?? 1e6), createdAt: new Date().toISOString() }),
+    ...libFields({ ...row, created_at: saved?.createdAt ?? new Date().toISOString() }),
+    id,
     published: true,
+    sortOrder: saved?.sortOrder ?? Number(row.sort_order ?? 1e6),
   };
-  return usedOn(me, ctx.portfolio);
+  const all = [...ctx.portfolio.filter((p) => p.id !== id), me];
+  return whereItShows(id, all, ctx.placements).map((w) => w.label);
 }
 
 /**
@@ -78,6 +77,7 @@ export function PortfolioMedia({
           kind="long-form"
           usedOn={used}
           video
+          upload={row.category === "ai-avatar" ? "avatars" : "reels"}
           required
         />
       ) : (

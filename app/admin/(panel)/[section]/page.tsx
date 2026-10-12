@@ -4,7 +4,9 @@ import { Suspense } from "react";
 import { ListView } from "@/components/admin/ListView";
 import { ProofStrip } from "@/components/admin/ProofStrip";
 import { requireAdmin } from "@/lib/admin/auth";
-import { listRows } from "@/lib/admin/data";
+import { CategoryManager } from "@/components/admin/CategoryManager";
+import { libRow, listCategories, listRows, placementState } from "@/lib/admin/data";
+import { whereItShows } from "@/lib/placements";
 import { sectionByKey } from "@/lib/admin/sections";
 import type { Media } from "@/content/types";
 import { instagramStatus, reelMedia } from "@/lib/instagram";
@@ -19,7 +21,9 @@ export default async function SectionList({ params }: { params: Promise<{ sectio
   const section = sectionByKey(key);
   if (!section) notFound();
   const { db } = await requireAdmin();
-  const rows = await listRows(db, section);
+  let rows = await listRows(db, section);
+  // "Where it shows", worked out from lib/placements (rules + pins), as tags on each row.
+  const tags: Record<string, string[]> = {};
 
   let extra: React.ReactNode = null;
   if (key === "clients") {
@@ -58,24 +62,49 @@ export default async function SectionList({ params }: { params: Promise<{ sectio
             "Instagram reel unavailable: the site shows its cover with “View on Instagram ↗”.";
       }),
     );
-    const ig = await instagramStatus();
+    const [categories, ig] = await Promise.all([listCategories(db), instagramStatus()]);
+    const lib = rows.map(libRow);
+    const st = await placementState(db, lib);
+    const catLabel = new Map(categories.map((c) => [c.value, c.label]));
+    rows = rows.map((r) => {
+      const where = whereItShows(r.id, lib, st);
+      tags[r.id] = where.map((w) => w.label);
+      return {
+        ...r,
+        placements: where.map((w) => w.key),
+        category_label: catLabel.get(String(r.category_id ?? "")) ?? "",
+      };
+    });
     extra = (
-      <div className="ad-card" data-testid="instagram-status">
-        <h2 className="ad-h2">Instagram</h2>
-        <p className="ad-small">
-          {!ig.connected
-            ? "Not connected. Reels from Instagram show their cover with “View on Instagram ↗” until INSTAGRAM_ACCESS_TOKEN is set (LAUNCH.md → Instagram)."
-            : ig.account.ok
-              ? `Connected as @${ig.account.username}. The token renews itself every week${ig.expiresAt ? `; current one valid until ${new Date(ig.expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : ""}.`
-              : `Connected, but Instagram refused the token: ${ig.account.error} Replace INSTAGRAM_ACCESS_TOKEN in Vercel.`}
-        </p>
-      </div>
+      <>
+        <div className="ad-card">
+          <h2 className="ad-h2">Placements</h2>
+          <p className="ad-small ad-muted">
+            Each item shows wherever its type, orientation and category match a section, newest
+            first, unless something is pinned there.{" "}
+            {!st.migrated &&
+              "The placements update hasn’t been applied to this database yet, so the old placements are shown. "}
+            <Link href="/admin/placements">Open Placements →</Link>
+          </p>
+        </div>
+        <CategoryManager categories={categories} disabled={!st.migrated} />
+        <div className="ad-card" data-testid="instagram-status">
+          <h2 className="ad-h2">Instagram</h2>
+          <p className="ad-small">
+            {!ig.connected
+              ? "Not connected. Reels from Instagram show their cover with “View on Instagram ↗” until INSTAGRAM_ACCESS_TOKEN is set (LAUNCH.md → Instagram)."
+              : ig.account.ok
+                ? `Connected as @${ig.account.username}. The token renews itself every week${ig.expiresAt ? `; current one valid until ${new Date(ig.expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : ""}.`
+                : `Connected, but Instagram refused the token: ${ig.account.error} Replace INSTAGRAM_ACCESS_TOKEN in Vercel.`}
+          </p>
+        </div>
+      </>
     );
   }
 
   return (
     <Suspense>
-      <ListView sectionKey={key} rows={rows} extra={extra} flags={flags} />
+      <ListView sectionKey={key} rows={rows} extra={extra} flags={flags} tags={tags} />
     </Suspense>
   );
 }

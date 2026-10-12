@@ -27,11 +27,14 @@ export function ListView({
   rows: initial,
   extra,
   flags = {},
+  tags = {},
 }: {
   sectionKey: string;
   rows: Row[];
   /** A warning per item id (e.g. an Instagram reel that can't play). */
   flags?: Record<string, string>;
+  /** Short labels per item id, shown as tags (e.g. the portfolio's "Where it shows"). */
+  tags?: Record<string, string[]>;
   /** Section-specific controls under the heading (e.g. proof-strip toggles on Clients). */
   extra?: ReactNode;
 }) {
@@ -249,6 +252,15 @@ export function ListView({
                 <div>
                   <div className="ad-row-title">{title}</div>
                   {section.meta_of && <div className="ad-row-meta">{section.meta_of(r)}</div>}
+                  {!!tags[r.id]?.length && (
+                    <div className="ad-tags" data-testid="row-tags">
+                      {tags[r.id].map((t) => (
+                        <span key={t} className="ad-tag">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {flags[r.id] && (
                     <div className="ad-row-flag" data-testid="row-flag">
                       {flags[r.id]}

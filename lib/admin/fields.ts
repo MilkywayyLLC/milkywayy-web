@@ -4,16 +4,19 @@
  * "whatsapp.number" or "postProduction.rates.0.amount".
  */
 import type { MediaKind } from "@/lib/media-config";
-import type { UsageItem } from "@/lib/used-on";
 
 export type Option = { value: string; label: string };
 
 /** What the editor knows about the rest of the content, for "Used on" (owner, 7 Oct 2026). */
 export type AdminCtx = {
-  /** Every portfolio item, light (lib/used-on). */
-  portfolio: UsageItem[];
+  /** Every portfolio item, light (lib/admin/data libRow). */
+  portfolio: import("./data").LibRow[];
   /** Published AI avatar example ids, in site order. */
   avatarOrder: string[];
+  /** Media library categories (media_categories), for the category combobox. */
+  categories: Option[];
+  /** Pins and modes, for "Where it shows" (lib/placements). */
+  placements: import("@/lib/placements").PlacementState;
 };
 export type UsedOn = (row: Record<string, unknown>, ctx: AdminCtx) => string[];
 /** Where uploaded video files go in R2 (site/<folder>/…). */
@@ -65,6 +68,11 @@ export type Field = Base &
     | { kind: "versions"; media: MediaKind; upload?: VideoFolder }
     /** The portfolio item's media, by format: photo set, reel, long-form video or 360 tour. */
     | { kind: "portfolio-media" }
+    /**
+     * A media library category id: pick one, or type a new name ("new:<name>"), which saving
+     * adds to media_categories for future uploads.
+     */
+    | { kind: "category" }
     /** Portfolio item ids, picked from a list. */
     | { kind: "portfolio-picker" }
   );

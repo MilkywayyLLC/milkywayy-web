@@ -14,6 +14,13 @@ import { chatNumberProblem } from "@/lib/whatsapp";
 import { checkPricing, pricingChanges, pricingRows } from "./pricing";
 import { sectionByKey, type Row } from "./sections";
 import { validate, type Errors } from "./validate";
+import {
+  legacyFields,
+  placementByKey,
+  ratioFor,
+  type MediaType,
+  type Orientation,
+} from "@/lib/placements";
 
 /**
  * Every admin write. Each one runs as the signed-in admin through their own Supabase session, so
@@ -85,21 +92,27 @@ export async function saveItem(
     const section = sectionByKey(sectionKey);
     if (!section) return { ok: false, error: "Unknown section." };
     const { value, errors } = validate(section.fields, input, { isOwner: role === "owner" });
+    const before = id ? await getRow(db, section, id) : null;
+    if (section.key === "portfolio") Object.assign(errors, libraryChecks(value, before));
     if (Object.keys(errors).length) return { ok: false, errors };
-    if (section.key === "portfolio") await confirmReel(value);
+    if (section.key === "portfolio") {
+      await confirmReel(value);
+      value.category_id = await categoryId(db, value.category_id as string);
+    }
 
     // Only the editable columns (first segment of each field name); never id, order or extras.
-    const columns = [...new Set(section.fields.map((f) => f.name.split(".")[0]))].filter(
-      (c) => !(section.key === "portfolio" && c === "placements"),
-    );
+    const columns = [...new Set(section.fields.map((f) => f.name.split(".")[0]))];
+    // The old category/format columns stay in step with the media type (rollback safety).
+    if (section.key === "portfolio") columns.push("category", "format");
     const row: Record<string, unknown> = Object.fromEntries(columns.map((c) => [c, value[c]]));
     if (publish !== undefined) row.published = publish;
 
     let itemId = id;
-    const before = id ? await getRow(db, section, id) : null;
     if (id) {
       if (!before) return { ok: false, error: "This item no longer exists." };
-      const { data, error } = await db.from(section.table).update(row).eq("id", id).select("id");
+      const { data, error } = await write(section.table, row, (r) =>
+        db.from(section.table).update(r).eq("id", id).select("id"),
+      );
       if (error) return { ok: false, error: friendly(error) };
       if (!data?.length) return { ok: false, error: "You don't have permission to change this." };
     } else {
@@ -110,17 +123,27 @@ export async function saveItem(
         .order("sort_order", { ascending: false })
         .limit(1)
         .maybeSingle();
-      const { error } = await db.from(section.table).insert({
-        ...row,
-        id: itemId,
-        published: publish ?? false,
-        sort_order: (last?.sort_order ?? 0) + 1,
-      });
+      const { error } = await write(section.table, row, (r) =>
+        db.from(section.table).insert({
+          ...r,
+          id: itemId,
+          published: publish ?? false,
+          sort_order: (last?.sort_order ?? 0) + 1,
+        }),
+      );
       if (error) return { ok: false, error: friendly(error) };
     }
 
-    if (section.key === "portfolio")
-      await savePlacements(db, itemId!, value.placements as string[]);
+    if (section.key === "portfolio") {
+      await syncWorkPlacement(db, itemId!, value.show_on_work !== false);
+      // "Upload new" from Admin → Placements: the new item takes that slot.
+      const place = typeof input._place === "string" ? input._place : "";
+      const [placeKey, slot] = place.split(":");
+      if (!id && placementByKey(placeKey) && Number.isInteger(Number(slot)))
+        await db
+          .from("placement_pins")
+          .upsert({ section: placeKey, slot: Number(slot), item_id: itemId });
+    }
 
     const title = section.title_of({ ...row, id: itemId! } as Row);
     const changes = before ? diff(section.fields, before, value) : [];
@@ -144,29 +167,89 @@ export async function saveItem(
   }
 }
 
-/** Placements are their own rows; new ones go to the end of that placement. */
-async function savePlacements(db: SupabaseClient, itemId: string, wanted: string[]) {
-  const { data: current } = await db
-    .from("portfolio_placements")
-    .select("placement")
-    .eq("item_id", itemId);
-  const have = (current ?? []).map((r) => r.placement as string);
-  const drop = have.filter((p) => !wanted.includes(p));
-  if (drop.length)
-    await db.from("portfolio_placements").delete().eq("item_id", itemId).in("placement", drop);
-  for (const placement of wanted.filter((p) => !have.includes(p))) {
-    const { data: last } = await db
-      .from("portfolio_placements")
-      .select("sort_order")
-      .eq("placement", placement)
-      .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const { error } = await db
-      .from("portfolio_placements")
-      .insert({ item_id: itemId, placement, sort_order: (last?.sort_order ?? 0) + 1 });
-    if (error) throw new Error(friendly(error));
+/** The new media library columns before the migration has run: save without them. */
+const NEW_COLUMNS = ["media_type", "orientation", "category_id", "show_on_work"];
+async function write<R extends { error: { code?: string; message: string } | null }>(
+  table: string,
+  row: Record<string, unknown>,
+  run: (row: Record<string, unknown>) => PromiseLike<R>,
+): Promise<R> {
+  const r = await run(row);
+  if (table !== "portfolio_items" || r.error?.code !== "PGRST204") return r;
+  return run(Object.fromEntries(Object.entries(row).filter(([k]) => !NEW_COLUMNS.includes(k))));
+}
+
+/**
+ * Media library rules (owner, 24 Oct 2026): videos and AI avatar videos need an orientation, and
+ * a new or changed cover must already be the ratio the site shows it at (photo 3:2, short 9:16,
+ * long 16:9, 360 cover 16:9; 15% leeway, as the crop preview allows).
+ */
+function libraryChecks(value: Record<string, unknown>, before: Row | null): Errors {
+  const out: Errors = {};
+  const type = value.media_type as MediaType;
+  const moving = type === "video" || type === "avatar";
+  if (!moving) value.orientation = null;
+  else if (value.orientation !== "9:16" && value.orientation !== "16:9")
+    out.orientation = "Choose 9:16 (short form) or 16:9 (long form).";
+  Object.assign(
+    value,
+    legacyFields(
+      type,
+      moving ? (value.orientation as Orientation) : undefined,
+      String(value.category_id ?? "").replace(/^new:/, ""),
+    ),
+  );
+  const m = value.media as Media | undefined;
+  const old = before?.media as Media | undefined;
+  if (m?.src && m.width && m.height && m.src !== old?.src) {
+    const ratio = ratioFor(type, value.orientation as Orientation | undefined);
+    const [w, h] = ratio.split(":").map(Number);
+    if (Math.abs(m.width / m.height / (w / h) - 1) > 0.15)
+      out.media = `The cover must be ${ratio} to fit the site (this one is ${m.width}×${m.height}). Crop it to ${ratio} and upload it again.`;
   }
+  return out;
+}
+
+/** A typed-in category ("new:<name>") is saved for future uploads; returns its id. */
+async function categoryId(db: SupabaseClient, v: string | null) {
+  if (!v?.startsWith("new:")) return v;
+  const label = v.slice(4).trim();
+  const id =
+    label
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || newId("cat");
+  const { data: same } = await db
+    .from("media_categories")
+    .select("id")
+    .ilike("label", label)
+    .maybeSingle();
+  if (same) return same.id as string;
+  const { error } = await db.from("media_categories").insert({ id, label, sort_order: 100 });
+  if (error && error.code !== "23505") throw new Error(friendly(error));
+  return id;
+}
+
+/** The old "work" placement row follows "Show on Work page" (readable for a rollback). */
+async function syncWorkPlacement(db: SupabaseClient, itemId: string, on: boolean) {
+  if (!on) {
+    await db.from("portfolio_placements").delete().eq("item_id", itemId).eq("placement", "work");
+    return;
+  }
+  const { data: last } = await db
+    .from("portfolio_placements")
+    .select("sort_order")
+    .eq("placement", "work")
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  await db
+    .from("portfolio_placements")
+    .upsert(
+      { item_id: itemId, placement: "work", sort_order: (last?.sort_order ?? 0) + 1 },
+      { onConflict: "item_id,placement", ignoreDuplicates: true },
+    );
 }
 
 export async function setPublished(

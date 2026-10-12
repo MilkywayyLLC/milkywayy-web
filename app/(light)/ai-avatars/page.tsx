@@ -17,7 +17,14 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { SampleLabel } from "@/components/ui/SampleLabel";
 import { Hl, SectionHead } from "@/components/ui/Section";
-import { getAvatarHero, getAvatars, getFaqs, getPortfolio, getSiteSettings } from "@/lib/data";
+import {
+  getAvatarHero,
+  getAvatars,
+  getFaqs,
+  getPlaced,
+  getPortfolio,
+  getSiteSettings,
+} from "@/lib/data";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { pageMetadata } from "@/lib/seo/meta";
 import { PageLd } from "@/components/seo/JsonLd";
@@ -60,25 +67,35 @@ const USES = [
 ];
 
 export default async function AiAvatarsPage() {
-  const [hero, avatars, faqs, site, mlItems] = await Promise.all([
+  const [hero, avatars, faqs, site, mlItems, carousel] = await Promise.all([
     getAvatarHero(),
     getAvatars(),
     getFaqs("ai-avatars"),
     getSiteSettings(),
     getPortfolio("avatars-multilingual"),
+    getPlaced("avatars-carousel"),
   ]);
   // Multilingual: one 16:9 demo from the admin placement (13 Oct 2026). The avatars' language
   // versions stay in the admin, unused here.
   const [ml] = await withPlayback(mlItems.slice(0, 1));
   const whatsapp = pageWhatsappLink("AI avatars", site.whatsapp.number);
   // The carousel plays hosted files inline; a linked clip shows its poster.
-  const deck = avatars.map((a) => ({
-    id: a.id,
-    name: a.name,
-    industry: a.niche.split("·")[0].trim(),
-    poster: a.poster,
-    src: isFileVideo(a.clip) ? fileVideoUrl(a.clip!) : undefined,
-  }));
+  // From Placements → Avatar carousel; the AI avatars list while that section has no pins.
+  const deck = carousel.legacy
+    ? avatars.map((a) => ({
+        id: a.id,
+        name: a.name,
+        industry: a.niche.split("·")[0].trim(),
+        poster: a.poster,
+        src: isFileVideo(a.clip) ? fileVideoUrl(a.clip!) : undefined,
+      }))
+    : carousel.items.map((p) => ({
+        id: p.id,
+        name: p.title,
+        industry: (p.meta ?? p.client ?? "").split("·")[0].trim(),
+        poster: p.media,
+        src: isFileVideo(p.media.video) ? fileVideoUrl(p.media.video!) : undefined,
+      }));
   // The Plans section is off the page (12 Oct 2026); its data and admin entries stay.
 
   return (
@@ -180,7 +197,12 @@ export default async function AiAvatarsPage() {
           </div>
           <div className="av-ml">
             <MediaFrame
-              media={ml?.media ?? { alt: "Multilingual AI avatar video demo: one AI presenter in several languages", placeholder: "adam" }}
+              media={
+                ml?.media ?? {
+                  alt: "Multilingual AI avatar video demo: one AI presenter in several languages",
+                  placeholder: "adam",
+                }
+              }
               kind="long-form"
               play={ml && !ml.play ? "icon" : undefined}
               sizes="(max-width: 760px) 100vw, 600px"

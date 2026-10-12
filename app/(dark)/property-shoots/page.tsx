@@ -14,10 +14,12 @@ import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Hl, SectionHead } from "@/components/ui/Section";
-import { SHOWCASE, showcasePhotos } from "@/lib/showcase";
+import { placedShowcase, SHOWCASE } from "@/lib/showcase";
 import {
   getBeforeAfter,
   getFaqs,
+  getPinnedPair,
+  getPlaced,
   getPortfolio,
   getPropertyPricing,
   getSiteSettings,
@@ -75,7 +77,9 @@ export default async function PropertyShootsPage() {
     getBeforeAfter(),
   ]);
   // Hero: a before/after slider with the first published Before/after pair (13 Oct 2026).
-  const pair = pairs.find((p) => p.published);
+  // Placements → Hero slots can pin one (lib/placements).
+  const [pinnedPair, showcase] = await Promise.all([getPinnedPair(), getPlaced("showcase-photos")]);
+  const pair = pinnedPair ?? pairs.find((p) => p.published);
   const whatsapp = pageWhatsappLink("Property shoots", site.whatsapp.number);
   const [heroItems, samples] = await Promise.all([
     withPlayback(oneFormat(hero).items),
@@ -195,7 +199,7 @@ export default async function PropertyShootsPage() {
           <DashboardShowcase
             features={SHOWCASE.property}
             pricing={pricing}
-            photos={showcasePhotos(photos)}
+            photos={placedShowcase(showcase, photos)}
           />
         </div>
       </section>

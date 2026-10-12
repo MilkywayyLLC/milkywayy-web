@@ -147,7 +147,8 @@ export const exportSize = (k: MediaKind) => `${MEDIA[k].width}×${MEDIA[k].heigh
 
 /** The format a portfolio item is shown in: AI avatar work is always 9:16, else its format. */
 export const kindOf = (i: Pick<PortfolioItem, "category" | "format">): MediaKind =>
-  i.category === "ai-avatar" ? "ai-avatar" : i.format;
+  // A long-form AI avatar video is 16:9 like any long-form (media library, 24 Oct 2026).
+  i.category === "ai-avatar" && i.format !== "long-form" ? "ai-avatar" : i.format;
 
 /** Ratio as a number (width / height). */
 export const ratioOf = (k: MediaKind) => {

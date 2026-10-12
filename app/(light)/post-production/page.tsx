@@ -11,7 +11,7 @@ import { Steps, type Step } from "@/components/blocks/Steps";
 import { FreeTestSection } from "@/components/forms/FreeTestSection";
 import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
 import { FormatGallery } from "@/components/blocks/FormatGallery";
-import { SHOWCASE, showcasePhotos } from "@/lib/showcase";
+import { placedShowcase, SHOWCASE } from "@/lib/showcase";
 import { HeroMedia } from "@/components/blocks/HeroMedia";
 import { postHeroReels } from "@/lib/post-hero";
 import { HeroTitle } from "@/components/type/HeroTitle";
@@ -27,6 +27,7 @@ import {
   getClients,
   getFaqs,
   getOtherPricing,
+  getPlaced,
   getPortfolio,
   getSiteSettings,
   getStats,
@@ -68,7 +69,10 @@ const STEPS: Step[] = [
 const PLACEHOLDER: Record<"photo" | "reel" | "long-form", Media> = {
   photo: { alt: "HDR real estate photo edit of an apartment interior", placeholder: "interior" },
   reel: { alt: "Short-form social media reel edited for a brand", placeholder: "night" },
-  "long-form": { alt: "Real estate walkthrough video edit of a villa at dusk", placeholder: "villa-dusk" },
+  "long-form": {
+    alt: "Real estate walkthrough video edit of a villa at dusk",
+    placeholder: "villa-dusk",
+  },
 };
 
 type Row = {
@@ -111,6 +115,7 @@ export default async function PostProductionPage() {
   ]);
   // Always three reels side by side, like Production (13 Oct 2026): the placement first, then
   // the latest published editing reels (lib/post-hero).
+  const showcase = await getPlaced("showcase-photos");
   const [hero, work] = await Promise.all([
     withPlayback(postHeroReels(heroReelMedia, allMedia)),
     // Everything this page shows, once each, for the format gallery.
@@ -313,7 +318,7 @@ export default async function PostProductionPage() {
               </p>
             }
           />
-          <DashboardShowcase features={SHOWCASE.post} photos={showcasePhotos(allMedia)} />
+          <DashboardShowcase features={SHOWCASE.post} photos={placedShowcase(showcase, allMedia)} />
         </div>
       </section>
 

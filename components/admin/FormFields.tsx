@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import type { Media } from "@/content/types";
 import { getPath, type AdminCtx, type Field, type Option } from "@/lib/admin/fields";
 import { isInstagramUrl } from "@/lib/instagram-link";
@@ -10,7 +10,12 @@ import { ImageField } from "./ImageField";
 import { VideoUpload } from "./MediaParts";
 import { PortfolioMedia } from "./PortfolioMedia";
 
-const NO_CTX: AdminCtx = { portfolio: [], avatarOrder: [] };
+const NO_CTX: AdminCtx = {
+  portfolio: [],
+  avatarOrder: [],
+  categories: [],
+  placements: { pins: [], modes: {} },
+};
 
 type Values = Record<string, unknown>;
 
@@ -390,6 +395,16 @@ function FieldInput({
         </select>
       );
       break;
+    case "category":
+      control = (
+        <CategoryInput
+          common={common}
+          value={String(value ?? "")}
+          options={ctx.categories}
+          onChange={onChange}
+        />
+      );
+      break;
     case "video": {
       const v = String(value ?? "");
       const file = isFileVideo(v);
@@ -468,5 +483,54 @@ function FieldInput({
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * Category combobox: the saved categories as suggestions; a name that isn't one of them becomes
+ * "new:<name>" and is saved as a category with the item (lib/admin/actions).
+ */
+function CategoryInput({
+  common,
+  value,
+  options,
+  onChange,
+}: {
+  common: Record<string, unknown>;
+  value: string;
+  options: Option[];
+  onChange: (v: unknown) => void;
+}) {
+  const listId = useId();
+  const [text, setText] = useState(
+    value.startsWith("new:")
+      ? value.slice(4)
+      : (options.find((o) => o.value === value)?.label ?? value),
+  );
+  return (
+    <>
+      <input
+        {...common}
+        type="text"
+        list={listId}
+        autoComplete="off"
+        maxLength={40}
+        value={text}
+        onChange={(e) => {
+          const t = e.target.value;
+          setText(t);
+          const hit = options.find((o) => o.label.toLowerCase() === t.trim().toLowerCase());
+          onChange(hit ? hit.value : t.trim() ? `new:${t.trim()}` : "");
+        }}
+      />
+      <datalist id={listId}>
+        {options.map((o) => (
+          <option key={o.value} value={o.label} />
+        ))}
+      </datalist>
+      {value.startsWith("new:") && (
+        <span className="ad-small ad-muted">New category: saved for future uploads.</span>
+      )}
+    </>
   );
 }
