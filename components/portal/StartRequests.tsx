@@ -40,7 +40,7 @@ const ONLY_LABEL: Record<Kind, string> = {
  * "Book media" (owner, 10 Oct 2026): one button opens "What do you need?" (Shoot, Editing, AI
  * avatar video); each continues into its own flow, with Back returning to the choice. With
  * `only`, the button opens that flow directly (the New buttons on Shoots, Editing and Avatars).
- * `?new=booking|edit|avatar` opens a flow on arrival (one launcher per page answers it, the
+ * `?new=booking|edit|avatar|shoot|choose` opens a flow (or the choice) on arrival (one launcher per page answers it, the
  * header's); `&draft=1` restores the saved draft straight away.
  */
 export function StartRequests({
@@ -64,11 +64,16 @@ export function StartRequests({
   const [picked, setOpen] = useState<{ kind: Kind | "choose"; resume: boolean } | null>(null);
   const [urlDone, setUrlDone] = useState(false);
   const allowed = TILES.filter((t) => cfg[t.perm] && (!only || t.kind === only));
-  const fromUrl = params.get("new") as Kind | null;
+  // The website links here: ?new=shoot (Property shoots) and ?new=choose (Home's "Book media").
+  const asked = params.get("new");
+  const fromUrl = (asked === "shoot" ? "booking" : asked) as Kind | "choose" | null;
   const open =
     picked ??
-    (autoOpen && !urlDone && fromUrl && allowed.some((t) => t.kind === fromUrl)
-      ? { kind: fromUrl as Kind | "choose", resume: params.get("draft") === "1" }
+    (autoOpen &&
+    !urlDone &&
+    fromUrl &&
+    (fromUrl === "choose" ? !only : allowed.some((t) => t.kind === fromUrl))
+      ? { kind: fromUrl, resume: params.get("draft") === "1" }
       : null);
   // Back to the choice: only when this launcher offers the choice.
   const back = only ? undefined : () => setOpen({ kind: "choose", resume: false });

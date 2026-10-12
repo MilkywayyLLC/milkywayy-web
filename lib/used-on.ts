@@ -49,7 +49,8 @@ export function usedOn(item: UsageItem, all: UsageItem[]): string[] {
 
   const prodHero = oneFormat(shown(pool, "production-hero") as unknown as PortfolioItem[]);
   if (prodHero.items.some((x) => x.id === item.id)) out.push("Production → Hero");
-  if (first("property-hero")) out.push("Property shoots → Hero");
+  const propHero = oneFormat(shown(pool, "property-hero") as unknown as PortfolioItem[]);
+  if (propHero.items.some((x) => x.id === item.id)) out.push("Property shoots → Hero");
 
   const propTabs: GalleryTab[] = ["photo", "reel", "long-form", "360"];
   const gallery = (
@@ -58,7 +59,12 @@ export function usedOn(item: UsageItem, all: UsageItem[]): string[] {
   const propTab = tabOf(item, propTabs);
   if (gallery && propTab) out.push(`Property shoots → Samples (${TAB_LABEL[propTab]})`);
 
-  const postHero = oneFormat(shown(pool, "post-hero") as unknown as PortfolioItem[]);
+  const postReels = shown(pool, "post-hero-reels")
+    .filter((x) => x.format === "reel")
+    .slice(0, 3);
+  const postHero = postReels.length
+    ? { items: postReels }
+    : oneFormat(shown(pool, "post-hero") as unknown as PortfolioItem[]);
   if (postHero.items.some((x) => x.id === item.id)) out.push("Post-production → Hero");
   const cards = shown(pool, "post-service-cards");
   for (const row of POST_ROWS)
@@ -66,7 +72,7 @@ export function usedOn(item: UsageItem, all: UsageItem[]): string[] {
       out.push(`Post-production → Services row (${row.label})`);
   const postTabs: GalleryTab[] = ["photo", "reel", "long-form", "ai-avatar"];
   const postTab = tabOf(item, postTabs);
-  if ((has("post-hero") || has("post-service-cards")) && postTab)
+  if ((has("post-hero") || has("post-hero-reels") || has("post-service-cards")) && postTab)
     out.push(`Post-production → Work we've delivered (${TAB_LABEL[postTab]})`);
 
   const workTab = tabOf(item, WORK_TABS);

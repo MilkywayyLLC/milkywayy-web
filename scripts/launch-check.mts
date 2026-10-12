@@ -62,6 +62,7 @@ const PLACEMENTS = [
   "property-gallery-photo",
   "property-gallery-video",
   "post-hero",
+  "post-hero-reels",
   "post-service-cards",
   "work",
 ];

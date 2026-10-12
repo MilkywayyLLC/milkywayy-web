@@ -264,6 +264,75 @@ function FieldInput({
     );
   }
 
+  if (f.kind === "versions") {
+    const list = (Array.isArray(value) ? value : []) as { language: string; clip: string }[];
+    const set = (i: number, k: "language" | "clip", v: string) =>
+      onChange(list.map((p, j) => (j === i ? { ...p, [k]: v } : p)));
+    return (
+      <fieldset className="ad-field" data-field={f.name}>
+        <legend className="ad-label">{f.label}</legend>
+        {f.help && <span className="ad-help">{f.help}</span>}
+        <div className="ad-pairs">
+          {list.map((p, i) => (
+            <div className="ad-pair" key={i} style={{ flexWrap: "wrap" }}>
+              <input
+                type="text"
+                list={`${id}-langs`}
+                aria-label={`Version ${i + 1} language`}
+                placeholder="Arabic"
+                value={p.language}
+                onChange={(e) => set(i, "language", e.target.value)}
+              />
+              {isFileVideo(p.clip) ? (
+                <span className="ad-small">Uploaded video.</span>
+              ) : (
+                <input
+                  type="url"
+                  inputMode="url"
+                  aria-label={`Version ${i + 1} video link`}
+                  placeholder={VIDEO_HINT}
+                  value={p.clip}
+                  onChange={(e) => set(i, "clip", e.target.value)}
+                />
+              )}
+              {f.upload && (
+                <VideoUpload
+                  kind={f.media}
+                  folder={f.upload}
+                  label={p.clip ? "Replace video" : "Upload video"}
+                  onDone={(ref) => set(i, "clip", ref)}
+                />
+              )}
+              <button
+                type="button"
+                className="ad-icon-btn"
+                aria-label={`Remove version ${i + 1}`}
+                onClick={() => onChange(list.filter((_, j) => j !== i))}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <datalist id={`${id}-langs`}>
+          {["English", "Arabic", "French", "Spanish", "German", "Russian", "Hindi", "Chinese"].map(
+            (l) => (
+              <option key={l} value={l} />
+            ),
+          )}
+        </datalist>
+        <button
+          type="button"
+          className="ad-btn ghost small"
+          onClick={() => onChange([...list, { language: "", clip: "" }])}
+        >
+          Add a language
+        </button>
+        {error && <span className="ad-err">{error}</span>}
+      </fieldset>
+    );
+  }
+
   let control;
   let help = f.help;
   switch (f.kind) {

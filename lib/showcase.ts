@@ -1,94 +1,103 @@
 import type { ShowcaseFeature } from "@/components/blocks/DashboardShowcase";
 
-/** The dashboard showcase per page (site-refine, 3 Oct 2026). Copy mirrors the real portal. */
+/**
+ * The dashboard showcase per page (rebuilt site-refine, 12 Oct 2026). Each step is a real portal
+ * view; copy mirrors the portal. Icons are the portal's own (components/portal/Icon).
+ */
 export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", ShowcaseFeature[]> = {
   home: [
     {
-      icon: "track",
-      title: "Track every job",
-      text: "See where each shoot, edit or video is, from request to delivery. No chasing on WhatsApp.",
-      screen: "track-shoot",
+      icon: "home",
+      title: "Your work, at a glance",
+      text: "Every shoot, edit and video with its real stage, from request to delivery.",
+      screen: "overview",
+    },
+    {
+      icon: "plus",
+      title: "Book media",
+      text: "A shoot, an edit or an AI avatar video, booked from one button.",
+      screen: "book-media",
     },
     {
       icon: "download",
-      title: "Download your files",
-      text: "Photos, reels and tours in one place, with Download all. Kept 12 months after completion.",
-      screen: "files",
+      title: "Your deliveries",
+      text: "Photos, reels, long-form and the 360 tour, with Download all.",
+      screen: "deliveries",
     },
     {
-      icon: "revision",
-      title: "Request a revision",
-      text: "Point to the photo number or the timecode and send it. Two rounds on every delivery.",
-      screen: "revision",
-    },
-    {
-      icon: "invoice",
-      title: "Invoices in one place",
-      text: "Every invoice and what it covered, ready to download as a PDF.",
-      screen: "invoices",
+      icon: "listings",
+      title: "A page to share",
+      text: "Turn a shoot into a listing page and send one link to buyers.",
+      screen: "share",
     },
   ],
   property: [
     {
-      icon: "track",
-      title: "Track your shoot",
-      text: "Requested, confirmed, shot, delivered: you see each step and get an email when it moves.",
-      screen: "track-shoot",
+      icon: "plus",
+      title: "Book media",
+      text: "Sign in with your email and press Book media, then Shoot.",
+      screen: "book-media",
+    },
+    {
+      icon: "shoots",
+      title: "Pick the services",
+      text: "Property type, size and services, priced as you choose.",
+      screen: "book-property",
+    },
+    {
+      icon: "pin",
+      title: "When and where",
+      text: "Pick a date and a slot, then drop the pin on the entrance.",
+      screen: "book-where",
+    },
+    {
+      icon: "check",
+      title: "Requested",
+      text: "Your request is in. No payment now.",
+      screen: "requested",
+    },
+    {
+      icon: "bell",
+      title: "Confirmed",
+      text: "We confirm the date and time, usually within the hour, and email you.",
+      screen: "confirmed",
     },
     {
       icon: "download",
-      title: "Download your files",
-      text: "Edited photos, reels and the 360 tour in one place, with Download all. Kept 12 months.",
-      screen: "files",
-    },
-    {
-      icon: "revision",
-      title: "Request a revision",
-      text: "Point to the photo or the timecode. Two rounds included, tracked in the same place.",
-      screen: "revision",
-    },
-    {
-      icon: "invoice",
-      title: "Invoices",
-      text: "Every shoot's invoice as a PDF, and a running total for the month.",
-      screen: "invoices",
+      title: "Delivered",
+      text: "Photos in 24 hours, videos in 48–72, in delivery cards with Download all.",
+      screen: "deliveries",
     },
   ],
   post: [
     {
-      icon: "upload",
-      title: "Upload a batch",
-      text: "Drop raw files straight in (up to 5 GB each) or paste a link. Uploads resume if you drop.",
-      screen: "upload",
+      icon: "editing",
+      title: "Edit my files",
+      text: "Pick the type and quantity, then paste links or upload your raw files.",
+      screen: "edit-request",
     },
     {
-      icon: "track",
-      title: "Track the edit",
-      text: "Submitted, files received, in editing, delivered: every batch shows where it is.",
-      screen: "track-edit",
+      icon: "board",
+      title: "Follow the edit",
+      text: "Submitted, files received, in editing, delivered: every batch shows its stage.",
+      screen: "edit-status",
     },
     {
-      icon: "download",
-      title: "Download your files",
-      text: "Each delivery in one place, earlier versions included, with Download all.",
-      screen: "files",
-    },
-    {
-      icon: "revision",
-      title: "Request a revision",
-      text: "Point to the file name or the timecode. Two rounds on every batch.",
-      screen: "revision",
+      icon: "chat",
+      title: "Download or ask for changes",
+      text: "Delivered files with Download all. Request a revision on any of them.",
+      screen: "edit-delivered",
     },
   ],
   avatars: [
     {
-      icon: "script",
+      icon: "editing",
       title: "Approve the script",
       text: "We post the script; you approve it or ask for changes. Nothing is produced until you say go.",
       screen: "script",
     },
     {
-      icon: "track",
+      icon: "board",
       title: "Track production",
       text: "Brief received, script ready, in production, delivered: every video shows where it is.",
       screen: "track-avatar",
@@ -100,7 +109,7 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
       screen: "files-video",
     },
     {
-      icon: "revision",
+      icon: "chat",
       title: "Request a revision",
       text: "Point to the timecode and say what to change. Two rounds on every video.",
       screen: "revision",

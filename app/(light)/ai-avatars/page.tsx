@@ -2,21 +2,20 @@ import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
 import { SHOWCASE } from "@/lib/showcase";
 import { Ctas } from "@/components/ui/Ctas";
 import type { Metadata } from "next";
-import { AiTiers } from "@/components/blocks/AiTiers";
 import { CTABand } from "@/components/blocks/CTABand";
 import { FAQ } from "@/components/blocks/FAQ";
 import { Steps, type Step } from "@/components/blocks/Steps";
 import { DemoForm } from "@/components/forms/DemoForm";
 import { AvatarStage, RevealButton, RevealProvider } from "@/components/media/AvatarReveal";
-import { MediaFrame } from "@/components/media/MediaFrame";
-import { MediaOpen } from "@/components/media/MediaOpen";
-import { videoPlayable } from "@/lib/playable";
+import { AvatarCarousel } from "@/components/media/AvatarCarousel";
+import { MultilingualPlayer } from "@/components/media/MultilingualPlayer";
+import { isFileVideo, fileVideoUrl } from "@/lib/media-ref";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { SampleLabel } from "@/components/ui/SampleLabel";
 import { Hl, SectionHead } from "@/components/ui/Section";
-import { getAvatarHero, getAvatars, getFaqs, getOtherPricing, getSiteSettings } from "@/lib/data";
+import { getAvatarHero, getAvatars, getFaqs, getSiteSettings } from "@/lib/data";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { pageMetadata } from "@/lib/seo/meta";
 import { PageLd } from "@/components/seo/JsonLd";
@@ -58,21 +57,35 @@ const USES = [
   { title: "Courses", text: "Lessons and onboarding videos at any scale." },
 ];
 
+/** Shown when no avatar has two language versions yet (no fake switching). */
+const LANGUAGES = ["English", "Arabic", "French", "Spanish", "German"];
+
 export default async function AiAvatarsPage() {
-  const [hero, avatarList, faqs, other, site] = await Promise.all([
+  const [hero, avatars, faqs, site] = await Promise.all([
     getAvatarHero(),
     getAvatars(),
     getFaqs("ai-avatars"),
-    getOtherPricing(),
     getSiteSettings(),
   ]);
   const whatsapp = pageWhatsappLink("AI avatars", site.whatsapp.number);
-  // Each example opens its clip in the 9:16 player.
-  const avatars = avatarList.map((a) => ({
-    ...a,
-    play: videoPlayable(a.clip, `${a.name}, AI avatar example`, "ai-avatar", a.poster.src),
+  // The carousel plays hosted files inline; a linked clip shows its poster.
+  const deck = avatars.map((a) => ({
+    id: a.id,
+    name: a.name,
+    industry: a.niche.split("·")[0].trim(),
+    poster: a.poster,
+    src: isFileVideo(a.clip) ? fileVideoUrl(a.clip!) : undefined,
   }));
-  const ai = other.aiAvatars;
+  // Multilingual: the first avatar with two or more hosted language versions.
+  const multi = avatars
+    .map((a) => ({
+      a,
+      versions: (a.versions ?? [])
+        .filter((v) => isFileVideo(v.clip))
+        .map((v) => ({ language: v.language, src: fileVideoUrl(v.clip) })),
+    }))
+    .find((m) => m.versions.length >= 2);
+  // The Plans section is off the page (12 Oct 2026); its data and admin entries stay.
 
   return (
     <>
@@ -128,51 +141,74 @@ export default async function AiAvatarsPage() {
         </div>
       </section>
 
-      {avatars.length > 0 && (
+      {deck.length > 0 && (
         <section className="sec" aria-labelledby="styles-title">
-          <div className="w">
-            <SectionHead
-              id="styles-title"
-              eyebrow="Avatar styles"
-              title="Built for your audience."
-              aside={
-                avatars.some((a) => a.sample) ? (
-                  <SampleLabel>Placeholder avatars · real examples go here</SampleLabel>
-                ) : undefined
-              }
-            />
-            <div className="avs">
-              {avatars.map((a) => (
-                <figure key={a.id}>
-                  <MediaFrame
-                    media={a.poster}
-                    kind="ai-avatar"
-                    small
-                    corners={false}
-                    play={a.play ? undefined : "icon"}
-                    sizes="(max-width: 860px) 50vw, 25vw"
-                  >
-                    {a.play && <MediaOpen play={a.play} preview />}
-                  </MediaFrame>
-                  <figcaption>
-                    <b>{a.name}</b>
-                    <span>{a.niche}</span>
-                  </figcaption>
-                </figure>
-              ))}
+          <div className="w av-aud">
+            <div className="stack">
+              <span className="eb">Avatar styles</span>
+              <h2 className="d h2" id="styles-title">
+                Built for your audience.
+              </h2>
+              <p className="lede">
+                Each presenter is designed for one audience: the look, the voice and the way it
+                talks. A few we&apos;ve built:
+              </p>
+              <ul className="av-ind">
+                {avatars.map((a) => (
+                  <li key={a.id}>
+                    <b>{a.niche.split("·")[0].trim()}</b>
+                    <span>
+                      {a.name} · {a.niche}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {avatars.some((a) => a.sample) && (
+                <SampleLabel>Placeholder avatars · real examples go here</SampleLabel>
+              )}
             </div>
+            <AvatarCarousel items={deck} />
           </div>
         </section>
       )}
 
-      <section className="sec alt" aria-labelledby="live-title">
+      <section className="sec alt" aria-labelledby="multi-title">
+        <div className="w av-multi">
+          <div className="stack">
+            <span className="eb">Multilingual</span>
+            <h2 className="d h2" id="multi-title">
+              One presenter, every language.
+            </h2>
+            <p className="lede">
+              The same avatar, script and edit in the languages your clients speak. No re-shoots, no
+              new presenter.
+            </p>
+            {!multi && (
+              <ul className="av-langs" aria-label="Languages">
+                {LANGUAGES.map((l) => (
+                  <li key={l}>{l}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {multi && (
+            <MultilingualPlayer
+              versions={multi.versions}
+              poster={multi.a.poster.src}
+              title={`${multi.a.name}, AI avatar`}
+            />
+          )}
+        </div>
+      </section>
+
+      <section className="sec" aria-labelledby="live-title">
         <div className="w">
           <SectionHead id="live-title" eyebrow="How it works" title="Live in a week." />
           <Steps steps={STEPS} />
         </div>
       </section>
 
-      <section className="sec" aria-labelledby="dashboard-title">
+      <section className="sec alt" aria-labelledby="dashboard-title">
         <div className="w">
           <SectionHead
             id="dashboard-title"
@@ -185,27 +221,7 @@ export default async function AiAvatarsPage() {
               </p>
             }
           />
-          <DashboardShowcase features={SHOWCASE.avatars} account="JVC Heights" />
-        </div>
-      </section>
-
-      <section className="sec alt" aria-labelledby="plans-title">
-        <div className="w">
-          <SectionHead
-            id="plans-title"
-            eyebrow="Plans"
-            title="Three ways in."
-            aside={<span className="launch">{ai.launchLine}</span>}
-          />
-          <AiTiers
-            tiers={ai.tiers}
-            note={ai.extraAvatarNote}
-            action={(featured) => (
-              <ButtonLink href="#demo" variant={featured ? "primary" : "ghost"}>
-                Book a demo
-              </ButtonLink>
-            )}
-          />
+          <DashboardShowcase features={SHOWCASE.avatars} />
         </div>
       </section>
 

@@ -24,7 +24,15 @@ export async function proxy(request: NextRequest) {
         },
       },
     });
-    await db.auth.getClaims();
+    const { data } = await db.auth.getClaims();
+    // A website "Book" link (/portal?new=…) while signed out: sign in first, then straight back
+    // into that booking (the layout's own redirect would drop the query).
+    const { pathname, search, searchParams } = request.nextUrl;
+    if (portal && pathname === "/portal" && searchParams.has("new") && !data?.claims) {
+      const login = new URL("/portal/login", request.url);
+      login.searchParams.set("next", `/portal${search}`);
+      return NextResponse.redirect(login);
+    }
   }
   response.headers.set("X-Robots-Tag", "noindex, nofollow");
   return response;

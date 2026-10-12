@@ -13,7 +13,7 @@ export type { GalleryTab };
 /**
  * Work in uniform grids, one tab per format, so a row never mixes ratios (lib/media-config).
  * Photos: one 3:2 card per property ("24 photos") that opens the lightbox. Reels and AI avatars:
- * a sideways strip at 9:16 that opens the 9:16 player. Long-form and 360: two columns at 16:9,
+ * the same sideways strip of 9:16 cards with hover playback, opening the 9:16 player. Long-form and 360: two columns at 16:9,
  * opening the 16:9 player or the tour. Tabs without items are hidden.
  */
 const LAYOUT: Record<GalleryTab, { kind: MediaKind; grid: string; sizes: string }> = {
@@ -23,7 +23,8 @@ const LAYOUT: Record<GalleryTab, { kind: MediaKind; grid: string; sizes: string 
     sizes: "(max-width: 560px) 100vw, (max-width: 900px) 50vw, 33vw",
   },
   reel: { kind: "reel", grid: "strip", sizes: "(max-width: 760px) 62vw, 260px" },
-  "ai-avatar": { kind: "ai-avatar", grid: "strip", sizes: "(max-width: 760px) 62vw, 260px" },
+  // AI avatars are cut exactly like reels: same 9:16 card, spacing, thumbnail and hover playback.
+  "ai-avatar": { kind: "reel", grid: "strip", sizes: "(max-width: 760px) 62vw, 260px" },
   "long-form": { kind: "long-form", grid: "cols-2", sizes: "(max-width: 760px) 100vw, 50vw" },
   "360": { kind: "360", grid: "cols-2", sizes: "(max-width: 760px) 100vw, 50vw" },
 };
@@ -76,11 +77,12 @@ export function FormatGallery({
                 kind={layout.kind}
                 small
                 corners={false}
-                clean={kind === "ai-avatar" ? true : undefined}
                 badge={count > 1 ? `${count} photos` : kind === "360" ? "360°" : undefined}
                 sizes={layout.sizes}
               >
-                {m.play && <MediaOpen play={m.play} preview={kind === "reel"} />}
+                {m.play && (
+                  <MediaOpen play={m.play} preview={kind === "reel" || kind === "ai-avatar"} />
+                )}
               </MediaFrame>
               {captions && (
                 <figcaption>

@@ -90,25 +90,42 @@ type Row = {
 };
 
 export default async function PostProductionPage() {
-  const [site, clients, proof, pairs, stats, faqs, other, cardMedia, avatars, heroMedia] =
-    await Promise.all([
-      getSiteSettings(),
-      getClients(),
-      showsProofStrip("post-production"),
-      getBeforeAfter(),
-      getStats("post-production"),
-      getFaqs("post-production"),
-      getOtherPricing(),
-      getPortfolio("post-service-cards"),
-      getAvatars(),
-      getPortfolio("post-hero"),
-    ]);
-  const heroSet = oneFormat(heroMedia);
+  const [
+    site,
+    clients,
+    proof,
+    pairs,
+    stats,
+    faqs,
+    other,
+    cardMedia,
+    avatars,
+    heroMedia,
+    heroReelMedia,
+  ] = await Promise.all([
+    getSiteSettings(),
+    getClients(),
+    showsProofStrip("post-production"),
+    getBeforeAfter(),
+    getStats("post-production"),
+    getFaqs("post-production"),
+    getOtherPricing(),
+    getPortfolio("post-service-cards"),
+    getAvatars(),
+    getPortfolio("post-hero"),
+    getPortfolio("post-hero-reels"),
+  ]);
+  // Three reels side by side, like Production (12 Oct 2026); the older single frame until the
+  // "Post-production hero (3 reels)" placement has some.
+  const heroReels = heroReelMedia.filter((m) => m.format === "reel").slice(0, 3);
+  const heroSet = heroReels.length ? { items: heroReels } : oneFormat(heroMedia);
   const [hero, work] = await Promise.all([
     withPlayback(heroSet.items),
     // Everything this page shows, once each, for the format gallery.
     withPlayback(
-      [...heroMedia, ...cardMedia].filter((m, i, all) => all.findIndex((x) => x.id === m.id) === i),
+      [...heroSet.items, ...heroMedia, ...cardMedia].filter(
+        (m, i, all) => all.findIndex((x) => x.id === m.id) === i,
+      ),
     ),
   ]);
   const rate = (k: "photo" | "short" | "long") =>
@@ -176,7 +193,7 @@ export default async function PostProductionPage() {
     <>
       <PageLd page="post-production" />
       <div className="w">
-        <section className="pp-hero" aria-labelledby="post-title">
+        <section className={hero.length > 1 ? "p-hero" : "pp-hero"} aria-labelledby="post-title">
           <div className="stack">
             <Eyebrow>Post-production · Worldwide</Eyebrow>
             <HeroTitle id="post-title" line1="Your remote" line2={<Hl>edit team.</Hl>} />
@@ -196,7 +213,11 @@ export default async function PostProductionPage() {
               </ButtonLink>
             </Ctas>
           </div>
-          <HeroMedia items={hero} labels={HERO_LABEL} trioSizes="(max-width: 900px) 33vw, 18vw" />
+          <HeroMedia
+            items={hero}
+            labels={hero.length > 1 ? undefined : HERO_LABEL}
+            trioSizes="(max-width: 900px) 33vw, 15vw"
+          />
         </section>
       </div>
 

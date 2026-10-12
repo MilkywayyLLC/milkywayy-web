@@ -61,6 +61,8 @@ export type Field = Base &
     | { kind: "gallery"; media: MediaKind; usedOn?: UsedOn }
     /** A YouTube or Vimeo link (string); with `upload`, or a video file in R2 ("r2:<key>"). */
     | { kind: "video"; media?: MediaKind; upload?: VideoFolder }
+    /** Language versions of a video → { language, clip }[] (clip as for "video"). */
+    | { kind: "versions"; media: MediaKind; upload?: VideoFolder }
     /** The portfolio item's media, by format: photo set, reel, long-form video or 360 tour. */
     | { kind: "portfolio-media" }
     /** Portfolio item ids, picked from a list. */

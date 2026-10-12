@@ -78,6 +78,7 @@ export const avatar = (r: Row): AvatarExample => ({
   niche: r.niche,
   poster: r.poster,
   clip: opt(r.clip),
+  versions: Array.isArray(r.versions) ? r.versions : [],
 });
 
 export const caseStudy = (r: Row): CaseStudy => ({

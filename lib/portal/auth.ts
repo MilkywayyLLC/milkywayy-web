@@ -87,7 +87,7 @@ export async function requireAccount(next = "/portal") {
 /** Only same-site portal paths, so ?next= can't send anyone elsewhere. */
 export function safeNext(next: unknown, fallback = "/portal") {
   const s = typeof next === "string" ? next : "";
-  return /^\/portal(\/[\w\-./?=&%]*)?$/.test(s) && !s.startsWith("//") ? s : fallback;
+  return /^\/portal([/?][\w\-./?=&%]*)?$/.test(s) && !s.startsWith("//") ? s : fallback;
 }
 
 /** How we refer to the signed-in person: their email, else their number (+971 50 123 4567). */

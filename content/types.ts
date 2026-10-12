@@ -97,6 +97,7 @@ export type PortfolioPlacement =
   | "property-gallery-video"
   | "property-gallery-360"
   | "post-hero"
+  | "post-hero-reels"
   | "post-service-cards"
   | "work";
 
@@ -155,6 +156,14 @@ export interface AvatarExample extends Publishable {
   niche: string;
   poster: Media;
   clip?: string;
+  /** The same video in other languages (AI avatars → Multilingual). */
+  versions?: AvatarVersion[];
+}
+
+/** One language of an avatar video: a link or an uploaded file ("r2:<key>"). */
+export interface AvatarVersion {
+  language: string;
+  clip: string;
 }
 
 /* ---------- reviews, stats, clients, faqs ---------- */

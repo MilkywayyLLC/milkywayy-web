@@ -9,6 +9,7 @@ import { rowMedia, ServiceRow } from "@/components/blocks/ServiceRow";
 import { StatsBand } from "@/components/blocks/StatsBand";
 import { Steps, type Step } from "@/components/blocks/Steps";
 import { Testimonials } from "@/components/blocks/Testimonials";
+import { Ctas } from "@/components/ui/Ctas";
 import { LiteVideo } from "@/components/media/LiteVideo";
 import { Timecode } from "@/components/media/Timecode";
 import { MediaFrame } from "@/components/media/MediaFrame";
@@ -42,19 +43,19 @@ export async function generateMetadata(): Promise<Metadata> {
 const NEEDS: Need[] = [
   {
     key: "UAE",
-    title: "Content shot and edited for me",
+    title: "Content shot and edited",
     sub: "Monthly packages or a single property shoot",
     href: "/production",
   },
   {
     key: "GLOBAL",
-    title: "An editor for my own shoots",
+    title: "An editor for your shoots",
     sub: "Photo, video and AI avatar editing",
     href: "/post-production",
   },
   {
     key: "ANYONE",
-    title: "A presenter without filming",
+    title: "An AI presenter",
     sub: "A custom AI avatar for your brand",
     href: "/ai-avatars",
   },
@@ -103,51 +104,78 @@ export default async function HomePage() {
   const whatsapp = pageWhatsappLink("Home", site.whatsapp.number);
   const showreelIsSample = !site.showreel.video;
 
+  // Background rhythm (12 Oct 2026): dark hero, then content sections alternate cream and a
+  // deeper cream in the order they render (optional ones included), the champagne CTA band, then
+  // the dark footer. Never two neighbours in the same colour.
+  let n = 0;
+  const cream = () => (n++ % 2 ? "cream-2" : "cream-1");
+
   return (
     <>
       <PageLd page="home" />
       <div className="home">
-        <div className="w">
-          <section className="hero" aria-labelledby="home-title">
-            <div className="hero-copy">
-              <Eyebrow rec>Dubai content studio · Clients worldwide</Eyebrow>
-              <HeroTitle
-                id="home-title"
-                line1={
-                  <>
-                    Content that <Hl>sells</Hl>
-                  </>
-                }
-                line2="property & brands."
-              />
-              <p className="lede">
-                We shoot in the UAE, edit for studios worldwide and build AI presenters for brands.
-              </p>
-            </div>
-            <div className="hero-media-col">
-              <MediaFrame
-                media={site.showreel}
-                kind="showreel"
-                topLeft="4K · 25P"
-                timecode={<Timecode start="00:14:08" />}
-                tag="Showreel 2026"
-                tagRight={site.showreel.duration}
-                priority
-                sizes="(max-width: 900px) 100vw, 640px"
-              >
-                <LiteVideo video={site.showreel.video} title="Milkywayy showreel" />
-              </MediaFrame>
-              {showreelIsSample && <SampleLabel>Placeholder · showreel coming</SampleLabel>}
-            </div>
-            <div className="hero-select">
-              <NeedSelector needs={NEEDS} />
-            </div>
-          </section>
+        <div className="hero-band">
+          <div className="w">
+            <section className="hero" aria-labelledby="home-title">
+              <div className="hero-copy">
+                <Eyebrow rec>Dubai content studio · Clients worldwide</Eyebrow>
+                <HeroTitle
+                  id="home-title"
+                  line1={
+                    <>
+                      Content that <Hl>sells</Hl>
+                    </>
+                  }
+                  line2="property & brands."
+                />
+                <p className="lede">
+                  We shoot in the UAE, edit for studios worldwide and build AI presenters for
+                  brands.
+                </p>
+                <Ctas>
+                  <ButtonLink href="/portal?new=choose">Book media</ButtonLink>
+                  <ButtonLink href="/work" variant="ghost">
+                    See our work
+                  </ButtonLink>
+                </Ctas>
+              </div>
+              <div className="hero-media-col">
+                <MediaFrame
+                  media={site.showreel}
+                  kind="showreel"
+                  topLeft="4K · 25P"
+                  timecode={<Timecode start="00:14:08" />}
+                  tag="Showreel 2026"
+                  tagRight={site.showreel.duration}
+                  priority
+                  sizes="(max-width: 900px) 100vw, 640px"
+                >
+                  <LiteVideo video={site.showreel.video} title="Milkywayy showreel" />
+                </MediaFrame>
+                {showreelIsSample && <SampleLabel>Placeholder · showreel coming</SampleLabel>}
+              </div>
+            </section>
+          </div>
         </div>
 
-        {proof && <ProofStrip clients={clients} rating={site.googleRating.value} />}
+        <section className={`sec ${cream()}`} data-tone="light">
+          <div className="w">
+            <NeedSelector needs={NEEDS} />
+          </div>
+        </section>
 
-        <section className="sec alt" id="services" aria-labelledby="services-title">
+        {proof && clients.length > 0 && (
+          <div className={`proof-band ${cream()}`} data-tone="light">
+            <ProofStrip clients={clients} rating={site.googleRating.value} />
+          </div>
+        )}
+
+        <section
+          className={`sec ${cream()}`}
+          data-tone="light"
+          id="services"
+          aria-labelledby="services-title"
+        >
           <div className="w">
             <SectionHead
               id="services-title"
@@ -208,14 +236,18 @@ export default async function HomePage() {
         </section>
 
         {stats.length > 0 && (
-          <section className="sec stats-sec" aria-label="Studio in numbers">
+          <section
+            className={`sec stats-sec ${cream()}`}
+            data-tone="light"
+            aria-label="Studio in numbers"
+          >
             <div className="w">
               <StatsBand stats={stats} />
             </div>
           </section>
         )}
 
-        <section className="sec" data-tone="light" aria-labelledby="dashboard-title">
+        <section className={`sec ${cream()}`} data-tone="light" aria-labelledby="dashboard-title">
           <div className="w">
             <SectionHead
               id="dashboard-title"
@@ -232,7 +264,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="sec alt" aria-labelledby="how-title">
+        <section className={`sec ${cream()}`} data-tone="light" aria-labelledby="how-title">
           <div className="w">
             <SectionHead id="how-title" eyebrow="How we work" title="Brief to delivery." />
             <Steps steps={STEPS} />
@@ -240,7 +272,7 @@ export default async function HomePage() {
         </section>
 
         {reviews.length > 0 && (
-          <section className="sec" aria-labelledby="reviews-title">
+          <section className={`sec ${cream()}`} data-tone="light" aria-labelledby="reviews-title">
             <div className="w">
               <SectionHead id="reviews-title" eyebrow="Client words" title="What clients say." />
               <Testimonials reviews={reviews} />
@@ -248,13 +280,18 @@ export default async function HomePage() {
           </section>
         )}
 
-        <section className="sec alt" id="founder" aria-label="From the founder">
+        <section
+          className={`sec ${cream()}`}
+          data-tone="light"
+          id="founder"
+          aria-label="From the founder"
+        >
           <div className="w">
             <FounderBlock founder={site.founder} />
           </div>
         </section>
 
-        <section className="sec" aria-label="Questions">
+        <section className={`sec ${cream()}`} data-tone="light" aria-label="Questions">
           <div className="w">
             <FAQ
               title="Before you ask."

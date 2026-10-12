@@ -315,6 +315,21 @@ export function validate(
         else set(f, r.value);
         break;
       }
+      case "versions": {
+        const v = (Array.isArray(raw) ? raw : [])
+          .map((p) => ({
+            language: String((p as Record<string, unknown>)?.language ?? "").trim(),
+            clip: String((p as Record<string, unknown>)?.clip ?? "").trim(),
+          }))
+          .filter((p) => p.language || p.clip);
+        if (v.some((p) => !p.language || !p.clip))
+          fail("Each version needs a language and a video.");
+        else if (v.some((p) => !okVideo(p.clip) || (isFileVideo(p.clip) && !f.upload)))
+          fail(VIDEO_REFUSED);
+        else if (v.length > 8) fail("Up to 8 versions.");
+        else set(f, v);
+        break;
+      }
       case "portfolio-picker": {
         const v = (Array.isArray(raw) ? raw : []).map(String).filter(Boolean);
         if (v.length > 6) fail("Up to 6 related items.");

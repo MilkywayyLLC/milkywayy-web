@@ -10,6 +10,7 @@
  * request (tests/fallback.e2e.spec.ts proves this). The seed in content/ is only used when no
  * database is configured at all (local development without .env.local). Never on an error.
  */
+import { flags } from "@/lib/flags";
 import { unstable_cache } from "next/cache";
 import { avatarHero as seedAvatarHero, avatars as seedAvatars } from "@/content/avatars";
 import { beforeAfter as seedBeforeAfter } from "@/content/beforeAfter";
@@ -338,11 +339,13 @@ export async function getOtherPricing() {
 }
 
 export async function getCaseStudies() {
+  if (!flags.caseStudies) return [];
   return realFirst(await loadCaseStudies());
 }
 
 /** A sample case study stops existing (404) once a real one is published. */
 export async function getCaseStudy(slug: string) {
+  if (!flags.caseStudies) return null;
   return (await getCaseStudies()).find((c) => c.slug === slug) ?? null;
 }
 

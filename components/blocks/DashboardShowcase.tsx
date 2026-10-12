@@ -1,50 +1,75 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import "@/app/styles/portal.css";
+import { useEffect, useId, useReducer, useRef, useState, type ReactNode } from "react";
+import { PropertyOptions } from "@/components/booking/PropertyOptions";
+import { BrandLogo } from "@/components/layout/Logo";
+import { Icon } from "@/components/portal/Icon";
+import type { PropertyPricing } from "@/content/types";
+import { blankProperty, reducer, type Action, type BookingProperty } from "@/lib/booking";
+import { SERVICE_HINT, SERVICE_LABEL } from "@/lib/portal/booking";
+import { EDIT_KINDS } from "@/lib/portal/projects";
 
 /**
- * The client dashboard, shown like a SaaS feature section (site-refine, 3 Oct 2026): four features
- * on the left, a portal window on the right. The screens are real UI mirroring the portal (no
- * screenshots). The active feature advances every ~5s while the section is in view, with a thin
- * progress line; hover or focus pauses it, a click or tap selects. Screens crossfade with an 8px
- * slide. Reduced motion: no auto-advance, no slides, the screens' end state.
+ * The client dashboard, shown like a SaaS feature section (rebuilt site-refine, 12 Oct 2026):
+ * features on the left, a portal window on the right. The window is the real portal markup and
+ * classes (portal.css), drawn at a fixed 880px desktop canvas and scaled to fit, with mock data.
  *
- * Auto-advance is driven by the progress line's CSS animation (animationend → next), so pausing is
- * just animation-play-state, and the global reduced-motion rule (animation: none) stops it.
+ * It cycles on its own (~6s a view) while in view, and never pauses on hover. Clicking a feature
+ * holds that view for 8s, then auto-play resumes. A pointer glides to the element each view
+ * demonstrates (`data-point`), which then flashes as if tapped. Auto-advance is driven by the
+ * progress line's CSS animation (animationend → next), so the global reduced-motion rule stops it.
  */
 export type ShowcaseScreen =
-  | "track-shoot"
-  | "track-edit"
-  | "track-avatar"
-  | "files"
-  | "files-video"
-  | "revision"
-  | "invoices"
+  // the current portal
+  | "overview"
+  | "book-media"
+  | "book-property"
+  | "book-where"
+  | "requested"
+  | "confirmed"
+  | "deliveries"
+  | "share"
+  | "edit-request"
+  | "edit-status"
+  | "edit-delivered"
+  // AI avatars page
   | "script"
-  | "upload";
+  | "track-avatar"
+  | "files-video"
+  | "revision";
 
 export type ShowcaseFeature = {
-  icon: IconName;
+  icon: string;
   title: string;
   text: string;
   screen: ShowcaseScreen;
 };
 
+const CYCLE_MS = 6000;
+const HOLD_MS = 8000;
+const CANVAS_W = 880;
+const CANVAS_H = 560;
+
 export function DashboardShowcase({
   features,
   label = "Client dashboard features",
-  account = "Marina Realty",
+  pricing,
 }: {
   features: ShowcaseFeature[];
   label?: string;
-  account?: string;
+  /** The property price list, so "property options" draws the real builder. */
+  pricing?: PropertyPricing;
 }) {
   const uid = useId();
   const root = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const [cycle, setCycle] = useState(0);
+  const [held, setHeld] = useState(false); // a click: this view stays 8s
   const [inView, setInView] = useState(false);
-  const [held, setHeld] = useState(false); // hover or focus inside
+  const [k, setK] = useState(0.66);
+  const [ptr, setPtr] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const el = root.current;
@@ -56,24 +81,43 @@ export function DashboardShowcase({
     return () => io.disconnect();
   }, []);
 
-  const select = (i: number) => {
+  // Scale the 880px canvas to the window's width.
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setK(el.clientWidth / CANVAS_W));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // The pointer follows the active view's [data-point] (views with steps move it along).
+  useEffect(() => {
+    const el = stage.current;
+    if (!el || !inView) return;
+    const find = () => {
+      const t = el.querySelector<HTMLElement>(".dsh-screen.on [data-point]");
+      if (!t) return setPtr(null);
+      const a = el.getBoundingClientRect();
+      const b = t.getBoundingClientRect();
+      setPtr({ x: b.left - a.left + b.width * 0.62, y: b.top - a.top + b.height * 0.62 });
+    };
+    const first = setTimeout(find, 350);
+    const iv = setInterval(find, 300);
+    return () => {
+      clearTimeout(first);
+      clearInterval(iv);
+    };
+  }, [inView, active, k]);
+
+  const select = (i: number, byUser: boolean) => {
     setActive(i);
+    setHeld(byUser);
     setCycle((c) => c + 1); // restart the progress line
   };
-  const next = () => select((active + 1) % features.length);
-  const running = inView && !held;
+  const next = () => select((active + 1) % features.length, false);
 
   return (
-    <div
-      ref={root}
-      className="dsh"
-      onMouseEnter={() => setHeld(true)}
-      onMouseLeave={() => setHeld(false)}
-      onFocus={() => setHeld(true)}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setHeld(false);
-      }}
-    >
+    <div ref={root} className="dsh">
       <div className="dsh-list" role="tablist" aria-label={label} aria-orientation="vertical">
         {features.map((f, i) => {
           const on = i === active;
@@ -87,7 +131,7 @@ export function DashboardShowcase({
               aria-controls={`${uid}-panel`}
               tabIndex={on ? 0 : -1}
               className="dsh-item"
-              onClick={() => select(i)}
+              onClick={() => select(i, true)}
               onKeyDown={(e) => {
                 const d = ["ArrowDown", "ArrowRight"].includes(e.key)
                   ? 1
@@ -97,7 +141,7 @@ export function DashboardShowcase({
                 if (!d) return;
                 e.preventDefault();
                 const n = (i + d + features.length) % features.length;
-                select(n);
+                select(n, true);
                 document.getElementById(`${uid}-t${n}`)?.focus();
               }}
             >
@@ -112,7 +156,10 @@ export function DashboardShowcase({
                 <span className="dsh-prog" aria-hidden="true">
                   <i
                     key={cycle}
-                    style={{ animationPlayState: running ? "running" : "paused" }}
+                    style={{
+                      animationDuration: `${held ? HOLD_MS : CYCLE_MS}ms`,
+                      animationPlayState: inView ? "running" : "paused",
+                    }}
                     onAnimationEnd={next}
                   />
                 </span>
@@ -135,295 +182,830 @@ export function DashboardShowcase({
           <i />
           <i />
           <i />
-          <span>milkywayy.com/portal</span>
+          <span>
+            {features[active]?.screen === "share"
+              ? "milkywayy.com/l/marina-gate-2br"
+              : "milkywayy.com/portal"}
+          </span>
         </div>
-        <div className="dsh-app">
-          <div className="dsh-top" aria-hidden="true">
-            <span className="dsh-mark">MW</span>
-            <span className="dsh-acc">{account}</span>
-          </div>
-          <div className="dsh-screens">
+        <div
+          ref={stage}
+          className="dsh-stage"
+          aria-hidden="true"
+          style={{ ["--k" as string]: k, height: CANVAS_H * k }}
+        >
+          <div className="dsh-canvas" inert style={{ width: CANVAS_W, height: CANVAS_H }}>
             {features.map((f, i) => (
-              <div
-                key={f.title}
-                className={i === active ? "dsh-screen on" : "dsh-screen"}
-                aria-hidden={i !== active}
-                inert={i !== active}
-              >
-                <Screen kind={f.screen} live={i === active && inView} />
+              <div key={f.title} className={i === active ? "dsh-screen on" : "dsh-screen"}>
+                <Screen kind={f.screen} live={i === active && inView} pricing={pricing} />
               </div>
             ))}
           </div>
+          {ptr && (
+            <span
+              className="dsh-ptr"
+              style={{ transform: `translate(${ptr.x}px, ${ptr.y}px)` }}
+              aria-hidden="true"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24">
+                <path
+                  d="M4 2l15 9-6.5 1.6L16 20l-3 1.4-3.6-7.4L4 18z"
+                  fill="#111110"
+                  stroke="#fff"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-/* ---------------- screens: the portal's own words and layout ---------------- */
+/* ---------------- the portal frame: rail, "Hello, {name}", account, Book media ---------------- */
 
-const PIPE = {
-  "track-shoot": ["Requested", "Confirmed", "Shot", "Editing", "Delivered", "Completed"],
-  "track-edit": ["Submitted", "Files received", "In editing", "Delivered", "Completed"],
-  "track-avatar": ["Brief received", "Script ready", "In production", "Delivered", "Completed"],
-} as const;
+const RAIL = [
+  ["home", "Home"],
+  ["shoots", "Shoots"],
+  ["editing", "Editing"],
+  ["avatars", "Avatars"],
+  ["listings", "Listings"],
+  ["chat", "Inquiries"],
+  ["billing", "Billing"],
+] as const;
 
-/** Steps 0 → 1 → 2 while the screen is showing; the end state with reduced motion. */
-function useSteps(live: boolean) {
-  const [step, setStep] = useState(2);
-  useEffect(() => {
-    if (!live || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const t = [
-      setTimeout(() => setStep(0), 0),
-      setTimeout(() => setStep(1), 1100),
-      setTimeout(() => setStep(2), 2300),
-    ];
-    return () => t.forEach(clearTimeout);
-  }, [live]);
-  return step;
-}
-
-function Stepper({ steps, now }: { steps: readonly string[]; now: number }) {
+function Portal({
+  tab = "Home",
+  children,
+  modal,
+}: {
+  tab?: (typeof RAIL)[number][1];
+  children: ReactNode;
+  modal?: ReactNode;
+}) {
   return (
-    <div className="dsh-steps">
-      <div className="dsh-seg">
-        {steps.map((s, i) => (
-          <i key={s} className={i < now ? "is-done" : i === now ? "is-now" : undefined} />
-        ))}
+    <div className="pt dsh-pt" data-tone="light">
+      <div className="pt-shell">
+        <aside className="pt-rail">
+          <span className="pt-logo">
+            <BrandLogo tone="light" />
+          </span>
+          <nav className="pt-rail-nav">
+            {RAIL.map(([icon, name]) => (
+              <a key={name} aria-current={name === tab ? "page" : undefined}>
+                <Icon name={icon} /> {name}
+              </a>
+            ))}
+            <span className="pt-rail-sep" />
+            <a>
+              <Icon name="settings" /> Settings
+            </a>
+          </nav>
+        </aside>
+        <div className="pt-main">
+          <header className="pt-top">
+            <span className="pt-logo pt-logo-sm" />
+            <div className="pt-top-right">
+              <span className="pt-hello">Hello, Sara</span>
+              <span className="pt-acct">
+                <Icon name="person" size={20} />
+              </span>
+              <span className="btn btn-p btn-s">
+                <Icon name="plus" size={16} /> Book media
+              </span>
+            </div>
+          </header>
+          <div className="pt-content">{children}</div>
+        </div>
       </div>
-      <span className="dsh-mono">
-        Step {now + 1} of {steps.length}: <b>{steps[now]}</b>
-        {steps[now + 1] ? ` · next: ${steps[now + 1]}` : ""}
-      </span>
+      {modal}
     </div>
   );
 }
 
-function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={className ? `dsh-card ${className}` : "dsh-card"}>{children}</div>;
+function Modal({
+  title,
+  children,
+  footer,
+}: {
+  title: string;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
+  return (
+    <div className="pt-modal-bg">
+      <div className="pt-modal">
+        <div className="pt-modal-head">
+          <span className="pt-h2">{title}</span>
+          <span className="pt-icon-btn">
+            <Icon name="close" />
+          </span>
+        </div>
+        <div className="pt-modal-body">{children}</div>
+        {footer && <div className="pt-modal-foot">{footer}</div>}
+      </div>
+    </div>
+  );
 }
 
-function Track({ kind, live }: { kind: keyof typeof PIPE; live: boolean }) {
-  const step = useSteps(live);
-  const steps = PIPE[kind];
-  const head = {
-    "track-shoot": ["MW-1418 · Thu 9 Oct · Morning", "2 Bed apartment, Marina Gate 1"],
-    "track-edit": ["MW-1420 · HDR photos · 120 items", "Willow Creek: October listings"],
-    "track-avatar": ["MW-1422 · Up to 60 seconds", "JVC Heights launch video"],
-  }[kind];
-  const log = {
-    "track-shoot": [
-      "Requested on milkywayy.com",
-      "Confirmed: Thu 9 Oct, morning",
-      "Shot · editing starts",
-    ],
-    "track-edit": ["Submitted by you", "Files received", "In editing"],
-    "track-avatar": [
-      "Brief received",
-      "Script v1 ready for approval",
-      "Script approved · in production",
-    ],
-  }[kind];
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <>
-      <span className="dsh-eb">
-        {kind === "track-shoot" ? "Shoots" : kind === "track-edit" ? "Editing" : "Avatars"}
+    <div className="pt-field">
+      <span className="pt-field-label">
+        {label} <span className="pt-req">*</span>
       </span>
-      <Card>
-        <div className="dsh-row">
-          <span className="dsh-mono">{head[0]}</span>
-          <span className="dsh-badge">{steps[step]}</span>
-        </div>
-        <b className="dsh-title">{head[1]}</b>
-        <Stepper steps={steps} now={step} />
-      </Card>
-      <ul className="dsh-log">
-        {log.map((l, i) => (
-          <li key={l} className={i <= step ? "on" : undefined}>
-            {l}
+      {children}
+    </div>
+  );
+}
+
+/* ---------------- Home → Your work ---------------- */
+
+const SHOOT = ["Requested", "Confirmed", "Shot", "Editing", "Delivered", "Completed"];
+const EDIT = ["Submitted", "Files received", "In editing", "Delivered", "Completed"];
+
+function Steps({ steps, at }: { steps: string[]; at: number }) {
+  return (
+    <ol className="pt-wsteps" style={{ ["--n" as string]: steps.length, ["--at" as string]: at }}>
+      {steps.map((s, i) => (
+        <li key={s} className={i < at ? "is-done" : i === at ? "is-now" : undefined}>
+          {s}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+type WorkRow = { title: string; meta: string; steps: string[]; at: number; point?: boolean };
+
+function WorkGroup({ name, rows }: { name: string; rows: WorkRow[] }) {
+  return (
+    <div className="pt-work-group">
+      <div className="pt-row">
+        <span className="pt-eb">
+          {name} · {rows.length} active
+        </span>
+        <span className="lnk pt-small">View all</span>
+      </div>
+      <ul className="pt-work-items">
+        {rows.map((r) => (
+          <li key={r.title}>
+            <span className="pt-wrow">
+              <span className="pt-wbody">
+                <b className="pt-title">{r.title}</b>
+                <span className="pt-meta">{r.meta}</span>
+                <Steps steps={r.steps} at={r.at} />
+              </span>
+              <span className="pt-wside">
+                <span className="pt-wstatus">{r.steps[r.at]}</span>
+                <span className="lnk pt-small" data-point={r.point ? "" : undefined}>
+                  Open →
+                </span>
+              </span>
+            </span>
           </li>
         ))}
       </ul>
-    </>
+    </div>
   );
 }
 
-function Files({ video }: { video?: boolean }) {
-  const tiles = video
-    ? ["adam", "avatar-clinic", "avatar-finance"]
-    : ["interior", "kitchen", "bath", "villa", "dusk", "aerial"];
+function YourWork({ point, editAt = 2 }: { point?: "shoot" | "edit"; editAt?: number }) {
   return (
-    <>
-      <div className="dsh-row">
-        <span className="dsh-eb">
-          {video ? "Delivery 1 · 3 videos · 9:16" : "Delivery 1 · 42 photos · reel"}
-        </span>
-        <span className="dsh-btn">Download all</span>
-      </div>
-      <div className={video ? "dsh-grid vid" : "dsh-grid"}>
-        {tiles.map((t) => (
-          <span key={t} className={`dsh-ph ph-${t}`} />
-        ))}
-      </div>
-      <div className="dsh-row">
-        <span className="dsh-mono">Kept 12 months after completion</span>
-        <span className="dsh-btn ghost">Approve</span>
-      </div>
-    </>
+    <section className="pt-work">
+      <h2 className="pt-h2">Your work</h2>
+      <WorkGroup
+        name="Property shoots"
+        rows={[
+          {
+            title: "2 Bed apartment, Marina Gate 1",
+            meta: "MW-1418 · Thu 9 Oct · Property shoot",
+            steps: SHOOT,
+            at: 3,
+            point: point === "shoot",
+          },
+          {
+            title: "Villa 14, Arabian Ranches 2",
+            meta: "MW-1421 · Sat 11 Oct · Property shoot",
+            steps: SHOOT,
+            at: 1,
+          },
+        ]}
+      />
+      <WorkGroup
+        name="Editing"
+        rows={[
+          {
+            title: "Willow Creek: October listings",
+            meta: "MW-1420 · 7 Oct · HDR photos",
+            steps: EDIT,
+            at: editAt,
+            point: point === "edit",
+          },
+        ]}
+      />
+    </section>
   );
 }
 
-function Revision() {
-  return (
-    <>
-      <span className="dsh-eb">Delivery 1 · 2 Bed apartment, Marina Gate 1</span>
-      <Card>
-        <b className="dsh-title">Revision 1 of 2</b>
-        <span className="dsh-label">What should change?</span>
-        <div className="dsh-input">
-          Photo 12: brighten the kitchen. Reel at 0:18: swap the music.
-          <i className="dsh-caret" />
-        </div>
-        <span className="dsh-mono">Point to photo numbers or video timecodes.</span>
-        <span className="dsh-btn">Send revision request</span>
-      </Card>
-      <span className="dsh-note">Revision 1 of 2 is with us. We’ll email you when it’s ready.</span>
-    </>
-  );
-}
+/* ---------------- Book media and the shoot booking ---------------- */
 
-function Invoices() {
-  const rows = [
-    // Invoiced at month end: September's work, due in October.
-    ["INV-2026-031", "September · 3 shoots", "AED 3,200", "Due 10 Oct"],
-    ["INV-2026-024", "August · 2 shoots + reels", "AED 2,650", "Paid"],
-    ["INV-2026-017", "July · 1 shoot", "AED 1,050", "Paid"],
-  ];
-  return (
-    <>
-      <div className="dsh-row">
-        <span className="dsh-eb">Billing</span>
-        <span className="dsh-mono">1 due · pay by card or bank transfer</span>
-      </div>
-      <div className="dsh-list-ui">
-        {rows.map((r) => (
-          <div key={r[0]} className="dsh-inv">
-            <span>
-              <b>{r[0]}</b>
-              <span className="dsh-mono">{r[1]}</span>
-            </span>
-            <span className="dsh-amt">{r[2]}</span>
-            <span className={r[3] === "Paid" ? "dsh-badge ok" : "dsh-badge due"}>{r[3]}</span>
-            <span className="dsh-btn ghost sm">PDF</span>
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
+const TILES = [
+  ["Shoot", "Property, reels or a long-form walkthrough"],
+  ["Editing", "Send us your photos or footage"],
+  ["AI avatar video", "A video with an AI presenter"],
+] as const;
 
-function Script() {
+function BookMedia({ point = "Shoot" }: { point?: string }) {
   return (
-    <>
-      <div className="dsh-row">
-        <span className="dsh-eb">Script · v1 · about 30 seconds</span>
-        <span className="dsh-badge">Waiting for your approval</span>
-      </div>
-      <div className="dsh-script">
-        Hi, I’m Adam from Milkywayy. JVC Heights is the newest address in Jumeirah Village Circle:
-        one to three bedroom homes, a rooftop pool, five minutes to Al Khail Road. Book a viewing
-        today.
-      </div>
-      <span className="dsh-mono">Production starts once you approve.</span>
-      <div className="dsh-row start">
-        <span className="dsh-btn">Approve script</span>
-        <span className="dsh-btn ghost">Ask for changes</span>
-      </div>
-    </>
-  );
-}
-
-function Upload({ live }: { live: boolean }) {
-  const files = [
-    ["IMG_3340.CR3", "42 MB", 100],
-    ["IMG_3341.CR3", "39 MB", 100],
-    ["IMG_3342.CR3", "44 MB", 64],
-    ["Drone_0912.MP4", "1.2 GB", 18],
-  ] as const;
-  return (
-    <>
-      <span className="dsh-eb">New batch</span>
-      <Card>
-        <b className="dsh-title">Willow Creek: October listings</b>
-        <div className="dsh-chips">
-          <span className="on">HDR photos</span>
-          <span>Short-form</span>
-          <span>Long-form</span>
-        </div>
-        <div className="dsh-up">
-          {files.map(([n, size, pct]) => (
-            <div key={n}>
-              <span className="dsh-mono">
-                {n} · {size} · {pct === 100 ? "Done" : `${pct}%`}
-              </span>
-              <span className="dsh-bar-p">
-                <i className={live ? "grow" : undefined} style={{ width: `${pct}%` }} />
-              </span>
+    <Portal
+      modal={
+        <Modal title="Book media">
+          <div className="pt-form">
+            <b style={{ fontSize: 18 }}>What do you need?</b>
+            <div className="pt-tiles pt-tiles-lg">
+              {TILES.map(([t, hint]) => (
+                <span key={t} className="pt-tile" data-point={t === point ? "" : undefined}>
+                  <b>{t}</b>
+                  <small>{hint}</small>
+                </span>
+              ))}
             </div>
-          ))}
-        </div>
-        <span className="dsh-mono">Up to 5 GB per file · resumes if the connection drops</span>
-      </Card>
+          </div>
+        </Modal>
+      }
+    >
+      <YourWork />
+    </Portal>
+  );
+}
+
+function BookSteps({ step }: { step: 1 | 2 | 3 }) {
+  return (
+    <ol className="pt-book-steps">
+      <li aria-current={step === 1 ? "step" : undefined}>1 · Shoot type</li>
+      <li aria-current={step === 2 ? "step" : undefined}>2 · When and where</li>
+      <li aria-current={step === 3 ? "step" : undefined}>3 · Summary</li>
+    </ol>
+  );
+}
+
+function BookFoot({ next = "Next" }: { next?: string }) {
+  return (
+    <>
+      <span className="btn btn-g btn-s">Back</span>
+      <span className="btn btn-p btn-s" data-point="">
+        {next}
+      </span>
     </>
   );
 }
 
-function Screen({ kind, live }: { kind: ShowcaseScreen; live: boolean }) {
-  switch (kind) {
-    case "track-shoot":
-    case "track-edit":
-    case "track-avatar":
-      return <Track kind={kind} live={live} />;
-    case "files":
-      return <Files />;
-    case "files-video":
-      return <Files video />;
-    case "revision":
-      return <Revision />;
-    case "invoices":
-      return <Invoices />;
-    case "script":
-      return <Script />;
-    case "upload":
-      return <Upload live={live} />;
-  }
+function BookProperty({ pricing }: { pricing?: PropertyPricing }) {
+  return (
+    <Portal
+      modal={
+        <Modal title="Book a shoot" footer={<BookFoot />}>
+          <div className="pt-form">
+            <BookSteps step={1} />
+            <Field label="Type of shoot">
+              <div className="pt-choice">
+                {(["property", "reels", "long_form"] as const).map((k) => (
+                  <button key={k} type="button" aria-pressed={k === "property"}>
+                    {SERVICE_LABEL[k]}
+                    <small>{SERVICE_HINT[k]}</small>
+                  </button>
+                ))}
+              </div>
+            </Field>
+            {pricing && <RealOptions pricing={pricing} />}
+          </div>
+        </Modal>
+      }
+    >
+      <YourWork />
+    </Portal>
+  );
 }
 
-/* ---------------- icons (1.5px line, 20px) ---------------- */
-
-export type IconName = "track" | "download" | "revision" | "invoice" | "script" | "upload";
-
-function Icon({ name }: { name: IconName }) {
-  const p = {
-    track: "M3 12h4l3-8 4 16 3-8h4",
-    download: "M12 4v11m0 0-4-4m4 4 4-4M5 20h14",
-    revision: "M4 12a8 8 0 0 1 13.7-5.7L20 8M20 4v4h-4M20 12a8 8 0 0 1-13.7 5.7L4 16m0 4v-4h4",
-    invoice: "M6 3h12v18l-3-2-3 2-3-2-3 2V3zm3 5h6m-6 4h6m-6 4h3",
-    script: "M5 4h10l4 4v12H5V4zm9 0v5h5M8 13h8M8 17h5",
-    upload: "M12 20V9m0 0-4 4m4-4 4 4M5 4h14",
-  }[name];
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d={p} />
-    </svg>
+/** The portal's own property builder, with photography and a short-form video picked. */
+function RealOptions({ pricing }: { pricing: PropertyPricing }) {
+  const [p, dispatch] = useReducer(
+    (s: BookingProperty, a: Action) =>
+      reducer(pricing)({ properties: [s], nextId: 2 }, a).properties[0],
+    blankProperty(1, pricing, "", ""),
+    (s) => ({ ...s, video: true, short: true }),
   );
+  return (
+    <div className="pt-book-prop">
+      <PropertyOptions p={p} pricing={pricing} dispatch={dispatch} />
+    </div>
+  );
+}
+
+function BookWhere() {
+  return (
+    <Portal
+      modal={
+        <Modal title="Book a shoot" footer={<BookFoot />}>
+          <div className="pt-form">
+            <BookSteps step={2} />
+            <div className="pt-grid2">
+              <Field label="Date">
+                <span className="dsh-in">Thu, 16 Oct 2026</span>
+              </Field>
+              <Field label="Time">
+                <div className="pt-seg pt-seg-line">
+                  <button type="button" aria-pressed>
+                    Morning
+                  </button>
+                  <button type="button" aria-pressed={false}>
+                    Afternoon
+                  </button>
+                </div>
+              </Field>
+            </div>
+            <div className="pt-places pt-field">
+              <span className="pt-field-label">
+                Location <span className="pt-req">*</span>
+              </span>
+              <span className="dsh-in">Marina Gate 1, Dubai Marina</span>
+              <div className="pt-map dsh-map">
+                <span className="dsh-pin" data-point="">
+                  <Icon name="pin" size={28} />
+                </span>
+              </div>
+              <span className="pt-meta">Tap the map or drag the pin to the exact entrance.</span>
+            </div>
+            <div className="pt-grid2">
+              <Field label="Unit">
+                <span className="dsh-in">Apt 2304</span>
+              </Field>
+              <Field label="Access">
+                <span className="dsh-in">Keys with the concierge</span>
+              </Field>
+            </div>
+          </div>
+        </Modal>
+      }
+    >
+      <YourWork />
+    </Portal>
+  );
+}
+
+function Requested() {
+  return (
+    <Portal
+      modal={
+        <Modal title="Book a shoot">
+          <div className="pt-form">
+            <span className="pt-eb">MW-1424 · Requested</span>
+            <b style={{ fontSize: 20 }}>Booking request sent</b>
+            <p style={{ margin: 0 }}>
+              We’ll confirm the date and time, usually within the hour during working hours. You’ll
+              get an email when it’s confirmed.
+            </p>
+            <div className="pt-btns">
+              <span className="btn btn-p btn-s" data-point="">
+                View in Shoots
+              </span>
+              <span className="btn btn-g btn-s">Close</span>
+            </div>
+          </div>
+        </Modal>
+      }
+    >
+      <YourWork />
+    </Portal>
+  );
+}
+
+/* ---------------- the shoot page ---------------- */
+
+function ShootHead({ status, at }: { status: string; at: number }) {
+  return (
+    <section className="pt-card">
+      <div className="pt-row">
+        <span className="pt-eb">MW-1424 · Thu 16 Oct · Morning</span>
+        <span className="pt-badge">{status}</span>
+      </div>
+      <b className="pt-title" style={{ fontSize: 20 }}>
+        2 Bed apartment, Marina Gate 1
+      </b>
+      <Steps steps={SHOOT} at={at} />
+    </section>
+  );
+}
+
+function Confirmed() {
+  return (
+    <Portal tab="Shoots">
+      <ShootHead status="Confirmed" at={1} />
+      <section className="pt-card">
+        <ul className="pt-summary">
+          <li>
+            <span>What</span>
+            <b>Property shoot · Photography, short-form video</b>
+          </li>
+          <li>
+            <span>When</span>
+            <b data-point="">Thu, 16 Oct · Morning, 9:30 am</b>
+          </li>
+          <li>
+            <span>Where</span>
+            <b>Marina Gate 1, Dubai Marina · Apt 2304</b>
+          </li>
+        </ul>
+        <span className="pt-meta">Confirmed. Photos in 24 hours, videos in 48–72 hours.</span>
+      </section>
+    </Portal>
+  );
+}
+
+const PHOTOS = ["interior", "kitchen", "bath", "villa", "dusk", "aerial"];
+
+function Deliveries({ revision }: { revision?: boolean }) {
+  return (
+    <Portal tab="Shoots">
+      <ShootHead status="Delivered" at={4} />
+      <section className="pt-card">
+        <div className="pt-row">
+          <h2 className="pt-h2">Photos (42)</h2>
+          <span className="btn btn-g btn-s" data-point={revision ? undefined : ""}>
+            <Icon name="download" size={16} /> Download all
+          </span>
+        </div>
+        <ul className="pt-thumbs dsh-thumbs">
+          {PHOTOS.map((t, i) => (
+            <li key={t}>
+              <span className={`dsh-ph ph-${t}`} />
+              <div className="pt-thumb-foot">
+                <span className="pt-small">Photo {i + 1}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <div className="dsh-3">
+        <section className="pt-card">
+          <h2 className="pt-h2">Vertical videos (2)</h2>
+          <div className="dsh-reels">
+            <span className="dsh-ph ph-dusk" />
+            <span className="dsh-ph ph-interior" />
+          </div>
+          <span className="pt-link-btn" data-point={revision ? "" : undefined}>
+            Request revision
+          </span>
+        </section>
+        <section className="pt-card">
+          <h2 className="pt-h2">Long-form video</h2>
+          <span className="dsh-ph ph-villa dsh-169" />
+          <span className="btn btn-g btn-s">Download</span>
+        </section>
+        <section className="pt-card">
+          <h2 className="pt-h2">360 tour</h2>
+          <span className="dsh-ph ph-aerial dsh-169" />
+          <span className="btn btn-g btn-s">Open tour</span>
+        </section>
+      </div>
+    </Portal>
+  );
+}
+
+/* ---------------- listing builder → public listing page ---------------- */
+
+/** Builder for ~2.8s, then the published page. */
+function useStep(live: boolean, at = 2800) {
+  const [step, setStep] = useState(1);
+  useEffect(() => {
+    if (!live || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const t = [setTimeout(() => setStep(0), 0), setTimeout(() => setStep(1), at)];
+    return () => t.forEach(clearTimeout);
+  }, [live, at]);
+  return step;
+}
+
+function Share({ live }: { live: boolean }) {
+  const step = useStep(live);
+  if (step === 0)
+    return (
+      <Portal tab="Listings">
+        <section className="pt-card">
+          <span className="pt-eb">From the booking · MW-1418</span>
+          <h2 className="pt-h2">New listing</h2>
+          <div className="pt-grid2">
+            <Field label="Title">
+              <span className="dsh-in">2 Bed apartment, Marina Gate 1</span>
+            </Field>
+            <Field label="Price (AED)">
+              <span className="dsh-in">2,450,000</span>
+            </Field>
+          </div>
+          <span className="pt-field-label">Photos · 12 of 42 chosen</span>
+          <ul className="pt-thumbs dsh-thumbs">
+            {PHOTOS.map((t) => (
+              <li key={t}>
+                <span className={`dsh-ph ph-${t}`} />
+              </li>
+            ))}
+          </ul>
+          <div className="pt-btns">
+            <span className="btn btn-p btn-s" data-point="">
+              Publish listing
+            </span>
+            <span className="btn btn-g btn-s">Save draft</span>
+          </div>
+        </section>
+      </Portal>
+    );
+  return (
+    <div className="dsh-lp" data-tone="light">
+      <div className="dsh-lp-mosaic">
+        <span className="dsh-ph ph-interior" />
+        <span className="dsh-ph ph-kitchen" />
+        <span className="dsh-ph ph-bath" />
+        <span className="dsh-ph ph-dusk" />
+        <span className="dsh-ph ph-aerial" />
+      </div>
+      <div className="dsh-lp-cols">
+        <div className="dsh-lp-main">
+          <b className="dsh-lp-price">AED 2,450,000</b>
+          <b className="dsh-lp-h1">2 Bed apartment, Marina Gate 1</b>
+          <span className="dsh-lp-facts">
+            <span>
+              <Icon name="bed" size={16} /> 2 beds
+            </span>
+            <span>
+              <Icon name="bath" size={16} /> 3 baths
+            </span>
+            <span>
+              <Icon name="area" size={16} /> 1,320 sq ft
+            </span>
+            <span>
+              <Icon name="tour" size={16} /> 360 tour
+            </span>
+          </span>
+        </div>
+        <div className="dsh-lp-agent">
+          <b>Sara Mathew</b>
+          <span className="pt-meta">Pinnacle Real Estate</span>
+          <span className="btn btn-p btn-s" data-point="">
+            <Icon name="whatsapp" size={16} /> WhatsApp
+          </span>
+          <span className="btn btn-g btn-s">
+            <Icon name="phone" size={16} /> Call
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Post-production: Edit my files ---------------- */
+
+function EditRequest() {
+  return (
+    <Portal
+      tab="Editing"
+      modal={
+        <Modal title="Edit my files" footer={<BookFoot next="Send request" />}>
+          <div className="pt-form">
+            <Field label="Type of edit">
+              <div className="pt-chips">
+                {EDIT_KINDS.map(([k, l]) => (
+                  <span
+                    key={k}
+                    className="pt-pill"
+                    style={{ padding: "4px 14px" }}
+                    aria-pressed={k === "hdr_photos"}
+                  >
+                    {l}
+                  </span>
+                ))}
+              </div>
+            </Field>
+            <div className="pt-grid2">
+              <Field label="Title">
+                <span className="dsh-in">Willow Creek: October listings</span>
+              </Field>
+              <Field label="Quantity">
+                <span className="dsh-in">120</span>
+              </Field>
+            </div>
+            <Field label="Raw files">
+              <div className="pt-seg">
+                <button type="button" aria-pressed>
+                  Paste links
+                </button>
+                <button type="button" aria-pressed={false}>
+                  Upload
+                </button>
+              </div>
+            </Field>
+            <span className="dsh-in">drive.google.com/drive/folders/willow-creek-oct</span>
+            <span className="dsh-in">wetransfer.com/downloads/3f9a2c</span>
+          </div>
+        </Modal>
+      }
+    >
+      <YourWork />
+    </Portal>
+  );
+}
+
+function EditStatus({ live }: { live: boolean }) {
+  // Files received → In editing while the view shows.
+  const step = useStep(live, 1600);
+  return (
+    <Portal tab="Home">
+      <YourWork point="edit" editAt={step === 0 ? 1 : 2} />
+    </Portal>
+  );
+}
+
+function EditDelivered() {
+  return (
+    <Portal tab="Editing">
+      <section className="pt-card">
+        <div className="pt-row">
+          <span className="pt-eb">MW-1420 · HDR photos · 120 items</span>
+          <span className="pt-badge">Delivered</span>
+        </div>
+        <b className="pt-title" style={{ fontSize: 20 }}>
+          Willow Creek: October listings
+        </b>
+        <Steps steps={EDIT} at={3} />
+      </section>
+      <section className="pt-card">
+        <div className="pt-row">
+          <h2 className="pt-h2">Delivery 1 · 120 photos</h2>
+          <span className="btn btn-g btn-s">
+            <Icon name="download" size={16} /> Download all
+          </span>
+        </div>
+        <ul className="pt-thumbs dsh-thumbs">
+          {PHOTOS.map((t, i) => (
+            <li key={t}>
+              <span className={`dsh-ph ph-${t}`} />
+              <div className="pt-thumb-foot">
+                <span className="pt-small">IMG_33{40 + i}.jpg</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <span className="pt-link-btn" data-point="">
+          Request revision
+        </span>
+      </section>
+    </Portal>
+  );
+}
+
+/* ---------------- AI avatars ---------------- */
+
+function AvatarScript() {
+  return (
+    <Portal tab="Avatars">
+      <section className="pt-card">
+        <div className="pt-row">
+          <span className="pt-eb">Script · v1 · about 30 seconds</span>
+          <span className="pt-badge">Waiting for your approval</span>
+        </div>
+        <p style={{ margin: 0 }}>
+          Hi, I’m Adam from Milkywayy. JVC Heights is the newest address in Jumeirah Village Circle:
+          one to three bedroom homes, a rooftop pool, five minutes to Al Khail Road. Book a viewing
+          today.
+        </p>
+        <span className="pt-meta">Production starts once you approve.</span>
+        <div className="pt-btns">
+          <span className="btn btn-p btn-s" data-point="">
+            Approve script
+          </span>
+          <span className="btn btn-g btn-s">Ask for changes</span>
+        </div>
+      </section>
+    </Portal>
+  );
+}
+
+const AVATAR = ["Brief received", "Script ready", "In production", "Delivered", "Completed"];
+
+function AvatarTrack() {
+  return (
+    <Portal tab="Avatars">
+      <section className="pt-work">
+        <h2 className="pt-h2">Your work</h2>
+        <WorkGroup
+          name="AI avatars"
+          rows={[
+            {
+              title: "JVC Heights launch video",
+              meta: "MW-1422 · 8 Oct · Up to 60 seconds",
+              steps: AVATAR,
+              at: 2,
+              point: true,
+            },
+            {
+              title: "Weekly market update",
+              meta: "MW-1425 · 10 Oct · Up to 30 seconds",
+              steps: AVATAR,
+              at: 1,
+            },
+          ]}
+        />
+      </section>
+    </Portal>
+  );
+}
+
+function AvatarFiles() {
+  return (
+    <Portal tab="Avatars">
+      <section className="pt-card">
+        <div className="pt-row">
+          <h2 className="pt-h2">Videos (3)</h2>
+          <span className="btn btn-g btn-s" data-point="">
+            <Icon name="download" size={16} /> Download all
+          </span>
+        </div>
+        <div className="dsh-reels dsh-reels-3">
+          <span className="dsh-ph ph-adam" />
+          <span className="dsh-ph ph-avatar-clinic" />
+          <span className="dsh-ph ph-avatar-finance" />
+        </div>
+      </section>
+    </Portal>
+  );
+}
+
+function AvatarRevision() {
+  return (
+    <Portal tab="Avatars">
+      <section className="pt-card pt-form">
+        <b className="pt-title">Revision 1 of 2 · JVC Heights launch video</b>
+        <div className="pt-field">
+          <span className="pt-field-label">
+            What should change? <span className="pt-req">*</span>
+          </span>
+          <span className="dsh-in dsh-in-tall">At 0:18, say “five minutes to Al Khail Road”.</span>
+        </div>
+        <div className="pt-btns">
+          <span className="btn btn-p btn-s" data-point="">
+            Send revision request
+          </span>
+          <span className="btn btn-g btn-s">Cancel</span>
+        </div>
+      </section>
+    </Portal>
+  );
+}
+
+function Screen({
+  kind,
+  live,
+  pricing,
+}: {
+  kind: ShowcaseScreen;
+  live: boolean;
+  pricing?: PropertyPricing;
+}) {
+  switch (kind) {
+    case "overview":
+      return (
+        <Portal>
+          <YourWork point="shoot" />
+        </Portal>
+      );
+    case "book-media":
+      return <BookMedia />;
+    case "book-property":
+      return <BookProperty pricing={pricing} />;
+    case "book-where":
+      return <BookWhere />;
+    case "requested":
+      return <Requested />;
+    case "confirmed":
+      return <Confirmed />;
+    case "deliveries":
+      return <Deliveries />;
+    case "share":
+      return <Share live={live} />;
+    case "edit-request":
+      return <EditRequest />;
+    case "edit-status":
+      return <EditStatus live={live} />;
+    case "edit-delivered":
+      return <EditDelivered />;
+    case "script":
+      return <AvatarScript />;
+    case "track-avatar":
+      return <AvatarTrack />;
+    case "files-video":
+      return <AvatarFiles />;
+    case "revision":
+      return <AvatarRevision />;
+  }
 }

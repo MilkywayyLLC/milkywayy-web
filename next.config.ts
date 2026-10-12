@@ -20,11 +20,11 @@ const nextConfig: NextConfig = {
       { source: "/production/property-shoots", destination: "/property-shoots", statusCode: 301 },
       // The current milkywayy.com (crawled 2 Oct 2026; its pages are noindex, so this is about
       // bookmarks and shared links rather than rankings). See DECISIONS.md "Phase 7". Booking
-      // links land on the booking builder itself (owner, 4 Oct 2026).
-      { source: "/book", destination: "/property-shoots#booking", statusCode: 301 },
-      { source: "/book-now", destination: "/property-shoots#booking", statusCode: 301 },
-      { source: "/booking", destination: "/property-shoots#booking", statusCode: 301 },
-      { source: "/booking/:path*", destination: "/property-shoots#booking", statusCode: 301 },
+      // links land on Property shoots; booking happens in the portal (owner, 12 Oct 2026).
+      { source: "/book", destination: "/property-shoots", statusCode: 301 },
+      { source: "/book-now", destination: "/property-shoots", statusCode: 301 },
+      { source: "/booking", destination: "/property-shoots", statusCode: 301 },
+      { source: "/booking/:path*", destination: "/property-shoots", statusCode: 301 },
       { source: "/portfolio", destination: "/work", statusCode: 301 },
       { source: "/portfolio/:path*", destination: "/work", statusCode: 301 },
       { source: "/privacy-policy", destination: "/privacy", statusCode: 301 },

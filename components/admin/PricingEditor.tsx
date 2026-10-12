@@ -20,7 +20,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "commercial", label: "Commercial" },
   { key: "twilight", label: "Twilight" },
 ];
-const previewHref = `/admin/preview?path=${encodeURIComponent("/property-shoots#booking")}`;
+const previewHref = `/admin/preview?path=${encodeURIComponent("/property-shoots")}`;
 
 /** An emptied price box is NaN, which JSON would quietly turn into "not offered". Catch it here. */
 const hasBlank = (v: unknown): boolean =>
