@@ -11,7 +11,7 @@ export function BrandLogo({ tone, className = "brand-logo" }: { tone: Tone; clas
     <picture>
       <source type="image/webp" srcSet={`/brand/${f}.webp`} />
       {}
-      <img className={className} src={`/brand/${f}.png`} width={178} height={22} alt="Milkywayy" />
+      <img className={className} src={`/brand/${f}.png`} width={178} height={22} alt="Milkywayy — Content Production Studio, Dubai" />
     </picture>
   );
 }

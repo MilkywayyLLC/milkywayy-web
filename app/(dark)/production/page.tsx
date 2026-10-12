@@ -117,8 +117,8 @@ export default async function ProductionPage() {
               line2={<Hl>shot &amp; edited.</Hl>}
             />
             <p className="lede">
-              Shoot days, reels and long-form for agencies, developers and brands in the UAE. One
-              team films, edits and delivers, every month.
+              Photography and videography in Dubai for agencies, developers, hospitality and brands.
+              One team films, edits and delivers, every month.
             </p>
             <Ctas>
               <ButtonLink href="#get-your-package">Get your package</ButtonLink>

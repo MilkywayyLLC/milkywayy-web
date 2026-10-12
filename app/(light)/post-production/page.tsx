@@ -66,9 +66,9 @@ const STEPS: Step[] = [
 
 /** Until real work is placed, each row shows a placeholder at its own format's ratio. */
 const PLACEHOLDER: Record<"photo" | "reel" | "long-form", Media> = {
-  photo: { alt: "Placeholder HDR photo edit", placeholder: "interior" },
-  reel: { alt: "Placeholder social media reel", placeholder: "night" },
-  "long-form": { alt: "Placeholder walkthrough video still", placeholder: "villa-dusk" },
+  photo: { alt: "HDR real estate photo edit of an apartment interior", placeholder: "interior" },
+  reel: { alt: "Short-form social media reel edited for a brand", placeholder: "night" },
+  "long-form": { alt: "Real estate walkthrough video edit of a villa at dusk", placeholder: "villa-dusk" },
 };
 
 type Row = {
@@ -171,7 +171,7 @@ export default async function PostProductionPage() {
       href: "/ai-avatars",
       media: {
         media: avatars[0]?.poster ?? {
-          alt: "Placeholder AI avatar",
+          alt: "AI avatar video presenter edit",
           placeholder: "adam",
           bright: true,
         },
@@ -190,8 +190,8 @@ export default async function PostProductionPage() {
             <Eyebrow>Post-production · Worldwide</Eyebrow>
             <HeroTitle id="post-title" line1="Your remote" line2={<Hl>edit team.</Hl>} />
             <p className="lede">
-              Photo, video and AI avatar editing for media companies, agencies and creators. We run
-              our own productions, so we edit like people who&apos;ve been on set.
+              Real estate photo editing, video editing and AI avatars for agencies, media companies
+              and creators. We run our own shoots, so we edit like we&apos;ve been on set.
             </p>
             <ul className="checks">
               <li>Photo edits, short-form, long-form and AI avatars</li>

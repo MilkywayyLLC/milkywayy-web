@@ -122,8 +122,8 @@ export default async function PropertyShootsPage() {
             <Eyebrow rec>Production · Property shoots</Eyebrow>
             <HeroTitle id="property-title" line1="Don't just list." line2={<Hl>Dominate.</Hl>} />
             <p className="lede">
-              Photos, video and 360 tours for Dubai listings. Book in your dashboard, photos back in
-              24 hours.
+              A real estate photographer in Dubai for photos, video and 360 tours. Photos back in 24
+              hours.
             </p>
             <Ctas>{actions}</Ctas>
             <div className="anchor">

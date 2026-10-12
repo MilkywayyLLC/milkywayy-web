@@ -44,19 +44,19 @@ const NEEDS: Need[] = [
   {
     key: "UAE",
     title: "Content shot and edited",
-    sub: "Monthly packages or a single property shoot",
+    sub: "Photo and video for agencies and brands",
     href: "/production",
   },
   {
     key: "GLOBAL",
     title: "An editor for your shoots",
-    sub: "Photo, video and AI avatar editing",
+    sub: "Remote photo, video and AI avatar editing",
     href: "/post-production",
   },
   {
     key: "ANYONE",
     title: "An AI presenter",
-    sub: "A custom AI avatar for your brand",
+    sub: "An AI host with its own face and voice",
     href: "/ai-avatars",
   },
 ];
@@ -136,8 +136,8 @@ export default async function HomePage() {
                   line2="property & brands."
                 />
                 <p className="lede">
-                  We shoot in the UAE, edit for studios worldwide and build AI presenters for
-                  brands.
+                  We shoot photography and video in Dubai for real estate and brands, and edit
+                  worldwide.
                 </p>
                 <Ctas>
                   <ButtonLink href="/portal?new=choose">Book media</ButtonLink>
@@ -252,8 +252,8 @@ export default async function HomePage() {
               title="Everything in one place."
               aside={
                 <p className="lede">
-                  Every project, file, revision and invoice in one dashboard. You always know where
-                  things are.
+                  We know where production slows: follow-ups, revisions, back-and-forth. Our
+                  dashboard removes them. You book, we shoot. We deliver, you collect.
                 </p>
               }
             />

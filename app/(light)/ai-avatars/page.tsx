@@ -95,8 +95,8 @@ export default async function AiAvatarsPage() {
                 line2={<Hl>He isn&apos;t real.</Hl>}
               />
               <p className="lede">
-                We build AI presenters that look and sound like your brand, then script and edit
-                them into videos every month. No camera, no studio, no reshoots.
+                AI avatar video with a presenter that looks and sounds like your brand, scripted and
+                edited every month. No camera, no studio, no reshoots.
               </p>
               <Ctas extraLabels={["Show me the reveal"]}>
                 <ButtonLink href="#demo">Book a demo call</ButtonLink>
@@ -180,7 +180,7 @@ export default async function AiAvatarsPage() {
           </div>
           <div className="av-ml">
             <MediaFrame
-              media={ml?.media ?? { alt: "Multilingual AI avatar demo", placeholder: "adam" }}
+              media={ml?.media ?? { alt: "Multilingual AI avatar video demo: one AI presenter in several languages", placeholder: "adam" }}
               kind="long-form"
               play={ml && !ml.play ? "icon" : undefined}
               sizes="(max-width: 760px) 100vw, 600px"
