@@ -14,7 +14,7 @@ import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Hl, SectionHead } from "@/components/ui/Section";
-import { SHOWCASE } from "@/lib/showcase";
+import { SHOWCASE, showcasePhotos } from "@/lib/showcase";
 import {
   getBeforeAfter,
   getFaqs,
@@ -186,18 +186,17 @@ export default async function PropertyShootsPage() {
             eyebrow="Booking, step by step"
             title="Book it in your dashboard."
             aside={
-              <>
-                <p className="lede">
-                  Sign in with your email, pick the services, the date and the spot. We confirm,
-                  shoot and deliver to the same place.
-                </p>
-                <Ctas>
-                  <ButtonLink href={BOOK}>Book a shoot</ButtonLink>
-                </Ctas>
-              </>
+              <p className="lede">
+                Sign in with your email, pick the services, the date and the spot. We confirm, shoot
+                and deliver to the same place.
+              </p>
             }
           />
-          <DashboardShowcase features={SHOWCASE.property} pricing={pricing} />
+          <DashboardShowcase
+            features={SHOWCASE.property}
+            pricing={pricing}
+            photos={showcasePhotos(photos)}
+          />
         </div>
       </section>
 

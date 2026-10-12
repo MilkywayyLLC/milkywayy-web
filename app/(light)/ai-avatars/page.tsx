@@ -157,7 +157,7 @@ export default async function AiAvatarsPage() {
                   </li>
                 ))}
               </ul>
-              {avatars.some((a) => a.sample) && (
+              {avatars.every((a) => a.sample) && (
                 <SampleLabel>Placeholder avatars · real examples go here</SampleLabel>
               )}
             </div>

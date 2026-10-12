@@ -33,7 +33,7 @@ import { formatNumber, formatUSD } from "@/lib/format";
 import { lowestShootPrice } from "@/lib/pricing";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { pageMetadata } from "@/lib/seo/meta";
-import { SHOWCASE } from "@/lib/showcase";
+import { SHOWCASE, showcasePhotos } from "@/lib/showcase";
 import { PageLd } from "@/components/seo/JsonLd";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -72,7 +72,7 @@ const STEPS: Step[] = [
   },
   {
     n: "02",
-    title: "Shoot or generate",
+    title: "Produce",
     text: "On location in Dubai, from your raw files, or with your AI avatar.",
   },
   { n: "03", title: "Edit", text: "In-house editors. Photos in 24 hours, reels in 24–48." },
@@ -84,20 +84,33 @@ const STEPS: Step[] = [
 ];
 
 export default async function HomePage() {
-  const [site, clients, proof, stats, faqs, reviews, rowProd, rowPost, rowAv, property, other] =
-    await Promise.all([
-      getSiteSettings(),
-      getClients(),
-      showsProofStrip("home"),
-      getStats("home"),
-      getFaqs("home"),
-      getReviews("home"),
-      getPortfolio("home-row-production"),
-      getPortfolio("home-row-post"),
-      getPortfolio("home-row-avatars"),
-      getPropertyPricing(),
-      getOtherPricing(),
-    ]);
+  const [
+    site,
+    clients,
+    proof,
+    stats,
+    faqs,
+    reviews,
+    rowProd,
+    rowPost,
+    rowAv,
+    property,
+    other,
+    portfolio,
+  ] = await Promise.all([
+    getSiteSettings(),
+    getClients(),
+    showsProofStrip("home"),
+    getStats("home"),
+    getFaqs("home"),
+    getReviews("home"),
+    getPortfolio("home-row-production"),
+    getPortfolio("home-row-post"),
+    getPortfolio("home-row-avatars"),
+    getPropertyPricing(),
+    getOtherPricing(),
+    getPortfolio(),
+  ]);
 
   const shootsFrom = lowestShootPrice(property);
   const photoRate = other.postProduction.rates.find((r) => r.key === "photo");
@@ -152,17 +165,16 @@ export default async function HomePage() {
           </div>
         </div>
 
+        {/* Trusted-by / Google rating right under the hero, as on Production. */}
+        {proof && clients.length > 0 && (
+          <ProofStrip clients={clients} rating={site.googleRating.value} />
+        )}
+
         <section className="sec">
           <div className="w">
             <NeedSelector needs={NEEDS} />
           </div>
         </section>
-
-        {proof && clients.length > 0 && (
-          <div className="proof-band">
-            <ProofStrip clients={clients} rating={site.googleRating.value} />
-          </div>
-        )}
 
         <section className="sec" id="services" aria-labelledby="services-title">
           <div className="w">
@@ -245,7 +257,7 @@ export default async function HomePage() {
                 </p>
               }
             />
-            <DashboardShowcase features={SHOWCASE.home} />
+            <DashboardShowcase features={SHOWCASE.home} photos={showcasePhotos(portfolio)} />
           </div>
         </section>
 

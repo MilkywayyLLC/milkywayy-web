@@ -1,4 +1,13 @@
-import type { ShowcaseFeature } from "@/components/blocks/DashboardShowcase";
+import type { ShowcaseFeature, ShowcasePhoto } from "@/components/blocks/DashboardShowcase";
+import type { PortfolioItem } from "@/content/types";
+
+/** Real published portfolio photos for the showcase frames (placeholders when there are none). */
+export function showcasePhotos(items: PortfolioItem[]): ShowcasePhoto[] {
+  return items
+    .filter((p) => p.published && !p.sample && p.format === "photo" && p.media.src)
+    .slice(0, 9)
+    .map((p) => ({ src: p.media.src!, alt: p.media.alt }));
+}
 
 /**
  * The dashboard showcase per page (static frames, 13 Oct 2026). Each step is one still frame of a
@@ -9,7 +18,7 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
     {
       icon: "home",
       title: "Your work, at a glance",
-      text: "Every shoot, edit and video with its real stage, from request to delivery.",
+      text: "Every shoot, edit and video, with its real stage.",
       screen: "overview",
     },
     {
@@ -33,15 +42,9 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
   ],
   property: [
     {
-      icon: "plus",
-      title: "Book a shoot",
-      text: "Sign in with your email, press Book media, then Shoot.",
-      screen: "book-shoot",
-    },
-    {
       icon: "shoots",
-      title: "Pick the services",
-      text: "Property type, size and services, priced as you choose.",
+      title: "Pick your shoot",
+      text: "Sign in, press Book media, choose property type, size and services.",
       screen: "book-property",
     },
     {
@@ -52,15 +55,21 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
     },
     {
       icon: "bell",
-      title: "Requested, then confirmed",
+      title: "Confirmed",
       text: "No payment now. We confirm the slot, usually within the hour.",
       screen: "confirmed",
     },
     {
       icon: "download",
       title: "Delivered",
-      text: "Photos in 24 hours, videos in 48–72, with Download all.",
+      text: "Photos in 24 hours, videos in 48–72.",
       screen: "deliveries",
+    },
+    {
+      icon: "listings",
+      title: "Share with buyers",
+      text: "Send buyers one link for a single property or several, instead of dumping files on WhatsApp.",
+      screen: "share",
     },
   ],
   post: [
@@ -73,13 +82,13 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
     {
       icon: "board",
       title: "Follow the edit",
-      text: "Submitted, files received, in editing, delivered: every batch shows its stage.",
+      text: "Every batch shows its stage, from upload to delivery.",
       screen: "edit-status",
     },
     {
       icon: "chat",
       title: "Download or revise",
-      text: "Delivered files with Download all. Request a revision on any of them.",
+      text: "Download all, or request a revision on any file.",
       screen: "edit-delivered",
     },
   ],
@@ -87,19 +96,19 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
     {
       icon: "plus",
       title: "Brief your video",
-      text: "Pick the format and length, choose who writes the script, add a brief.",
+      text: "Pick the format and length, then add a short brief.",
       screen: "avatar-request",
     },
     {
       icon: "board",
       title: "Track production",
-      text: "Brief received, script ready, in production, delivered: always in view.",
+      text: "See every video's stage, from brief to delivery.",
       screen: "avatar-production",
     },
     {
       icon: "download",
       title: "Download or revise",
-      text: "Captioned and branded, ready to post. Two revision rounds on every video.",
+      text: "Ready to post, with two revision rounds included.",
       screen: "avatar-delivered",
     },
   ],

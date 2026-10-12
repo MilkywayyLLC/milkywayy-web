@@ -20,14 +20,15 @@ const MAX = 5;
 
 /**
  * "Built for your audience" (12 Oct 2026): a layered carousel of the admin's AI avatar examples.
- * Built for exactly five (13 Oct 2026): the centre card is 9:16 (16px corners) and plays muted on
+ * Always exactly five positions (fewer avatars repeat in the loop): the centre card is 9:16 (16px corners) and plays muted on
  * loop; two cards each side sit behind it (scaled 0.86 / 0.72, offset, dimmed, slightly blurred).
  * Advances every 2.2s with a 400ms ease-out, so it reads as moving on its own; pauses off-screen,
  * and only the centre video plays. Phones: centre card plus side peeks,
  * swipeable. Reduced motion: no auto-advance.
  */
 export function AvatarCarousel({ items: all }: { items: CarouselAvatar[] }) {
-  const items = all.slice(0, MAX);
+  // Always five positions, symmetric: with fewer avatars the loop repeats them.
+  const items = all.length ? Array.from({ length: MAX }, (_, k) => all[k % all.length]) : [];
   const root = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const [inView, setInView] = useState(false);
@@ -77,7 +78,7 @@ export function AvatarCarousel({ items: all }: { items: CarouselAvatar[] }) {
           const centre = off === 0;
           return (
             <div
-              key={a.id}
+              key={`${a.id}:${i}`}
               className="av-car-card"
               data-off={Math.max(-3, Math.min(3, off))}
               aria-hidden={!centre}

@@ -1,7 +1,17 @@
 "use client";
 
 import "@/app/styles/portal.css";
-import { useEffect, useId, useReducer, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useReducer,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { PropertyOptions } from "@/components/booking/PropertyOptions";
 import { BrandLogo } from "@/components/layout/Logo";
 import { Icon } from "@/components/portal/Icon";
@@ -18,11 +28,14 @@ import { EDIT_KINDS } from "@/lib/portal/projects";
  *
  * Auto-advances every 5s while in view and never pauses on hover; clicking a tab selects it and
  * holds it for 10s before auto-advance resumes. All mock styles live under `.dsh-mock`.
+ *
+ * Frames never crop: each one is measured and, if its content (a long modal, say) is taller than
+ * the canvas, the whole frame is scaled down to fit. Property images are real published portfolio
+ * photos (`photos`, see lib/showcase showcasePhotos), with the CSS placeholders as fallback.
  */
 export type ShowcaseScreen =
   | "overview"
   | "book-media"
-  | "book-shoot"
   | "book-property"
   | "book-where"
   | "confirmed"
@@ -34,6 +47,54 @@ export type ShowcaseScreen =
   | "avatar-request"
   | "avatar-production"
   | "avatar-delivered";
+
+export type ShowcasePhoto = { src: string; alt: string };
+
+const Photos = createContext<ShowcasePhoto[]>([]);
+
+/** A property image: the i-th real photo when there are any, else the named placeholder. */
+function Ph({ i, ph, className }: { i: number; ph: string; className?: string }) {
+  const photos = useContext(Photos);
+  const p = photos.length ? photos[i % photos.length] : undefined;
+  return (
+    <span
+      className={["dsh-ph", p ? undefined : `ph-${ph}`, className].filter(Boolean).join(" ")}
+      style={p ? { backgroundImage: `url("${p.src}")` } : undefined}
+      role={p ? "img" : undefined}
+      aria-label={p?.alt}
+    />
+  );
+}
+
+/** Scales a frame down (never up) so all of its content fits the canvas. */
+function Fit({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [s, setS] = useState(1);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const h = (sel: string) => el.querySelector<HTMLElement>(sel);
+    const modal = h(".pt-modal");
+    const top = h(".pt-top");
+    const content = h(".pt-content");
+    const lp = h(".dsh-lp-in");
+    const need = Math.max(
+      modal ? modal.offsetHeight + 48 : 0,
+      top && content ? top.offsetHeight + content.scrollHeight : 0,
+      lp ? lp.offsetHeight : 0,
+    );
+    if (need > CANVAS_H) setS(CANVAS_H / need);
+  }, []);
+  return (
+    <div
+      ref={ref}
+      className="dsh-fit"
+      style={{ width: CANVAS_W / s, height: CANVAS_H / s, transform: `scale(${s})` }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export type ShowcaseFeature = {
   icon: string;
@@ -51,9 +112,12 @@ export function DashboardShowcase({
   features,
   label = "Client dashboard features",
   pricing,
+  photos = [],
 }: {
   features: ShowcaseFeature[];
   label?: string;
+  /** Published portfolio photos for the property images. */
+  photos?: ShowcasePhoto[];
   /** The property price list, so "book-property" draws the real builder. */
   pricing?: PropertyPricing;
 }) {
@@ -180,7 +244,11 @@ export function DashboardShowcase({
           <div className="dsh-canvas" inert style={{ width: CANVAS_W, height: CANVAS_H }}>
             {features.map((f, i) => (
               <div key={f.title} className={i === active ? "dsh-frame on" : "dsh-frame"}>
-                <Screen kind={f.screen} pricing={pricing} />
+                <Photos.Provider value={photos}>
+                  <Fit>
+                    <Screen kind={f.screen} pricing={pricing} />
+                  </Fit>
+                </Photos.Provider>
               </div>
             ))}
           </div>
@@ -447,25 +515,7 @@ function ShootType() {
   );
 }
 
-/** Step 1 opened: the shoot type chosen. */
-function BookShoot() {
-  return (
-    <Portal
-      modal={
-        <Modal title="Book a shoot" footer={<BookFoot />}>
-          <div className="pt-form">
-            <BookSteps step={1} />
-            <ShootType />
-          </div>
-        </Modal>
-      }
-    >
-      <YourWork />
-    </Portal>
-  );
-}
-
-/** Step 1, further down: the portal's own property builder (type, size, services). */
+/** Step 1: the portal's own property builder (type, size, services). */
 function BookProperty({ pricing }: { pricing?: PropertyPricing }) {
   return (
     <Portal
@@ -609,7 +659,7 @@ function Deliveries() {
         <ul className="pt-thumbs dsh-thumbs">
           {PHOTOS.map((t, i) => (
             <li key={t}>
-              <span className={`dsh-ph ph-${t}`} />
+              <Ph i={i} ph={t} />
               <div className="pt-thumb-foot">
                 <span className="pt-small">Photo {i + 1}</span>
               </div>
@@ -626,8 +676,8 @@ function Deliveries() {
             </span>
           </div>
           <div className="dsh-reels">
-            <span className="dsh-ph ph-interior" />
-            <span className="dsh-ph ph-kitchen" />
+            <Ph i={6} ph="interior" />
+            <Ph i={7} ph="kitchen" />
           </div>
         </section>
         <section className="pt-card">
@@ -635,7 +685,7 @@ function Deliveries() {
             <h2 className="pt-h2">360 tour</h2>
             <span className="btn btn-g btn-s">Open tour</span>
           </div>
-          <span className="dsh-ph ph-aerial dsh-169" />
+          <Ph i={8} ph="aerial" className="dsh-169" />
         </section>
       </div>
     </Portal>
@@ -644,44 +694,56 @@ function Deliveries() {
 
 /* ---------------- the public listing page ---------------- */
 
+const AMENITIES = ["Marina view", "Pool and gym", "Covered parking"];
+
 function Share() {
   return (
     <div className="dsh-lp" data-tone="light">
-      <div className="dsh-lp-mosaic">
-        <span className="dsh-ph ph-interior" />
-        <span className="dsh-ph ph-kitchen" />
-        <span className="dsh-ph ph-bath" />
-        <span className="dsh-ph ph-villa" />
-        <span className="dsh-ph ph-aerial" />
-      </div>
-      <div className="dsh-lp-cols">
-        <div className="dsh-lp-main">
-          <b className="dsh-lp-price">AED 2,450,000</b>
-          <b className="dsh-lp-h1">2 Bed apartment, Marina Gate 1</b>
-          <span className="dsh-lp-facts">
-            <span>
-              <Icon name="bed" size={16} /> 2 beds
-            </span>
-            <span>
-              <Icon name="bath" size={16} /> 3 baths
-            </span>
-            <span>
-              <Icon name="area" size={16} /> 1,320 sq ft
-            </span>
-            <span>
-              <Icon name="tour" size={16} /> 360 tour
-            </span>
-          </span>
+      <div className="dsh-lp-in">
+        <div className="dsh-lp-mosaic">
+          {["interior", "kitchen", "bath", "villa", "aerial"].map((t, i) => (
+            <Ph key={t} i={i} ph={t} />
+          ))}
         </div>
-        <div className="dsh-lp-agent">
-          <b>Sara Mathew</b>
-          <span className="pt-meta">Pinnacle Real Estate</span>
-          <span className="btn btn-p btn-s">
-            <Icon name="whatsapp" size={16} /> WhatsApp
-          </span>
-          <span className="btn btn-g btn-s">
-            <Icon name="phone" size={16} /> Call
-          </span>
+        <div className="dsh-lp-cols">
+          <div className="dsh-lp-main">
+            <b className="dsh-lp-price">AED 2,450,000</b>
+            <b className="dsh-lp-h1">2 Bed apartment, Marina Gate 1</b>
+            <span className="dsh-lp-facts">
+              <span>
+                <Icon name="bed" size={16} /> 2 beds
+              </span>
+              <span>
+                <Icon name="bath" size={16} /> 3 baths
+              </span>
+              <span>
+                <Icon name="area" size={16} /> 1,320 sq ft
+              </span>
+              <span>
+                <Icon name="tour" size={16} /> 360 tour
+              </span>
+            </span>
+            <p className="dsh-lp-desc">
+              A bright, high-floor two bedroom with full-height windows and an open kitchen. Both
+              bedrooms face the water, and the balcony looks straight down the Marina. Vacant and
+              ready to view this week.
+            </p>
+            <span className="dsh-lp-chips">
+              {AMENITIES.map((a) => (
+                <span key={a}>{a}</span>
+              ))}
+            </span>
+          </div>
+          <div className="dsh-lp-agent">
+            <b>Sara Mathew</b>
+            <span className="pt-meta">Pinnacle Real Estate</span>
+            <span className="btn btn-p btn-s">
+              <Icon name="whatsapp" size={16} /> WhatsApp
+            </span>
+            <span className="btn btn-g btn-s">
+              <Icon name="phone" size={16} /> Call
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -798,7 +860,7 @@ function EditDelivered() {
         <ul className="pt-thumbs dsh-thumbs">
           {PHOTOS.map((t, i) => (
             <li key={t}>
-              <span className={`dsh-ph ph-${t}`} />
+              <Ph i={i} ph={t} />
               <div className="pt-thumb-foot">
                 <span className="pt-small">IMG_33{40 + i}.jpg</span>
               </div>
@@ -921,8 +983,6 @@ function Screen({ kind, pricing }: { kind: ShowcaseScreen; pricing?: PropertyPri
       );
     case "book-media":
       return <BookMedia />;
-    case "book-shoot":
-      return <BookShoot />;
     case "book-property":
       return <BookProperty pricing={pricing} />;
     case "book-where":

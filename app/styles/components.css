@@ -36,10 +36,10 @@
   /* Section rhythm (13 Oct 2026): after the hero (page --bg), content sections alternate
      surface-2 and --bg in the order they actually render, so optional sections never leave two
      neighbours in one colour. Sections in the other tone ([data-tone]) keep their own colour. */
-  :is(main, .home) > :nth-child(odd of .sec, .proof-band):not([data-tone]) {
+  :is(main, .home) > :nth-child(odd of .sec):not([data-tone]) {
     background: var(--surface-2);
   }
-  :is(main, .home) > :nth-child(even of .sec, .proof-band):not([data-tone]) {
+  :is(main, .home) > :nth-child(even of .sec):not([data-tone]) {
     background: var(--bg);
   }
   /* Home: calmer rhythm, more air between sections (site-refine, 3 Oct 2026). */
@@ -612,12 +612,6 @@
       aspect-ratio: 16 / 9;
     }
   }
-  .home > .proof-band .proof {
-    border: 0;
-  }
-  .home > .proof-band .proof-in {
-    padding-block: clamp(36px, 5vw, 56px);
-  }
 
   /* ---------- service page hero (Production, Property shoots) ---------- */
   .p-hero {
@@ -962,19 +956,8 @@
     color: var(--muted);
     font-size: 15px;
   }
-  /* Desktop: every title in a step or card row stays on one line (copy is written to fit;
-     the ellipsis is only a guard). Grid rows stretch, so cards in a row share one height. */
-  @media (min-width: 901px) {
-    .step .h3,
-    .why .h3,
-    .uses .h3,
-    .pa b,
-    .incl b {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-  }
+  /* Step and card titles are written short enough for one line at desktop; they are never
+     truncated (a too-long title wraps). Grid rows stretch, so cards in a row share one height. */
   @media (max-width: 900px) {
     .steps,
     .steps.five {
@@ -3204,10 +3187,6 @@
   .dsh-desc {
     font-size: 14.5px;
     line-height: 1.5;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
   }
   /* Connector from the active feature to the window (desktop). */
   .dsh-item[aria-selected="true"]::after {
@@ -3308,6 +3287,10 @@
     visibility: visible;
     transition: opacity 0.2s ease;
   }
+  /* Fit: a frame whose content is taller than the canvas is laid out larger and scaled down. */
+  .dsh-mock .dsh-fit {
+    transform-origin: 0 0;
+  }
   .dsh-mock .dsh-pt {
     position: relative;
     height: 100%;
@@ -3396,13 +3379,13 @@
     padding: 24px 80px;
     background: rgb(17 17 16 / 0.45);
   }
+  /* Never cropped: the modal shows all of its content (Fit scales the frame instead). */
   .dsh-mock .pt-modal {
     width: 100%;
-    max-height: 512px;
-    overflow: hidden;
+    max-height: none;
   }
   .dsh-mock .pt-modal-body {
-    overflow: hidden;
+    overflow: visible;
   }
   .dsh-mock .pt-thumbs.dsh-thumbs {
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -3498,12 +3481,33 @@
   /* the public listing page (share.css look: light, gallery mosaic, agent card) */
   .dsh-mock .dsh-lp {
     height: 100%;
-    padding: 18px 28px;
     background: #fff;
     color: var(--fg);
+  }
+  .dsh-mock .dsh-lp-in {
     display: grid;
-    grid-template-rows: 300px auto;
+    grid-template-rows: 280px auto;
     gap: 18px;
+    padding: 18px 28px 24px;
+  }
+  .dsh-mock .dsh-lp-desc {
+    margin: 6px 0 0;
+    max-width: 58ch;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .dsh-mock .dsh-lp-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .dsh-mock .dsh-lp-chips span {
+    padding: 5px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 12.5px;
   }
   .dsh-mock .dsh-lp-mosaic {
     display: grid;

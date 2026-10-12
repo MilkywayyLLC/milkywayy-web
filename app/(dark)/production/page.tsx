@@ -203,7 +203,7 @@ export default async function ProductionPage() {
         </div>
       </section>
 
-      <section className="sec" style={{ paddingTop: 0 }} aria-labelledby="first-month-title">
+      <section className="sec" aria-labelledby="first-month-title">
         <div className="w">
           <SectionHead id="first-month-title" eyebrow="How it works" title="Your first month." />
           <Steps steps={STEPS} />
