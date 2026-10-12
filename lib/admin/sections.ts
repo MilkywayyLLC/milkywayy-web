@@ -64,8 +64,9 @@ export const PLACEMENTS: Option[] = [
   { value: "property-gallery-video", label: "Property shoots · gallery: Video" },
   { value: "property-gallery-360", label: "Property shoots · gallery: 360" },
   { value: "post-hero-reels", label: "Post-production hero (3 reels)" },
-  { value: "post-hero", label: "Post-production · hero frames (fallback)" },
+  { value: "post-hero", label: "Post-production · gallery extras" },
   { value: "post-service-cards", label: "Post-production · service cards" },
+  { value: "avatars-multilingual", label: "AI avatars: multilingual demo (16:9 video)" },
   { value: "work", label: "Work page" },
 ];
 const placementPage = (p?: string) =>
@@ -79,7 +80,9 @@ const placementPage = (p?: string) =>
           ? "/property-shoots"
           : p.startsWith("post")
             ? "/post-production"
-            : "/work";
+            : p.startsWith("avatars")
+              ? "/ai-avatars"
+              : "/work";
 
 const CATEGORIES: Option[] = [
   { value: "property", label: "Property" },

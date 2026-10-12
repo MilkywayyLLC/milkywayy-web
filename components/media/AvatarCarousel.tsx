@@ -14,16 +14,20 @@ export type CarouselAvatar = {
   src?: string;
 };
 
-const STEP_MS = 3500;
+const STEP_MS = 2200;
+/** Designed for exactly five: the centre card and two each side. */
+const MAX = 5;
 
 /**
  * "Built for your audience" (12 Oct 2026): a layered carousel of the admin's AI avatar examples.
- * The centre card is 9:16 and plays muted on loop; two cards each side sit behind it (scaled
- * 0.86 / 0.72, offset, dimmed, slightly blurred). Advances every 3.5s with 500ms transitions,
- * pauses off-screen, and only the centre video plays. Phones: centre card plus side peeks,
+ * Built for exactly five (13 Oct 2026): the centre card is 9:16 (16px corners) and plays muted on
+ * loop; two cards each side sit behind it (scaled 0.86 / 0.72, offset, dimmed, slightly blurred).
+ * Advances every 2.2s with a 400ms ease-out, so it reads as moving on its own; pauses off-screen,
+ * and only the centre video plays. Phones: centre card plus side peeks,
  * swipeable. Reduced motion: no auto-advance.
  */
-export function AvatarCarousel({ items }: { items: CarouselAvatar[] }) {
+export function AvatarCarousel({ items: all }: { items: CarouselAvatar[] }) {
+  const items = all.slice(0, MAX);
   const root = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const [inView, setInView] = useState(false);

@@ -99,6 +99,7 @@ export type PortfolioPlacement =
   | "post-hero"
   | "post-hero-reels"
   | "post-service-cards"
+  | "avatars-multilingual"
   | "work";
 
 export interface PortfolioItem extends Publishable {

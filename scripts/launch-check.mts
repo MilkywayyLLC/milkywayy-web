@@ -64,6 +64,7 @@ const PLACEMENTS = [
   "post-hero",
   "post-hero-reels",
   "post-service-cards",
+  "avatars-multilingual",
   "work",
 ];
 for (const p of PLACEMENTS) {

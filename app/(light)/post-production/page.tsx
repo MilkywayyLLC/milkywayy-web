@@ -13,12 +13,12 @@ import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
 import { FormatGallery } from "@/components/blocks/FormatGallery";
 import { SHOWCASE } from "@/lib/showcase";
 import { HeroMedia } from "@/components/blocks/HeroMedia";
-import { oneFormat } from "@/lib/media";
+import { postHeroReels } from "@/lib/post-hero";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Hl, SectionHead } from "@/components/ui/Section";
-import type { Media, PortfolioFormat } from "@/content/types";
+import type { Media } from "@/content/types";
 import { kindOf } from "@/lib/media-config";
 import { withPlayback } from "@/lib/playable";
 import {
@@ -42,7 +42,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const WHY = [
   {
-    title: "We know what the edit is for",
+    title: "We know the shot",
     text: "We produce for real estate, hospitality, clinics and brands, so we understand the shot before you explain it.",
   },
   {
@@ -63,14 +63,6 @@ const STEPS: Step[] = [
   { n: "04", title: "Revise", text: "Two rounds included." },
   { n: "05", title: "Deliver", text: "Final files, named and sized for MLS and social." },
 ];
-
-/** Labels on the hero frames, by what each frame shows. Short: small frames take one line. */
-const HERO_LABEL: Record<PortfolioFormat, string> = {
-  photo: "HDR edit",
-  reel: "Reel",
-  "long-form": "Long-form",
-  "360": "360 tour",
-};
 
 /** Until real work is placed, each row shows a placeholder at its own format's ratio. */
 const PLACEHOLDER: Record<"photo" | "reel" | "long-form", Media> = {
@@ -102,6 +94,7 @@ export default async function PostProductionPage() {
     avatars,
     heroMedia,
     heroReelMedia,
+    allMedia,
   ] = await Promise.all([
     getSiteSettings(),
     getClients(),
@@ -114,16 +107,15 @@ export default async function PostProductionPage() {
     getAvatars(),
     getPortfolio("post-hero"),
     getPortfolio("post-hero-reels"),
+    getPortfolio(),
   ]);
-  // Three reels side by side, like Production (12 Oct 2026); the older single frame until the
-  // "Post-production hero (3 reels)" placement has some.
-  const heroReels = heroReelMedia.filter((m) => m.format === "reel").slice(0, 3);
-  const heroSet = heroReels.length ? { items: heroReels } : oneFormat(heroMedia);
+  // Always three reels side by side, like Production (13 Oct 2026): the placement first, then
+  // the latest published editing reels (lib/post-hero).
   const [hero, work] = await Promise.all([
-    withPlayback(heroSet.items),
+    withPlayback(postHeroReels(heroReelMedia, allMedia)),
     // Everything this page shows, once each, for the format gallery.
     withPlayback(
-      [...heroSet.items, ...heroMedia, ...cardMedia].filter(
+      [...heroReelMedia, ...heroMedia, ...cardMedia].filter(
         (m, i, all) => all.findIndex((x) => x.id === m.id) === i,
       ),
     ),
@@ -193,7 +185,7 @@ export default async function PostProductionPage() {
     <>
       <PageLd page="post-production" />
       <div className="w">
-        <section className={hero.length > 1 ? "p-hero" : "pp-hero"} aria-labelledby="post-title">
+        <section className="p-hero" aria-labelledby="post-title">
           <div className="stack">
             <Eyebrow>Post-production · Worldwide</Eyebrow>
             <HeroTitle id="post-title" line1="Your remote" line2={<Hl>edit team.</Hl>} />
@@ -213,11 +205,7 @@ export default async function PostProductionPage() {
               </ButtonLink>
             </Ctas>
           </div>
-          <HeroMedia
-            items={hero}
-            labels={hero.length > 1 ? undefined : HERO_LABEL}
-            trioSizes="(max-width: 900px) 33vw, 15vw"
-          />
+          <HeroMedia items={hero} trioSizes="(max-width: 900px) 33vw, 15vw" />
         </section>
       </div>
 

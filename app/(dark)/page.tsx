@@ -104,12 +104,6 @@ export default async function HomePage() {
   const whatsapp = pageWhatsappLink("Home", site.whatsapp.number);
   const showreelIsSample = !site.showreel.video;
 
-  // Background rhythm (12 Oct 2026): dark hero, then content sections alternate cream and a
-  // deeper cream in the order they render (optional ones included), the champagne CTA band, then
-  // the dark footer. Never two neighbours in the same colour.
-  let n = 0;
-  const cream = () => (n++ % 2 ? "cream-2" : "cream-1");
-
   return (
     <>
       <PageLd page="home" />
@@ -158,24 +152,19 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <section className={`sec ${cream()}`} data-tone="light">
+        <section className="sec">
           <div className="w">
             <NeedSelector needs={NEEDS} />
           </div>
         </section>
 
         {proof && clients.length > 0 && (
-          <div className={`proof-band ${cream()}`} data-tone="light">
+          <div className="proof-band">
             <ProofStrip clients={clients} rating={site.googleRating.value} />
           </div>
         )}
 
-        <section
-          className={`sec ${cream()}`}
-          data-tone="light"
-          id="services"
-          aria-labelledby="services-title"
-        >
+        <section className="sec" id="services" aria-labelledby="services-title">
           <div className="w">
             <SectionHead
               id="services-title"
@@ -236,18 +225,14 @@ export default async function HomePage() {
         </section>
 
         {stats.length > 0 && (
-          <section
-            className={`sec stats-sec ${cream()}`}
-            data-tone="light"
-            aria-label="Studio in numbers"
-          >
+          <section className="sec stats-sec" aria-label="Studio in numbers">
             <div className="w">
               <StatsBand stats={stats} />
             </div>
           </section>
         )}
 
-        <section className={`sec ${cream()}`} data-tone="light" aria-labelledby="dashboard-title">
+        <section className="sec" aria-labelledby="dashboard-title">
           <div className="w">
             <SectionHead
               id="dashboard-title"
@@ -264,7 +249,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className={`sec ${cream()}`} data-tone="light" aria-labelledby="how-title">
+        <section className="sec" aria-labelledby="how-title">
           <div className="w">
             <SectionHead id="how-title" eyebrow="How we work" title="Brief to delivery." />
             <Steps steps={STEPS} />
@@ -272,7 +257,7 @@ export default async function HomePage() {
         </section>
 
         {reviews.length > 0 && (
-          <section className={`sec ${cream()}`} data-tone="light" aria-labelledby="reviews-title">
+          <section className="sec" aria-labelledby="reviews-title">
             <div className="w">
               <SectionHead id="reviews-title" eyebrow="Client words" title="What clients say." />
               <Testimonials reviews={reviews} />
@@ -280,18 +265,13 @@ export default async function HomePage() {
           </section>
         )}
 
-        <section
-          className={`sec ${cream()}`}
-          data-tone="light"
-          id="founder"
-          aria-label="From the founder"
-        >
+        <section className="sec" id="founder" aria-label="From the founder">
           <div className="w">
             <FounderBlock founder={site.founder} />
           </div>
         </section>
 
-        <section className={`sec ${cream()}`} data-tone="light" aria-label="Questions">
+        <section className="sec" aria-label="Questions">
           <div className="w">
             <FAQ
               title="Before you ask."

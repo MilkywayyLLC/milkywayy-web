@@ -8,14 +8,16 @@ import { Steps, type Step } from "@/components/blocks/Steps";
 import { DemoForm } from "@/components/forms/DemoForm";
 import { AvatarStage, RevealButton, RevealProvider } from "@/components/media/AvatarReveal";
 import { AvatarCarousel } from "@/components/media/AvatarCarousel";
-import { MultilingualPlayer } from "@/components/media/MultilingualPlayer";
+import { MediaFrame } from "@/components/media/MediaFrame";
+import { MediaOpen } from "@/components/media/MediaOpen";
 import { isFileVideo, fileVideoUrl } from "@/lib/media-ref";
+import { withPlayback } from "@/lib/playable";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { SampleLabel } from "@/components/ui/SampleLabel";
 import { Hl, SectionHead } from "@/components/ui/Section";
-import { getAvatarHero, getAvatars, getFaqs, getSiteSettings } from "@/lib/data";
+import { getAvatarHero, getAvatars, getFaqs, getPortfolio, getSiteSettings } from "@/lib/data";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { pageMetadata } from "@/lib/seo/meta";
 import { PageLd } from "@/components/seo/JsonLd";
@@ -47,7 +49,7 @@ const STEPS: Step[] = [
   { n: "02", title: "Design", text: "We create 2–3 looks. You pick one." },
   { n: "03", title: "Voice", text: "Choose from shortlisted voices and accents." },
   { n: "04", title: "Scripts", text: "You send topics or we write them. You approve." },
-  { n: "05", title: "Monthly videos", text: "Edited, captioned and ready to post." },
+  { n: "05", title: "Videos", text: "Every month: edited, captioned and ready to post." },
 ];
 
 const USES = [
@@ -57,16 +59,17 @@ const USES = [
   { title: "Courses", text: "Lessons and onboarding videos at any scale." },
 ];
 
-/** Shown when no avatar has two language versions yet (no fake switching). */
-const LANGUAGES = ["English", "Arabic", "French", "Spanish", "German"];
-
 export default async function AiAvatarsPage() {
-  const [hero, avatars, faqs, site] = await Promise.all([
+  const [hero, avatars, faqs, site, mlItems] = await Promise.all([
     getAvatarHero(),
     getAvatars(),
     getFaqs("ai-avatars"),
     getSiteSettings(),
+    getPortfolio("avatars-multilingual"),
   ]);
+  // Multilingual: one 16:9 demo from the admin placement (13 Oct 2026). The avatars' language
+  // versions stay in the admin, unused here.
+  const [ml] = await withPlayback(mlItems.slice(0, 1));
   const whatsapp = pageWhatsappLink("AI avatars", site.whatsapp.number);
   // The carousel plays hosted files inline; a linked clip shows its poster.
   const deck = avatars.map((a) => ({
@@ -76,15 +79,6 @@ export default async function AiAvatarsPage() {
     poster: a.poster,
     src: isFileVideo(a.clip) ? fileVideoUrl(a.clip!) : undefined,
   }));
-  // Multilingual: the first avatar with two or more hosted language versions.
-  const multi = avatars
-    .map((a) => ({
-      a,
-      versions: (a.versions ?? [])
-        .filter((v) => isFileVideo(v.clip))
-        .map((v) => ({ language: v.language, src: fileVideoUrl(v.clip) })),
-    }))
-    .find((m) => m.versions.length >= 2);
   // The Plans section is off the page (12 Oct 2026); its data and admin entries stay.
 
   return (
@@ -177,27 +171,24 @@ export default async function AiAvatarsPage() {
           <div className="stack">
             <span className="eb">Multilingual</span>
             <h2 className="d h2" id="multi-title">
-              One presenter, every language.
+              One presenter, many languages.
             </h2>
             <p className="lede">
-              The same avatar, script and edit in the languages your clients speak. No re-shoots, no
-              new presenter.
+              Your presenter can speak multiple languages. Same face, same voice, same script and
+              edit, for every audience you sell to. No re-shoots, no new presenter.
             </p>
-            {!multi && (
-              <ul className="av-langs" aria-label="Languages">
-                {LANGUAGES.map((l) => (
-                  <li key={l}>{l}</li>
-                ))}
-              </ul>
-            )}
           </div>
-          {multi && (
-            <MultilingualPlayer
-              versions={multi.versions}
-              poster={multi.a.poster.src}
-              title={`${multi.a.name}, AI avatar`}
-            />
-          )}
+          <div className="av-ml">
+            <MediaFrame
+              media={ml?.media ?? { alt: "Multilingual AI avatar demo", placeholder: "adam" }}
+              kind="long-form"
+              play={ml && !ml.play ? "icon" : undefined}
+              sizes="(max-width: 760px) 100vw, 600px"
+            >
+              {ml?.play && <MediaOpen play={ml.play} />}
+            </MediaFrame>
+            {!ml && <SampleLabel>Placeholder · multilingual demo coming</SampleLabel>}
+          </div>
         </div>
       </section>
 

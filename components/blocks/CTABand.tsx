@@ -1,7 +1,7 @@
 import { Ctas } from "@/components/ui/Ctas";
 import type { ReactNode } from "react";
 
-/** Final call-to-action band: champagne on dark pages, black on light pages (guide §4.1). */
+/** Final call-to-action band: always champagne (never the footer colour); #222120 after a champagne section. */
 export function CTABand({
   title,
   text,

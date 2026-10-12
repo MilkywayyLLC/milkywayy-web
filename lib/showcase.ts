@@ -1,8 +1,8 @@
 import type { ShowcaseFeature } from "@/components/blocks/DashboardShowcase";
 
 /**
- * The dashboard showcase per page (rebuilt site-refine, 12 Oct 2026). Each step is a real portal
- * view; copy mirrors the portal. Icons are the portal's own (components/portal/Icon).
+ * The dashboard showcase per page (static frames, 13 Oct 2026). Each step is one still frame of a
+ * real portal view; copy mirrors the portal. Icons are the portal's own (components/portal/Icon).
  */
 export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", ShowcaseFeature[]> = {
   home: [
@@ -21,7 +21,7 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
     {
       icon: "download",
       title: "Your deliveries",
-      text: "Photos, reels, long-form and the 360 tour, with Download all.",
+      text: "Photos, reels and the 360 tour, with Download all.",
       screen: "deliveries",
     },
     {
@@ -34,9 +34,9 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
   property: [
     {
       icon: "plus",
-      title: "Book media",
-      text: "Sign in with your email and press Book media, then Shoot.",
-      screen: "book-media",
+      title: "Book a shoot",
+      text: "Sign in with your email, press Book media, then Shoot.",
+      screen: "book-shoot",
     },
     {
       icon: "shoots",
@@ -51,21 +51,15 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
       screen: "book-where",
     },
     {
-      icon: "check",
-      title: "Requested",
-      text: "Your request is in. No payment now.",
-      screen: "requested",
-    },
-    {
       icon: "bell",
-      title: "Confirmed",
-      text: "We confirm the date and time, usually within the hour, and email you.",
+      title: "Requested, then confirmed",
+      text: "No payment now. We confirm the slot, usually within the hour.",
       screen: "confirmed",
     },
     {
       icon: "download",
       title: "Delivered",
-      text: "Photos in 24 hours, videos in 48–72, in delivery cards with Download all.",
+      text: "Photos in 24 hours, videos in 48–72, with Download all.",
       screen: "deliveries",
     },
   ],
@@ -73,7 +67,7 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
     {
       icon: "editing",
       title: "Edit my files",
-      text: "Pick the type and quantity, then paste links or upload your raw files.",
+      text: "Pick the type and quantity, then paste links to your raw files.",
       screen: "edit-request",
     },
     {
@@ -84,35 +78,29 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
     },
     {
       icon: "chat",
-      title: "Download or ask for changes",
+      title: "Download or revise",
       text: "Delivered files with Download all. Request a revision on any of them.",
       screen: "edit-delivered",
     },
   ],
   avatars: [
     {
-      icon: "editing",
-      title: "Approve the script",
-      text: "We post the script; you approve it or ask for changes. Nothing is produced until you say go.",
-      screen: "script",
+      icon: "plus",
+      title: "Brief your video",
+      text: "Pick the format and length, choose who writes the script, add a brief.",
+      screen: "avatar-request",
     },
     {
       icon: "board",
       title: "Track production",
-      text: "Brief received, script ready, in production, delivered: every video shows where it is.",
-      screen: "track-avatar",
+      text: "Brief received, script ready, in production, delivered: always in view.",
+      screen: "avatar-production",
     },
     {
       icon: "download",
-      title: "Download your videos",
-      text: "Every video ready to post, captioned and branded, with Download all.",
-      screen: "files-video",
-    },
-    {
-      icon: "chat",
-      title: "Request a revision",
-      text: "Point to the timecode and say what to change. Two rounds on every video.",
-      screen: "revision",
+      title: "Download or revise",
+      text: "Captioned and branded, ready to post. Two revision rounds on every video.",
+      screen: "avatar-delivered",
     },
   ],
 };

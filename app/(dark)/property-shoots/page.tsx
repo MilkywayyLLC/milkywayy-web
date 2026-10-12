@@ -5,6 +5,7 @@ import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
 import { FAQ } from "@/components/blocks/FAQ";
 import { FormatGallery } from "@/components/blocks/FormatGallery";
 import { HeroMedia } from "@/components/blocks/HeroMedia";
+import { BeforeAfter } from "@/components/media/BeforeAfter";
 import { IncludedGrid, type Included } from "@/components/blocks/IncludedGrid";
 import { Steps, type Step } from "@/components/blocks/Steps";
 import { oneFormat } from "@/lib/media";
@@ -14,7 +15,13 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Hl, SectionHead } from "@/components/ui/Section";
 import { SHOWCASE } from "@/lib/showcase";
-import { getFaqs, getPortfolio, getPropertyPricing, getSiteSettings } from "@/lib/data";
+import {
+  getBeforeAfter,
+  getFaqs,
+  getPortfolio,
+  getPropertyPricing,
+  getSiteSettings,
+} from "@/lib/data";
 import { formatNumber } from "@/lib/format";
 import { lowestShootPrice } from "@/lib/pricing";
 import { pageWhatsappLink } from "@/lib/whatsapp";
@@ -31,8 +38,8 @@ export async function generateMetadata(): Promise<Metadata> {
 const STEPS: Step[] = [
   {
     n: "01",
-    title: "Book in your dashboard",
-    text: "Pick the services, a date and the exact entrance. You see the price as you go.",
+    title: "Book online",
+    text: "In your dashboard: pick the services, a date and the exact entrance. Priced as you go.",
   },
   {
     n: "02",
@@ -41,12 +48,12 @@ const STEPS: Step[] = [
   },
   {
     n: "03",
-    title: "Photos in 24h, videos in 48–72h",
-    text: "Delivered to your dashboard with Download all. Revisions are asked for there too.",
+    title: "Fast delivery",
+    text: "Photos in 24 hours, videos in 48–72, in your dashboard with Download all.",
   },
   {
     n: "04",
-    title: "Share-ready listing pages",
+    title: "Share a listing",
     text: "Turn the shoot into a listing page and send buyers one link.",
   },
 ];
@@ -58,14 +65,17 @@ const STEPS: Step[] = [
  */
 export default async function PropertyShootsPage() {
   const site = await getSiteSettings();
-  const [faqs, hero, photos, videos, tours, pricing] = await Promise.all([
+  const [faqs, hero, photos, videos, tours, pricing, pairs] = await Promise.all([
     getFaqs("property-shoots"),
     getPortfolio("property-hero"),
     getPortfolio("property-gallery-photo"),
     getPortfolio("property-gallery-video"),
     getPortfolio("property-gallery-360"),
     getPropertyPricing(),
+    getBeforeAfter(),
   ]);
+  // Hero: a before/after slider with the first published Before/after pair (13 Oct 2026).
+  const pair = pairs.find((p) => p.published);
   const whatsapp = pageWhatsappLink("Property shoots", site.whatsapp.number);
   const [heroItems, samples] = await Promise.all([
     withPlayback(oneFormat(hero).items),
@@ -76,12 +86,7 @@ export default async function PropertyShootsPage() {
     {
       kicker: `Delivered in ${d.photo}`,
       title: "HDR photography",
-      text: "Bracketed and blended, true colours, straight verticals, bright windows.",
-    },
-    {
-      kicker: `Delivered in ${d.photo}`,
-      title: "Twilight",
-      text: "Dusk shots with the lights on, the frame that stops the scroll.",
+      text: "Bracketed and blended, true colours, straight verticals, bright windows. Need twilight shots? We create them from your daylight photos. Add it as an option when you book.",
     },
     {
       kicker: `Delivered in ${d.long}`,
@@ -133,7 +138,11 @@ export default async function PropertyShootsPage() {
               </span>
             </div>
           </div>
-          <HeroMedia items={heroItems} trioSizes="(max-width: 900px) 33vw, 15vw" />
+          {pair ? (
+            <BeforeAfter pair={pair} className="p-hero-ba" />
+          ) : (
+            <HeroMedia items={heroItems} trioSizes="(max-width: 900px) 33vw, 15vw" />
+          )}
         </section>
       </div>
 
@@ -147,7 +156,7 @@ export default async function PropertyShootsPage() {
               <p className="lede">Pick one or all of them when you book. Prices show as you go.</p>
             }
           />
-          <IncludedGrid items={services} />
+          <IncludedGrid items={services} cols={2} />
         </div>
       </section>
 
@@ -170,7 +179,7 @@ export default async function PropertyShootsPage() {
         </div>
       </section>
 
-      <section className="sec" data-tone="light" aria-labelledby="dashboard-title">
+      <section className="sec" aria-labelledby="dashboard-title">
         <div className="w">
           <SectionHead
             id="dashboard-title"

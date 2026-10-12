@@ -2,6 +2,7 @@ import type { PortfolioItem, PortfolioPlacement } from "@/content/types";
 import { realFirst } from "@/lib/data/sample";
 import { kindOf } from "@/lib/media-config";
 import { oneFormat } from "@/lib/media";
+import { postHeroReels } from "@/lib/post-hero";
 import { inTab, TAB_LABEL, WORK_TABS, type GalleryTab } from "@/lib/gallery-tabs";
 
 export { inTab, TAB_LABEL, WORK_TABS, type GalleryTab } from "@/lib/gallery-tabs";
@@ -59,13 +60,13 @@ export function usedOn(item: UsageItem, all: UsageItem[]): string[] {
   const propTab = tabOf(item, propTabs);
   if (gallery && propTab) out.push(`Property shoots → Samples (${TAB_LABEL[propTab]})`);
 
-  const postReels = shown(pool, "post-hero-reels")
-    .filter((x) => x.format === "reel")
-    .slice(0, 3);
-  const postHero = postReels.length
-    ? { items: postReels }
-    : oneFormat(shown(pool, "post-hero") as unknown as PortfolioItem[]);
-  if (postHero.items.some((x) => x.id === item.id)) out.push("Post-production → Hero");
+  const postHero = postHeroReels(
+    shown(pool, "post-hero-reels"),
+    realFirst(pool.filter((x) => x.published).sort((a, b) => a.sortOrder - b.sortOrder)),
+  );
+  if (postHero.some((x) => x.id === item.id)) out.push("Post-production → Hero");
+  if (shown(pool, "avatars-multilingual")[0]?.id === item.id)
+    out.push("AI avatars → Multilingual demo");
   const cards = shown(pool, "post-service-cards");
   for (const row of POST_ROWS)
     if (cards.find((x) => kindOf(x) === row.format)?.id === item.id)

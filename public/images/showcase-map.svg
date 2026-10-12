@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" width="640" height="220">
+  <!-- Styled street map for the dashboard showcase (Dubai Marina look); the pin is drawn by the page. -->
+  <rect width="640" height="220" fill="#eeece6"/>
+  <path d="M0 150 C 90 140 150 168 230 160 S 360 120 430 132 S 560 170 640 150 L640 220 L0 220Z" fill="#c9dbe6"/>
+  <path d="M250 0 C 262 50 300 80 300 120 S 280 170 286 220" fill="none" stroke="#c9dbe6" stroke-width="22"/>
+  <rect x="470" y="18" width="120" height="70" rx="6" fill="#d7e5c9"/>
+  <rect x="24" y="22" width="80" height="52" rx="3" fill="#e2dfd7"/>
+  <rect x="120" y="22" width="96" height="52" rx="3" fill="#e2dfd7"/>
+  <rect x="24" y="92" width="80" height="40" rx="3" fill="#e2dfd7"/>
+  <rect x="120" y="92" width="96" height="40" rx="3" fill="#e2dfd7"/>
+  <rect x="330" y="22" width="56" height="44" rx="3" fill="#e2dfd7"/>
+  <rect x="398" y="22" width="56" height="44" rx="3" fill="#e2dfd7"/>
+  <rect x="330" y="80" width="124" height="34" rx="3" fill="#e2dfd7"/>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round">
+    <path d="M0 84 H640" stroke-width="10"/>
+    <path d="M112 0 V140" stroke-width="7"/>
+    <path d="M318 0 V126" stroke-width="7"/>
+    <path d="M462 0 V128" stroke-width="7"/>
+    <path d="M0 140 C 120 132 200 150 300 128" stroke-width="6"/>
+  </g>
+  <path d="M0 84 H640" stroke="#f3d79a" stroke-width="4"/>
+  <g font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#7d7a72">
+    <text x="20" y="80">Al Marsa St</text>
+    <text x="488" y="58">Marina Park</text>
+    <text x="360" y="186" fill="#6f8ea3">Dubai Marina</text>
+  </g>
+</svg>
