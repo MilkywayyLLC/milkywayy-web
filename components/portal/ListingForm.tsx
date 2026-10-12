@@ -310,10 +310,10 @@ export function ListingForm({
 
       <fieldset className="pt-card pt-permit-field">
         <legend className="pt-h2" style={{ fontSize: 15 }}>
-          DLD advertising permit
+          DLD advertising permit (optional)
         </legend>
         <p className="pt-meta" style={{ margin: 0 }}>
-          Required by DLD for property adverts. Check your permit.
+          Needed if you advertise this publicly in Dubai.
         </p>
         <label className="pt-field">
           Permit number (Trakheesi)

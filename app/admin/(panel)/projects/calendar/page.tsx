@@ -89,7 +89,7 @@ export default async function ShootCalendar({
             <div
               key={k}
               role="gridcell"
-              className={`ad-cal-day${inMonth ? "" : "out"}${k === ymd(today) ? "today" : ""}`}
+              className={`ad-cal-day ${inMonth ? "" : "out"} ${k === ymd(today) ? "today" : ""}`}
               aria-label={`${d.toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" })}: ${list.length} shoot${list.length === 1 ? "" : "s"}`}
             >
               <span className="ad-cal-n">{d.getUTCDate()}</span>

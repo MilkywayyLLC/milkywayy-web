@@ -14,6 +14,7 @@ import {
 } from "@/lib/portal/projects";
 import { can } from "@/lib/portal/access";
 import { myDrafts } from "@/lib/portal/draft-actions";
+import { projectCovers } from "@/lib/portal/covers";
 import { requestConfig } from "@/lib/portal/requests";
 import { seesMoney } from "@/lib/portal/shell";
 
@@ -36,6 +37,10 @@ export default async function Shoots() {
   ]);
   const active = all.filter((p) => p.status !== "completed" && p.status !== "cancelled");
   const done = all.filter((p) => p.status === "completed" || p.status === "cancelled");
+  const covers = await projectCovers(
+    db,
+    active.filter((p) => p.delivered_at || p.status === "delivered").map((p) => p.id),
+  );
   // Prices: only for those who see billing (the database returns no line items to others).
   const price = new Map<string, string>();
   if (seesMoney(current) && all.length) {
@@ -87,6 +92,12 @@ export default async function Shoots() {
               href={`/portal/shoots/${encodeURIComponent(p.ref)}`}
               className="pt-card pt-card-link"
             >
+              {covers.get(p.id) && (
+                <span className="pt-card-cover">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={covers.get(p.id)} alt="" loading="lazy" />
+                </span>
+              )}
               <div className="pt-row">
                 <span className="pt-eb" style={{ whiteSpace: "nowrap" }}>
                   {p.ref}

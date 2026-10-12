@@ -4,10 +4,12 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { BookingLocation } from "@/lib/portal/booking";
 
 /**
- * The shoot's location (owner, 10 Oct 2026): Google Places autocomplete limited to the UAE (type,
- * then press Enter to take the first match, or pick one) and a map pin you can drag. Stores the
- * formatted address, latitude/longitude and place id. Needs NEXT_PUBLIC_GOOGLE_MAPS_KEY (Maps
- * JavaScript API + Places API (New)); without it, a plain address field.
+ * The shoot's location (owner, 10 Oct 2026; map picker, site-refine Oct 2026): a search box with
+ * Google Places autocomplete limited to the UAE, and a map below it. Choosing a result drops the
+ * pin; dragging it or tapping the map moves it. Every change reverse-geocodes (Geocoding API) and
+ * fills the building, community and address fields, which stay editable. Stores the address,
+ * latitude/longitude, place id, building and community. Needs NEXT_PUBLIC_GOOGLE_MAPS_KEY (Maps
+ * JavaScript, Places (New) and Geocoding APIs); without it, the plain address field as before.
  */
 const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
 const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
@@ -20,6 +22,10 @@ type GPlace = {
   formattedAddress?: string;
   id?: string;
   location?: { lat: () => number; lng: () => number };
+};
+type Geo = {
+  formatted_address: string;
+  address_components: { long_name: string; types: string[] }[];
 };
 type Maps = {
   importLibrary: (name: string) => Promise<Record<string, unknown>>;
@@ -51,7 +57,8 @@ export function PlacesField({
   error?: string;
 }) {
   const id = useId();
-  const [text, setText] = useState(value.address);
+  // With the map: a search box separate from the (editable) address. Without: the address itself.
+  const [text, setText] = useState(KEY ? "" : value.address);
   const [list, setList] = useState<Suggestion[]>([]);
   const [active, setActive] = useState(0);
   const [mapsOk, setMapsOk] = useState(!!KEY);
@@ -65,6 +72,38 @@ export function PlacesField({
   useEffect(() => {
     latest.current = value;
   });
+  const geocoder = useRef<{
+    geocode: (r: { location: LatLng }) => Promise<{ results: Geo[] }>;
+  } | null>(null);
+
+  /** Pin moved: keep the coordinates, then fill building/community/address from Geocoding. */
+  async function pinned(lat: number, lng: number, name?: string, placeId?: string) {
+    const base = { ...latest.current, lat, lng, place_id: placeId };
+    onChange(base);
+    try {
+      const maps = await loadMaps();
+      if (!geocoder.current) {
+        const { Geocoder } = (await maps.importLibrary("geocoding")) as {
+          Geocoder: new () => NonNullable<typeof geocoder.current>;
+        };
+        geocoder.current = new Geocoder();
+      }
+      const { results } = await geocoder.current.geocode({ location: { lat, lng } });
+      const r = results[0];
+      if (!r) return;
+      const part = (...types: string[]) =>
+        r.address_components.find((c) => types.some((t) => c.types.includes(t)))?.long_name;
+      onChange({
+        ...base,
+        address: r.formatted_address || base.address,
+        building: name || part("premise", "establishment", "point_of_interest") || "",
+        community:
+          part("neighborhood", "sublocality_level_1", "sublocality") || part("locality") || "",
+      });
+    } catch {
+      // Geocoding off or failed: the pin still counts; the fields stay as typed.
+    }
+  }
 
   // The map with a draggable pin.
   useEffect(() => {
@@ -92,6 +131,7 @@ export function PlacesField({
           disableDefaultUI: true,
           zoomControl: true,
           gestureHandling: "cooperative",
+          clickableIcons: false,
         });
         const m = new AdvancedMarkerElement({
           map,
@@ -106,12 +146,23 @@ export function PlacesField({
           };
           const lat = typeof p.lat === "function" ? p.lat() : p.lat;
           const lng = typeof p.lng === "function" ? p.lng() : p.lng;
-          onChange({ ...latest.current, lat, lng });
+          void pinned(lat, lng);
+        });
+        // Tap the map to move the pin there.
+        (
+          map as unknown as { addListener: (e: string, f: (ev: object) => void) => void }
+        ).addListener("click", (ev) => {
+          const ll = (ev as { latLng?: { lat: () => number; lng: () => number } }).latLng;
+          if (!ll) return;
+          const at = { lat: ll.lat(), lng: ll.lng() };
+          m.position = at;
+          void pinned(at.lat, at.lng);
         });
         mapObj.current = map;
         marker.current = m;
       } catch {
         setMapsOk(false);
+        setText(latest.current.address);
       }
     })();
     return () => {
@@ -150,6 +201,7 @@ export function PlacesField({
       setActive(0);
     } catch {
       setMapsOk(false);
+      setText(latest.current.address);
     }
   }
 
@@ -157,17 +209,19 @@ export function PlacesField({
     setList([]);
     try {
       const place = s.toPlace();
-      await place.fetchFields({ fields: ["formattedAddress", "location", "id"] });
+      await place.fetchFields({ fields: ["displayName", "formattedAddress", "location", "id"] });
       token.current = null;
       const lat = place.location?.lat();
       const lng = place.location?.lng();
       const address = place.formattedAddress ?? s.text;
-      setText(address);
-      onChange({ ...latest.current, address, lat, lng, place_id: place.id });
+      setText(s.text);
+      onChange({ ...latest.current, address });
       if (lat != null && lng != null) {
         mapObj.current?.setCenter({ lat, lng });
-        mapObj.current?.setZoom(16);
+        mapObj.current?.setZoom(17);
         if (marker.current) marker.current.position = { lat, lng };
+        latest.current = { ...latest.current, address };
+        void pinned(lat, lng, (place as { displayName?: string }).displayName, place.id);
       }
     } catch {
       onChange({ ...latest.current, address: s.text });
@@ -175,13 +229,15 @@ export function PlacesField({
   }
 
   return (
-    <div className={`pt-places pt-field${error ? "is-bad" : ""}`} data-field="location">
+    <div className={`pt-places pt-field ${error && !mapsOk ? "is-bad" : ""}`} data-field="location">
       <label className="pt-field-label" htmlFor={`${id}-q`}>
-        Location
-        <span className="pt-req" aria-hidden="true">
-          {" "}
-          *
-        </span>
+        {mapsOk ? "Search the location" : "Location"}
+        {!mapsOk && (
+          <span className="pt-req" aria-hidden="true">
+            {" "}
+            *
+          </span>
+        )}
       </label>
       <div className="pt-places-in">
         <input
@@ -198,8 +254,9 @@ export function PlacesField({
           }
           onChange={(e) => {
             setText(e.target.value);
-            // Typed by hand: keep the text; a pin from an earlier choice no longer applies.
-            onChange({ address: e.target.value, unit: value.unit, access: value.access });
+            // Without the map, typed by hand is the address (a pin no longer applies).
+            if (!mapsOk)
+              onChange({ address: e.target.value, unit: value.unit, access: value.access });
             void suggest(e.target.value);
           }}
           onKeyDown={(e) => {
@@ -234,16 +291,60 @@ export function PlacesField({
           </ul>
         )}
       </div>
-      {error && <span className="pt-field-msg">{error}</span>}
+      {error && !mapsOk && <span className="pt-field-msg">{error}</span>}
       {KEY && mapsOk && (
         <>
-          <div ref={mapEl} className="pt-map" aria-label="Map: drag the pin to the exact spot" />
-          <span className="pt-meta">Drag the pin to the exact entrance if it’s off.</span>
+          <div
+            ref={mapEl}
+            className="pt-map"
+            aria-label="Map: tap or drag the pin to the exact spot"
+          />
+          <span className="pt-meta">Tap the map or drag the pin to the exact entrance.</span>
+          <div className="pt-grid2">
+            <label className="pt-field" htmlFor={`${id}-bld`}>
+              Building
+              <input
+                id={`${id}-bld`}
+                value={value.building ?? ""}
+                maxLength={200}
+                placeholder="e.g. Marina Heights"
+                onChange={(e) => onChange({ ...value, building: e.target.value })}
+              />
+            </label>
+            <label className="pt-field" htmlFor={`${id}-com`}>
+              Community
+              <input
+                id={`${id}-com`}
+                value={value.community ?? ""}
+                maxLength={200}
+                placeholder="e.g. Dubai Marina"
+                onChange={(e) => onChange({ ...value, community: e.target.value })}
+              />
+            </label>
+          </div>
+          <label className={`pt-field ${error ? "is-bad" : ""}`} htmlFor={`${id}-addr`}>
+            <span>
+              Address
+              <span className="pt-req" aria-hidden="true">
+                {" "}
+                *
+              </span>
+            </span>
+            <input
+              id={`${id}-addr`}
+              value={value.address}
+              maxLength={300}
+              aria-invalid={!!error || undefined}
+              placeholder="Filled from the pin; edit if needed"
+              onChange={(e) => onChange({ ...value, address: e.target.value })}
+            />
+            {error && <span className="pt-field-msg">{error}</span>}
+          </label>
         </>
       )}
       <div className="pt-grid2">
         <label className="pt-field" htmlFor={`${id}-unit`}>
-          Unit / building (optional)
+          {mapsOk ? "Unit (optional)" : "Unit / building (optional)"}
           <input
             id={`${id}-unit`}
 

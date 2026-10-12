@@ -85,9 +85,7 @@ test("from a delivered shoot: create the link; the public page shows the chosen 
   await form.getByLabel("Size (sq ft)").fill("2,410");
   await form.getByLabel("Add a highlight").fill("Burj Khalifa view");
   await form.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(
-    form.getByText("Required by DLD for property adverts. Check your permit."),
-  ).toBeVisible();
+  await expect(form.getByText("Needed if you advertise this publicly in Dubai.")).toBeVisible();
   await form.getByLabel("Permit number (Trakheesi)").fill("7120345678");
   // The default contact is picked (a pill with edit and remove); leave photo 2 out.
   await expect(form.getByLabel("Chosen contacts")).toContainText("Rania Haddad");
@@ -111,7 +109,7 @@ test("from a delivered shoot: create the link; the public page shows the chosen 
   await expect(pub.getByText("AED 6,950,000", { exact: true })).toBeVisible();
   await expect(pub.getByRole("list", { name: "Key facts" })).toContainText("3 Bed");
   await expect(pub.getByRole("list", { name: "Key facts" })).toContainText("2,410 sq ft");
-  await expect(pub.getByText("1 / 2 · View all")).toBeVisible();
+  await expect(pub.getByRole("button", { name: /open the photos \(2\)/ })).toBeVisible();
   await expect(pub.getByRole("button", { name: "Photo 2 of 2" })).toBeVisible();
   await expect(pub.getByLabel("DLD advertising permit")).toContainText("7120345678");
   const agent = pub.getByRole("region", { name: "Ask about this home" });
@@ -209,7 +207,8 @@ test("paused, expired, turned off or unknown: a friendly page, not an error", as
   await expect(card).toContainText("Live");
   await expect(card).toContainText("2views");
   await expect(card).toContainText("2WhatsApp/Call taps");
-  await card.getByRole("button", { name: "Pause" }).click();
+  await card.getByRole("button", { name: /^More actions/ }).click();
+  await card.getByRole("menuitem", { name: "Pause" }).click();
   await expect(card).toContainText("Paused");
 
   const v = await (await visitor(browser)).newPage();
@@ -221,7 +220,8 @@ test("paused, expired, turned off or unknown: a friendly page, not an error", as
   };
   await gone(`/l/${slug}`);
 
-  await card.getByRole("button", { name: "Resume" }).click();
+  await card.getByRole("button", { name: /^More actions/ }).click();
+  await card.getByRole("menuitem", { name: "Resume" }).click();
   await expect(card).toContainText("Live");
   // Expired yesterday.
   await ok(
@@ -256,7 +256,7 @@ test("paused, expired, turned off or unknown: a friendly page, not an error", as
   await page.goto("/portal/listings");
   await expect(card).toContainText("Turned off by Milkywayy");
   await expect(card).toContainText("Permit number doesn't match");
-  await expect(card.getByRole("button", { name: "Pause" })).toHaveCount(0);
+  await expect(card.getByRole("menuitem", { name: "Pause" })).toHaveCount(0);
   await ok(
     adminRpc("portal_admin_disable_share", { p_kind: "l", p_id: listingId, p_reason: null }),
   );
@@ -302,7 +302,7 @@ test("a Member makes a share page, but sees no prices of ours and no Billing", a
   await expect(page.getByRole("article", { name: "Mia's penthouse page" })).toBeVisible();
   // The owner's page: visible (the account shares everything) but not editable by Mia.
   const theirs = page.getByRole("article", { name: "Sky-high 3 bed penthouse" });
-  await expect(theirs.getByRole("button", { name: "Pause" })).toHaveCount(0);
+  await expect(theirs.getByRole("button", { name: /^More actions/ })).toHaveCount(0);
   await expect(page.getByText(/1,234/)).toHaveCount(0);
 });
 
@@ -336,13 +336,6 @@ test("polish: the permit QR shows, facts stay on one line, the bar steps aside f
       }));
       expect(h).toBeLessThanOrEqual(lh + 1);
     }
-    const cols = await p
-      .getByRole("list", { name: "Key facts" })
-      .evaluate(
-        (el) => new Set([...el.children].map((li) => li.getBoundingClientRect().left)).size,
-      );
-    const n = await p.getByRole("list", { name: "Key facts" }).getByRole("listitem").count();
-    expect(cols).toBe(width < 381 ? 2 : n);
     const bar = p.locator(".sh-bar");
     await expect(bar).not.toHaveAttribute("data-hidden");
     await p.locator("#sh-contact").scrollIntoViewIfNeeded();

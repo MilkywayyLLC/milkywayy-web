@@ -44,6 +44,9 @@ export type ShareListing = {
   permit_qr: string | null;
   video_url: string | null;
   tour_url: string | null;
+  /** From share_page() since site-refine (older deploys of the function leave them out). */
+  listed_at?: string;
+  updated_at?: string;
 };
 export type ListingPage =
   | {
@@ -57,7 +60,17 @@ export type ListingPage =
   | { state: "unavailable" | "missing" };
 export type CollectionItem = Pick<
   ShareListing,
-  "slug" | "title" | "purpose" | "price" | "currency" | "location" | "beds" | "baths" | "size_sqft"
+  | "slug"
+  | "title"
+  | "purpose"
+  | "price"
+  | "currency"
+  | "location"
+  | "beds"
+  | "baths"
+  | "size_sqft"
+  | "property_type"
+  | "furnishing"
 > & { photo: SharePhoto | null };
 export type CollectionPage =
   | {

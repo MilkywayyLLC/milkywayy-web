@@ -127,7 +127,7 @@ test("Owner on a package: plan name, usage as counts, renewal date; the badge sa
 test("Member: no Billing tab, no plan badge, no prices anywhere", async ({ page }) => {
   await signInUI(page, member);
   // The Member only belongs to Ledger Homes, so that's the account they're in.
-  await expect(page.locator(".pt-switch").first()).toContainText("Ledger Homes");
+  await expect(page.locator(".pt-switch-name").first()).toContainText("Ledger Homes");
   await expect(
     page
       .getByRole("navigation", { name: "Portal sections" })

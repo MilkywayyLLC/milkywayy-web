@@ -109,7 +109,7 @@ function PhotoRevision({ f, fallback }: { f: DFile; fallback: string | null }) {
         });
       }}
     >
-      <label className={`pt-field${msg && !msg.ok ? "is-bad" : ""}`}>
+      <label className={`pt-field ${msg && !msg.ok ? "is-bad" : ""}`}>
         What should change? <span className="pt-req">*</span>
         <input type="text" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
         {msg && !msg.ok && <span className="pt-field-msg">{msg.text}</span>}

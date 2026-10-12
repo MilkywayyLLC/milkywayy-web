@@ -48,6 +48,9 @@ export type BookingLocation = {
   lat?: number;
   lng?: number;
   place_id?: string;
+  /** Reverse-geocoded from the pin, editable (site-refine, Oct 2026). */
+  building?: string;
+  community?: string;
   unit?: string;
   access?: string;
 };

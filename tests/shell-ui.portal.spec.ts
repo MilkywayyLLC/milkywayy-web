@@ -64,7 +64,8 @@ test("tabs: every service and Listings for everyone; Billing and Team for the ow
     "Settings",
   ]);
   await expect(page.locator(".pt-plan")).toHaveText("Pay as you go");
-  await expect(page.getByRole("button", { name: /Olivia Owner: profile menu/ })).toHaveText("OO");
+  await expect(page.getByText("Hello, Olivia")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Olivia Owner: account menu/ })).toBeVisible();
   await rail(page).getByRole("link", { name: "Shoots" }).click();
   await expect(page.getByTestId("shoots")).toContainText("Marina Gate 1");
   await expect(page.getByTestId("shoots")).toContainText("AED 1,050");
@@ -200,7 +201,7 @@ test("Settings: name, notifications and company details save; bad TRN is refused
   await page.getByLabel("WhatsApp number (optional)").fill("50 000 0008");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: /profile menu/ })).toHaveText("OO");
+  await expect(page.getByText("Hello, Olivia")).toBeVisible();
   await page.reload();
   await expect(page.getByLabel("WhatsApp number (optional)")).toHaveValue("500000008");
 

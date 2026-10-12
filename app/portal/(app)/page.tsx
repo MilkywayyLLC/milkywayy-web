@@ -4,6 +4,7 @@ import { getSiteSettings } from "@/lib/data";
 import { contactOf, requireAccount } from "@/lib/portal/auth";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
 import { YourWork } from "@/components/portal/YourWork";
+import { projectCovers } from "@/lib/portal/covers";
 import { requestConfig } from "@/lib/portal/requests";
 import { statusLabel, type Project } from "@/lib/portal/projects";
 import { isManager, seesMoney } from "@/lib/portal/shell";
@@ -89,6 +90,10 @@ export default async function PortalHome({
     timeZone: "Asia/Dubai",
   });
   const openInvites = invites.count ?? 0;
+  const covers = await projectCovers(
+    db,
+    projects.filter((p) => p.delivered_at || p.status === "delivered").map((p) => p.id),
+  );
 
   return (
     <>
@@ -215,20 +220,17 @@ export default async function PortalHome({
         </section>
       )}
 
-      <YourWork projects={projects} cfg={cfg} />
+      <YourWork projects={projects} cfg={cfg} covers={covers} />
 
       <section className="pt-card" aria-labelledby="act">
         <h2 id="act" className="pt-h2">
-          Latest activity
+          Recent activity
         </h2>
         {events.length ? (
-          <ul className="pt-timeline" data-testid="activity">
+          <ul className="pt-activity" data-testid="activity">
             {events.map((e) => (
               <li key={e.id}>
-                <Link
-                  href={`/portal/p/${encodeURIComponent(e.project.ref)}`}
-                  style={{ textDecoration: "none", display: "grid" }}
-                >
+                <Link href={`/portal/p/${encodeURIComponent(e.project.ref)}`}>
                   <span>
                     {e.project.ref} ·{" "}
                     {e.kind === "created"
@@ -251,13 +253,12 @@ export default async function PortalHome({
                                       ? "Completed"
                                       : (e.note ?? e.kind)}
                   </span>
-                  <span className="pt-meta pt-mono">
+                  <time dateTime={e.at}>
                     {new Date(e.at).toLocaleDateString("en-GB", {
                       day: "numeric",
                       month: "short",
-                      year: "numeric",
                     })}
-                  </span>
+                  </time>
                 </Link>
               </li>
             ))}

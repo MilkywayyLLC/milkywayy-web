@@ -18,8 +18,9 @@ const ROLE: Record<string, string> = { owner: "Owner", admin: "Admin", member: "
 
 /**
  * The portal frame from the approved mockup (CLIENT_PORTAL_GUIDE §5.1): a rail of tabs on
- * desktop; on phones a bottom bar with 4 tabs and the rest under More. Top right: account
- * switcher (when someone belongs to several), plan badge and the avatar menu.
+ * desktop; on phones a bottom bar with 4 tabs and the rest under More. Top right, one 40px row:
+ * "Hello, {first name}", the account menu (package, account switcher, Settings, Team, Sign out)
+ * and "Book media" on the far right.
  */
 export function Shell({
   main,
@@ -36,14 +37,14 @@ export function Shell({
   accounts: AccountChoice[];
   currentId: string;
   plan: string;
-  me: { name: string; initials: string };
+  me: { name: string; first: string };
   /** "Book media", top right on every page (owner, 10 Oct 2026). */
   action?: ReactNode;
   children: ReactNode;
 }) {
   const path = usePathname();
   const [more, setMore] = useState(false);
-  const [menu, setMenu] = useState<null | "account" | "me">(null);
+  const [menu, setMenu] = useState<null | "me">(null);
   const [switching, startSwitch] = useTransition();
   const current = accounts.find((a) => a.id === currentId)!;
   const bottom = main.slice(0, 4);
@@ -94,23 +95,36 @@ export function Shell({
             <BrandLogo tone="light" />
           </Link>
           <div className="pt-top-right">
-            {action}
-            {accounts.length > 1 ? (
-              <div className="pt-pop-wrap">
-                <button
-                  type="button"
-                  className="pt-switch"
-                  aria-haspopup="menu"
-                  aria-expanded={menu === "account"}
-                  aria-label={`Account: ${current.name}. Switch account`}
-                  onClick={() => setMenu(menu === "account" ? null : "account")}
-                >
+            {me.first && <span className="pt-hello">Hello, {me.first}</span>}
+            <div className="pt-pop-wrap">
+              <button
+                type="button"
+                className="pt-acct"
+                aria-label={`${me.name}: account menu`}
+                aria-haspopup="menu"
+                aria-expanded={menu === "me"}
+                onClick={() => setMenu(menu === "me" ? null : "me")}
+              >
+                <Icon name="person" size={20} />
+              </button>
+              <div
+                className="pt-pop pt-pop-right"
+                role="menu"
+                data-open={menu === "me" || undefined}
+                inert={menu !== "me"}
+              >
+                <div className="pt-pop-who">
+                  <b>{me.name}</b>
                   <span className="pt-switch-name">{switching ? "Switching…" : current.name}</span>
-                  <Icon name="chevron" size={14} />
-                </button>
-                {menu === "account" && (
-                  <div className="pt-pop" role="menu">
-                    <span className="pt-eb">Your accounts</span>
+                  {plan && (
+                    <span className="pt-plan" title="Your package">
+                      {plan}
+                    </span>
+                  )}
+                </div>
+                {accounts.length > 1 && (
+                  <>
+                    <span className="pt-eb">Switch account</span>
                     {accounts.map((a) => (
                       <button
                         key={a.id}
@@ -127,47 +141,25 @@ export function Shell({
                         <small>{ROLE[a.role] ?? a.role}</small>
                       </button>
                     ))}
-                  </div>
+                    <span className="pt-pop-sep" />
+                  </>
                 )}
+                <Link role="menuitem" href="/portal/settings">
+                  Settings
+                </Link>
+                {account.some((t) => t.href === "/portal/team") && (
+                  <Link role="menuitem" href="/portal/team">
+                    Team
+                  </Link>
+                )}
+                <form action={signOut}>
+                  <button type="submit" role="menuitem" style={{ width: "100%" }}>
+                    Sign out
+                  </button>
+                </form>
               </div>
-            ) : (
-              <span className="pt-switch" style={{ cursor: "default" }}>
-                <span className="pt-switch-name">{current.name}</span>
-              </span>
-            )}
-            {plan && (
-              <span className="pt-plan" title="Your plan">
-                {plan}
-              </span>
-            )}
-            <div className="pt-pop-wrap">
-              <button
-                type="button"
-                className="pt-avatar"
-                aria-label={`${me.name}: profile menu`}
-                aria-haspopup="menu"
-                aria-expanded={menu === "me"}
-                onClick={() => setMenu(menu === "me" ? null : "me")}
-              >
-                {me.initials}
-              </button>
-              {menu === "me" && (
-                <div className="pt-pop pt-pop-right" role="menu">
-                  <span className="pt-eb">{me.name}</span>
-                  <Link role="menuitem" href="/portal/settings">
-                    Settings
-                  </Link>
-                  <Link role="menuitem" href="/">
-                    milkywayy.com
-                  </Link>
-                  <form action={signOut}>
-                    <button type="submit" role="menuitem" style={{ width: "100%" }}>
-                      Sign out
-                    </button>
-                  </form>
-                </div>
-              )}
             </div>
+            {action}
           </div>
         </header>
         <main className="pt-content" id="main" onClick={() => menu && setMenu(null)}>

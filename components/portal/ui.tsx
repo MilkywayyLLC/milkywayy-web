@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { PlaceholderKey } from "@/content/types";
 import { Icon } from "@/components/portal/Icon";
 
@@ -81,17 +81,24 @@ export function Sheet({
   onClose: () => void;
   children: ReactNode;
 }) {
+  // Plays the 140ms exit before the parent unmounts it (instant with reduced motion).
+  const [closing, setClosing] = useState(false);
+  const shut = useCallback(() => {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return onClose();
+    setClosing(true);
+    setTimeout(onClose, 140);
+  }, [onClose]);
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const k = (e: KeyboardEvent) => e.key === "Escape" && shut();
     addEventListener("keydown", k);
     document.body.style.overflow = "hidden";
     return () => {
       removeEventListener("keydown", k);
       document.body.style.overflow = "";
     };
-  }, [onClose]);
+  }, [shut]);
   return (
-    <div className="pt-sheet-bg" onClick={onClose}>
+    <div className="pt-sheet-bg" onClick={shut} data-closing={closing || undefined}>
       <div
         className="pt-sheet"
         role="dialog"
@@ -101,7 +108,7 @@ export function Sheet({
       >
         <div className="pt-sheet-head">
           <span className="pt-h2">{title}</span>
-          <button type="button" className="pt-icon-btn" aria-label="Close" onClick={onClose}>
+          <button type="button" className="pt-icon-btn" aria-label="Close" onClick={shut}>
             <Icon name="close" />
           </button>
         </div>

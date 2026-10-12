@@ -382,7 +382,7 @@ export function BookingModal({
             </Field>
             {kind === "property" && (
               <div
-                className={`pt-book-prop${form.errors.property ? "is-bad" : ""}`}
+                className={`pt-book-prop ${form.errors.property ? "is-bad" : ""}`}
                 data-field="property"
                 onClickCapture={() => setTouched(true)}
               >

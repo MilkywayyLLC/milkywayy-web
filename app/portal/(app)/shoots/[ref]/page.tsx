@@ -31,6 +31,7 @@ import { ShootDeliveries, type DFile } from "@/components/portal/ShootDeliveries
 import { downloadUrl, presign, r2Ready } from "@/lib/r2";
 import { SERVICE_LABEL, type Deliverable } from "@/lib/portal/booking";
 
+const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
 export const metadata = { title: "Shoot" };
 
 /** One shoot (§5.2): status, deliveries and downloads, revision, approve, details, activity, messages. */
@@ -209,7 +210,14 @@ export default async function ShootPage({
                 [
                   "Address",
                   booking
-                    ? [booking.location.address, booking.location.unit].filter(Boolean).join(" · ")
+                    ? [
+                        booking.location.unit,
+                        booking.location.building,
+                        booking.location.community,
+                        booking.location.address,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")
                     : [p.meta.unit && `Unit ${p.meta.unit}`, p.meta.building, p.meta.area]
                         .filter(Boolean)
                         .join(", "),
@@ -245,6 +253,22 @@ export default async function ShootPage({
                 </div>
               ))}
           </dl>
+          {booking?.location.lat != null && booking.location.lng != null && MAPS_KEY && (
+            <a
+              className="pt-staticmap"
+              href={`https://www.google.com/maps/search/?api=1&query=${booking.location.lat},${booking.location.lng}`}
+              target="_blank"
+              rel="noopener"
+              aria-label="Open the shoot location in Google Maps"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                alt=""
+                loading="lazy"
+                src={`https://maps.googleapis.com/maps/api/staticmap?center=${booking.location.lat},${booking.location.lng}&zoom=16&size=600x240&scale=2&markers=color:0x111110%7C${booking.location.lat},${booking.location.lng}&key=${encodeURIComponent(MAPS_KEY)}`}
+              />
+            </a>
+          )}
         </section>
         <ActivityList events={(events ?? []) as ProjectEvent[]} />
       </div>

@@ -34,7 +34,7 @@ export async function listingFormData(
       .order("created_at"),
     db
       .from("contacts")
-      .select("id, name, role, is_default, whatsapp, email, show_whatsapp")
+      .select("id, name, role, is_default, whatsapp, email, show_whatsapp, brn, photo_url")
       .eq("account_id", account.id)
       .order("is_default", { ascending: false })
       .order("name"),
@@ -54,6 +54,8 @@ export async function listingFormData(
     whatsapp: c.whatsapp,
     email: c.email,
     show_whatsapp: c.show_whatsapp ?? true,
+    brn: c.brn,
+    photo: sign(c.photo_url),
   }));
   // Older shoots delivered only as a zip: no single photos to put on a page.
   const zipOnly = !photos.length && fs.some((f) => f.kind === "zip");

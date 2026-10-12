@@ -2,7 +2,28 @@
 
 /* eslint-disable @next/next/no-img-element -- signed, short-lived R2 previews */
 import { useState, useTransition } from "react";
-import { saveInlineContact } from "@/lib/portal/listing-actions";
+import { contactPhotoUrl, saveInlineContact, setContactPhoto } from "@/lib/portal/listing-actions";
+import { makeSquare, putBlob } from "@/lib/upload-browser";
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Icon } from "./Icon";
 
 export type PickContact = {
@@ -13,6 +34,9 @@ export type PickContact = {
   whatsapp?: string | null;
   email?: string | null;
   show_whatsapp?: boolean;
+  brn?: string | null;
+  /** Signed preview of the round photo, if any. */
+  photo?: string | null;
 };
 export type PickPhoto = { id: string; label: string; src: string | null };
 
@@ -21,7 +45,36 @@ const initialsOf = (n: string) => {
   return (p.length > 1 ? p[0][0] + p[p.length - 1][0] : (p[0] ?? "?").slice(0, 2)).toUpperCase();
 };
 
-type Draft = { id?: string; name: string; phone: string; email: string; show_whatsapp: boolean };
+type Draft = {
+  id?: string;
+  name: string;
+  phone: string;
+  email: string;
+  brn: string;
+  show_whatsapp: boolean;
+  /** A new photo picked in the form (square-cropped), uploaded after the contact saves. */
+  file?: Blob | null;
+  preview?: string | null;
+};
+const EMPTY: Draft = { name: "", phone: "", email: "", brn: "", show_whatsapp: true };
+
+/** Round photo, or initials when there's none. */
+export function Face({
+  c,
+  size,
+}: {
+  c: { initials: string; photo?: string | null };
+  size?: number;
+}) {
+  const st = size ? { width: size, height: size } : undefined;
+  return c.photo ? (
+    <img src={c.photo} alt="" className="pt-pill-face" style={st} />
+  ) : (
+    <span className="pt-pill-face" style={st}>
+      {c.initials}
+    </span>
+  );
+}
 
 /**
  * Point of contact, inline (owner, 10 Oct 2026): the chosen contacts as pills (2 at most) with
@@ -43,7 +96,7 @@ export function ContactsField({
 }) {
   const [mode, setMode] = useState<"" | "pick" | "edit">("");
   const [q, setQ] = useState("");
-  const [d, setD] = useState<Draft>({ name: "", phone: "", email: "", show_whatsapp: true });
+  const [d, setD] = useState<Draft>(EMPTY);
   const [err, setErr] = useState<Record<string, string>>({});
   const [pending, start] = useTransition();
   const picked = chosen.map((id) => all.find((c) => c.id === id)).filter(Boolean) as PickContact[];
@@ -61,28 +114,40 @@ export function ContactsField({
     setErr(e);
     if (Object.keys(e).length) return;
     start(async () => {
-      const r = await saveInlineContact(d);
+      const { file, preview, ...fields } = d;
+      const r = await saveInlineContact(fields);
       if (!r.ok || !r.contact) return setErr({ form: r.error ?? "Couldn’t save the contact." });
+      const before = all.find((x) => x.id === r.contact!.id);
+      let photo = before?.photo ?? null;
+      if (file) {
+        const up = await contactPhotoUrl(r.contact.id);
+        if (up.ok && up.url && up.key && (await putBlob(up.url, file))) {
+          const saved = await setContactPhoto(r.contact.id, up.key);
+          if (saved.ok) photo = preview ?? null;
+        }
+      }
       const c: PickContact = {
         id: r.contact.id,
         name: r.contact.name,
-        role: all.find((x) => x.id === r.contact!.id)?.role ?? null,
+        role: before?.role ?? null,
         initials: initialsOf(r.contact.name),
         whatsapp: r.contact.whatsapp,
         email: r.contact.email || null,
         show_whatsapp: r.contact.show_whatsapp,
+        brn: r.contact.brn || null,
+        photo,
       };
       onContacts(
         all.some((x) => x.id === c.id) ? all.map((x) => (x.id === c.id ? c : x)) : [...all, c],
       );
       if (!chosen.includes(c.id)) onChange([...chosen, c.id].slice(-2));
       setMode("");
-      setD({ name: "", phone: "", email: "", show_whatsapp: true });
+      setD(EMPTY);
     });
   }
 
   return (
-    <div className={`pt-field${error ? "is-bad" : ""}`} data-field="contacts">
+    <div className={`pt-field ${error ? "is-bad" : ""}`} data-field="contacts">
       <span className="pt-field-label">
         Point of contact (up to 2) <span className="pt-req">*</span>
       </span>
@@ -90,10 +155,12 @@ export function ContactsField({
         <div className="pt-pills" aria-label="Chosen contacts">
           {picked.map((c) => (
             <span key={c.id} className="pt-pill" aria-pressed="true" style={{ cursor: "default" }}>
-              <span className="pt-pill-face">{c.initials}</span>
+              <Face c={c} />
               <span>
                 {c.name}
-                <small>{c.whatsapp ?? c.role ?? ""}</small>
+                <small>
+                  {[c.whatsapp ?? c.role, c.brn && `BRN ${c.brn}`].filter(Boolean).join(" · ")}
+                </small>
               </span>
               <button
                 type="button"
@@ -105,7 +172,9 @@ export function ContactsField({
                     name: c.name,
                     phone: c.whatsapp ?? "",
                     email: c.email ?? "",
+                    brn: c.brn ?? "",
                     show_whatsapp: c.show_whatsapp ?? true,
+                    preview: c.photo ?? null,
                   });
                   setErr({});
                   setMode("edit");
@@ -136,7 +205,7 @@ export function ContactsField({
             type="button"
             className="btn btn-g btn-s"
             onClick={() => {
-              setD({ name: "", phone: "", email: "", show_whatsapp: true });
+              setD(EMPTY);
               setErr({});
               setMode("edit");
             }}
@@ -183,7 +252,7 @@ export function ContactsField({
         <div className="pt-card pt-form" style={{ background: "var(--bg)", gap: 10 }}>
           <b>{d.id ? "Edit contact" : "New contact"}</b>
           <div className="pt-grid2">
-            <label className={`pt-field${err.name ? "is-bad" : ""}`}>
+            <label className={`pt-field ${err.name ? "is-bad" : ""}`}>
               <span>
                 Name <span className="pt-req">*</span>
               </span>
@@ -195,7 +264,7 @@ export function ContactsField({
               />
               {err.name && <span className="pt-field-msg">{err.name}</span>}
             </label>
-            <label className={`pt-field${err.phone ? "is-bad" : ""}`}>
+            <label className={`pt-field ${err.phone ? "is-bad" : ""}`}>
               <span>
                 Phone / WhatsApp <span className="pt-req">*</span>
               </span>
@@ -209,14 +278,44 @@ export function ContactsField({
               {err.phone && <span className="pt-field-msg">{err.phone}</span>}
             </label>
           </div>
-          <label className="pt-field">
-            Email
-            <input
-              type="email"
-              value={d.email}
-              onChange={(e) => setD({ ...d, email: e.target.value })}
-            />
-          </label>
+          <div className="pt-grid2">
+            <label className="pt-field">
+              Email
+              <input
+                type="email"
+                value={d.email}
+                onChange={(e) => setD({ ...d, email: e.target.value })}
+              />
+            </label>
+            <label className="pt-field">
+              RERA / BRN number (optional)
+              <input
+                type="text"
+                maxLength={40}
+                value={d.brn}
+                onChange={(e) => setD({ ...d, brn: e.target.value })}
+              />
+            </label>
+          </div>
+          <div className="pt-field">
+            <label htmlFor="inline-contact-photo">Profile photo (optional)</label>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              {d.preview && <img src={d.preview} alt="" className="pt-avatar-img" />}
+              <input
+                id="inline-contact-photo"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!f) return;
+                  const sq = await makeSquare(f, 320);
+                  if (!sq) return setErr({ ...err, form: "Use a JPG, PNG or WebP photo." });
+                  setD((x) => ({ ...x, file: sq, preview: URL.createObjectURL(sq) }));
+                }}
+              />
+            </div>
+          </div>
           <label className="pt-check">
             <input
               type="checkbox"
@@ -246,9 +345,63 @@ export function ContactsField({
   );
 }
 
+/** One photo in the sortable grid: drag anywhere on it; Space/Enter + arrows from the keyboard. */
+function SortablePhoto({
+  p,
+  i,
+  selected,
+  onSelect,
+  onRemove,
+}: {
+  p: PickPhoto;
+  i: number;
+  selected: boolean;
+  onSelect: () => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: p.id,
+  });
+  return (
+    <li
+      ref={setNodeRef}
+      className={`pt-sphoto ${isDragging ? "is-drag" : ""} ${selected ? "is-sel" : ""}`}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        type="button"
+        className="pt-sphoto-hit"
+        aria-label={`Photo ${i + 1}: ${p.label}${i === 0 ? " (cover)" : ""}. Press space to drag.`}
+        aria-pressed={selected}
+        onClick={onSelect}
+      >
+        {p.src ? (
+          <img src={p.src} alt="" loading="lazy" decoding="async" draggable={false} />
+        ) : (
+          <span className="pt-photo-none">{p.label}</span>
+        )}
+      </button>
+      {i === 0 && <b className="pt-sphoto-cover">Cover</b>}
+      <button
+        type="button"
+        className="pt-sphoto-x"
+        aria-label={`Leave out ${p.label}`}
+        onClick={onRemove}
+      >
+        ×
+      </button>
+    </li>
+  );
+}
+
 /**
- * Photo order (owner, 10 Oct 2026): drag to reorder (arrow buttons on touch); the first photo is
- * the cover. Photos left out are listed below; tap one to add it at the end.
+ * Photo order (site-refine, Oct 2026): a compact sortable grid (@dnd-kit; 6 across on desktop,
+ * 3 on phones) with real drag-and-drop to any position, auto-scroll near the edges and a drop
+ * placeholder; keyboard sorting from dnd-kit. Clicking a photo selects it and shows it large in
+ * a sticky panel, with "Make cover". The first photo is the cover. Photos left out are listed
+ * below; tap one to add it at the end.
  */
 export function PhotoOrder({
   photos,
@@ -261,19 +414,26 @@ export function PhotoOrder({
   onChange: (ids: string[]) => void;
   error?: string;
 }) {
-  const [drag, setDrag] = useState<number | null>(null);
+  const [sel, setSel] = useState<string | null>(order[0] ?? null);
   const byId = new Map(photos.map((p) => [p.id, p]));
   const on = order.map((id) => byId.get(id)).filter(Boolean) as PickPhoto[];
   const off = photos.filter((p) => !order.includes(p.id));
-  const move = (from: number, to: number) => {
-    if (to < 0 || to >= order.length || from === to) return;
-    const next = [...order];
-    const [x] = next.splice(from, 1);
-    next.splice(to, 0, x);
-    onChange(next);
+  const picked = sel && order.includes(sel) ? byId.get(sel) : on[0];
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const [dragging, setDragging] = useState<PickPhoto | null>(null);
+  const onDragStart = ({ active }: DragStartEvent) =>
+    setDragging(byId.get(String(active.id)) ?? null);
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    setDragging(null);
+    if (!over || active.id === over.id) return;
+    onChange(arrayMove(order, order.indexOf(String(active.id)), order.indexOf(String(over.id))));
   };
   return (
-    <div className={`pt-field${error ? "is-bad" : ""}`} data-field="photos">
+    <div className={`pt-field ${error ? "is-bad" : ""}`} data-field="photos">
       <span className="pt-row">
         <span className="pt-field-label">
           Photos on the page ({on.length} of {photos.length}) <span className="pt-req">*</span>
@@ -292,70 +452,79 @@ export function PhotoOrder({
         </span>
       </span>
       <span className="pt-meta">
-        Drag to reorder (or use the arrows). The first one is the cover.
+        Drag to reorder, or focus a photo and use Space and the arrow keys. The first one is the
+        cover.
       </span>
-      <ol className="pt-photos pt-photo-order" data-testid="photo-picker">
-        {on.map((p, i) => (
-          <li
-            key={p.id}
-            className={`pt-photo${drag === i ? "is-drag" : ""}`}
-            draggable
-            onDragStart={(e) => {
-              setDrag(i);
-              e.dataTransfer.effectAllowed = "move";
-            }}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              if (drag != null) move(drag, i);
-              setDrag(null);
-            }}
-            onDragEnd={() => setDrag(null)}
-            aria-label={`Photo ${i + 1}: ${p.label}${i === 0 ? " (cover)" : ""}`}
-          >
-            {p.src ? (
-              <img src={p.src} alt="" loading="lazy" decoding="async" draggable={false} />
-            ) : (
-              <span className="pt-photo-none">{p.label}</span>
+      <div className="pt-sort">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onDragCancel={() => setDragging(null)}
+          autoScroll={{ threshold: { x: 0, y: 0.15 }, acceleration: 12 }}
+        >
+          <SortableContext items={order} strategy={rectSortingStrategy}>
+            <ol className="pt-sort-grid" data-testid="photo-picker">
+              {on.map((p, i) => (
+                <SortablePhoto
+                  key={p.id}
+                  p={p}
+                  i={i}
+                  selected={picked?.id === p.id}
+                  onSelect={() => setSel(p.id)}
+                  onRemove={() => onChange(order.filter((x) => x !== p.id))}
+                />
+              ))}
+            </ol>
+          </SortableContext>
+          <DragOverlay>
+            {dragging && (
+              <div className="pt-sphoto pt-sphoto-lift">
+                {dragging.src ? (
+                  <img src={dragging.src} alt="" />
+                ) : (
+                  <span className="pt-photo-none">{dragging.label}</span>
+                )}
+              </div>
             )}
-            <b>{i === 0 ? "Cover" : i + 1}</b>
-            <span className="pt-photo-tools">
-              <button
-                type="button"
-                aria-label="Move earlier"
-                disabled={i === 0}
-                onClick={() => move(i, i - 1)}
-              >
-                ←
-              </button>
-              <button
-                type="button"
-                aria-label="Move later"
-                disabled={i === on.length - 1}
-                onClick={() => move(i, i + 1)}
-              >
-                →
-              </button>
-              <button
-                type="button"
-                aria-label={`Leave out ${p.label}`}
-                onClick={() => onChange(order.filter((x) => x !== p.id))}
-              >
-                ×
-              </button>
-            </span>
-          </li>
-        ))}
-      </ol>
+          </DragOverlay>
+        </DndContext>
+        {picked && (
+          <aside className="pt-sort-preview" aria-label="Selected photo">
+            {picked.src ? (
+              <img src={picked.src} alt={picked.label} />
+            ) : (
+              <span className="pt-photo-none">{picked.label}</span>
+            )}
+            <div className="pt-row">
+              <span className="pt-meta">
+                {order.indexOf(picked.id) === 0
+                  ? "Cover photo"
+                  : `Photo ${order.indexOf(picked.id) + 1} of ${order.length}`}
+              </span>
+              {order.indexOf(picked.id) > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-g btn-s"
+                  onClick={() => onChange([picked.id, ...order.filter((x) => x !== picked.id)])}
+                >
+                  Make cover
+                </button>
+              )}
+            </div>
+          </aside>
+        )}
+      </div>
       {off.length > 0 && (
         <>
           <span className="pt-meta">Not on the page: tap to add at the end.</span>
-          <div className="pt-photos">
+          <div className="pt-sort-grid">
             {off.map((p) => (
               <button
                 key={p.id}
                 type="button"
-                className="pt-photo"
+                className="pt-sphoto pt-sphoto-off"
                 aria-pressed="false"
                 aria-label={`Add ${p.label}`}
                 onClick={() => onChange([...order, p.id])}

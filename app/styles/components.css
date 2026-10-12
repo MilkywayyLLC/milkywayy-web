@@ -4167,3 +4167,129 @@
     }
   }
 }
+
+/*
+ * Smooth UI (site-refine, Oct 2026): one motion vocabulary for the site and the portal.
+ * Modals and sheets 180ms in / 140ms out (fade + small scale or slide), dropdowns 120ms
+ * (fade + 4px), button press .98, toasts slide in, tab panels cross-fade. Reduced motion
+ * turns all of it off via the global rule in globals.css.
+ */
+@layer components {
+  :root {
+    --mo-in: 180ms;
+    --mo-out: 140ms;
+    --mo-pop: 120ms;
+    --mo-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  @keyframes mo-fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes mo-fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes mo-pop {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.98);
+    }
+  }
+  @keyframes mo-pop-out {
+    to {
+      opacity: 0;
+      transform: translateY(4px) scale(0.985);
+    }
+  }
+  @keyframes mo-rise {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+  }
+  @keyframes mo-toast {
+    from {
+      opacity: 0;
+      transform: translate(-50%, 12px);
+    }
+  }
+
+  /* Modals, sheets, dialogs, the lightbox and the site's booking sheet. */
+  .pt-modal-bg,
+  .pt-sheet-bg,
+  .pt-choice-bg,
+  .mo-bg,
+  .lb {
+    animation: mo-fade var(--mo-in) ease-out both;
+  }
+  .pt-modal,
+  .pt-choice-box,
+  .mo-box {
+    animation: mo-pop var(--mo-in) var(--mo-ease) both;
+  }
+  .pt-sheet {
+    animation: mo-rise var(--mo-in) var(--mo-ease) both;
+  }
+  @media (min-width: 900px) {
+    .pt-sheet {
+      animation-name: mo-pop;
+    }
+  }
+  [data-closing] {
+    animation: mo-fade-out var(--mo-out) ease-in both !important;
+  }
+  [data-closing] > * {
+    animation: mo-pop-out var(--mo-out) ease-in both !important;
+  }
+
+  /* Dropdowns: rendered closed (hidden) so they can fade both ways. */
+  .pt-pop {
+    transition:
+      opacity var(--mo-pop) ease-out,
+      transform var(--mo-pop) ease-out,
+      visibility 0s linear var(--mo-pop);
+  }
+  .pt-pop:not([data-open]):not([open]) {
+    opacity: 0;
+    transform: translateY(-4px);
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .pt-pop[data-open] {
+    transition-delay: 0s;
+  }
+
+  /* Buttons: hover, a small press, and a visible focus ring. */
+  .btn,
+  .pt-icon-btn,
+  .pt-acct {
+    transition:
+      transform 0.12s ease,
+      background 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .btn:active,
+  .pt-icon-btn:active,
+  .pt-acct:active {
+    transform: scale(0.98);
+  }
+  .btn:focus-visible,
+  .pt-icon-btn:focus-visible,
+  .pt-acct:focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+  }
+
+  /* Toasts slide in; tab panels and swapped content cross-fade. */
+  .pt-toast {
+    animation: mo-toast var(--mo-in) var(--mo-ease) both;
+  }
+  [role="tabpanel"],
+  .mo-fade {
+    animation: mo-fade var(--mo-in) ease-out both;
+  }
+}

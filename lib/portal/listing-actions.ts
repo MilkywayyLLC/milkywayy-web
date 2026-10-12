@@ -298,6 +298,7 @@ export type InlineContact = {
   name: string;
   phone: string;
   email?: string;
+  brn?: string;
   show_whatsapp: boolean;
 };
 export async function saveInlineContact(
@@ -312,7 +313,16 @@ export async function saveInlineContact(
   if (!phone) return { ok: false, error: "Check the phone number and the country code." };
   const email = (c.email ?? "").trim().toLowerCase();
   if (email && !isEmail(email)) return { ok: false, error: "That email looks incomplete." };
-  const row = { name, whatsapp: phone, email: email || null, show_whatsapp: !!c.show_whatsapp };
+  const brn = (c.brn ?? "").trim();
+  if (brn.length > 40)
+    return { ok: false, error: "Keep the RERA / BRN number under 40 characters." };
+  const row = {
+    name,
+    whatsapp: phone,
+    email: email || null,
+    brn: brn || null,
+    show_whatsapp: !!c.show_whatsapp,
+  };
   const { data, error } = c.id
     ? await db.from("contacts").update(row).eq("id", c.id).select("id")
     : await db
@@ -328,7 +338,13 @@ export async function saveInlineContact(
   return {
     ok: true,
     notice: c.id ? "Contact updated everywhere." : "Contact added to Contacts.",
-    contact: { ...row, email: row.email ?? "", phone, id: data[0].id as string },
+    contact: {
+      ...row,
+      email: row.email ?? "",
+      brn: row.brn ?? "",
+      phone,
+      id: data[0].id as string,
+    },
   };
 }
 

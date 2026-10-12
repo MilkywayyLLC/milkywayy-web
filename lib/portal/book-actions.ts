@@ -81,6 +81,8 @@ export async function bookShoot(b: {
       ? { lat: b.location.lat, lng: b.location.lng }
       : {}),
     ...(b.location.place_id ? { place_id: b.location.place_id } : {}),
+    ...(b.location.building?.trim() ? { building: b.location.building.trim() } : {}),
+    ...(b.location.community?.trim() ? { community: b.location.community.trim() } : {}),
     ...(b.location.unit?.trim() ? { unit: b.location.unit.trim() } : {}),
     ...(b.location.access?.trim() ? { access: b.location.access.trim() } : {}),
   };
@@ -163,6 +165,8 @@ export async function updateBooking(projectId: string, b: BookingInput): Promise
       ? { lat: b.location.lat, lng: b.location.lng }
       : {}),
     ...(b.location.place_id ? { place_id: b.location.place_id } : {}),
+    ...(b.location.building?.trim() ? { building: b.location.building.trim() } : {}),
+    ...(b.location.community?.trim() ? { community: b.location.community.trim() } : {}),
     ...(b.location.unit?.trim() ? { unit: b.location.unit.trim() } : {}),
     ...(b.location.access?.trim() ? { access: b.location.access.trim() } : {}),
   };

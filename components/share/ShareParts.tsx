@@ -1,7 +1,16 @@
 /* eslint-disable @next/next/no-img-element -- media is pre-sized WebP on R2 (signed URLs), not next/image */
 import { headers } from "next/headers";
 import { pageMediaUrl } from "@/lib/r2";
-import { telLink, whatsappLink, type ShareBrand, type ShareContact } from "@/lib/share";
+import { BrandLogo } from "@/components/layout/Logo";
+import { Icon } from "@/components/portal/Icon";
+import {
+  FURNISHING,
+  telLink,
+  whatsappLink,
+  type ShareBrand,
+  type ShareContact,
+  type ShareListing,
+} from "@/lib/share";
 import { initials } from "@/lib/portal/shell";
 import { StickyBar, TapLink } from "./ShareClient";
 
@@ -24,7 +33,13 @@ export function Brand({ brand }: { brand: ShareBrand }) {
   );
 }
 
-/** The agent block: each chosen contact with WhatsApp and Call, plus the sticky bar. */
+const brnOf = (c: ShareContact) => c.brn && `BRN ${c.brn.replace(/^(RERA|BRN)[\s:#]*/i, "")}`;
+
+/**
+ * The agent card (site-refine, Oct 2026): photo (initials without one), name, role, RERA/BRN,
+ * then WhatsApp (primary) and Call, plus an email link. Sticky in the right column on desktop;
+ * tablets and phones also get the bottom bar with the first contact.
+ */
 export function Contacts({
   kind,
   slug,
@@ -45,6 +60,7 @@ export function Contacts({
   if (!contacts.length) return null;
   const first = contacts.find((c) => c.whatsapp) ?? contacts[0];
   const wa = (c: ShareContact) => !!c.whatsapp && c.show_whatsapp !== false;
+  const firstPhoto = pageMediaUrl(first.photo);
   return (
     <>
       <section id="sh-contact" className="sh-card sh-agents" aria-labelledby="sh-agents">
@@ -57,7 +73,7 @@ export function Contacts({
             <div key={i} className="sh-agent">
               <div className="sh-agent-who">
                 {photo ? (
-                  <img src={photo} alt="" width={48} height={48} loading="lazy" />
+                  <img src={photo} alt="" width={56} height={56} loading="lazy" />
                 ) : (
                   <span className="sh-face" aria-hidden="true">
                     {initials(c.name)}
@@ -65,11 +81,10 @@ export function Contacts({
                 )}
                 <span>
                   <b>{c.name}</b>
-                  <small>
-                    {[c.role, brand?.name, c.brn && `BRN ${c.brn.replace(/^BRN\s*/i, "")}`]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </small>
+                  {(c.role || brand?.name) && (
+                    <small>{[c.role, brand?.name].filter(Boolean).join(" · ")}</small>
+                  )}
+                  {c.brn && <small className="sh-brn">{brnOf(c)}</small>}
                 </span>
               </div>
               <div className="sh-agent-btns">
@@ -79,10 +94,10 @@ export function Contacts({
                     slug={slug}
                     event="wa"
                     href={whatsappLink(c.whatsapp!, title, url)}
-                    className="btn btn-p btn-s"
+                    className="btn btn-p sh-btn-wa"
                     label={`WhatsApp ${c.name}`}
                   >
-                    WhatsApp
+                    <Icon name="whatsapp" size={18} /> WhatsApp
                   </TapLink>
                 )}
                 {c.whatsapp && (
@@ -91,35 +106,34 @@ export function Contacts({
                     slug={slug}
                     event="call"
                     href={telLink(c.whatsapp)}
-                    className="btn btn-g btn-s"
+                    className="btn btn-g"
                     label={`Call ${c.name}`}
                   >
-                    Call
+                    <Icon name="phone" size={18} /> Call
                   </TapLink>
                 )}
-                {!c.whatsapp && c.email && (
-                  <a href={`mailto:${c.email}`} className="btn btn-g btn-s">
-                    Email
-                  </a>
-                )}
               </div>
+              {c.email && (
+                <a href={`mailto:${c.email}`} className="sh-mail">
+                  <Icon name="mail" size={16} /> {c.email}
+                </a>
+              )}
             </div>
           );
         })}
       </section>
       {first.whatsapp && (
         <StickyBar watch="sh-contact">
-          {wa(first) && (
-            <TapLink
-              kind={kind}
-              slug={slug}
-              event="wa"
-              href={whatsappLink(first.whatsapp, title, url)}
-              className="btn btn-p"
-            >
-              WhatsApp
-            </TapLink>
-          )}
+          <span className="sh-bar-who">
+            {firstPhoto ? (
+              <img src={firstPhoto} alt="" width={36} height={36} loading="lazy" />
+            ) : (
+              <span className="sh-face" aria-hidden="true">
+                {initials(first.name)}
+              </span>
+            )}
+            <b>{first.name}</b>
+          </span>
           <TapLink
             kind={kind}
             slug={slug}
@@ -127,27 +141,70 @@ export function Contacts({
             href={telLink(first.whatsapp)}
             className="btn btn-g"
           >
-            Call
+            <Icon name="phone" size={18} /> Call
           </TapLink>
+          {wa(first) && (
+            <TapLink
+              kind={kind}
+              slug={slug}
+              event="wa"
+              href={whatsappLink(first.whatsapp, title, url)}
+              className="btn btn-p sh-btn-wa"
+            >
+              <Icon name="whatsapp" size={18} /> WhatsApp
+            </TapLink>
+          )}
         </StickyBar>
       )}
     </>
   );
 }
 
-const UTM = "utm_source=sharepage&utm_medium=referral&utm_campaign=listing";
+/** Key facts as icon + text (beds, baths, size, furnishing, type). */
+export function Facts({ l }: { l: Partial<ShareListing> }) {
+  const items = [
+    l.beds ? (["bed", /^\d+$/.test(l.beds) ? `${l.beds} Bed` : l.beds] as const) : null,
+    l.baths != null
+      ? ([
+          "bath",
+          `${Number.isInteger(Number(l.baths)) ? l.baths : Number(l.baths).toFixed(1)} Bath`,
+        ] as const)
+      : null,
+    l.size_sqft
+      ? (["area", `${Number(l.size_sqft).toLocaleString("en-US")} sq ft`] as const)
+      : null,
+    l.furnishing ? (["sofa", FURNISHING[l.furnishing]] as const) : null,
+    l.property_type ? (["building", l.property_type] as const) : null,
+  ].filter((x) => x !== null);
+  if (!items.length) return null;
+  return (
+    <ul className="sh-facts" aria-label="Key facts">
+      {items.map(([icon, text]) => (
+        <li key={text}>
+          <Icon name={icon} size={18} /> {text}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
-/** The cross-marketing loop (§6.2). */
+const FOOTER = "https://milkywayy.com/?utm_source=listing&utm_medium=footer";
+
+/** The cross-marketing loop (§6.2): a slim footer, one link. */
 export function Byline() {
   return (
     <footer className="sh-byline">
-      <span>Media &amp; page by Milkywayy</span>
-      <a href={`/property-shoots?${UTM}`}>Get yours →</a>
+      <a href={FOOTER} target="_blank" rel="noopener">
+        <BrandLogo tone="light" className="sh-byline-logo" />
+        <span>Media &amp; page by Milkywayy</span>
+      </a>
     </footer>
   );
 }
 
 /** Paused, expired, disabled or gone: a friendly page, never an error. */
+const UTM = "utm_source=sharepage&utm_medium=referral&utm_campaign=listing";
+
 export function Unavailable({ kind }: { kind: "l" | "c" }) {
   const what = kind === "l" ? "listing" : "collection";
   return (

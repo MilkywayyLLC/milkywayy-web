@@ -6,5 +6,5 @@ export type GalleryPhoto = { small: string; large: string };
  * mobile data; the viewer has the big one). Wider screens get the 2048px one. The page preloads
  * the same pair, so the browser picks once.
  */
-export const HERO_SIZES = "(min-width: 760px) 720px, 266px";
+export const HERO_SIZES = "(min-width: 1024px) 720px, (min-width: 700px) 60vw, 266px";
 export const heroSrcSet = (p: GalleryPhoto) => `${p.small} 800w, ${p.large} 2048w`;

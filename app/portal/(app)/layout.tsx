@@ -3,7 +3,7 @@ import { StartRequests } from "@/components/portal/StartRequests";
 import { Hydrated } from "@/components/ui/Hydrated";
 import { contactOf, requireAccount } from "@/lib/portal/auth";
 import { requestConfig } from "@/lib/portal/requests";
-import { initials, portalTabs, seesMoney } from "@/lib/portal/shell";
+import { portalTabs, seesMoney } from "@/lib/portal/shell";
 
 /** Signed-in portal pages: the shell from the approved mockup around every tab. */
 export default async function PortalApp({ children }: { children: React.ReactNode }) {
@@ -42,7 +42,7 @@ export default async function PortalApp({ children }: { children: React.ReactNod
       currentId={current.account.id}
       plan={planLabel}
       action={cfg ? <StartRequests cfg={cfg} autoOpen /> : undefined}
-      me={{ name, initials: initials(profile?.full_name || current.account.name) }}
+      me={{ name, first: (profile?.full_name ?? "").trim().split(/\s+/)[0] ?? "" }}
     >
       <Hydrated />
       {children}

@@ -66,3 +66,13 @@ The name invites it; keep it quiet so it never fights the work.
   Probably too much: test before shipping.
 - **Rules:** never behind text that must be read; contrast checks still pass; turned off entirely
   with reduced motion; no new libraries.
+
+## Admin operations (noted 12 Oct 2026, site-refine; not built)
+
+- **Admin booking calendar:** every shoot on a month/week calendar, colour-coded by status
+  (requested, confirmed, shot, editing, delivered). Click a booking to confirm it or change its
+  status in place.
+- **Internal team and task board:** assign editors and shooters to projects; ClickUp-style cards
+  per task (owner, due date, status column, checklist), filterable by person.
+- **Finance tab:** income received, pending, and expected from confirmed shoots; invoices due and
+  paid; expense entry by category; monthly charts (income vs expenses, by service).

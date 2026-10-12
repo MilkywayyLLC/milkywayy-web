@@ -20,6 +20,22 @@ import { price as fmtPrice } from "@/lib/share";
 
 export const metadata = { title: "Listings" };
 
+function Stats({ t }: { t: { views: number; wa: number; call: number } }) {
+  return (
+    <div className="pt-lstats">
+      <span>
+        <b>{t.views}</b> views
+      </span>
+      <span>
+        <b>{t.wa}</b> WhatsApp
+      </span>
+      <span>
+        <b>{t.call}</b> Call
+      </span>
+    </div>
+  );
+}
+
 const today = () => new Date(Date.now() + 4 * 3600e3).toISOString().slice(0, 10);
 const tone = (s: ReturnType<typeof shareState>) =>
   s === "live" ? "ok" : s === "disabled" ? "warn" : undefined;
@@ -81,15 +97,17 @@ export default async function Listings() {
           )
       : Promise.resolve({ data: [] }),
   ]);
-  const totals = new Map<string, { views: number; taps: number }>();
+  const totals = new Map<string, { views: number; wa: number; call: number }>();
   for (const s of stats ?? []) {
     const k = (s.listing_id ?? s.collection_id) as string;
     if (!ids.includes(k)) continue;
-    const t = totals.get(k) ?? { views: 0, taps: 0 };
+    const t = totals.get(k) ?? { views: 0, wa: 0, call: 0 };
     t.views += s.views;
-    t.taps += s.wa_taps + s.call_taps;
+    t.wa += s.wa_taps;
+    t.call += s.call_taps;
     totals.set(k, t);
   }
+  const zero = { views: 0, wa: 0, call: 0 };
   const cover = new Map(
     (covers ?? []).map((f) => [
       f.id as string,
@@ -135,64 +153,61 @@ export default async function Listings() {
       ) : (
         <>
           {listings.length > 1 && <ShareSelectedBar />}
-          <div className="pt-grid2" data-testid="listings">
+          <div className="pt-lgrid" data-testid="listings">
             {listings.map((l) => {
               const s = shareState(l, day);
-              const t = totals.get(l.id) ?? { views: 0, taps: 0 };
+              const t = totals.get(l.id) ?? zero;
               const src = cover.get(l.photo_ids[0]);
               return (
-                <article key={l.id} className="pt-card" aria-label={l.title}>
+                <article key={l.id} className="pt-lcard" aria-label={l.title}>
+                  <a
+                    href={`/l/${l.slug}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="pt-lcard-img"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                  >
+                    {src ? (
+                      <img src={src} alt="" loading="lazy" />
+                    ) : (
+                      <Icon name="photo" size={28} />
+                    )}
+                  </a>
                   {listings.length > 1 && (
-                    <label className="pt-check pt-small">
+                    <label className="pt-lcard-pick">
                       <input
                         type="checkbox"
                         name="pick"
                         value={l.id}
                         aria-label={`Select ${l.title}`}
-                      />{" "}
-                      Select
+                      />
                     </label>
                   )}
-                  <div className="pt-listing">
-                    {src ? (
-                      <img src={src} alt="" className="pt-listing-img" loading="lazy" />
-                    ) : (
-                      <span className="pt-listing-img" />
+                  <div className="pt-lcard-body">
+                    <span>
+                      <Badge tone={tone(s)}>{STATE_LABEL[s]}</Badge>
+                    </span>
+                    <b className="pt-title pt-clamp2">{l.title}</b>
+                    <span className="pt-meta">
+                      {fmtPrice(l.price, "AED", l.purpose)}
+                      {l.expires_on && s !== "expired" ? ` · until ${l.expires_on}` : ""}
+                    </span>
+                    {s === "disabled" && l.disabled_reason && (
+                      <span className="pt-meta">Reason: {l.disabled_reason}. WhatsApp us.</span>
                     )}
-                    <div style={{ display: "grid", gap: 2, alignContent: "start", minWidth: 0 }}>
-                      <span>
-                        <Badge tone={tone(s)}>{STATE_LABEL[s]}</Badge>
-                      </span>
-                      <b className="pt-title">{l.title}</b>
-                      <span className="pt-meta">
-                        {fmtPrice(l.price, "AED", l.purpose)}
-                        {l.expires_on && s !== "expired" ? ` · until ${l.expires_on}` : ""}
-                      </span>
-                      {s === "disabled" && l.disabled_reason && (
-                        <span className="pt-meta">Reason: {l.disabled_reason}. WhatsApp us.</span>
-                      )}
-                    </div>
+                    <Stats t={t} />
+                    <ShareControls
+                      kind="l"
+                      id={l.id}
+                      slug={l.slug}
+                      title={l.title}
+                      status={l.status}
+                      canEdit={canEdit(l.created_by)}
+                      disabled={s === "disabled"}
+                      editHref={`/portal/listings/${l.id}`}
+                    />
                   </div>
-                  <div style={{ display: "flex", gap: 24 }}>
-                    <div className="pt-stat">
-                      <b>{t.views}</b>
-                      <span className="pt-meta">views</span>
-                    </div>
-                    <div className="pt-stat">
-                      <b>{t.taps}</b>
-                      <span className="pt-meta">WhatsApp/Call taps</span>
-                    </div>
-                  </div>
-                  <ShareControls
-                    kind="l"
-                    id={l.id}
-                    slug={l.slug}
-                    title={l.title}
-                    status={l.status}
-                    canEdit={canEdit(l.created_by)}
-                    disabled={s === "disabled"}
-                    editHref={`/portal/listings/${l.id}`}
-                  />
                 </article>
               );
             })}
@@ -216,30 +231,39 @@ export default async function Listings() {
             Several listings on one link, e.g. “3 homes picked for the Khans”.
           </span>
         ) : (
-          <div className="pt-list" data-testid="collections">
+          <div className="pt-lgrid" data-testid="collections">
             {collections.map((c) => {
               const s = shareState(c, day);
-              const t = totals.get(c.id) ?? { views: 0, taps: 0 };
+              const t = totals.get(c.id) ?? zero;
+              const first = listings.find((l) => l.id === c.listing_ids[0]);
+              const src = first ? cover.get(first.photo_ids[0]) : null;
               return (
-                <div key={c.id} className="pt-row" style={{ flexWrap: "wrap", gap: 10 }}>
-                  <div>
-                    <b>{c.title}</b> <Badge tone={tone(s)}>{STATE_LABEL[s]}</Badge>
-                    <div className="pt-meta">
-                      {c.listing_ids.length} listing{c.listing_ids.length === 1 ? "" : "s"} ·{" "}
-                      {t.views} views · {t.taps} taps
-                    </div>
+                <article key={c.id} className="pt-lcard" aria-label={c.title}>
+                  <span className="pt-lcard-img" aria-hidden="true">
+                    {src ? <img src={src} alt="" loading="lazy" /> : <Icon name="grid" size={28} />}
+                  </span>
+                  <div className="pt-lcard-body">
+                    <span>
+                      <Badge tone={tone(s)}>{STATE_LABEL[s]}</Badge>
+                    </span>
+                    <b className="pt-title pt-clamp2">{c.title}</b>
+                    <span className="pt-meta">
+                      {c.listing_ids.length} listing{c.listing_ids.length === 1 ? "" : "s"}
+                      {c.expires_on && s !== "expired" ? ` · until ${c.expires_on}` : ""}
+                    </span>
+                    <Stats t={t} />
+                    <ShareControls
+                      kind="c"
+                      id={c.id}
+                      slug={c.slug}
+                      title={c.title}
+                      status={c.status}
+                      canEdit={canEdit(c.created_by)}
+                      disabled={s === "disabled"}
+                      editHref={`/portal/listings/collections/${c.id}`}
+                    />
                   </div>
-                  <ShareControls
-                    kind="c"
-                    id={c.id}
-                    slug={c.slug}
-                    title={c.title}
-                    status={c.status}
-                    canEdit={canEdit(c.created_by)}
-                    disabled={s === "disabled"}
-                    editHref={`/portal/listings/collections/${c.id}`}
-                  />
-                </div>
+                </article>
               );
             })}
           </div>

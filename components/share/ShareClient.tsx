@@ -2,12 +2,13 @@
 
 /* eslint-disable @next/next/no-img-element -- media is pre-sized WebP on R2 (signed URLs), not next/image */
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/portal/Icon";
 import { HERO_SIZES, heroSrcSet, type GalleryPhoto } from "@/lib/share-media";
 
 /**
  * The few interactive bits of a public share page, kept small so the page stays fast: the view
- * count, WhatsApp/Call taps, the full-screen gallery, the long-form video (loaded on tap) and
- * "Report this page". Counting goes to /api/share/hit, which drops bots.
+ * count, WhatsApp/Call taps, the gallery and lightbox, the video and 360° modals (loaded on tap),
+ * the description's Read more and "Report this page". Counting goes to /api/share/hit, which drops bots.
  */
 function hit(kind: "l" | "c", slug: string, event: "view" | "wa" | "call") {
   const body = JSON.stringify({ kind, slug, event });
@@ -32,8 +33,8 @@ export function TrackView({ kind, slug }: { kind: "l" | "c"; slug: string }) {
 }
 
 /**
- * The sticky WhatsApp/Call bar, tucked away while the contact card (the same buttons) is on
- * screen, so they never show twice.
+ * The sticky bottom bar on tablets and phones (never on desktop): the agent's mini photo and
+ * name with Call and WhatsApp, tucked away while the agent card (the same buttons) is on screen.
  */
 export function StickyBar({ watch, children }: { watch: string; children: React.ReactNode }) {
   const [hidden, setHidden] = useState(false);
@@ -83,27 +84,67 @@ export function TapLink({
   );
 }
 
+/** A full-screen modal for the video tour or the 360° tour (fade + scale in, Escape closes). */
+function MediaModal({
+  label,
+  onClose,
+  children,
+  aside,
+}: {
+  label: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  aside?: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (d && !d.open) d.showModal();
+  }, []);
+  return (
+    <dialog ref={ref} className="sh-modal" aria-label={label} onClose={onClose}>
+      <div className="sh-modal-head">
+        <b>{label}</b>
+        <span className="sh-modal-tools">
+          {aside}
+          <button type="button" className="sh-modal-x" aria-label="Close" onClick={onClose}>
+            <Icon name="close" size={18} />
+          </button>
+        </span>
+      </div>
+      <div className="sh-modal-body">{children}</div>
+    </dialog>
+  );
+}
+
 /**
- * Hero + swipe strip (rendered on the server) open a full-screen viewer. The viewer only loads
- * the large WebPs when it opens.
+ * The listing gallery (site-refine, Oct 2026), Property Finder / Bayut patterns in Milkywayy
+ * style. Tablet and desktop: a mosaic (one large photo, a 2×2 grid of the next four, "+N photos"
+ * on the last tile). Phones: a full-bleed swipe carousel with a counter. "Video tour" and
+ * "360° tour" sit on the photos when that media exists. Anything opens the full-screen lightbox
+ * (arrows, keyboard, thumbnail strip, counter), which only loads the large WebPs when it opens.
  */
-export function Gallery({ photos, title }: { photos: GalleryPhoto[]; title: string }) {
+export function ListingGallery({
+  photos,
+  title,
+  video,
+  reel,
+  tour,
+}: {
+  photos: GalleryPhoto[];
+  title: string;
+  /** YouTube/Vimeo embed URL (autoplays when the modal opens). */
+  video: string | null;
+  reel: { src: string; poster: string | null } | null;
+  tour: string | null;
+}) {
   const [open, setOpen] = useState<number | null>(null);
+  const [modal, setModal] = useState<"video" | "tour" | null>(null);
+  const [slide, setSlide] = useState(0);
   const dialog = useRef<HTMLDialogElement>(null);
   const track = useRef<HTMLDivElement>(null);
+  const thumbs = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState(0);
-  // The strip's thumbnails wait until the page has loaded, so the hero photo has the line to
-  // itself (it's what people see first, and what page speed is measured on).
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const go = () =>
-      "requestIdleCallback" in window
-        ? requestIdleCallback(() => setReady(true), { timeout: 1500 })
-        : setTimeout(() => setReady(true), 200);
-    if (document.readyState === "complete") go();
-    else addEventListener("load", go, { once: true });
-    return () => removeEventListener("load", go);
-  }, []);
 
   useEffect(() => {
     const d = dialog.current;
@@ -116,130 +157,259 @@ export function Gallery({ photos, title }: { photos: GalleryPhoto[]; title: stri
     const t = track.current;
     if (t) t.scrollTo({ left: open * t.clientWidth, behavior: "instant" as ScrollBehavior });
   }, [open]);
+  // Keep the active thumbnail in view.
+  useEffect(() => {
+    if (open == null) return;
+    thumbs.current
+      ?.querySelector<HTMLElement>(`[data-i="${at}"]`)
+      ?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [at, open]);
+
   const show = (i: number) => {
     setAt(i);
     setOpen(i);
   };
+  const go = (i: number) => {
+    const t = track.current;
+    if (!t) return;
+    const n = Math.max(0, Math.min(photos.length - 1, i));
+    t.scrollTo({ left: n * t.clientWidth, behavior: "smooth" });
+  };
+  const hasVideo = !!(video || reel);
+  const buttons = (cls: string, short = false) =>
+    hasVideo || tour ? (
+      <span className={cls}>
+        {hasVideo && (
+          <button type="button" onClick={() => setModal("video")}>
+            <Icon name="play" size={14} /> {short ? "Video" : "Video tour"}
+          </button>
+        )}
+        {tour && (
+          <button type="button" onClick={() => setModal("tour")}>
+            <Icon name="tour" size={14} /> {short ? "360°" : "360° tour"}
+          </button>
+        )}
+      </span>
+    ) : null;
 
   const [hero, ...rest] = photos;
+  const tiles = rest.slice(0, 4);
+  const more = photos.length - 1 - tiles.length;
   return (
     <>
-      <button
-        type="button"
-        className="sh-hero"
-        onClick={() => show(0)}
-        aria-label={`${title}: open the photos (${photos.length})`}
-      >
-        <img
-          src={hero.small}
-          srcSet={heroSrcSet(hero)}
-          sizes={HERO_SIZES}
-          alt={`${title}: main photo`}
-          fetchPriority="high"
-          decoding="async"
-        />
-        <span className="sh-count">1 / {photos.length} · View all</span>
-      </button>
-      {rest.length > 0 && (
-        <div className="sh-strip" aria-label="More photos">
-          {rest.map((p, i) => (
+      {/* Tablet and desktop: the mosaic. */}
+      <div className="sh-mosaic" data-n={tiles.length}>
+        <button
+          type="button"
+          className="sh-mosaic-main"
+          onClick={() => show(0)}
+          aria-label={`${title}: open the photos (${photos.length})`}
+        >
+          <img
+            src={hero.small}
+            srcSet={heroSrcSet(hero)}
+            sizes={HERO_SIZES}
+            alt={`${title}: main photo`}
+            fetchPriority="high"
+            decoding="async"
+          />
+        </button>
+        {tiles.length > 0 && (
+          <div className="sh-mosaic-grid">
+            {tiles.map((p, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => show(i + 1)}
+                aria-label={`Photo ${i + 2} of ${photos.length}`}
+              >
+                <img src={p.small} alt="" loading="lazy" decoding="async" />
+                {i === tiles.length - 1 && more > 0 && (
+                  <span className="sh-more">+{more} photos</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+        {buttons("sh-media-btns")}
+        <span className="sh-count sh-count-desk">
+          <Icon name="grid" size={14} /> {photos.length} photos
+        </span>
+      </div>
+
+      {/* Phones: a full-bleed swipe carousel. */}
+      <div className="sh-carousel">
+        <div
+          className="sh-carousel-track"
+          onScroll={(e) => {
+            const t = e.currentTarget;
+            setSlide(Math.round(t.scrollLeft / Math.max(1, t.clientWidth)));
+          }}
+        >
+          {photos.map((p, i) => (
             <button
               key={i}
               type="button"
-              onClick={() => show(i + 1)}
-              aria-label={`Photo ${i + 2} of ${photos.length}`}
+              onClick={() => show(i)}
+              aria-label={i === 0 ? `${title}: open the photos` : `Open photo ${i + 1}`}
             >
-              {ready && <img src={p.small} alt="" loading="lazy" decoding="async" />}
+              <img src={p.small} alt="" loading={i === 0 ? "eager" : "lazy"} decoding="async" />
             </button>
           ))}
         </div>
-      )}
+        <span className="sh-count" aria-live="polite">
+          {slide + 1} / {photos.length}
+        </span>
+        {buttons("sh-chips-over", true)}
+      </div>
+
       <dialog
         ref={dialog}
         className="sh-viewer"
         aria-label={`${title}: photos`}
         onClose={() => setOpen(null)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowRight") go(at + 1);
+          else if (e.key === "ArrowLeft") go(at - 1);
+        }}
       >
         {open != null && (
           <>
-            <div
-              ref={track}
-              className="sh-viewer-track"
-              onScroll={(e) => {
-                const t = e.currentTarget;
-                setAt(Math.round(t.scrollLeft / Math.max(1, t.clientWidth)));
-              }}
-            >
-              {photos.map((p, i) => (
-                <figure key={i}>
-                  <img
-                    src={p.large}
-                    alt={`Photo ${i + 1} of ${photos.length}`}
-                    loading={Math.abs(i - open) <= 1 ? "eager" : "lazy"}
-                    decoding="async"
-                  />
-                </figure>
-              ))}
-            </div>
             <div className="sh-viewer-bar">
               <span>
                 {at + 1} / {photos.length}
               </span>
-              <span className="sh-viewer-nav">
+              <button type="button" className="sh-viewer-x" onClick={() => setOpen(null)}>
+                Close
+              </button>
+            </div>
+            <div className="sh-viewer-stage">
+              <div
+                ref={track}
+                className="sh-viewer-track"
+                onScroll={(e) => {
+                  const t = e.currentTarget;
+                  setAt(Math.round(t.scrollLeft / Math.max(1, t.clientWidth)));
+                }}
+              >
+                {photos.map((p, i) => (
+                  <figure key={i}>
+                    <img
+                      src={p.large}
+                      alt={`Photo ${i + 1} of ${photos.length}`}
+                      loading={Math.abs(i - open) <= 1 ? "eager" : "lazy"}
+                      decoding="async"
+                    />
+                  </figure>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="sh-viewer-arrow sh-prev"
+                aria-label="Previous photo"
+                disabled={at === 0}
+                onClick={() => go(at - 1)}
+              >
+                <Icon name="back" size={22} />
+              </button>
+              <button
+                type="button"
+                className="sh-viewer-arrow sh-next"
+                aria-label="Next photo"
+                disabled={at >= photos.length - 1}
+                onClick={() => go(at + 1)}
+              >
+                <Icon name="chevron" size={22} />
+              </button>
+            </div>
+            <div ref={thumbs} className="sh-viewer-thumbs" aria-label="All photos">
+              {photos.map((p, i) => (
                 <button
+                  key={i}
                   type="button"
-                  aria-label="Previous photo"
-                  disabled={at === 0}
-                  onClick={() =>
-                    track.current?.scrollBy({
-                      left: -track.current.clientWidth,
-                      behavior: "smooth",
-                    })
-                  }
+                  data-i={i}
+                  aria-label={`Go to photo ${i + 1}`}
+                  aria-current={i === at || undefined}
+                  onClick={() => go(i)}
                 >
-                  ←
+                  <img src={p.small} alt="" loading="lazy" decoding="async" />
                 </button>
-                <button
-                  type="button"
-                  aria-label="Next photo"
-                  disabled={at >= photos.length - 1}
-                  onClick={() =>
-                    track.current?.scrollBy({ left: track.current.clientWidth, behavior: "smooth" })
-                  }
-                >
-                  →
-                </button>
-                <button type="button" onClick={() => setOpen(null)}>
-                  Close
-                </button>
-              </span>
+              ))}
             </div>
           </>
         )}
       </dialog>
+
+      {modal === "video" && (
+        <MediaModal label="Video tour" onClose={() => setModal(null)}>
+          <div className="sh-modal-media">
+            {video && (
+              <div className="sh-embed">
+                <iframe
+                  src={video}
+                  title={`${title}: video tour`}
+                  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                  allowFullScreen
+                />
+              </div>
+            )}
+            {reel && (
+              <video
+                className="sh-reel"
+                src={reel.src}
+                poster={reel.poster ?? undefined}
+                controls
+                playsInline
+                autoPlay={!video}
+                aria-label={`${title}: video`}
+              />
+            )}
+          </div>
+        </MediaModal>
+      )}
+      {modal === "tour" && tour && (
+        <MediaModal
+          label="360° tour"
+          onClose={() => setModal(null)}
+          aside={
+            <a href={tour} target="_blank" rel="noopener nofollow" className="sh-modal-link">
+              Open in new tab ↗
+            </a>
+          }
+        >
+          <iframe
+            className="sh-tour-frame"
+            src={tour}
+            title={`${title}: 360° tour`}
+            allow="fullscreen; xr-spatial-tracking; gyroscope; accelerometer"
+            allowFullScreen
+          />
+        </MediaModal>
+      )}
     </>
   );
 }
 
-/** YouTube/Vimeo: a play button until tapped, so nothing from them loads with the page. */
-export function VideoFacade({ src, title }: { src: string; title: string }) {
-  const [on, setOn] = useState(false);
-  return on ? (
-    <div className="sh-embed">
-      <iframe
-        src={src}
-        title={`${title}: video`}
-        allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-        allowFullScreen
-      />
+/** The description with its line breaks, clamped to about 8 lines with "Read more". */
+export function ReadMore({ text }: { text: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [long, setLong] = useState(false);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (el) setLong(el.scrollHeight > el.clientHeight + 2);
+  }, []);
+  return (
+    <div className="sh-desc-wrap">
+      <p ref={ref} className="sh-desc" data-open={open || undefined}>
+        {text}
+      </p>
+      {(long || open) && (
+        <button type="button" className="sh-readmore" onClick={() => setOpen(!open)}>
+          {open ? "Show less" : "Read more"}
+        </button>
+      )}
     </div>
-  ) : (
-    <button type="button" className="sh-embed sh-embed-off" onClick={() => setOn(true)}>
-      <span className="sh-play" aria-hidden="true">
-        ▶
-      </span>
-      <b>Watch the video tour</b>
-    </button>
   );
 }
 

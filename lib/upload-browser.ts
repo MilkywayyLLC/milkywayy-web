@@ -145,6 +145,33 @@ export async function uploadFile(
 /** A small WebP preview of a photo (longest side `max` px), or null if it isn't a photo. */
 export const makeThumb = (f: File, max = 800) => makeImage(f, max, "image/webp", 0.8);
 
+/** A centre-cropped square WebP (contact photos, shown as round avatars), or null. */
+export async function makeSquare(f: Blob, size = 320): Promise<Blob | null> {
+  if (!/^image\/(jpeg|png|webp|avif)$/.test(f.type) || f.size > 40 * 1024 * 1024) return null;
+  try {
+    const bmp = await createImageBitmap(f);
+    const side = Math.min(bmp.width, bmp.height);
+    const c = document.createElement("canvas");
+    c.width = c.height = Math.min(size, side);
+    c.getContext("2d")?.drawImage(
+      bmp,
+      (bmp.width - side) / 2,
+      (bmp.height - side) / 2,
+      side,
+      side,
+      0,
+      0,
+      c.width,
+      c.height,
+    );
+    bmp.close();
+    const out = await new Promise<Blob | null>((res) => c.toBlob(res, "image/webp", 0.85));
+    return out && out.type === "image/webp" ? out : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * A resized copy of a photo (longest side `max` px) as WebP or JPEG, or null if it isn't a
  * photo the browser can read. Share pages use a 2048px WebP and a 1200px JPEG for previews.

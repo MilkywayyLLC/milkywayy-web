@@ -2,9 +2,17 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { ReportPage, TrackView } from "@/components/share/ShareClient";
-import { Brand, Byline, Contacts, requestOrigin, Unavailable } from "@/components/share/ShareParts";
+import { Icon } from "@/components/portal/Icon";
+import {
+  Brand,
+  Byline,
+  Contacts,
+  Facts,
+  requestOrigin,
+  Unavailable,
+} from "@/components/share/ShareParts";
 import { pageMediaUrl } from "@/lib/r2";
-import { facts, price, sharePage } from "@/lib/share";
+import { price, sharePage } from "@/lib/share";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -47,58 +55,69 @@ export default async function CollectionPage({ params }: Props) {
 
   return (
     <div className="sh" data-tone="light">
-      <main id="main" className="sh-page">
-        <Brand brand={brand} />
-        <div className="sh-body">
-          <div className="sh-top">
-            {by && (
-              <span className="sh-eb">
-                Picked by {by}
-                {brand?.name ? ` · ${brand.name}` : ""}
-              </span>
-            )}
-            <h1 className="sh-h1">{c.title}</h1>
-            {c.note && <p className="sh-desc">{c.note}</p>}
-          </div>
-          {d.listings.map((h, i) => {
-            const src = pageMediaUrl(h.photo?.thumb ?? h.photo?.web ?? h.photo?.key);
-            return (
-              <a key={h.slug} href={`/l/${h.slug}`} className="sh-card sh-home">
-                {src ? (
-                  <img
-                    src={src}
-                    alt=""
-                    {...(i === 0
-                      ? { fetchPriority: "high" as const }
-                      : { loading: "lazy" as const })}
-                    decoding="async"
-                  />
-                ) : (
-                  <span className="sh-hero-empty" />
-                )}
-                <span className="sh-home-text">
-                  <span className="sh-price sh-price-s">
-                    {price(h.price, h.currency, h.purpose)}
-                  </span>
-                  <b>{h.title}</b>
-                  <span className="sh-muted">
-                    {[h.location, ...facts(h).slice(0, 3)].filter(Boolean).join(" · ")}
-                  </span>
-                </span>
-              </a>
-            );
-          })}
-          <Contacts
-            kind="c"
-            slug={c.slug}
-            title={c.title}
-            url={`${origin}/c/${c.slug}`}
-            contacts={contacts}
-            brand={brand}
-            heading="Ask about these homes"
-          />
-          <ReportPage kind="c" slug={c.slug} />
+      <Brand brand={brand} />
+      <main id="main" className="sh-page sh-wide">
+        <div className="sh-top sh-ctop">
+          {by && (
+            <span className="sh-eb">
+              Picked by {by}
+              {brand?.name ? ` · ${brand.name}` : ""}
+            </span>
+          )}
+          <h1 className="sh-h1">{c.title}</h1>
+          {c.note && <p className="sh-desc">{c.note}</p>}
         </div>
+        <div className="sh-cols">
+          <div className="sh-main">
+            <div className="sh-homes">
+              {d.listings.map((h, i) => {
+                const src = pageMediaUrl(h.photo?.thumb ?? h.photo?.web ?? h.photo?.key);
+                return (
+                  <a key={h.slug} href={`/l/${h.slug}`} className="sh-card sh-home">
+                    <span className="sh-home-img">
+                      {src ? (
+                        <img
+                          src={src}
+                          alt=""
+                          {...(i === 0
+                            ? { fetchPriority: "high" as const }
+                            : { loading: "lazy" as const })}
+                          decoding="async"
+                        />
+                      ) : (
+                        <span className="sh-hero-empty" />
+                      )}
+                    </span>
+                    <span className="sh-home-text">
+                      <span className="sh-price sh-price-s">
+                        {price(h.price, h.currency, h.purpose)}
+                      </span>
+                      <b>{h.title}</b>
+                      {h.location && (
+                        <span className="sh-loc">
+                          <Icon name="pin" size={14} /> {h.location}
+                        </span>
+                      )}
+                      <Facts l={h} />
+                    </span>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+          <aside className="sh-side">
+            <Contacts
+              kind="c"
+              slug={c.slug}
+              title={c.title}
+              url={`${origin}/c/${c.slug}`}
+              contacts={contacts}
+              brand={brand}
+              heading="Ask about these homes"
+            />
+          </aside>
+        </div>
+        <ReportPage kind="c" slug={c.slug} />
       </main>
       <Byline />
       <TrackView kind="c" slug={c.slug} />

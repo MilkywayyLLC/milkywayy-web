@@ -76,7 +76,7 @@ test("first sign-in: onboarding creates the account and attaches earlier booking
   await page.goto("/portal/welcome");
   await expect(page).toHaveURL(/\/portal$/);
 
-  await page.getByRole("button", { name: /profile menu/ }).click();
+  await page.getByRole("button", { name: /account menu/ }).click();
   await page.getByRole("menuitem", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/portal\/login\?signed-out=1$/);
   await page.goto("/portal");

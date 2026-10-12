@@ -2,8 +2,16 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { preconnect, preload } from "react-dom";
-import { Gallery, ReportPage, TrackView, VideoFacade } from "@/components/share/ShareClient";
-import { Brand, Byline, Contacts, requestOrigin, Unavailable } from "@/components/share/ShareParts";
+import { Icon } from "@/components/portal/Icon";
+import { ListingGallery, ReadMore, ReportPage, TrackView } from "@/components/share/ShareClient";
+import {
+  Brand,
+  Byline,
+  Contacts,
+  Facts,
+  requestOrigin,
+  Unavailable,
+} from "@/components/share/ShareParts";
 import { pageMediaUrl } from "@/lib/r2";
 import { embedUrl, facts, price, PURPOSE_LABEL, sharePage } from "@/lib/share";
 import { HERO_SIZES, heroSrcSet } from "@/lib/share-media";
@@ -39,7 +47,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-/** Public listing page (§6.2): photos, video, 360, price and facts, the agent, Milkywayy's byline. */
+/**
+ * Public listing page (§6.2; redesigned site-refine, Oct 2026, on Property Finder / Bayut
+ * patterns): gallery mosaic with Video / 360° buttons, then price, title, location, key facts,
+ * description, amenities and the property information on the left, the sticky agent card on the
+ * right. Tablets and phones: one column and a bottom bar with the agent.
+ */
 export default async function ListingPage({ params }: Props) {
   const { slug } = await params;
   const d = await load(slug);
@@ -65,97 +78,130 @@ export default async function ListingPage({ params }: Props) {
       imageSizes: HERO_SIZES,
     });
   }
-  const reel = d.reel ? pageMediaUrl(d.reel.web) : null;
-  const poster = d.reel ? pageMediaUrl(d.reel.poster) : null;
+  const reelSrc = d.reel ? pageMediaUrl(d.reel.web) : null;
+  const reel = reelSrc
+    ? { src: reelSrc, poster: d.reel ? pageMediaUrl(d.reel.poster) : null }
+    : null;
   const video = embedUrl(l.video_url);
   const qr = pageMediaUrl(l.permit_qr);
-  const boxes = facts(l);
+  const date = (iso?: string) =>
+    iso
+      ? new Date(iso).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          timeZone: "Asia/Dubai",
+        })
+      : null;
+  const info = (
+    [
+      ["Type", l.property_type],
+      ["Purpose", PURPOSE_LABEL[l.purpose]],
+      ["Reference", l.slug.toUpperCase()],
+      ["Listed", date(l.listed_at)],
+      ["Updated", l.updated_at && l.updated_at !== l.listed_at ? date(l.updated_at) : null],
+    ] as [string, string | null][]
+  ).filter(([, v]) => v);
 
   return (
     <div className="sh" data-tone="light">
-      <main id="main" className="sh-page">
-        <Brand brand={brand} />
+      <Brand brand={brand} />
+      <main id="main" className="sh-page sh-wide">
         {photos.length > 0 ? (
-          <Gallery photos={photos} title={l.title} />
+          <ListingGallery
+            photos={photos}
+            title={l.title}
+            video={video}
+            reel={reel}
+            tour={l.tour_url}
+          />
         ) : (
-          <div className="sh-hero sh-hero-empty" aria-hidden="true" />
+          <div className="sh-hero-empty" aria-hidden="true" />
         )}
-        <div className="sh-body">
-          <div className="sh-top">
-            <span className="sh-eb">
-              {[PURPOSE_LABEL[l.purpose], l.location].filter(Boolean).join(" · ")}
-            </span>
-            <p className="sh-price">{price(l.price, l.currency, l.purpose)}</p>
-            <h1 className="sh-h1">{l.title}</h1>
-            {l.property_type && <span className="sh-muted">{l.property_type}</span>}
-          </div>
-          {boxes.length > 0 && (
-            <ul className="sh-facts" aria-label="Key facts">
-              {boxes.map((f) => (
-                <li key={f}>{f}</li>
-              ))}
-            </ul>
-          )}
-
-          {(reel || video || l.tour_url) && (
-            <div className="sh-media">
-              {reel && (
-                <video
-                  className="sh-reel"
-                  src={reel}
-                  poster={poster ?? undefined}
-                  controls
-                  playsInline
-                  preload="none"
-                  aria-label={`${l.title}: video`}
-                />
-              )}
-              {video && <VideoFacade src={video} title={l.title} />}
-              {l.tour_url && (
-                <a
-                  className="sh-card sh-tour"
-                  href={l.tour_url}
-                  target="_blank"
-                  rel="noopener nofollow"
-                >
-                  <b className="sh-h2">360° tour</b>
-                  <span className="sh-muted">Walk through every room</span>
-                  <span className="btn btn-g btn-s">Open tour</span>
-                </a>
+        <div className="sh-cols">
+          <div className="sh-main">
+            <div className="sh-top">
+              <p className="sh-price">{price(l.price, l.currency, l.purpose)}</p>
+              <h1 className="sh-h1">{l.title}</h1>
+              {l.location && (
+                <span className="sh-loc">
+                  <Icon name="pin" size={16} /> {l.location}
+                </span>
               )}
             </div>
-          )}
+            <Facts l={l} />
 
-          {l.description && <p className="sh-desc">{l.description}</p>}
-          {l.highlights.length > 0 && (
-            <ul className="sh-chips" aria-label="Highlights">
-              {l.highlights.map((h) => (
-                <li key={h}>{h}</li>
-              ))}
-            </ul>
-          )}
+            {l.description && (
+              <section className="sh-sec" aria-labelledby="sh-about">
+                <h2 id="sh-about" className="sh-h2">
+                  About this home
+                </h2>
+                <ReadMore text={l.description} />
+              </section>
+            )}
+            {l.highlights.length > 0 && (
+              <section className="sh-sec" aria-labelledby="sh-amen">
+                <h2 id="sh-amen" className="sh-h2">
+                  Amenities
+                </h2>
+                <ul className="sh-chips" aria-label="Highlights">
+                  {l.highlights.map((h) => (
+                    <li key={h}>
+                      <Icon name="check" size={14} /> {h}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-          {l.permit_no && (
-            <section className="sh-card sh-permit" aria-label="DLD advertising permit">
-              <div>
-                <span className="sh-eb">DLD permit</span>
-                <b className="sh-mono">{l.permit_no}</b>
-              </div>
-              {qr && <img src={qr} alt="Permit QR code" width={88} height={88} loading="lazy" />}
+            <section className="sh-sec" aria-labelledby="sh-info">
+              <h2 id="sh-info" className="sh-h2">
+                Property information
+              </h2>
+              <table className="sh-info" aria-labelledby="sh-info">
+                <tbody>
+                  {info.map(([k, v]) => (
+                    <tr key={k}>
+                      <th scope="row">{k}</th>
+                      <td>{v}</td>
+                    </tr>
+                  ))}
+                  {l.permit_no && (
+                    <tr>
+                      <th scope="row">DLD permit</th>
+                      <td aria-label="DLD advertising permit">
+                        <span className="sh-permit">
+                          <b className="sh-mono">{l.permit_no}</b>
+                          {qr && (
+                            <img
+                              src={qr}
+                              alt="Permit QR code"
+                              width={72}
+                              height={72}
+                              loading="lazy"
+                            />
+                          )}
+                        </span>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </section>
-          )}
-
-          <Contacts
-            kind="l"
-            slug={l.slug}
-            title={l.title}
-            url={url}
-            contacts={contacts}
-            brand={brand}
-            heading="Ask about this home"
-          />
-          <ReportPage kind="l" slug={l.slug} />
+          </div>
+          <aside className="sh-side">
+            <Contacts
+              kind="l"
+              slug={l.slug}
+              title={l.title}
+              url={url}
+              contacts={contacts}
+              brand={brand}
+              heading="Ask about this home"
+            />
+          </aside>
         </div>
+        <ReportPage kind="l" slug={l.slug} />
       </main>
       <Byline />
       <TrackView kind="l" slug={l.slug} />

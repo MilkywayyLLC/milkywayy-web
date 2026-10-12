@@ -10,7 +10,7 @@ import {
   type Result,
 } from "@/lib/portal/account-actions";
 import { contactPhotoUrl, setContactPhoto } from "@/lib/portal/listing-actions";
-import { makeThumb, putBlob } from "@/lib/upload-browser";
+import { makeSquare, putBlob } from "@/lib/upload-browser";
 import { initials } from "@/lib/portal/shell";
 import { Icon } from "./Icon";
 import { Badge, Sheet, useToast } from "./ui";
@@ -220,7 +220,7 @@ function ContactPhoto({ contact }: { contact: ContactRow }) {
   const [state, setState] = useState("");
   async function upload(f: File) {
     setState("Uploading…");
-    const small = await makeThumb(f, 320);
+    const small = await makeSquare(f, 320);
     if (!small) return setState("Use a JPG, PNG or WebP photo.");
     const r = await contactPhotoUrl(contact.id);
     if (!r.ok || !r.url || !r.key) return setState(r.error ?? "Couldn’t upload.");
