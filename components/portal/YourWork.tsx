@@ -11,10 +11,9 @@ import {
   TYPE_PATH,
   type Project,
 } from "@/lib/portal/projects";
-import { Icon } from "./Icon";
 import { StartRequests } from "./StartRequests";
 
-type Cat = { key: string; name: string; icon: string; href: string; items: Project[] };
+type Cat = { key: string; name: string; href: string; items: Project[] };
 
 /** A website booking, or a portal booking with a property in it. */
 const isProperty = (p: Project) =>
@@ -52,7 +51,7 @@ function Steps({ p }: { p: Project }) {
       {steps.map((s, i) => (
         <li
           key={s}
-          className={i < at ? "done" : i === at ? "now" : undefined}
+          className={i < at ? "is-done" : i === at ? "is-now" : undefined}
           aria-current={i === at ? "step" : undefined}
         >
           {statusLabel(s)}
@@ -64,19 +63,10 @@ function Steps({ p }: { p: Project }) {
 
 /**
  * Home → Your work (site-refine, Oct 2026): grouped by kind (property shoots, video shoots,
- * editing, AI avatars; empty groups hidden), one full-width row per item: a cover thumbnail
- * once delivered (an icon tile before, never an empty box), title and meta, the real stages,
- * and the status in words with Open →.
+ * editing, AI avatars; empty groups hidden), one full-width text row per item: title and meta,
+ * the real stages as a 2px line with labels, and the status in words with Open →.
  */
-export function YourWork({
-  projects,
-  cfg,
-  covers,
-}: {
-  projects: Project[];
-  cfg: RequestConfig;
-  covers: Map<string, string>;
-}) {
+export function YourWork({ projects, cfg }: { projects: Project[]; cfg: RequestConfig }) {
   const shoots = projects.filter((p) => p.type === "shoot");
   const cats: Cat[] = [
     ...(cfg.shoots
@@ -84,14 +74,12 @@ export function YourWork({
           {
             key: "property",
             name: "Property shoots",
-            icon: "photo",
             href: TYPE_PATH.shoot,
             items: shoots.filter(isProperty),
           },
           {
             key: "video",
             name: "Video shoots",
-            icon: "video",
             href: TYPE_PATH.shoot,
             items: shoots.filter((p) => !isProperty(p)),
           },
@@ -102,7 +90,6 @@ export function YourWork({
           {
             key: "edit",
             name: "Editing",
-            icon: "editing",
             href: TYPE_PATH.edit,
             items: projects.filter((p) => p.type === "edit"),
           },
@@ -113,7 +100,6 @@ export function YourWork({
           {
             key: "avatar",
             name: "AI avatars",
-            icon: "ai",
             href: TYPE_PATH.avatar,
             items: projects.filter((p) => p.type === "avatar"),
           },
@@ -158,7 +144,6 @@ export function YourWork({
             </div>
             <ul className="pt-work-items">
               {shown.map((p) => {
-                const cover = covers.get(p.id);
                 const when =
                   p.type === "shoot" && p.shoot_date ? shootDay(p.shoot_date) : day(p.created_at);
                 return (
@@ -168,14 +153,6 @@ export function YourWork({
                       prefetch={false}
                       className="pt-wrow"
                     >
-                      <span className="pt-wthumb">
-                        {cover ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={cover} alt="" loading="lazy" />
-                        ) : (
-                          <Icon name={c.icon} size={22} />
-                        )}
-                      </span>
                       <span className="pt-wbody">
                         <b className="pt-title">{p.title}</b>
                         <span className="pt-meta">

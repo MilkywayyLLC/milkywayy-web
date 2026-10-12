@@ -4,7 +4,6 @@ import { getSiteSettings } from "@/lib/data";
 import { contactOf, requireAccount } from "@/lib/portal/auth";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
 import { YourWork } from "@/components/portal/YourWork";
-import { projectCovers } from "@/lib/portal/covers";
 import { requestConfig } from "@/lib/portal/requests";
 import { statusLabel, type Project } from "@/lib/portal/projects";
 import { isManager, seesMoney } from "@/lib/portal/shell";
@@ -90,10 +89,6 @@ export default async function PortalHome({
     timeZone: "Asia/Dubai",
   });
   const openInvites = invites.count ?? 0;
-  const covers = await projectCovers(
-    db,
-    projects.filter((p) => p.delivered_at || p.status === "delivered").map((p) => p.id),
-  );
 
   return (
     <>
@@ -220,7 +215,7 @@ export default async function PortalHome({
         </section>
       )}
 
-      <YourWork projects={projects} cfg={cfg} covers={covers} />
+      <YourWork projects={projects} cfg={cfg} />
 
       <section className="pt-card" aria-labelledby="act">
         <h2 id="act" className="pt-h2">

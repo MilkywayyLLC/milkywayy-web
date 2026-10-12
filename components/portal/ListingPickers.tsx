@@ -2,8 +2,8 @@
 
 /* eslint-disable @next/next/no-img-element -- signed, short-lived R2 previews */
 import { useState, useTransition } from "react";
-import { contactPhotoUrl, saveInlineContact, setContactPhoto } from "@/lib/portal/listing-actions";
-import { makeSquare, putBlob } from "@/lib/upload-browser";
+import { saveInlineContact } from "@/lib/portal/listing-actions";
+import { ContactPhotoField, photoPick, savePickedPhoto, type PhotoPick } from "./ContactPhotoField";
 import {
   closestCenter,
   DndContext,
@@ -52,11 +52,17 @@ type Draft = {
   email: string;
   brn: string;
   show_whatsapp: boolean;
-  /** A new photo picked in the form (square-cropped), uploaded after the contact saves. */
-  file?: Blob | null;
-  preview?: string | null;
+  /** The photo picked in the form (square-cropped), uploaded after the contact saves. */
+  photo: PhotoPick;
 };
-const EMPTY: Draft = { name: "", phone: "", email: "", brn: "", show_whatsapp: true };
+const EMPTY: Draft = {
+  name: "",
+  phone: "",
+  email: "",
+  brn: "",
+  show_whatsapp: true,
+  photo: photoPick(null),
+};
 
 /** Round photo, or initials when there's none. */
 export function Face({
@@ -114,18 +120,12 @@ export function ContactsField({
     setErr(e);
     if (Object.keys(e).length) return;
     start(async () => {
-      const { file, preview, ...fields } = d;
+      const { photo: pick, ...fields } = d;
       const r = await saveInlineContact(fields);
       if (!r.ok || !r.contact) return setErr({ form: r.error ?? "Couldn’t save the contact." });
       const before = all.find((x) => x.id === r.contact!.id);
-      let photo = before?.photo ?? null;
-      if (file) {
-        const up = await contactPhotoUrl(r.contact.id);
-        if (up.ok && up.url && up.key && (await putBlob(up.url, file))) {
-          const saved = await setContactPhoto(r.contact.id, up.key);
-          if (saved.ok) photo = preview ?? null;
-        }
-      }
+      const photoErr = await savePickedPhoto(r.contact.id, pick);
+      const photo = photoErr ? (before?.photo ?? null) : pick.preview;
       const c: PickContact = {
         id: r.contact.id,
         name: r.contact.name,
@@ -174,7 +174,7 @@ export function ContactsField({
                     email: c.email ?? "",
                     brn: c.brn ?? "",
                     show_whatsapp: c.show_whatsapp ?? true,
-                    preview: c.photo ?? null,
+                    photo: photoPick(c.photo),
                   });
                   setErr({});
                   setMode("edit");
@@ -297,25 +297,12 @@ export function ContactsField({
               />
             </label>
           </div>
-          <div className="pt-field">
-            <label htmlFor="inline-contact-photo">Profile photo (optional)</label>
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              {d.preview && <img src={d.preview} alt="" className="pt-avatar-img" />}
-              <input
-                id="inline-contact-photo"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={async (e) => {
-                  const f = e.target.files?.[0];
-                  e.target.value = "";
-                  if (!f) return;
-                  const sq = await makeSquare(f, 320);
-                  if (!sq) return setErr({ ...err, form: "Use a JPG, PNG or WebP photo." });
-                  setD((x) => ({ ...x, file: sq, preview: URL.createObjectURL(sq) }));
-                }}
-              />
-            </div>
-          </div>
+          <ContactPhotoField
+            value={d.photo}
+            onChange={(photo) => setD((x) => ({ ...x, photo }))}
+            initials={d.name.trim() ? initialsOf(d.name) : ""}
+            onError={(m) => setErr((x) => ({ ...x, form: m }))}
+          />
           <label className="pt-check">
             <input
               type="checkbox"

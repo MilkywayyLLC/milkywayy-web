@@ -63,7 +63,9 @@ export function PlacesField({
   const [active, setActive] = useState(0);
   const [mapsOk, setMapsOk] = useState(!!KEY);
   const mapEl = useRef<HTMLDivElement>(null);
-  const marker = useRef<{ position: LatLng | null } | null>(null);
+  const marker = useRef<{ move: (p: LatLng) => void } | null>(null);
+  // A small inline message when search or the map hiccups (the map stays).
+  const [note, setNote] = useState("");
   const mapObj = useRef<{ setCenter: (p: LatLng) => void; setZoom: (z: number) => void } | null>(
     null,
   );
@@ -110,16 +112,20 @@ export function PlacesField({
     if (!KEY || !mapEl.current) return;
     let live = true;
     (async () => {
+      // Only the script itself failing (no or bad key) drops to the plain address field.
+      let maps: Maps;
       try {
-        const maps = await loadMaps();
+        maps = await loadMaps();
+      } catch {
+        if (live) {
+          setMapsOk(false);
+          setText(latest.current.address);
+        }
+        return;
+      }
+      try {
         const { Map } = (await maps.importLibrary("maps")) as {
           Map: new (el: HTMLElement, o: object) => NonNullable<typeof mapObj.current>;
-        };
-        const { AdvancedMarkerElement } = (await maps.importLibrary("marker")) as {
-          AdvancedMarkerElement: new (o: object) => {
-            position: LatLng | null;
-            addListener: (e: string, f: () => void) => void;
-          };
         };
         if (!live || !mapEl.current) return;
         const v = latest.current;
@@ -133,36 +139,56 @@ export function PlacesField({
           gestureHandling: "cooperative",
           clickableIcons: false,
         });
-        const m = new AdvancedMarkerElement({
-          map,
-          position: at,
-          gmpDraggable: true,
-          title: "Shoot location",
-        });
-        m.addListener("dragend", () => {
-          const p = m.position as unknown as {
-            lat: number | (() => number);
-            lng: number | (() => number);
+        const num = (x: number | (() => number)) => (typeof x === "function" ? x() : x);
+        // The draggable pin: an advanced marker, or the classic one if that library fails.
+        let pin: { move: (p: LatLng) => void };
+        try {
+          const { AdvancedMarkerElement } = (await maps.importLibrary("marker")) as {
+            AdvancedMarkerElement: new (o: object) => {
+              position: unknown;
+              addListener: (e: string, f: () => void) => void;
+            };
           };
-          const lat = typeof p.lat === "function" ? p.lat() : p.lat;
-          const lng = typeof p.lng === "function" ? p.lng() : p.lng;
-          void pinned(lat, lng);
-        });
+          const m = new AdvancedMarkerElement({
+            map,
+            position: at,
+            gmpDraggable: true,
+            title: "Shoot location",
+          });
+          m.addListener("dragend", () => {
+            const p = m.position as { lat: number | (() => number); lng: number | (() => number) };
+            void pinned(num(p.lat), num(p.lng));
+          });
+          pin = { move: (p) => (m.position = p) };
+        } catch {
+          const { Marker } = (await maps.importLibrary("marker")) as {
+            Marker: new (o: object) => {
+              setPosition: (p: LatLng) => void;
+              getPosition: () => { lat: () => number; lng: () => number } | null;
+              addListener: (e: string, f: () => void) => void;
+            };
+          };
+          const m = new Marker({ map, position: at, draggable: true, title: "Shoot location" });
+          m.addListener("dragend", () => {
+            const p = m.getPosition();
+            if (p) void pinned(p.lat(), p.lng());
+          });
+          pin = { move: (p) => m.setPosition(p) };
+        }
         // Tap the map to move the pin there.
         (
           map as unknown as { addListener: (e: string, f: (ev: object) => void) => void }
         ).addListener("click", (ev) => {
           const ll = (ev as { latLng?: { lat: () => number; lng: () => number } }).latLng;
           if (!ll) return;
-          const at = { lat: ll.lat(), lng: ll.lng() };
-          m.position = at;
-          void pinned(at.lat, at.lng);
+          const p = { lat: ll.lat(), lng: ll.lng() };
+          pin.move(p);
+          void pinned(p.lat, p.lng);
         });
         mapObj.current = map;
-        marker.current = m;
+        marker.current = pin;
       } catch {
-        setMapsOk(false);
-        setText(latest.current.address);
+        if (live) setNote("The map didn’t load fully. Search, or type the address below.");
       }
     })();
     return () => {
@@ -187,8 +213,11 @@ export function PlacesField({
       const { suggestions } = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
         input,
         includedRegionCodes: ["ae"],
+        locationBias: { center: DUBAI, radius: 50000 },
+        region: "ae",
         sessionToken: token.current,
       });
+      setNote("");
       setList(
         suggestions
           .filter((s) => s.placePrediction)
@@ -200,8 +229,10 @@ export function PlacesField({
       );
       setActive(0);
     } catch {
-      setMapsOk(false);
-      setText(latest.current.address);
+      setList([]);
+      setNote(
+        "Search isn’t responding right now. Tap the map to place the pin, or type the address.",
+      );
     }
   }
 
@@ -219,12 +250,13 @@ export function PlacesField({
       if (lat != null && lng != null) {
         mapObj.current?.setCenter({ lat, lng });
         mapObj.current?.setZoom(17);
-        if (marker.current) marker.current.position = { lat, lng };
+        marker.current?.move({ lat, lng });
         latest.current = { ...latest.current, address };
         void pinned(lat, lng, (place as { displayName?: string }).displayName, place.id);
       }
     } catch {
       onChange({ ...latest.current, address: s.text });
+      setNote("Couldn’t open that place. Tap the map to place the pin.");
     }
   }
 
@@ -292,6 +324,11 @@ export function PlacesField({
         )}
       </div>
       {error && !mapsOk && <span className="pt-field-msg">{error}</span>}
+      {mapsOk && note && (
+        <span className="pt-field-msg" role="status">
+          {note}
+        </span>
+      )}
       {KEY && mapsOk && (
         <>
           <div

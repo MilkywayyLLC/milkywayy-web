@@ -19,7 +19,14 @@ import { whatsappFrom } from "./whatsapp-number";
  * client under row-level security, so the database refuses anything their role doesn't allow;
  * the checks here only give clearer messages.
  */
-export type Result = { ok: boolean; error?: string; notice?: string; invite?: InviteShare };
+export type Result = {
+  ok: boolean;
+  error?: string;
+  notice?: string;
+  invite?: InviteShare;
+  /** The saved row's id (contacts: so a photo picked before saving can follow). */
+  id?: string;
+};
 export type InviteShare = { name: string; text: string; whatsapp?: string; email?: string };
 
 const done = (notice?: string): Result => {
@@ -292,7 +299,7 @@ export async function saveContact(_: Result | undefined, form: FormData): Promis
         .select("id");
   if (error) return dbError(error, "contact");
   if (!data?.length) return fail("You can only edit contacts you added.");
-  return done(id ? "Contact saved." : "Contact added.");
+  return { ...done(id ? "Contact saved." : "Contact added."), id: data[0].id as string };
 }
 
 export async function deleteContact(id: string): Promise<Result> {

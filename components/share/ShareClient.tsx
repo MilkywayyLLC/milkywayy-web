@@ -102,7 +102,14 @@ function MediaModal({
     if (d && !d.open) d.showModal();
   }, []);
   return (
-    <dialog ref={ref} className="sh-modal" aria-label={label} onClose={onClose}>
+    <dialog
+      ref={ref}
+      className="sh-modal"
+      aria-label={label}
+      onClose={onClose}
+      // A click on the dimmed backdrop lands on the <dialog> itself: close.
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="sh-modal-head">
         <b>{label}</b>
         <span className="sh-modal-tools">
