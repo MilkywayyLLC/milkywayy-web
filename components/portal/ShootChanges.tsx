@@ -48,7 +48,7 @@ export function ShootChanges({ cfg, edit }: { cfg: RequestConfig; edit: BookingE
           choices={[
             {
               label: pending ? "Cancelling…" : confirmed ? "Cancel shoot" : "Cancel request",
-              primary: true,
+              danger: true,
               onClick: () =>
                 start(async () => {
                   const r = await cancelBooking(edit.projectId);
@@ -59,6 +59,7 @@ export function ShootChanges({ cfg, edit }: { cfg: RequestConfig; edit: BookingE
             },
             { label: "Keep it", onClick: () => setOpen(null) },
           ]}
+          onDismiss={() => setOpen(null)}
         />
       )}
     </div>

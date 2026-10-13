@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { PlaceholderKey } from "@/content/types";
 import { Icon } from "@/components/portal/Icon";
+import { SpringDialog } from "@/components/interior/modal";
 
 /** Placeholder "photo" (the site's mockup photography) at any aspect ratio. */
 export function Ph({
@@ -71,7 +72,10 @@ export function Badge({
   return <span className={`pt-badge ${tone ?? ""}`}>{children}</span>;
 }
 
-/** Bottom sheet on phone, centred dialog on desktop. */
+/**
+ * Bottom sheet on phone, centred dialog on desktop, with the spring dialogs' motion and focus
+ * handling (components/interior/modal): Esc and a backdrop tap close it.
+ */
 export function Sheet({
   title,
   onClose,
@@ -81,40 +85,16 @@ export function Sheet({
   onClose: () => void;
   children: ReactNode;
 }) {
-  // Plays the 140ms exit before the parent unmounts it (instant with reduced motion).
-  const [closing, setClosing] = useState(false);
-  const shut = useCallback(() => {
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return onClose();
-    setClosing(true);
-    setTimeout(onClose, 140);
-  }, [onClose]);
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === "Escape" && shut();
-    addEventListener("keydown", k);
-    document.body.style.overflow = "hidden";
-    return () => {
-      removeEventListener("keydown", k);
-      document.body.style.overflow = "";
-    };
-  }, [shut]);
   return (
-    <div className="pt-sheet-bg" onClick={shut} data-closing={closing || undefined}>
-      <div
-        className="pt-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="pt-sheet-head">
-          <span className="pt-h2">{title}</span>
-          <button type="button" className="pt-icon-btn" aria-label="Close" onClick={shut}>
-            <Icon name="close" />
-          </button>
-        </div>
-        {children}
+    <SpringDialog label={title} onClose={onClose} layerClass="pt-sheet-bg" panelClass="pt-sheet">
+      <div className="pt-sheet-head">
+        <span className="pt-h2">{title}</span>
+        <button type="button" className="pt-icon-btn" aria-label="Close" onClick={onClose}>
+          <Icon name="close" />
+        </button>
       </div>
-    </div>
+      {children}
+    </SpringDialog>
   );
 }
 

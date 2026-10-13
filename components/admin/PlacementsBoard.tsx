@@ -3,7 +3,8 @@
 /* eslint-disable @next/next/no-img-element -- admin thumbnails */
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
+import { SpringDialog } from "@/components/interior/modal";
 import { pinItem, resetSection, unpinSlot } from "@/lib/admin/placement-actions";
 import type { Mode } from "@/lib/placements";
 
@@ -294,18 +295,17 @@ function Picker({
   onClose: () => void;
   onChoose: (id: string) => void;
 }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const d = ref.current;
-    if (!d) return;
-    if (picking && !d.open) d.showModal();
-    if (!picking && d.open) d.close();
-  }, [picking]);
   const ids = new Set(picking?.block.candidates ?? []);
   const list = lookup.filter((i) => ids.has(i.id));
 
   return (
-    <dialog ref={ref} className="ad-dialog" onClose={onClose} aria-labelledby="pl-pick-title">
+    <SpringDialog
+      open={!!picking}
+      onClose={onClose}
+      labelledBy="pl-pick-title"
+      layerClass="ad-layer"
+      panelClass="ad-dialog"
+    >
       {picking && (
         <div className="ad-dialog-body">
           <h2 className="ad-h2" id="pl-pick-title">
@@ -341,6 +341,6 @@ function Picker({
           </div>
         </div>
       )}
-    </dialog>
+    </SpringDialog>
   );
 }

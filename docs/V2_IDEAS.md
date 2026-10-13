@@ -76,3 +76,7 @@ The name invites it; keep it quiet so it never fights the work.
   per task (owner, due date, status column, checklist), filterable by person.
 - **Finance tab:** income received, pending, and expected from confirmed shoots; invoices due and
   paid; expense entry by category; monthly charts (income vs expenses, by service).
+- **interior.dev wizard-steps for the booking modal:** step transitions and progress from
+  https://www.interior.dev (same approach as the spring dialogs in components/interior).
+- **interior.dev logo-marquee technique for marquees:** for the client proof strip and any other
+  scrolling marquee.

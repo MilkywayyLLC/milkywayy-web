@@ -11,6 +11,7 @@ import {
 } from "@/lib/portal/account-actions";
 import { initials } from "@/lib/portal/shell";
 import { ContactPhotoField, photoPick, savePickedPhoto } from "./ContactPhotoField";
+import { ChoiceDialog } from "./forms";
 import { Icon } from "./Icon";
 import { Badge, Sheet, useToast } from "./ui";
 
@@ -29,6 +30,7 @@ export type ContactRow = {
 
 export function ContactsManager({ contacts }: { contacts: ContactRow[] }) {
   const [editing, setEditing] = useState<ContactRow | "new" | null>(null);
+  const [removing, setRemoving] = useState<ContactRow | null>(null);
   const [pending, start] = useTransition();
   const [toast, say] = useToast();
   const run = (p: Promise<Result>) =>
@@ -113,7 +115,7 @@ export function ContactsManager({ contacts }: { contacts: ContactRow[] }) {
                       type="button"
                       className="btn btn-g btn-s pt-btn-sm"
                       disabled={pending}
-                      onClick={() => run(deleteContact(c.id))}
+                      onClick={() => setRemoving(c)}
                     >
                       Remove
                     </button>
@@ -130,6 +132,25 @@ export function ContactsManager({ contacts }: { contacts: ContactRow[] }) {
           first={!contacts.length}
           onClose={() => setEditing(null)}
           say={say}
+        />
+      )}
+      {removing && (
+        <ChoiceDialog
+          title={`Remove ${removing.name}?`}
+          body="They come off your contacts and any listing page that shows them."
+          choices={[
+            { label: "Keep", onClick: () => setRemoving(null) },
+            {
+              label: "Remove",
+              danger: true,
+              onClick: () => {
+                const id = removing.id;
+                setRemoving(null);
+                run(deleteContact(id));
+              },
+            },
+          ]}
+          onDismiss={() => setRemoving(null)}
         />
       )}
       {toast}

@@ -1,8 +1,18 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- media is pre-sized WebP on R2 (signed URLs), not next/image */
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/portal/Icon";
+
+// The zoom viewer and the video/360 modals use Motion: loaded on the first tap.
+const ZoomGallery = dynamic(
+  () => import("@/components/media/ZoomGallery").then((m) => m.ZoomGallery),
+  { ssr: false },
+);
+const MediaModal = dynamic(() => import("./ShareModal").then((m) => m.ShareModal), {
+  ssr: false,
+});
 import { HERO_SIZES, heroSrcSet, type GalleryPhoto } from "@/lib/share-media";
 
 /**
@@ -84,46 +94,6 @@ export function TapLink({
   );
 }
 
-/** A full-screen modal for the video tour or the 360° tour (fade + scale in, Escape closes). */
-function MediaModal({
-  label,
-  onClose,
-  children,
-  aside,
-}: {
-  label: string;
-  onClose: () => void;
-  children: React.ReactNode;
-  aside?: React.ReactNode;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const d = ref.current;
-    if (d && !d.open) d.showModal();
-  }, []);
-  return (
-    <dialog
-      ref={ref}
-      className="sh-modal"
-      aria-label={label}
-      onClose={onClose}
-      // A click on the dimmed backdrop lands on the <dialog> itself: close.
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="sh-modal-head">
-        <b>{label}</b>
-        <span className="sh-modal-tools">
-          {aside}
-          <button type="button" className="sh-modal-x" aria-label="Close" onClick={onClose}>
-            <Icon name="close" size={18} />
-          </button>
-        </span>
-      </div>
-      <div className="sh-modal-body">{children}</div>
-    </dialog>
-  );
-}
-
 /**
  * The listing gallery (site-refine, Oct 2026), Property Finder / Bayut patterns in Milkywayy
  * style. Tablet and desktop: a mosaic (one large photo, a 2×2 grid of the next four, "+N photos"
@@ -148,40 +118,13 @@ export function ListingGallery({
   const [open, setOpen] = useState<number | null>(null);
   const [modal, setModal] = useState<"video" | "tour" | null>(null);
   const [slide, setSlide] = useState(0);
-  const dialog = useRef<HTMLDialogElement>(null);
-  const track = useRef<HTMLDivElement>(null);
-  const thumbs = useRef<HTMLDivElement>(null);
-  const [at, setAt] = useState(0);
 
-  useEffect(() => {
-    const d = dialog.current;
-    if (!d) return;
-    if (open == null) {
-      if (d.open) d.close();
-      return;
-    }
-    if (!d.open) d.showModal();
-    const t = track.current;
-    if (t) t.scrollTo({ left: open * t.clientWidth, behavior: "instant" as ScrollBehavior });
-  }, [open]);
-  // Keep the active thumbnail in view.
-  useEffect(() => {
-    if (open == null) return;
-    thumbs.current
-      ?.querySelector<HTMLElement>(`[data-i="${at}"]`)
-      ?.scrollIntoView({ block: "nearest", inline: "center" });
-  }, [at, open]);
-
-  const show = (i: number) => {
-    setAt(i);
-    setOpen(i);
-  };
-  const go = (i: number) => {
-    const t = track.current;
-    if (!t) return;
-    const n = Math.max(0, Math.min(photos.length - 1, i));
-    t.scrollTo({ left: n * t.clientWidth, behavior: "smooth" });
-  };
+  const show = (i: number) => setOpen(i);
+  // The photo flies from (and back to) whichever thumbnail of it is showing: mosaic or carousel.
+  const origin = (i: number) =>
+    [...document.querySelectorAll<HTMLElement>(`[data-photo="${i}"] img`)].find(
+      (el) => el.getClientRects().length > 0,
+    );
   const hasVideo = !!(video || reel);
   const buttons = (cls: string, short = false) =>
     hasVideo || tour ? (
@@ -209,6 +152,7 @@ export function ListingGallery({
         <button
           type="button"
           className="sh-mosaic-main"
+          data-photo={0}
           onClick={() => show(0)}
           aria-label={`${title}: open the photos (${photos.length})`}
         >
@@ -227,6 +171,7 @@ export function ListingGallery({
               <button
                 key={i}
                 type="button"
+                data-photo={i + 1}
                 onClick={() => show(i + 1)}
                 aria-label={`Photo ${i + 2} of ${photos.length}`}
               >
@@ -257,6 +202,7 @@ export function ListingGallery({
             <button
               key={i}
               type="button"
+              data-photo={i}
               onClick={() => show(i)}
               aria-label={i === 0 ? `${title}: open the photos` : `Open photo ${i + 1}`}
             >
@@ -270,82 +216,19 @@ export function ListingGallery({
         {buttons("sh-chips-over", true)}
       </div>
 
-      <dialog
-        ref={dialog}
-        className="sh-viewer"
-        aria-label={`${title}: photos`}
-        onClose={() => setOpen(null)}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowRight") go(at + 1);
-          else if (e.key === "ArrowLeft") go(at - 1);
-        }}
-      >
-        {open != null && (
-          <>
-            <div className="sh-viewer-bar">
-              <span>
-                {at + 1} / {photos.length}
-              </span>
-              <button type="button" className="sh-viewer-x" onClick={() => setOpen(null)}>
-                Close
-              </button>
-            </div>
-            <div className="sh-viewer-stage">
-              <div
-                ref={track}
-                className="sh-viewer-track"
-                onScroll={(e) => {
-                  const t = e.currentTarget;
-                  setAt(Math.round(t.scrollLeft / Math.max(1, t.clientWidth)));
-                }}
-              >
-                {photos.map((p, i) => (
-                  <figure key={i}>
-                    <img
-                      src={p.large}
-                      alt={`Photo ${i + 1} of ${photos.length}`}
-                      loading={Math.abs(i - open) <= 1 ? "eager" : "lazy"}
-                      decoding="async"
-                    />
-                  </figure>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="sh-viewer-arrow sh-prev"
-                aria-label="Previous photo"
-                disabled={at === 0}
-                onClick={() => go(at - 1)}
-              >
-                <Icon name="back" size={22} />
-              </button>
-              <button
-                type="button"
-                className="sh-viewer-arrow sh-next"
-                aria-label="Next photo"
-                disabled={at >= photos.length - 1}
-                onClick={() => go(at + 1)}
-              >
-                <Icon name="chevron" size={22} />
-              </button>
-            </div>
-            <div ref={thumbs} className="sh-viewer-thumbs" aria-label="All photos">
-              {photos.map((p, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  data-i={i}
-                  aria-label={`Go to photo ${i + 1}`}
-                  aria-current={i === at || undefined}
-                  onClick={() => go(i)}
-                >
-                  <img src={p.small} alt="" loading="lazy" decoding="async" />
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </dialog>
+      {open != null && (
+        <ZoomGallery
+          title={title}
+          start={open}
+          photos={photos.map((p, i) => ({
+            src: p.large,
+            thumb: p.small,
+            alt: `Photo ${i + 1} of ${photos.length}`,
+          }))}
+          originFor={origin}
+          onClose={() => setOpen(null)}
+        />
+      )}
 
       {modal === "video" && (
         <MediaModal label="Video tour" onClose={() => setModal(null)}>

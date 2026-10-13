@@ -918,4 +918,19 @@
     color: var(--acc);
     font-weight: 600;
   }
+
+  /* Video / 360 modal as a spring dialog (components/share/ShareModal): centred on every screen. */
+  .sh-layer {
+    --spr-veil: rgb(0 0 0 / 0.72);
+    z-index: 100;
+    display: grid;
+    place-items: center;
+  }
+  .sh-layer > .sh-modal {
+    position: relative;
+    inset: auto;
+    margin: 0;
+    display: grid;
+    grid-template-rows: 52px auto;
+  }
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { Option } from "@/lib/admin/fields";
 import { deleteCategory, renameCategory } from "@/lib/admin/placement-actions";
+import { Confirm } from "./Confirm";
 
 /**
  * Media library categories (Portfolio list): rename or delete. New ones are added by typing a
@@ -22,6 +23,7 @@ export function CategoryManager({
     Object.fromEntries(categories.map((c) => [c.value, c.label])),
   );
   const [status, setStatus] = useState<string>();
+  const [removing, setRemoving] = useState<Option | null>(null);
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>, ok: string) =>
     start(async () => {
@@ -58,15 +60,27 @@ export function CategoryManager({
             type="button"
             className="ad-btn quiet small"
             disabled={disabled || pending}
-            onClick={() => {
-              if (window.confirm(`Delete “${c.label}”? Items in it keep everything else.`))
-                run(() => deleteCategory(c.value), "Deleted.");
-            }}
+            onClick={() => setRemoving(c)}
           >
             Delete
           </button>
         </div>
       ))}
+      <Confirm
+        open={!!removing}
+        title={`Delete “${removing?.label ?? ""}”?`}
+        confirmLabel="Delete"
+        danger
+        busy={pending}
+        onCancel={() => setRemoving(null)}
+        onConfirm={() => {
+          const id = removing!.value;
+          setRemoving(null);
+          run(() => deleteCategory(id), "Deleted.");
+        }}
+      >
+        <p>Items in it keep everything else and ask for a category on their next save.</p>
+      </Confirm>
       {status && (
         <p className="ad-small" role="status">
           {status}

@@ -2,13 +2,13 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { requestDeliverableRevision } from "@/lib/portal/deliverable-actions";
-import type { Playable } from "@/lib/playable";
 import { useToast } from "./ui";
 
-const MediaViewer = dynamic(
-  () => import("@/components/media/MediaViewer").then((m) => m.MediaViewer),
+// The zoom viewer (Motion) loads on the first photo opened.
+const ZoomGallery = dynamic(
+  () => import("@/components/media/ZoomGallery").then((m) => m.ZoomGallery),
   { ssr: false },
 );
 
@@ -148,7 +148,8 @@ export function ShootDeliveries({
   title: string;
   photosDeliverable: string | null;
 }) {
-  const [play, setPlay] = useState<Playable | null>(null);
+  const [viewing, setViewing] = useState<number | null>(null);
+  const grid = useRef<HTMLUListElement>(null);
   const [toast, say] = useToast();
   const photos = files.filter((f) => f.kind === "photos" && (f.view || f.download));
   const reels = files.filter((f) => f.kind === "reel");
@@ -164,23 +165,15 @@ export function ShootDeliveries({
             <h2 className="pt-h2">Photos ({photos.length})</h2>
             <DownloadAll files={photos} name={`${title} photos`} ext="jpg" />
           </div>
-          <ul className="pt-thumbs" aria-label="Photos">
+          <ul className="pt-thumbs" aria-label="Photos" ref={grid}>
             {photos.map((f, i) => (
               <li key={f.id}>
                 <button
                   type="button"
                   className="pt-thumb-open"
                   aria-label={`Open ${f.label}`}
-                  onClick={() =>
-                    setPlay({
-                      type: "photos",
-                      title,
-                      photos: [...photos.slice(i), ...photos.slice(0, i)].map((p) => ({
-                        src: p.view ?? p.download!,
-                        alt: p.label,
-                      })),
-                    })
-                  }
+                  data-i={i}
+                  onClick={() => setViewing(i)}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element -- signed, short-lived R2 URL */}
                   <img
@@ -305,7 +298,22 @@ export function ShootDeliveries({
           ))}
         </section>
       )}
-      {play && <MediaViewer play={play} onClose={() => setPlay(null)} />}
+      {viewing != null && (
+        <ZoomGallery
+          title={title}
+          start={viewing}
+          photos={photos.map((p) => ({
+            src: p.view ?? p.download!,
+            thumb: p.thumb ?? undefined,
+            alt: p.label,
+          }))}
+          originFor={(i) => grid.current?.querySelector<HTMLElement>(`[data-i="${i}"] img`)}
+          action={(i) => (
+            <PhotoRevision f={photos[i]} fallback={photosDeliverable} key={photos[i].id} />
+          )}
+          onClose={() => setViewing(null)}
+        />
+      )}
       {toast}
     </>
   );

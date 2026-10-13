@@ -1423,4 +1423,19 @@
     cursor: pointer;
     font: inherit;
   }
+
+  /* Spring dialogs (components/interior/modal): the layer centres the .ad-dialog panel. */
+  .ad-layer {
+    --spr-veil: rgb(17 17 16 / 0.5);
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    padding: 12px;
+  }
+  .ad-layer > .ad-dialog {
+    overflow-y: auto;
+  }
+  .ad-btns[data-danger] {
+    justify-content: flex-end;
+  }
 }

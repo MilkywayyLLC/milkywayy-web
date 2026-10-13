@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { deleteShare, setShareStatus } from "@/lib/portal/listing-actions";
+import { ChoiceDialog } from "./forms";
 import { Icon } from "./Icon";
 import { useToast } from "./ui";
 
@@ -114,7 +115,6 @@ export function ShareControls({
         e instanceof KeyboardEvent ? e.key === "Escape" : !wrap.current?.contains(e.target as Node)
       ) {
         setMenu(false);
-        setSure(false);
       }
     };
     addEventListener("pointerdown", off);
@@ -187,12 +187,33 @@ export function ShareControls({
               role="menuitem"
               className="pt-danger"
               disabled={pending}
-              onClick={() => (sure ? run(() => deleteShare(kind, id)) : setSure(true))}
+              onClick={() => {
+                setMenu(false);
+                setSure(true);
+              }}
             >
-              {sure ? "Really delete?" : "Delete"}
+              Delete
             </button>
           </div>
         </div>
+      )}
+      {sure && (
+        <ChoiceDialog
+          title={kind === "c" ? "Delete this collection page?" : "Delete this listing page?"}
+          body="Its link stops working straight away. This can’t be undone."
+          choices={[
+            { label: "Keep it", onClick: () => setSure(false) },
+            {
+              label: "Delete",
+              danger: true,
+              onClick: () => {
+                setSure(false);
+                run(() => deleteShare(kind, id));
+              },
+            },
+          ]}
+          onDismiss={() => setSure(false)}
+        />
       )}
       {toast}
     </div>

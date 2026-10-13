@@ -14,7 +14,7 @@ import {
   type Result,
 } from "@/lib/portal/account-actions";
 import { inviteLinks, inviteText } from "@/lib/portal/invite";
-import { Field, FormBanner, useFormCheck } from "./forms";
+import { ChoiceDialog, Field, FormBanner, useFormCheck } from "./forms";
 import { Icon } from "./Icon";
 import { Badge, Sheet, useToast } from "./ui";
 
@@ -300,33 +300,27 @@ export function TeamManager({
         />
       )}
       {sheet && typeof sheet === "object" && "remove" in sheet && (
-        <Sheet
+        <ChoiceDialog
           title={sheet.remove.me ? "Leave this account?" : "Remove from the account?"}
-          onClose={() => setSheet(null)}
-        >
-          <p style={{ margin: 0 }}>
-            {sheet.remove.me
+          body={
+            sheet.remove.me
               ? `You’ll lose access to ${account.name}. Someone will need to invite you again.`
-              : `${sheet.remove.name ?? sheet.remove.contact ?? "They"} will lose access to ${account.name} straight away.`}
-          </p>
-          <div className="pt-btns">
-            <button
-              type="button"
-              className="btn btn-p btn-s"
-              disabled={pending}
-              onClick={() => {
+              : `${sheet.remove.name ?? sheet.remove.contact ?? "They"} will lose access to ${account.name} straight away.`
+          }
+          choices={[
+            { label: "Keep", onClick: () => setSheet(null) },
+            {
+              label: sheet.remove.me ? "Leave" : "Remove",
+              danger: true,
+              onClick: () => {
                 const who = sheet.remove;
                 setSheet(null);
                 run(removeMember(who.userId), who.me ? () => router.push("/portal") : undefined);
-              }}
-            >
-              {sheet.remove.me ? "Leave" : "Remove"}
-            </button>
-            <button type="button" className="btn btn-g btn-s" onClick={() => setSheet(null)}>
-              Keep
-            </button>
-          </div>
-        </Sheet>
+              },
+            },
+          ]}
+          onDismiss={() => setSheet(null)}
+        />
       )}
       {toast}
     </>

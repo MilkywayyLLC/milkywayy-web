@@ -62,6 +62,7 @@ export function MediaOpen({ play, preview = false }: { play: Playable; preview?:
       {open && (
         <MediaViewer
           play={play}
+          origin={() => btn.current?.parentElement?.querySelector("img")}
           onClose={() => {
             setOpen(false);
             btn.current?.focus();

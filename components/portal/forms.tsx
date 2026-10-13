@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@/components/portal/Icon";
+import { SpringDialog } from "@/components/interior/modal";
 import {
   discardDraft,
   loadDraft,
@@ -145,78 +146,78 @@ export function Modal({
   footer?: ReactNode;
   testId?: string;
 }) {
-  const close = useRef(onClose);
-  useEffect(() => {
-    close.current = onClose;
-  }, [onClose]);
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.querySelector(".pt-choice-bg")) close.current();
-    };
-    addEventListener("keydown", k);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      removeEventListener("keydown", k);
-      document.body.style.overflow = prev;
-    };
-  }, []);
   return (
-    <div className="pt-modal-bg" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div
-        className="pt-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        data-testid={testId}
-      >
-        <div className="pt-modal-head">
-          <span className="pt-h2">{title}</span>
-          <button type="button" className="pt-icon-btn" aria-label="Close" onClick={onClose}>
-            <Icon name="close" />
-          </button>
-        </div>
-        <div className="pt-modal-body">{children}</div>
-        {footer && <div className="pt-modal-foot">{footer}</div>}
+    <SpringDialog
+      label={title}
+      onClose={onClose}
+      layerClass="pt-modal-bg"
+      panelClass="pt-modal"
+      testId={testId}
+    >
+      <div className="pt-modal-head">
+        <span className="pt-h2">{title}</span>
+        <button type="button" className="pt-icon-btn" aria-label="Close" onClick={onClose}>
+          <Icon name="close" />
+        </button>
       </div>
-    </div>
+      <div className="pt-modal-body">{children}</div>
+      {footer && <div className="pt-modal-foot">{footer}</div>}
+    </SpringDialog>
   );
 }
 
-/** A small custom dialog with a few choices (never the browser's confirm()). */
+/**
+ * A small custom dialog with a few choices (never the browser's confirm()). `onDismiss` is what
+ * Esc (and a backdrop tap) does; a destructive dialog (a `danger` choice) only closes from Esc
+ * or a button, puts the danger action on the right in red and focuses the safe one.
+ */
 export function ChoiceDialog({
   title,
   body,
   choices,
+  onDismiss,
 }: {
   title: string;
   body?: ReactNode;
-  choices: { label: string; onClick: () => void; primary?: boolean }[];
+  choices: { label: string; onClick: () => void; primary?: boolean; danger?: boolean }[];
+  onDismiss?: () => void;
 }) {
+  const danger = choices.some((c) => c.danger);
+  const ordered = danger
+    ? [...choices.filter((c) => !c.danger), ...choices.filter((c) => c.danger)]
+    : choices;
+  const first = useRef<HTMLButtonElement>(null);
   return (
-    <div className="pt-choice-bg">
-      <div className="pt-choice-box" role="alertdialog" aria-modal="true" aria-label={title}>
-        <b>{title}</b>
-        {body && (
-          <p className="pt-meta" style={{ margin: 0 }}>
-            {body}
-          </p>
-        )}
-        <div className="pt-btns">
-          {choices.map((c, i) => (
-            <button
-              key={c.label}
-              type="button"
-              autoFocus={i === 0}
-              className={`btn btn-s ${c.primary ? "btn-p" : "btn-g"}`}
-              onClick={c.onClick}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
+    <SpringDialog
+      role="alertdialog"
+      label={title}
+      onClose={() => onDismiss?.()}
+      closeOnEscape={!!onDismiss}
+      closeOnBackdrop={!!onDismiss && !danger}
+      initialFocusRef={first}
+      layerClass="pt-choice-bg"
+      panelClass="pt-choice-box"
+    >
+      <b>{title}</b>
+      {body && (
+        <p className="pt-meta" style={{ margin: 0 }}>
+          {body}
+        </p>
+      )}
+      <div className="pt-btns" data-danger={danger || undefined}>
+        {ordered.map((c, i) => (
+          <button
+            key={c.label}
+            ref={i === 0 ? first : undefined}
+            type="button"
+            className={`btn btn-s ${c.danger ? "btn-danger" : c.primary ? "btn-p" : "btn-g"}`}
+            onClick={c.onClick}
+          >
+            {c.label}
+          </button>
+        ))}
       </div>
-    </div>
+    </SpringDialog>
   );
 }
 
@@ -355,6 +356,7 @@ export function useCloseGuard({
         },
         { label: "Keep editing", onClick: () => setAsking(false) },
       ]}
+      onDismiss={() => setAsking(false)}
     />
   ) : null;
   return { request, dialog };
@@ -402,6 +404,7 @@ export function useLeaveGuard(opts: {
         { label: "Discard", onClick: () => void opts.discard().finally(() => go(to)) },
         { label: "Keep editing", onClick: () => setTo(null) },
       ]}
+      onDismiss={() => setTo(null)}
     />
   ) : null;
 }
