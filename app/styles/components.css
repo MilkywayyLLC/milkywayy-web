@@ -590,6 +590,30 @@
   .home .hero-copy .lede {
     margin: 0;
   }
+  /* Home hero rotating word (13 Oct 2026): the longest word reserves the box, so nothing moves. */
+  .rot {
+    display: inline-grid;
+  }
+  .rot > * {
+    grid-area: 1 / 1;
+  }
+  .rot-size {
+    visibility: hidden;
+  }
+  .rot-word[data-moved] {
+    animation: rot-in 400ms ease-out;
+  }
+  @keyframes rot-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.18em);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rot-word[data-moved] {
+      animation: none;
+    }
+  }
   .home .hero-copy .ctas {
     margin-top: 8px;
   }

@@ -11,6 +11,7 @@ import { Steps, type Step } from "@/components/blocks/Steps";
 import { Testimonials } from "@/components/blocks/Testimonials";
 import { Ctas } from "@/components/ui/Ctas";
 import { LiteVideo } from "@/components/media/LiteVideo";
+import { RotatingWord } from "@/components/type/RotatingWord";
 import { Timecode } from "@/components/media/Timecode";
 import { MediaFrame } from "@/components/media/MediaFrame";
 import { HeroTitle } from "@/components/type/HeroTitle";
@@ -85,6 +86,9 @@ const STEPS: Step[] = [
   },
 ];
 
+/** Home hero's rotating word, in order; the first is what the server renders. */
+const HERO_WORDS = ["properties.", "products.", "services.", "experiences."];
+
 export default async function HomePage() {
   const [
     site,
@@ -131,16 +135,17 @@ export default async function HomePage() {
                 <Eyebrow rec>Dubai content studio · Clients worldwide</Eyebrow>
                 <HeroTitle
                   id="home-title"
-                  line1={
-                    <>
-                      Content that <Hl>sells</Hl>
-                    </>
+                  label="Content that sells properties, products, services and experiences"
+                  line1="Content that sells"
+                  line2={
+                    <Hl>
+                      <RotatingWord words={HERO_WORDS}>experiences.</RotatingWord>
+                    </Hl>
                   }
-                  line2="property & brands."
                 />
                 <p className="lede">
-                  We shoot photography and video in Dubai for real estate and brands, and edit
-                  worldwide.
+                  Photography and video for real estate and brands, shot in Dubai. Post-production
+                  and AI presenters for clients worldwide.
                 </p>
                 <Ctas>
                   <ButtonLink href="/portal?new=choose">Book media</ButtonLink>
