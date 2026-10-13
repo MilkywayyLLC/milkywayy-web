@@ -1790,6 +1790,156 @@
       flex: 1;
     }
   }
+  /* Booking step 1 (site-refine, 13 Oct 2026): builder + live summary. From 1024px the modal
+     widens to two columns with a sticky summary; below that the summary is a bottom bar that
+     expands on tap. */
+  .pt-book1 {
+    display: grid;
+    gap: 16px;
+  }
+  .pt-book1-main {
+    display: grid;
+    gap: 16px;
+    align-content: start;
+    min-width: 0;
+  }
+  .pt-sum {
+    display: grid;
+    gap: 14px;
+    align-content: start;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    padding: 18px;
+  }
+  .pt-sum-body {
+    display: grid;
+    gap: 12px;
+  }
+  .pt-sum-list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 12px;
+    display: grid;
+    gap: 10px;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+  .pt-sum-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .pt-sum-list li > :last-child {
+    flex: none;
+    color: var(--muted);
+    font-size: 13px;
+    text-align: right;
+  }
+  .pt-sum-empty {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .pt-sum-total {
+    display: grid;
+    gap: 2px;
+  }
+  .pt-sum-total span {
+    font: 500 11px/1.4 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .pt-sum-total b {
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  .pt-sum-toggle {
+    display: none;
+  }
+  .pt-sum-next {
+    width: 100%;
+  }
+  @media (min-width: 1024px) {
+    .pt-modal:has(.pt-book1) {
+      max-width: 1080px;
+    }
+    .pt-book1 {
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 28px;
+      align-items: start;
+    }
+    .pt-sum {
+      position: sticky;
+      top: 0;
+    }
+  }
+  @media (max-width: 1023px) {
+    .pt-sum {
+      position: sticky;
+      bottom: -20px; /* flush with the modal body's bottom edge, over its padding */
+      z-index: 2;
+      margin: 0 -20px -20px;
+      padding: 12px 20px;
+      border-width: 1px 0 0;
+      border-color: var(--fg);
+      background: var(--surface);
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+    }
+    .pt-sum-body {
+      display: none;
+      grid-column: 1 / -1;
+      max-height: 45dvh;
+      overflow-y: auto;
+    }
+    .pt-sum[data-open] .pt-sum-body {
+      display: grid;
+    }
+    .pt-sum-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      padding: 8px 0;
+      border: 0;
+      background: none;
+      color: var(--fg);
+      font: 500 14px/1.2 var(--font-sans);
+      text-align: left;
+      cursor: pointer;
+    }
+    .pt-sum-toggle b {
+      font-variant-numeric: tabular-nums;
+    }
+    .pt-sum-chev {
+      width: 7px;
+      height: 7px;
+      margin-left: 4px;
+      border-right: 1.5px solid currentColor;
+      border-top: 1.5px solid currentColor;
+      transform: translateY(2px) rotate(-45deg);
+    }
+    .pt-sum[data-open] .pt-sum-chev {
+      transform: translateY(-2px) rotate(135deg);
+    }
+    .pt-sum-next {
+      width: auto;
+    }
+  }
+  @media (max-width: 760px) {
+    .pt-sum {
+      bottom: -16px;
+      margin: 0 -16px -16px;
+      padding: 12px 16px;
+    }
+  }
+
   .pt-choice-bg {
     position: fixed;
     inset: 0;

@@ -282,8 +282,17 @@ export default async function HomePage() {
         {reviews.length > 0 && (
           <section className="sec" aria-labelledby="reviews-title">
             <div className="w">
-              <SectionHead id="reviews-title" eyebrow="Client words" title="What clients say." />
-              <Testimonials reviews={reviews} />
+              <Testimonials
+                reviews={reviews}
+                google={site.googleRating}
+                head={
+                  <SectionHead
+                    id="reviews-title"
+                    eyebrow="Client words"
+                    title="What clients say."
+                  />
+                }
+              />
             </div>
           </section>
         )}

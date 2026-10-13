@@ -16,6 +16,34 @@ import { formatAED } from "@/lib/format";
 import { Seg } from "@/components/ui/Seg";
 import { ChoiceCard, ChoiceCards, Group, InclusionsStrip, SubPanel } from "./parts";
 
+/** Line icons for the type and service tiles (24px grid, stroke follows the text colour). */
+const ICON_PATHS = {
+  apartment:
+    "M5 21V4h10v17M15 9h4v12M3 21h18M8 7h1M11 7h1M8 10h1M11 10h1M8 13h1M11 13h1M8 16h1M11 16h1",
+  villa: "M3 11l9-7 9 7M5 9.5V20h14V9.5M10 20v-5h4v5",
+  commercial: "M3 21h18M4 21V8l8-4 8 4v13M8 11h2M14 11h2M8 15h2M14 15h2",
+  photo: "M4 8h3l2-3h6l2 3h3v11H4zM12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z",
+  video: "M3 7h12v10H3zM15 10.5l6-3.5v10l-6-3.5",
+  tour: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z",
+} as const;
+function Icon({ name }: { name: keyof typeof ICON_PATHS }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="24"
+      height="24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d={ICON_PATHS[name]} />
+    </svg>
+  );
+}
+
 const LIGHTING_SHORT = { day: "day", night: "night", dayNight: "day + night" } as const;
 
 /** One-line summaries shown on selected service cards. */
@@ -87,14 +115,19 @@ export function PropertyOptions({
       <Group label="Property type">
         <Seg
           label="Property type"
-          className="grid"
+          className="ptype grid"
           value={p.type}
           onChange={(v) => dispatch({ type: "setType", id: p.id, value: v })}
           options={(["apartment", "villa", "commercial"] as const).map((t) => {
             const l = pricing[t].label;
             return {
               value: t,
-              label: t === "villa" ? short(l, l.split(" /")[0]) : l,
+              label: (
+                <>
+                  <Icon name={t} />
+                  <span>{t === "villa" ? short(l, l.split(" /")[0]) : l}</span>
+                </>
+              ),
               ariaLabel: l,
             };
           })}
@@ -145,6 +178,7 @@ export function PropertyOptions({
             id={fid("photo")}
             controls={p.photo ? fid("photo-opts") : undefined}
             expanded={p.photo && panel === "photo"}
+            icon={<Icon name="photo" />}
             title="Photography"
             sub={`Delivery ${pricing.delivery.photo}`}
             price={formatAED(prices.photo)}
@@ -183,6 +217,7 @@ export function PropertyOptions({
             col={1}
             controls={p.video ? fid("video-opts") : undefined}
             expanded={p.video && panel === "video"}
+            icon={<Icon name="video" />}
             title="Videography"
             sub="Short-form, long-form or both"
             price={
@@ -242,6 +277,7 @@ export function PropertyOptions({
           )}
           <ChoiceCard
             col={2}
+            icon={<Icon name="tour" />}
             title="360° tour"
             sub={`Delivery ${pricing.delivery.tour}`}
             price={tourLocked ? notIn : formatAED(prices.tour ?? 0)}

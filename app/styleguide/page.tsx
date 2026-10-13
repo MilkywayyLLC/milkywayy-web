@@ -655,8 +655,11 @@ export default async function StyleguidePage() {
             </div>
             <FounderBlock founder={site.founder} />
             <div>
-              <SectionHead eyebrow="Client words" title="What clients say." />
-              <Testimonials reviews={reviews} />
+              <Testimonials
+                reviews={reviews}
+                google={site.googleRating}
+                head={<SectionHead eyebrow="Client words" title="What clients say." />}
+              />
             </div>
           </div>
         )}

@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useCallback, useReducer, useState, useTransition } from "react";
 import { PropertyOptions } from "@/components/booking/PropertyOptions";
-import { blankProperty, reducer, type Action, type BookingProperty } from "@/lib/booking";
+import {
+  blankProperty,
+  priceLines,
+  reducer,
+  type Action,
+  type BookingProperty,
+} from "@/lib/booking";
 import { bookShoot, updateBooking } from "@/lib/portal/book-actions";
 import { dateLabel, money } from "@/lib/portal/billing";
 import {
@@ -85,6 +91,106 @@ export function PriceBlock({
         after the shoot.
       </b>
     </div>
+  );
+}
+
+/**
+ * Step 1's live summary (site-refine, 13 Oct 2026): a sticky panel beside the builder from
+ * 1024px; below that a bottom bar ("Estimated … · Continue") that expands on tap. What it shows
+ * follows PriceBlock: no prices without rate access, "Included in package" on a package.
+ */
+function LiveSummary({
+  cfg,
+  service,
+  prop,
+  lines,
+  total,
+  onNext,
+}: {
+  cfg: RequestConfig;
+  service: BookingService | null;
+  /** The property builder's state: listed item by item (the same lines its subtotal adds up). */
+  prop: BookingProperty;
+  lines: ReturnType<typeof estimateLines>;
+  total: number | null;
+  onNext: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const p = cfg.price;
+  const raw: { label: string; amount: number | null }[] =
+    service?.service === "property"
+      ? priceLines(prop, cfg.pricing)
+      : lines.map((l) => ({
+          label: `${l.label}${l.qty > 1 ? ` × ${l.qty}` : ""}`,
+          amount: l.amount,
+        }));
+  const items: { label: string; price?: string }[] = !service
+    ? []
+    : p.rates || service.service === "property"
+      ? raw.map((l) => ({
+          label: l.label,
+          price: !p.rates
+            ? undefined
+            : p.mode !== "payg"
+              ? "Included in package"
+              : l.amount == null
+                ? "Priced on confirmation"
+                : money(p.currency, l.amount),
+        }))
+      : [{ label: `${SERVICE_LABEL[service.service]} · ${serviceSummary(service, cfg.pricing)}` }];
+  const totalText =
+    !p.rates || !items.length
+      ? null
+      : p.mode === "payg"
+        ? total
+          ? money(p.currency, total)
+          : "On confirmation"
+        : p.showAmount && total
+          ? `~${money(p.currency, total)}`
+          : null;
+  return (
+    <aside className="pt-sum" data-open={open ? "" : undefined} aria-label="Summary">
+      <div className="pt-sum-body" id="pt-sum-body">
+        <span className="pt-eb">Summary</span>
+        {items.length ? (
+          <ul className="pt-sum-list">
+            {items.map((it, i) => (
+              <li key={i}>
+                <span>{it.label}</span>
+                {it.price && <span className="pt-mono">{it.price}</span>}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="pt-sum-empty">Choose what you need and it adds up here.</p>
+        )}
+        {totalText && (
+          <div className="pt-sum-total" data-testid="estimate">
+            <span>Estimated total</span>
+            <b>{totalText}</b>
+          </div>
+        )}
+      </div>
+      <button
+        type="button"
+        className="pt-sum-toggle"
+        aria-expanded={open}
+        aria-controls="pt-sum-body"
+        onClick={() => setOpen((o) => !o)}
+      >
+        {totalText ? (
+          <>
+            Estimated <b>{totalText}</b>
+          </>
+        ) : (
+          "Summary"
+        )}
+        <span className="pt-sum-chev" aria-hidden="true" />
+      </button>
+      <button type="button" className="btn btn-p btn-s pt-sum-next" onClick={onNext}>
+        Continue
+      </button>
+    </aside>
   );
 }
 
@@ -304,47 +410,54 @@ export function BookingModal({
       onClose={guard.request}
       testId="booking-modal"
       footer={
-        <>
-          {step === 1 && onBack && (
-            <button
-              type="button"
-              className="btn btn-g btn-s"
-              onClick={() => {
-                if (touched) void draft.saveNow();
-                onBack();
-              }}
-            >
-              Back
-            </button>
-          )}
-          {step > 1 && (
-            <button
-              type="button"
-              className="btn btn-g btn-s"
-              onClick={() => {
-                form.reset();
-                setStep((s) => (s === 3 ? 2 : 1));
-              }}
-            >
-              Back
-            </button>
-          )}
-          {step < 3 ? (
-            <button type="button" className="btn btn-p btn-s" onClick={next}>
-              Continue
-            </button>
-          ) : (
-            <button type="button" className="btn btn-p btn-s" disabled={pending} onClick={confirm}>
-              {pending
-                ? "Sending…"
-                : edit?.status === "confirmed"
-                  ? "Send change request"
-                  : edit
-                    ? "Save changes"
-                    : "Confirm booking"}
-            </button>
-          )}
-        </>
+        step === 1 && !onBack ? undefined : (
+          <>
+            {step === 1 && onBack && (
+              <button
+                type="button"
+                className="btn btn-g btn-s"
+                onClick={() => {
+                  if (touched) void draft.saveNow();
+                  onBack();
+                }}
+              >
+                Back
+              </button>
+            )}
+            {step > 1 && (
+              <button
+                type="button"
+                className="btn btn-g btn-s"
+                onClick={() => {
+                  form.reset();
+                  setStep((s) => (s === 3 ? 2 : 1));
+                }}
+              >
+                Back
+              </button>
+            )}
+            {step === 1 ? null : step === 2 ? (
+              <button type="button" className="btn btn-p btn-s" onClick={next}>
+                Continue
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-p btn-s"
+                disabled={pending}
+                onClick={confirm}
+              >
+                {pending
+                  ? "Sending…"
+                  : edit?.status === "confirmed"
+                    ? "Send change request"
+                    : edit
+                      ? "Save changes"
+                      : "Confirm booking"}
+              </button>
+            )}
+          </>
+        )
       }
     >
       <div className="pt-form">
@@ -361,87 +474,97 @@ export function BookingModal({
         <FormBanner text={form.banner} />
 
         {step === 1 && (
-          <>
-            <Field name="kind" label="Type of shoot" required group error={form.errors.kind}>
-              <div className="pt-choice" role="group" aria-label="Type of shoot">
-                {(["property", "reels", "long_form"] as Kind[]).map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    aria-pressed={kind === k}
-                    onClick={touch(() => {
-                      setKind(k);
-                      if (k !== "property" && !day) setDay("half");
-                    })}
-                  >
-                    {SERVICE_LABEL[k]}
-                    <small>{SERVICE_HINT[k]}</small>
-                  </button>
-                ))}
-              </div>
-            </Field>
-            {kind === "property" && (
-              <div
-                className={`pt-book-prop ${form.errors.property ? "is-bad" : ""}`}
-                data-field="property"
-                onClickCapture={() => setTouched(true)}
-              >
-                <PropertyOptions
-                  p={prop}
-                  pricing={pricing}
-                  dispatch={dispatchProp}
-                  errors={form.errors.property ? { services: form.errors.property } : undefined}
-                />
-              </div>
-            )}
-            {kind && kind !== "property" && (
-              <div className="pt-grid2">
-                <Field
-                  name="qty"
-                  label={kind === "reels" ? "Number of reels" : "Number of videos"}
-                  required
-                  group
-                  error={form.errors.qty}
+          <div className="pt-book1">
+            <div className="pt-book1-main">
+              <Field name="kind" label="Type of shoot" required group error={form.errors.kind}>
+                <div className="pt-choice" role="group" aria-label="Type of shoot">
+                  {(["property", "reels", "long_form"] as Kind[]).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      aria-pressed={kind === k}
+                      onClick={touch(() => {
+                        setKind(k);
+                        if (k !== "property" && !day) setDay("half");
+                      })}
+                    >
+                      {SERVICE_LABEL[k]}
+                      <small>{SERVICE_HINT[k]}</small>
+                    </button>
+                  ))}
+                </div>
+              </Field>
+              {kind === "property" && (
+                <div
+                  className={`pt-book-prop ${form.errors.property ? "is-bad" : ""}`}
+                  data-field="property"
+                  onClickCapture={() => setTouched(true)}
                 >
-                  <div className="pt-stepper">
-                    <button
-                      type="button"
-                      aria-label="Fewer"
-                      onClick={touch(() => setQty((n) => Math.max(1, n - 1)))}
-                    >
-                      −
-                    </button>
-                    <output aria-live="polite">{qty}</output>
-                    <button
-                      type="button"
-                      aria-label="More"
-                      onClick={touch(() => setQty((n) => Math.min(100, n + 1)))}
-                    >
-                      +
-                    </button>
-                  </div>
-                </Field>
-                <Field name="day" label="Shoot length" required group error={form.errors.day}>
-                  <div className="pt-seg" role="group" aria-label="Shoot length">
-                    {(["half", "full"] as const).map((d) => (
+                  <PropertyOptions
+                    p={prop}
+                    pricing={pricing}
+                    dispatch={dispatchProp}
+                    errors={form.errors.property ? { services: form.errors.property } : undefined}
+                  />
+                </div>
+              )}
+              {kind && kind !== "property" && (
+                <div className="pt-grid2">
+                  <Field
+                    name="qty"
+                    label={kind === "reels" ? "Number of reels" : "Number of videos"}
+                    required
+                    group
+                    error={form.errors.qty}
+                  >
+                    <div className="pt-stepper">
                       <button
-                        key={d}
                         type="button"
-                        aria-pressed={day === d}
-                        onClick={touch(() => {
-                          setDay(d);
-                          setSlot(d === "full" ? "full_day" : slot === "full_day" ? "" : slot);
-                        })}
+                        aria-label="Fewer"
+                        onClick={touch(() => setQty((n) => Math.max(1, n - 1)))}
                       >
-                        {DAY_LABEL[d]}
+                        −
                       </button>
-                    ))}
-                  </div>
-                </Field>
-              </div>
-            )}
-            {ta && <span className="pt-turnaround">Usual turnaround: {ta}</span>}
-          </>
+                      <output aria-live="polite">{qty}</output>
+                      <button
+                        type="button"
+                        aria-label="More"
+                        onClick={touch(() => setQty((n) => Math.min(100, n + 1)))}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </Field>
+                  <Field name="day" label="Shoot length" required group error={form.errors.day}>
+                    <div className="pt-seg" role="group" aria-label="Shoot length">
+                      {(["half", "full"] as const).map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          aria-pressed={day === d}
+                          onClick={touch(() => {
+                            setDay(d);
+                            setSlot(d === "full" ? "full_day" : slot === "full_day" ? "" : slot);
+                          })}
+                        >
+                          {DAY_LABEL[d]}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                </div>
+              )}
+              {ta && <span className="pt-turnaround">Usual turnaround: {ta}</span>}
+            </div>
+            <LiveSummary
+              cfg={cfg}
+              service={service}
+              prop={prop}
+              lines={lines}
+              total={total}
+              onNext={next}
+            />
+          </div>
         )}
 
         {step === 2 && (
