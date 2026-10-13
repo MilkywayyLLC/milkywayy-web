@@ -4634,9 +4634,10 @@
 
 /* ---------- site-refine, 12 Oct 2026 ---------- */
 @layer components {
-  /* AI avatars hero: the media is a 9:16 vertical card; the copy takes the rest. */
+  /* AI avatars hero: the media is a 9:16 vertical card, at most 560px tall on desktop (315px
+     wide; owner, 13 Oct 2026); the copy takes the rest, centred against it. */
   .av-hero {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 315px);
     align-items: center;
   }
   .av-hero .hero-media-col {

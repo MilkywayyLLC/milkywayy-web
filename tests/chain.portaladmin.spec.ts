@@ -221,12 +221,12 @@ test("deliver photos, a reel, long-form and a 360 link → the client's grouped 
     (await adminRpc("portal_admin_publish_delivery", { p_id: projectId, p_delivery_no: 1 })).error,
   ).toBeNull();
 
-  // Deliverable statuses are set by hand: the admin marks the photos Delivered.
+  // Publishing marked the photos Delivered by itself (the manual control stays).
   const a = await admin(browser);
   await a.goto(`/admin/projects/${projectId}`);
-  const deliv = a.getByTestId("deliverables-admin");
-  await deliv.getByLabel("Property photos: status").selectOption("delivered");
-  await expect(deliv.getByRole("status")).toHaveText("Status saved.");
+  await expect(
+    a.getByTestId("deliverables-admin").getByLabel("Property photos: status"),
+  ).toHaveValue("delivered");
 
   await signInUI(page, c.email);
   await page.goto(`/portal/shoots/${ref}`);

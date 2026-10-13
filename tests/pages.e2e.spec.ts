@@ -235,7 +235,8 @@ test.describe("layout rules", () => {
         const bottom = Math.max(...rest.map((c) => c.getBoundingClientRect().bottom));
         return [bottom - top, media.querySelector(".fr")!.getBoundingClientRect().height];
       });
-      expect(frame, path).toBeLessThanOrEqual(text + 1);
+      // AI avatars: the 9:16 card is capped at 560px instead (owner, 13 Oct 2026).
+      expect(frame, path).toBeLessThanOrEqual(path === "/ai-avatars" ? 561 : text + 1);
       expect(frame, path).toBeGreaterThan(text * 0.6); // still a substantial frame
     }
   });

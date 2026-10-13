@@ -80,7 +80,6 @@ export default async function PortalHome({
     at: string;
     project: { ref: string; title: string; type: string };
   }[];
-  const first = (profile?.full_name ?? "").split(" ")[0];
   const claimed = Number(q.claimed ?? 0);
   const now = new Date().toLocaleDateString("en-GB", {
     weekday: "short",
@@ -95,10 +94,7 @@ export default async function PortalHome({
       <LiveRefresh />
       <div className="pt-head">
         <div>
-          <span className="pt-eb">
-            {now}
-            {first ? ` · Hello, ${first}` : ""}
-          </span>
+          <span className="pt-eb">{now}</span>
           <h1 className="pt-h1">Home</h1>
         </div>
       </div>

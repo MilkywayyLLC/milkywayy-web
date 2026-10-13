@@ -398,3 +398,10 @@ Replaces the volume-tier idea and Phase 12's threshold rules (`suggestion_rules`
 - **Invoices are drafts first.** Drafts are made on the 25th (budget, fixed and month-end pay-as-you-go clients; next month's package for advance billing) and when a pay-as-you-go project is delivered (one-off: "Property shoot" for shoots). Pay-as-you-go invoicing per client: per project (default) or month end. The queue (Admin → Billing) edits lines, notes, due date; VAT 5% when registered; Approve (month-end ones publish on the last day of the month, advance packages on the 1st) or Approve & publish now; numbers (`MW-1001`…) are given at approval. Publishing makes it visible and sends "New invoice", the only billing email. A draft whose activity changed since it was made says so and can be rebuilt. Clients never read drafts or approved invoices (RLS). The Ledger-PDF form now makes a draft too.
 - **Invoice PDF** generated from the invoice (company details and invoice settings under Billing → Settings, falling back to the site's company details), with a small built-in PDF writer (standard Helvetica, no new dependency); a Ledger PDF can be attached instead.
 - Migration `20261019090000_portal_budget_bookings.sql`, applied to the dev project only.
+
+## Final launch fixes (13 Oct 2026)
+
+- **JS budget** raised to 42 KB of our own code for `/post-production` and `/ai-avatars` only (others stay 35 KB): the dashboard previews (portal-accurate frames) add ~13 KB there. Optimise post-launch by rendering the frames on the server.
+- **AI avatars hero**: the 9:16 card is capped at 560px tall on desktop (315px wide), copy centred beside it; phones unchanged.
+- **Deliverables auto-deliver on publish** (`20261025090000_auto_deliverable_status.sql`): each newly published file marks its deliverable (or the next open one of that kind) Delivered, so "Request revision" works straight away. The admin's status control stays.
+- Portal Home's eyebrow shows the date only; the greeting lives in the header.

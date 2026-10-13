@@ -90,6 +90,7 @@ Portal and billing set-up in the admin (no build check; do before inviting clien
   21. `20261022090000_site_refine_location_dates.sql` *(map picker: building and community saved with bookings; listed/updated dates on public listing pages)*
   22. `20261023090000_avatar_language_versions.sql` *(AI avatars → Multilingual: language versions on avatar examples)*
   23. `20261024090000_media_library_placements.sql` *(admin media library: categories, media type/orientation, pinned and automatic placements; additive only)*
+  24. `20261025090000_auto_deliverable_status.sql` *(publishing a delivery marks its deliverables Delivered)*
 
   Note: 22 and 23 are website-content migrations and are **already applied** on `milkywayy-web` (checked 13 Oct 2026); **skip them** there (23 is not re-runnable: its policies already exist and it would reset every item's "Show on Work page"). Check with `list_migrations` first.
 - [ ] **Claude** — a new `PORTAL_ADMIN_SECRET`: added to Vercel Production by CLI (never printed) and its SHA-256 stored in `private.app_secrets` under `portal_admin`. Then the security advisor.
@@ -203,6 +204,10 @@ Pick the smallest step that fixes it:
 5. **The site is broken or unreachable:** in Cloudflare, put back the old DNS records from the launch-day screenshot. With the 5-minute TTL most visitors are back on the old site within minutes. (The portal then isn't reachable; its data stays safe in Supabase.) Tell Claude what happened.
 6. **Database problem:** the website keeps showing the last version it loaded and you get an alert; restore from Supabase → Database → Backups (Pro, daily, 7 days).
 
+## Known issues
+
+- After a database outage, press **Refresh the whole site** twice (the first refresh can re-render Home and the service pages from data that was still stale).
+
 ## 10. The week after
 
 - [ ] **Akash** — keep the old site's hosting running for 2 weeks, untouched, for rollback.
@@ -211,6 +216,8 @@ Pick the smallest step that fixes it:
 - [ ] **Claude** — re-run Lighthouse and the full test suite; fix anything found.
 
 ## 11. Akash-only cleanup
+
+- [ ] **Rotate** the Vercel automation bypass secret (Vercel → project → Deployment Protection) and the dev R2 token (`milkywayy-portal-dev`); then update `.env.local`. Both were printed in a QA session log on 13 Oct 2026.
 
 - [ ] **Twilio:** delete the two old Verify services **MilkyyWay** and **MilkyWayy** (keep **Milkywayy**, `VAb74f…`). Optionally delete the empty duplicate Messaging Service "whatsapp_notifications_service" (`MG594f0b…`; the live one is `MG364b…`). Keep the balance topped up with auto-recharge if Twilio notifications are used.
 - [ ] **Old portal and hosting:** after the 2-week rollback window, switch off the old portal and the old site's hosting (and their domains/subdomains). Nothing on the new site points to them.
