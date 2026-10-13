@@ -58,15 +58,21 @@ const initials = (s: string) =>
     .map((w) => w[0]!.toUpperCase())
     .join("");
 
+/** Auto-scroll pace: one full set of cards per this many ms. */
+const LOOP_MS = 45000;
+/** Idle time after the last interaction before auto-scroll resumes. */
+const RESUME_MS = 6000;
+
 /**
  * Review cards (13 Oct 2026). Every card is the same size; the review is clamped to 4 lines with
- * "More", which opens the full text inside the card (it scrolls there). From 6 reviews: an
- * infinite slow marquee (~45s loop) of the list twice over, with soft edges. It keeps moving on
- * hover and pauses only on a click (click again to resume) or while a card is opened with More.
- * Reduced motion: a static row you can scroll. Shows the "sample" label while any review is a
- * placeholder. Site-refine (13 Oct 2026): Google rating above the heading (`head`), G mark, stars and
- * an initials avatar on each card, prev/next arrows that nudge the marquee, and "View all on
- * Google" when the admin has set the link.
+ * "More", which opens the full text inside the card (it scrolls there). From 6 reviews: a
+ * horizontal scroll row (snap, hidden scrollbar) holding the list twice, auto-scrolled slowly by
+ * requestAnimationFrame on scrollLeft and wrapped by one set's width for a seamless loop. Any
+ * interaction (pointer, touch, wheel/trackpad, drag, keyboard, More) stops it and the row scrolls
+ * freely (mouse drag too); it resumes after 6s idle with nothing open. Keeps moving on hover;
+ * pauses off-screen and in a hidden tab; reduced motion: manual only. Shows the "sample" label
+ * while any review is a placeholder. Google rating above the heading (`head`), G mark, stars, an
+ * initials avatar on each card, and "View all on Google" when the admin has set the link.
  */
 export function Testimonials({
   reviews,
@@ -82,36 +88,65 @@ export function Testimonials({
   const root = useRef<HTMLDivElement>(null);
   const [long, setLong] = useState<Set<string>>(new Set()); // reviews longer than 4 lines
   const [open, setOpen] = useState<string | null>(null); // card key opened with More
-  const [paused, setPaused] = useState(false);
+  const [touched, setTouched] = useState(0); // bumps on every interaction
+  const [idle, setIdle] = useState(true); // no interaction for RESUME_MS
+  const [inView, setInView] = useState(false);
+  const drag = useRef<{ x: number; left: number } | null>(null);
+  const marquee = reviews.length >= MARQUEE_MIN;
 
-  // Arrows: step the marquee by one card (eased), or scroll the static row under reduced motion.
-  const nudge = (dir: 1 | -1) => {
-    const mq = mqRef.current;
-    const track = mq?.querySelector<HTMLElement>(".mq-track");
-    const set = mq?.querySelector<HTMLElement>(".mq-set");
-    const q = mq?.querySelector<HTMLElement>(".q");
-    if (!mq || !track || !set || !q) return;
-    const step = q.offsetWidth + 16;
-    const anim = track.getAnimations()[0];
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches || !anim) {
-      mq.scrollBy({ left: dir * step, behavior: "smooth" });
-      return;
-    }
-    const dur = Number(anim.effect?.getComputedTiming().duration) || 0;
-    if (!dur || !set.offsetWidth) return;
-    const delta = (dir * dur * step) / set.offsetWidth;
-    let done = 0;
-    const t0 = performance.now();
-    const tick = (now: number) => {
-      const p = Math.min(1, (now - t0) / 320);
-      const want = delta * (1 - (1 - p) ** 3);
-      const t = Number(anim.currentTime ?? 0) + want - done;
-      anim.currentTime = ((t % dur) + dur) % dur;
-      done = want;
-      if (p < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
+  const interact = () => {
+    setIdle(false);
+    setTouched((t) => t + 1);
   };
+
+  useEffect(() => {
+    if (idle) return;
+    const t = setTimeout(() => setIdle(true), RESUME_MS);
+    return () => clearTimeout(t);
+  }, [idle, touched]);
+
+  useEffect(() => {
+    const el = mqRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, [marquee]);
+
+  // The loop: one set's width is the wrap point, both for auto-scroll and manual scrolling.
+  const setWidth = () => mqRef.current?.querySelector<HTMLElement>(".mq-set")?.offsetWidth ?? 0;
+  const wrap = (el: HTMLElement) => {
+    const w = setWidth();
+    if (!w || "auto" in el.dataset) return; // auto-scroll wraps its own position
+    if (el.scrollLeft >= w) el.scrollLeft -= w;
+    else if (el.scrollLeft <= 0) el.scrollLeft += w;
+  };
+
+  const running = marquee && inView && idle && !open;
+  useEffect(() => {
+    const el = mqRef.current;
+    if (!running || !el || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    let last = 0;
+    let pos = el.scrollLeft; // fractional position (scrollLeft rounds)
+    el.dataset.auto = "";
+    const step = (now: number) => {
+      raf = requestAnimationFrame(step);
+      if (document.hidden) return void (last = 0);
+      const dt = last ? Math.min(now - last, 50) : 0;
+      last = now;
+      const w = setWidth();
+      if (!w) return;
+      pos += (dt * w) / LOOP_MS;
+      if (pos >= w) pos -= w;
+      el.scrollLeft = pos;
+    };
+    raf = requestAnimationFrame(step);
+    return () => {
+      cancelAnimationFrame(raf);
+      delete el.dataset.auto;
+    };
+  }, [running]);
 
   // Which reviews overflow the clamp (re-measured when the cards resize).
   useEffect(() => {
@@ -135,7 +170,6 @@ export function Testimonials({
 
   if (!reviews.length) return null;
   const hasSample = reviews.some((r) => r.sample);
-  const marquee = reviews.length >= MARQUEE_MIN;
 
   const card = (r: Review, copy = false) => {
     const key = `${r.id}:${copy ? 1 : 0}`;
@@ -155,6 +189,7 @@ export function Testimonials({
               tabIndex={copy ? -1 : undefined}
               onClick={(e) => {
                 e.stopPropagation();
+                interact();
                 setOpen(isOpen ? null : key);
               }}
             >
@@ -190,16 +225,6 @@ export function Testimonials({
             )}
             {head}
           </div>
-          {marquee && (
-            <div className="rv-nav">
-              <button type="button" aria-label="Previous reviews" onClick={() => nudge(-1)}>
-                ←
-              </button>
-              <button type="button" aria-label="Next reviews" onClick={() => nudge(1)}>
-                →
-              </button>
-            </div>
-          )}
         </div>
       )}
       {hasSample && <SampleLabel>Sample text · replace with real Google reviews</SampleLabel>}
@@ -209,10 +234,31 @@ export function Testimonials({
           className="mq"
           role="region"
           aria-label="Client reviews"
-          data-paused={paused || open ? "" : undefined}
-          onClick={() => setPaused((p) => !p)}
+          tabIndex={0}
+          onScroll={(e) => wrap(e.currentTarget)}
+          onPointerDown={(e) => {
+            interact();
+            if (e.pointerType !== "mouse" || (e.target as HTMLElement).closest("button, a")) return;
+            drag.current = { x: e.clientX, left: e.currentTarget.scrollLeft };
+            e.currentTarget.dataset.drag = "";
+          }}
+          onPointerMove={(e) => {
+            if (!drag.current) return;
+            e.currentTarget.scrollLeft = drag.current.left - (e.clientX - drag.current.x);
+          }}
+          onPointerUp={(e) => {
+            drag.current = null;
+            delete e.currentTarget.dataset.drag;
+          }}
+          onPointerLeave={(e) => {
+            drag.current = null;
+            delete e.currentTarget.dataset.drag;
+          }}
+          onTouchStart={interact}
+          onWheel={interact}
+          onKeyDown={interact}
         >
-          <div className="mq-track" style={{ ["--n" as string]: reviews.length }}>
+          <div className="mq-track">
             <div className="mq-set">{reviews.map((r) => card(r))}</div>
             <div className="mq-set mq-copy" aria-hidden="true">
               {reviews.map((r) => card(r, true))}

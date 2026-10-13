@@ -1286,7 +1286,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  /* Header: Google rating above the heading; arrows at the right edge (marquee only). */
+  /* Header: Google rating above the heading. */
   .rv-head {
     display: flex;
     align-items: flex-end;
@@ -1309,26 +1309,6 @@
   .rv-rating b {
     font: 600 15px/1 var(--font-mono);
   }
-  .rv-nav {
-    display: flex;
-    gap: 6px;
-    flex: none;
-  }
-  .rv-nav button {
-    width: 40px;
-    height: 40px;
-    display: grid;
-    place-items: center;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    color: var(--fg);
-    font: 500 16px/1 var(--font-mono);
-    cursor: pointer;
-  }
-  .rv-nav button:hover,
-  .rv-nav button:focus-visible {
-    border-color: var(--fg);
-  }
   .rv-all {
     justify-self: start;
     font: 500 12px/1.4 var(--font-mono);
@@ -1344,24 +1324,33 @@
     }
   }
 
-  /* reviews marquee (6+ reviews): two copies scroll by in ~45s; soft edges; pause on click / More */
+  /* Reviews row (6+ reviews): a horizontal scroll container holding the list twice, auto-scrolled
+     by Testimonials (scrollLeft, wrapped by one set). Snap is off while it auto-scrolls or is
+     dragged with the mouse, so it never fights the motion; hidden scrollbar; soft edges. */
   .mq {
-    overflow: hidden;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
     /* Bleed into the side margin only where there is one (never past the viewport). */
     margin-inline: calc(-1 * clamp(0px, (100vw - 1200px) / 2 + 24px, 40px));
     mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    cursor: grab;
+  }
+  .mq::-webkit-scrollbar {
+    display: none;
+  }
+  .mq[data-auto],
+  .mq[data-drag] {
+    scroll-snap-type: none;
+  }
+  .mq[data-drag] {
+    cursor: grabbing;
+    user-select: none;
   }
   .mq-track {
     display: flex;
     width: max-content;
-    animation: mq 45s linear infinite;
-  }
-  /* Keeps moving on hover; a click (or an opened card) pauses it. */
-  .mq {
-    cursor: pointer;
-  }
-  .mq[data-paused] .mq-track {
-    animation-play-state: paused;
   }
   .mq-set {
     display: flex;
@@ -1372,21 +1361,7 @@
     width: min(360px, 80vw);
     flex: none;
     cursor: auto;
-  }
-  @keyframes mq {
-    to {
-      transform: translateX(-50%);
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .mq {
-      overflow-x: auto;
-      mask-image: none;
-      margin-inline: 0;
-    }
-    .mq-copy {
-      display: none;
-    }
+    scroll-snap-align: start;
   }
 
   /* ---------- FAQ ---------- */
@@ -1603,6 +1578,7 @@
   /* 2×2 of larger cards (Property shoots services); one column on phones. */
   .incl.incl-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 1fr; /* equal-height cards across both rows */
   }
   .incl-2 > div {
     padding: clamp(24px, 3vw, 40px);
@@ -4726,6 +4702,12 @@
     gap: 16px;
     justify-items: center;
     touch-action: pan-y;
+    overscroll-behavior-x: contain;
+    user-select: none;
+    cursor: grab;
+  }
+  .av-car:active {
+    cursor: grabbing;
   }
   /* Built for 5 avatars: the centre card and two each side; ~15% shorter than before. */
   .av-car-stage {
@@ -4804,21 +4786,27 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
-  .av-car-nav {
+  /* "pick" mode (Production): pause and sound controls on the playing centre card. */
+  .av-ctl {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
     display: flex;
-    gap: 8px;
+    gap: 6px;
   }
-  .av-car-nav button {
-    width: 44px;
-    height: 44px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    color: var(--fg);
-    font-size: 18px;
+  .av-ctl button {
+    min-width: 36px;
+    height: 32px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 6px;
+    background: rgb(17 17 16 / 0.72);
+    color: #fff;
+    font: 500 11px/1 var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     cursor: pointer;
-  }
-  .av-car-nav button:hover {
-    border-color: var(--fg);
   }
   /* Phones: the centre card with the neighbours peeking in. */
   @media (max-width: 760px) {

@@ -90,22 +90,22 @@ export default async function PropertyShootsPage() {
     {
       kicker: `Delivered in ${d.photo}`,
       title: "HDR photography",
-      text: "Bracketed and blended, true colours, straight verticals, bright windows. Need twilight shots? We create them from your daylight photos. Add it as an option when you book.",
+      text: "Bracketed, blended and colour-true, with straight verticals. Twilight edits from your daylight shots.",
     },
     {
       kicker: `Delivered in ${d.long}`,
       title: "Walkthrough video",
-      text: "A horizontal 16:9 tour for the portals and YouTube.",
+      text: "A smooth horizontal 16:9 tour of the whole home, made for the portals and YouTube.",
     },
     {
       kicker: `Delivered in ${d.short}`,
       title: "Social reels",
-      text: "Vertical 9:16 walkthroughs and agent-presented videos.",
+      text: "Vertical 9:16 walkthroughs and agent-presented videos, ready for Instagram and TikTok.",
     },
     {
       kicker: `Delivered in ${d.tour}`,
       title: "360° tours",
-      text: "A virtual tour buyers can walk through from anywhere.",
+      text: "A virtual tour buyers can walk through from anywhere, with a link you can share anywhere.",
     },
   ];
   const actions = (
@@ -160,7 +160,7 @@ export default async function PropertyShootsPage() {
               <p className="lede">Pick one or all of them when you book. Prices show as you go.</p>
             }
           />
-          <IncludedGrid items={services} snap />
+          <IncludedGrid items={services} cols={2} />
         </div>
       </section>
 

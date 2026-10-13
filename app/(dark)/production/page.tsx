@@ -1,5 +1,6 @@
 import { Ctas } from "@/components/ui/Ctas";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { CTABand } from "@/components/blocks/CTABand";
 import { FAQ } from "@/components/blocks/FAQ";
 import { IncludedGrid, type Included } from "@/components/blocks/IncludedGrid";
@@ -92,6 +93,13 @@ const STEPS: Step[] = [
     text: "A clear list of everything delivered and billed that month.",
   },
 ];
+
+const RECENT = [
+  ["Listings", "Photos, walkthroughs and reels for every property"],
+  ["Agencies", "Monthly shoot days, branded reels and long-form"],
+  ["Holiday homes", "Booking-ready photos and short-form"],
+  ["Brands", "Product, team and launch content"],
+] as const;
 
 const CATEGORY: Record<string, string> = {
   property: "Property",
@@ -226,9 +234,29 @@ export default async function ProductionPage() {
 
       {reels.length > 0 && (
         <section className="sec" aria-labelledby="recent-title">
-          <div className="w">
-            <SectionHead id="recent-title" eyebrow="Portfolio" title="Recent work." />
-            <AvatarCarousel items={reels} label="Recent reels" noun="reel" kind="reel" />
+          <div className="w av-aud">
+            <div className="stack">
+              <span className="eb">Portfolio</span>
+              <h2 className="d h2" id="recent-title">
+                Recent work.
+              </h2>
+              <p className="lede">
+                One team plans, shoots and edits every month, so your listings and brand stay
+                consistent and on schedule.
+              </p>
+              <ul className="av-ind">
+                {RECENT.map(([k, v]) => (
+                  <li key={k}>
+                    <b>{k}</b>
+                    <span>{v}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link className="lnk" href="/work">
+                See all work →
+              </Link>
+            </div>
+            <AvatarCarousel items={reels} label="Recent reels" kind="reel" mode="pick" />
           </div>
         </section>
       )}
