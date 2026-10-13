@@ -589,6 +589,19 @@
   }
   .home .hero-copy .lede {
     margin: 0;
+    text-wrap: balance;
+  }
+  /* Subtitle: three set lines on desktop, balanced natural wrapping below. */
+  .home .hero-copy .lede .br-lg {
+    display: none;
+  }
+  @media (min-width: 1024px) {
+    .home .hero-copy .lede {
+      text-wrap: wrap;
+    }
+    .home .hero-copy .lede .br-lg {
+      display: inline;
+    }
   }
   /* Home hero rotating word (13 Oct 2026): a combination-lock dial (components/type/RotatingWord).
      A window three rows tall shows the centre row whole and --rot-peek (0.45 row) of the rows
@@ -596,17 +609,19 @@
      the widest line, so both lines scale together on small screens. The margin keeps the faint
      rows in clear space between line 1 and the subtitle. */
   .rot {
-    --rot-peek: 0.45em;
+    --rot-peek: 0.28em;
     display: inline-block;
     vertical-align: top;
     font-size: 1.15em;
     line-height: 1;
     height: calc(1em + 2 * var(--rot-peek));
-    margin-block: 0.22em 0.08em;
+    /* The window's top peek sits in line 1's leading, so the centre word lands where a normal
+       second line would. */
+    margin-block: calc(-1 * var(--rot-peek)) 0;
     overflow: hidden;
     perspective: 700px;
-    -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
-    mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+    -webkit-mask-image: linear-gradient(transparent 4%, #000 26%, #000 74%, transparent 96%);
+    mask-image: linear-gradient(transparent 4%, #000 26%, #000 74%, transparent 96%);
   }
   .rot-list {
     display: block;

@@ -143,8 +143,9 @@ export default async function HomePage() {
                   }
                 />
                 <p className="lede">
-                  Photography and video for real estate and brands, shot in Dubai. Post-production
-                  and AI presenters for clients worldwide.
+                  Photography and video for real estate and brands,
+                  <br className="br-lg" /> shot in Dubai. Post-production and AI presenters
+                  <br className="br-lg" /> for clients worldwide.
                 </p>
                 <Ctas>
                   <ButtonLink href="/portal?new=choose">Book media</ButtonLink>
