@@ -155,6 +155,19 @@ export const SECTIONS: PlacementDef[] = [
     ratio: "frame",
   },
   {
+    key: "production-recent",
+    page: "Production",
+    path: "/production",
+    title: "Recent work",
+    rule: {
+      types: ["video"],
+      orientation: "9:16",
+      categories: ["property", "brand", "holiday-home"],
+    },
+    count: 5,
+    ratio: "9:16",
+  },
+  {
     key: "showcase-photos",
     page: "Home, Property shoots, Post-production",
     path: "/",

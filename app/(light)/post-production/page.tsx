@@ -272,7 +272,7 @@ export default async function PostProductionPage() {
             title="Price per edit."
             aside={<p className="lede">{other.postProduction.note}</p>}
           />
-          <RateCards rates={other.postProduction.rates} />
+          <RateCards rates={other.postProduction.rates} snap />
           <Ctas style={{ marginTop: 28 }}>
             <ButtonLink href="#free-test">Get a custom quote</ButtonLink>
           </Ctas>
@@ -302,7 +302,7 @@ export default async function PostProductionPage() {
               </p>
             }
           />
-          <Steps steps={STEPS} />
+          <Steps steps={STEPS} snap />
         </div>
       </section>
 

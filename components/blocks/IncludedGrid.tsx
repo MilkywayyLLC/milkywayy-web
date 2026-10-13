@@ -5,9 +5,19 @@ export interface Included {
 }
 
 /** Bordered 3-column grid of what's included (Production); `cols={2}`: a 2×2 of larger cards. */
-export function IncludedGrid({ items, cols = 3 }: { items: Included[]; cols?: 2 | 3 }) {
+export function IncludedGrid({
+  items,
+  cols = 3,
+  snap = false,
+}: {
+  items: Included[];
+  cols?: 2 | 3;
+  /** Phones: a sideways snap row instead of a stacked list. */
+  snap?: boolean;
+}) {
+  const cls = ["incl", cols === 2 && "incl-2", snap && "snap-m"].filter(Boolean).join(" ");
   return (
-    <div className={cols === 2 ? "incl incl-2" : "incl"}>
+    <div className={cls}>
       {items.map((i) => (
         <div key={i.title}>
           <span className="k">{i.kicker}</span>

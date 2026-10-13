@@ -7,10 +7,21 @@ export function ProofStrip({ clients, rating }: { clients: Client[]; rating: num
     <div className="proof">
       <div className="w proof-in">
         <span className="eb">Trusted by</span>
+        {/* Desktop: one static row. Phones: a slow one-line marquee, so the list is doubled
+            (second copy hidden from assistive tech and from desktop). */}
         <div className="clients">
-          {clients.map((c) => (
-            <span key={c.id}>{c.name}</span>
-          ))}
+          <div className="clients-track">
+            <div className="clients-row">
+              {clients.map((c) => (
+                <span key={c.id}>{c.name}</span>
+              ))}
+            </div>
+            <div className="clients-row clients-dup" aria-hidden="true">
+              {clients.map((c) => (
+                <span key={c.id}>{c.name}</span>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="rating">
           <b>{rating.toFixed(1)}</b>

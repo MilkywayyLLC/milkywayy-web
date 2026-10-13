@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 /**
  * Home hero's rotating word as a combination-lock dial (13 Oct 2026). The words are rows of a
  * list, one line tall each; a window shows three rows (previous faint above, current sharp in
- * the centre, next faint below) and the whole list moves up exactly one row every 1.6s with a
+ * the centre, next faint below) and the whole list moves up exactly one row every 1.0s with a
  * snap. The list is [last, ...words, first, second], so when the dial lands on the repeated first
  * word it jumps back to the original one without a transition: the same three rows, so the jump
  * doesn't show. Row looks come from each row's distance to the centre (CSS, data-d).
@@ -33,11 +33,11 @@ export function RotatingWord({ words }: { words: string[]; children?: ReactNode 
           at.current = 1;
           setInstant(true);
           setC(1);
-        }, 560);
+        }, 440);
     };
     const start = () => {
       window.clearInterval(timer);
-      if (!document.hidden) timer = window.setInterval(tick, 1600);
+      if (!document.hidden) timer = window.setInterval(tick, 1000);
     };
     start();
     document.addEventListener("visibilitychange", start);

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MediaFrame } from "@/components/media/MediaFrame";
 import type { Media } from "@/content/types";
+import type { MediaKind } from "@/lib/media-config";
 
 export type CarouselAvatar = {
   id: string;
@@ -14,7 +15,7 @@ export type CarouselAvatar = {
   src?: string;
 };
 
-const STEP_MS = 2200;
+const STEP_MS = 1200;
 /** Designed for exactly five: the centre card and two each side. */
 const MAX = 5;
 
@@ -22,11 +23,22 @@ const MAX = 5;
  * "Built for your audience" (12 Oct 2026): a layered carousel of the admin's AI avatar examples.
  * Always exactly five positions (fewer avatars repeat in the loop): the centre card is 9:16 (16px corners) and plays muted on
  * loop; two cards each side sit behind it (scaled 0.86 / 0.72, offset, dimmed, slightly blurred).
- * Advances every 2.2s with a 400ms ease-out, so it reads as moving on its own; pauses off-screen,
+ * Advances every 1.2s with a 300ms ease-out, so it reads as moving on its own; pauses off-screen,
  * and only the centre video plays. Phones: centre card plus side peeks,
- * swipeable. Reduced motion: no auto-advance.
+ * swipeable. Reduced motion: no auto-advance. Also Production's "Recent work" reels (`label`,
+ * `noun` and `kind` override the avatar defaults).
  */
-export function AvatarCarousel({ items: all }: { items: CarouselAvatar[] }) {
+export function AvatarCarousel({
+  items: all,
+  label = "AI avatar examples",
+  noun = "avatar",
+  kind = "ai-avatar",
+}: {
+  items: CarouselAvatar[];
+  label?: string;
+  noun?: string;
+  kind?: MediaKind;
+}) {
   // Always five positions, symmetric: with fewer avatars the loop repeats them.
   const items = all.length ? Array.from({ length: MAX }, (_, k) => all[k % all.length]) : [];
   const root = useRef<HTMLDivElement>(null);
@@ -62,7 +74,7 @@ export function AvatarCarousel({ items: all }: { items: CarouselAvatar[] }) {
       className="av-car"
       role="region"
       aria-roledescription="carousel"
-      aria-label="AI avatar examples"
+      aria-label={label}
       onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
       onTouchEnd={(e) => {
         if (touch.current == null) return;
@@ -86,7 +98,7 @@ export function AvatarCarousel({ items: all }: { items: CarouselAvatar[] }) {
             >
               <MediaFrame
                 media={a.poster}
-                kind="ai-avatar"
+                kind={kind}
                 small
                 corners={false}
                 clean
@@ -94,7 +106,7 @@ export function AvatarCarousel({ items: all }: { items: CarouselAvatar[] }) {
               >
                 {centre && a.src && <CentreVideo src={a.src} playing={inView} />}
               </MediaFrame>
-              <span className="av-chip">{a.industry}</span>
+              {a.industry && <span className="av-chip">{a.industry}</span>}
             </div>
           );
         })}
@@ -104,10 +116,10 @@ export function AvatarCarousel({ items: all }: { items: CarouselAvatar[] }) {
       </p>
       {n > 1 && (
         <div className="av-car-nav">
-          <button type="button" aria-label="Previous avatar" onClick={() => go(-1)}>
+          <button type="button" aria-label={`Previous ${noun}`} onClick={() => go(-1)}>
             ←
           </button>
-          <button type="button" aria-label="Next avatar" onClick={() => go(1)}>
+          <button type="button" aria-label={`Next ${noun}`} onClick={() => go(1)}>
             →
           </button>
         </div>

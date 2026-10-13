@@ -259,7 +259,7 @@ export default async function HomePage() {
               eyebrow="Your client dashboard"
               title="Everything in one place."
               aside={
-                <p className="lede">
+                <p className="lede head-under">
                   We know where production slows: follow-ups, revisions, back-and-forth. Our
                   dashboard removes them. You book, we shoot. We deliver, you collect.
                 </p>

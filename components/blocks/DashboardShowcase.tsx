@@ -164,6 +164,19 @@ export function DashboardShowcase({
     return () => clearTimeout(t);
   }, [inView, held, tick, n]);
 
+  // Phones: the tabs are a sideways snap row; keep the active one centred as it changes (auto
+  // or tap). Scrolls the row only (like scrollIntoView inline:center), never the page.
+  const list = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = list.current;
+    const tab = row?.children[active] as HTMLElement | undefined;
+    if (!row || !tab || row.scrollWidth <= row.clientWidth) return;
+    row.scrollTo({
+      left: tab.offsetLeft - (row.clientWidth - tab.offsetWidth) / 2,
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  }, [active]);
+
   const select = (i: number) => {
     setActive(i);
     setHeld(true);
@@ -172,7 +185,7 @@ export function DashboardShowcase({
 
   return (
     <div ref={root} className="dsh">
-      <div className="dsh-list" role="tablist" aria-label={label} aria-orientation="vertical">
+      <div ref={list} className="dsh-list" role="tablist" aria-label={label} aria-orientation="vertical">
         {features.map((f, i) => {
           const on = i === active;
           return (

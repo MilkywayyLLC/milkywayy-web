@@ -160,7 +160,7 @@ export default async function PropertyShootsPage() {
               <p className="lede">Pick one or all of them when you book. Prices show as you go.</p>
             }
           />
-          <IncludedGrid items={services} cols={2} />
+          <IncludedGrid items={services} snap />
         </div>
       </section>
 
@@ -179,7 +179,7 @@ export default async function PropertyShootsPage() {
       <section className="sec alt" aria-labelledby="how-title">
         <div className="w">
           <SectionHead id="how-title" eyebrow="How it works" title="Booked to shared." />
-          <Steps steps={STEPS} />
+          <Steps steps={STEPS} snap />
         </div>
       </section>
 

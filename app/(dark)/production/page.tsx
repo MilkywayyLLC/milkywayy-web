@@ -9,6 +9,8 @@ import { ProofStrip } from "@/components/blocks/ProofStrip";
 import { Steps, type Step } from "@/components/blocks/Steps";
 import { LeadForm } from "@/components/forms/LeadForm";
 import { HeroMedia } from "@/components/blocks/HeroMedia";
+import { AvatarCarousel } from "@/components/media/AvatarCarousel";
+import { fileVideoUrl, isFileVideo } from "@/lib/media-ref";
 import { withPlayback } from "@/lib/playable";
 import { oneFormat } from "@/lib/media";
 import { HeroTitle } from "@/components/type/HeroTitle";
@@ -19,6 +21,7 @@ import {
   getClients,
   getFaqs,
   getOtherPricing,
+  getPlaced,
   getPortfolio,
   getPropertyPricing,
   getSiteSettings,
@@ -90,8 +93,14 @@ const STEPS: Step[] = [
   },
 ];
 
+const CATEGORY: Record<string, string> = {
+  property: "Property",
+  brand: "Brand",
+  "holiday-home": "Holiday home",
+};
+
 export default async function ProductionPage() {
-  const [site, clients, proof, faqs, hero, other, property] = await Promise.all([
+  const [site, clients, proof, faqs, hero, other, property, recent] = await Promise.all([
     getSiteSettings(),
     getClients(),
     showsProofStrip("production"),
@@ -99,7 +108,19 @@ export default async function ProductionPage() {
     getPortfolio("production-hero"),
     getOtherPricing(),
     getPropertyPricing(),
+    getPlaced("production-recent"),
   ]);
+  // Placements → Production · Recent work: 9:16 reels, the centre one plays muted.
+  const reels = recent.items.map((p) => ({
+    id: p.id,
+    name: p.title,
+    industry:
+      (p.meta ?? "").split("·")[0].trim() ||
+      CATEGORY[p.categoryId ?? p.category] ||
+      (p.client ?? ""),
+    poster: p.media,
+    src: isFileVideo(p.media.video) ? fileVideoUrl(p.media.video!) : undefined,
+  }));
   const heroItems = await withPlayback(oneFormat(hero).items);
   const whatsapp = pageWhatsappLink("Production", site.whatsapp.number);
   const from = formatNumber(other.production.fromMonthly);
@@ -202,6 +223,15 @@ export default async function ProductionPage() {
           />
         </div>
       </section>
+
+      {reels.length > 0 && (
+        <section className="sec" aria-labelledby="recent-title">
+          <div className="w">
+            <SectionHead id="recent-title" eyebrow="Portfolio" title="Recent work." />
+            <AvatarCarousel items={reels} label="Recent reels" noun="reel" kind="reel" />
+          </div>
+        </section>
+      )}
 
       <section className="sec" aria-labelledby="first-month-title">
         <div className="w">
