@@ -10,23 +10,32 @@ import { draftDate, Modal } from "./forms";
 import { ProjectRequestModal } from "./NewProjectForm";
 
 type Kind = "booking" | "edit" | "avatar";
-const TILES: { kind: Kind; label: string; hint: string; perm: keyof RequestConfig }[] = [
+const TILES: {
+  kind: Kind;
+  label: string;
+  hint: string;
+  icon: string;
+  perm: keyof RequestConfig;
+}[] = [
   {
     kind: "booking",
     label: "Shoot",
     hint: "Property, reels or a long-form walkthrough",
+    icon: "shoots",
     perm: "shoots",
   },
   {
     kind: "edit",
     label: "Editing",
     hint: "Send us your photos or footage",
+    icon: "scissors",
     perm: "editing",
   },
   {
     kind: "avatar",
     label: "AI avatar video",
     hint: "A video with an AI presenter",
+    icon: "avatars",
     perm: "avatars",
   },
 ];
@@ -37,8 +46,9 @@ const ONLY_LABEL: Record<Kind, string> = {
 };
 
 /**
- * "Book media" (owner, 10 Oct 2026): one button opens "What do you need?" (Shoot, Editing, AI
- * avatar video); each continues into its own flow, with Back returning to the choice. With
+ * "Book media" (owner, 10 Oct 2026): one button opens "What do you need?" (Shoot or Editing,
+ * 14 Oct 2026: AI avatar videos are booked from the Avatars tab's New button only); each
+ * continues into its own flow, with Back returning to the choice. With
  * `only`, the button opens that flow directly (the New buttons on Shoots, Editing and Avatars).
  * `?new=booking|edit|avatar|shoot|choose` opens a flow (or the choice) on arrival (one launcher per page answers it, the
  * header's); `&draft=1` restores the saved draft straight away.
@@ -63,7 +73,10 @@ export function StartRequests({
   const params = useSearchParams();
   const [picked, setOpen] = useState<{ kind: Kind | "choose"; resume: boolean } | null>(null);
   const [urlDone, setUrlDone] = useState(false);
-  const allowed = TILES.filter((t) => cfg[t.perm] && (!only || t.kind === only));
+  const [run, setRun] = useState(0); // each opening gets fresh modal state
+  const allowed = TILES.filter(
+    (t) => cfg[t.perm] && (only ? t.kind === only : t.kind !== "avatar"),
+  );
   // The website links here: ?new=shoot (Property shoots) and ?new=choose (Home's "Book media").
   const asked = params.get("new");
   const fromUrl = (asked === "shoot" ? "booking" : asked) as Kind | "choose" | null;
@@ -78,8 +91,10 @@ export function StartRequests({
   // Back to the choice: only when this launcher offers the choice.
   const back = only ? undefined : () => setOpen({ kind: "choose", resume: false });
 
+  // Closing resets everything, so Book media opens again every time.
   const close = () => {
     setOpen(null);
+    setRun((r) => r + 1);
     setUrlDone(true);
     if (params.get("new")) router.replace(path, { scroll: false });
     router.refresh();
@@ -96,19 +111,24 @@ export function StartRequests({
         <Icon name="plus" size={16} /> {label ?? (only ? ONLY_LABEL[only] : "Book media")}
       </button>
       {open?.kind === "choose" && (
-        <Modal title="Book media" onClose={close} testId="book-media">
+        <Modal key={run} title="Book media" onClose={close} testId="book-media">
           <div className="pt-form">
             <b style={{ fontSize: 18 }}>What do you need?</b>
-            <div className="pt-tiles pt-tiles-lg" role="group" aria-label="What do you need?">
+            <div className="pt-pick" role="group" aria-label="What do you need?">
               {allowed.map((t) => (
                 <button
                   key={t.kind}
                   type="button"
-                  className="pt-tile"
+                  className="pt-pick-tile"
                   onClick={() => setOpen({ kind: t.kind, resume: false })}
                 >
-                  <b>{t.label}</b>
-                  <small>{t.hint}</small>
+                  <span className="pt-pick-ic" aria-hidden="true">
+                    <Icon name={t.icon} size={22} />
+                  </span>
+                  <span className="pt-pick-txt">
+                    <b>{t.label}</b>
+                    <small>{t.hint}</small>
+                  </span>
                 </button>
               ))}
             </div>
@@ -116,10 +136,11 @@ export function StartRequests({
         </Modal>
       )}
       {open?.kind === "booking" && (
-        <BookingModal cfg={cfg} resume={open.resume} onClose={close} onBack={back} />
+        <BookingModal key={run} cfg={cfg} resume={open.resume} onClose={close} onBack={back} />
       )}
       {(open?.kind === "edit" || open?.kind === "avatar") && (
         <ProjectRequestModal
+          key={run}
           type={open.kind}
           cfg={cfg}
           resume={open.resume}

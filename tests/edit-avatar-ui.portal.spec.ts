@@ -58,7 +58,7 @@ test("new batch with links: received, then the batch page shows the brief and th
   const m = page.getByTestId("edit-modal");
   await m
     .getByRole("group", { name: "Type of edit" })
-    .getByRole("button", { name: "Short form (vertical reels)" })
+    .getByRole("button", { name: /^Short form/ })
     .click();
   await m.getByLabel("Title", { exact: true }).fill("Marina reels");
   await m.getByLabel("Quantity").fill("6");

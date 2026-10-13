@@ -776,15 +776,16 @@
     visibility: hidden;
     translate: 0 100%;
   }
-  /* Exactly the bar's height (10 + 44 + 10 + 1px line), nothing more under the footer. */
-  .sh:has(.sh-bar) {
+  /* Exactly the bar's height (10 + 44 + 10 + 1px line), and only while the bar shows: when it
+     steps aside for the agent card (at the page end) nothing is left under the footer. */
+  .sh:has(.sh-bar:not([data-hidden])) {
     padding-bottom: calc(65px + env(safe-area-inset-bottom));
   }
   @media (min-width: 1024px) {
     .sh-bar {
       display: none;
     }
-    .sh:has(.sh-bar) {
+    .sh:has(.sh-bar:not([data-hidden])) {
       padding-bottom: 0;
     }
   }
@@ -835,30 +836,23 @@
   /* ---------- slim footer ---------- */
   .sh-byline {
     display: flex;
-    align-items: center;
     justify-content: center;
-    min-height: 56px;
-    padding: 0 16px;
-    border-top: 1px solid var(--line);
-    background: var(--surface);
+    padding: 4px 16px;
   }
   .sh-byline a {
     display: inline-flex;
     align-items: center;
-    gap: 12px;
-    min-height: 44px;
+    min-height: 40px;
     color: var(--muted);
     text-decoration: none;
-    font: 500 11px/1.4 var(--font-mono);
+    font: 500 10.5px/1.4 var(--font-mono);
     letter-spacing: 0.06em;
     text-transform: uppercase;
+    opacity: 0.8;
   }
   .sh-byline a:hover {
     color: var(--fg);
-  }
-  .sh-byline-logo {
-    height: 16px;
-    width: auto;
+    opacity: 1;
   }
 
   .sh-page > .sh-report {

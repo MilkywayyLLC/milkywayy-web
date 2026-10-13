@@ -23,6 +23,14 @@ import {
   useFormCheck,
 } from "./forms";
 
+/** Edit type tiles: a title and a short grey line (the stored labels stay in EDIT_KINDS). */
+const KIND_TILE: Record<(typeof EDIT_KINDS)[number][0], [string, string]> = {
+  hdr_photos: ["HDR photos", "Property photos"],
+  short_form: ["Short form", "Vertical reels · 9:16"],
+  long_form: ["Long form", "Horizontal YouTube · 16:9"],
+  other: ["Other", "Tell us what you need"],
+};
+
 type Link2 = { label: string; url: string };
 type Snap = {
   kind: string;
@@ -322,13 +330,12 @@ export function ProjectRequestModal({
         ) : (
           <>
             <Field name="kind" label="Type of edit" required group error={form.errors.kind}>
-              <div className="pt-chips" role="group" aria-label="Type of edit">
-                {EDIT_KINDS.map(([k, l]) => (
+              <div className="pt-kinds" role="group" aria-label="Type of edit">
+                {EDIT_KINDS.map(([k]) => (
                   <button
                     key={k}
                     type="button"
-                    className="pt-pill"
-                    style={{ padding: "4px 14px" }}
+                    className="pt-kind"
                     aria-pressed={s.kind === k}
                     onClick={() =>
                       set({
@@ -338,7 +345,8 @@ export function ProjectRequestModal({
                       })
                     }
                   >
-                    {l}
+                    <b>{KIND_TILE[k][0]}</b>
+                    <small>{KIND_TILE[k][1]}</small>
                   </button>
                 ))}
               </div>

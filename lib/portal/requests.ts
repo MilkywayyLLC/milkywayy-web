@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PropertyPricing } from "@/content/types";
 import { getPropertyPricing } from "@/lib/data";
@@ -31,7 +32,13 @@ export type RequestConfig = {
   turnaround: Record<string, string>;
 };
 
-export async function requestConfig(db: SupabaseClient, m: Membership): Promise<RequestConfig> {
+/**
+ * Once per request: the portal layout (Book media) and most tab pages both need it. React's
+ * cache matches the same db client and membership objects (both come from the cached getPortal).
+ */
+export const requestConfig = cache(loadRequestConfig);
+
+async function loadRequestConfig(db: SupabaseClient, m: Membership): Promise<RequestConfig> {
   // Fail safe: an error here means no prices and no turnaround, never a broken page.
   const [{ data: opts, error: e1 }, { data: ta, error: e2 }, pricing] = await Promise.all([
     db.rpc("my_booking_options", { p_account: m.account.id }),

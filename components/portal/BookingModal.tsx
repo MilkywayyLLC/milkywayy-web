@@ -34,6 +34,7 @@ import {
   useDraft,
   useFormCheck,
 } from "./forms";
+import { Icon } from "./Icon";
 import { PlacesField } from "./PlacesField";
 
 type Kind = BookingService["service"];
@@ -95,17 +96,17 @@ export function PriceBlock({
 }
 
 /**
- * Step 1's live summary (site-refine, 13 Oct 2026): a sticky panel beside the builder from
- * 1024px; below that a bottom bar ("Estimated … · Continue") that expands on tap. What it shows
- * follows PriceBlock: no prices without rate access, "Included in package" on a package.
+ * The booking's live summary (14 Oct 2026): a bar in the modal footer, left of Back / Next
+ * ("Summary · Estimated AED X ▾"); tapping it expands a panel upward listing the items (it
+ * scrolls when long). What it shows follows PriceBlock: no prices without rate access,
+ * "Included in package" on a package.
  */
-function LiveSummary({
+function SummaryBar({
   cfg,
   service,
   prop,
   lines,
   total,
-  onNext,
 }: {
   cfg: RequestConfig;
   service: BookingService | null;
@@ -113,7 +114,6 @@ function LiveSummary({
   prop: BookingProperty;
   lines: ReturnType<typeof estimateLines>;
   total: number | null;
-  onNext: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const p = cfg.price;
@@ -149,48 +149,72 @@ function LiveSummary({
           ? `~${money(p.currency, total)}`
           : null;
   return (
-    <aside className="pt-sum" data-open={open ? "" : undefined} aria-label="Summary">
-      <div className="pt-sum-body" id="pt-sum-body">
-        <span className="pt-eb">Summary</span>
-        {items.length ? (
-          <ul className="pt-sum-list">
-            {items.map((it, i) => (
-              <li key={i}>
-                <span>{it.label}</span>
-                {it.price && <span className="pt-mono">{it.price}</span>}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="pt-sum-empty">Choose what you need and it adds up here.</p>
-        )}
-        {totalText && (
-          <div className="pt-sum-total" data-testid="estimate">
-            <span>Estimated total</span>
-            <b>{totalText}</b>
-          </div>
-        )}
-      </div>
+    <div className="pt-sumbar" data-open={open ? "" : undefined}>
+      {open && (
+        <div className="pt-sumbar-panel" id="pt-sum-body" aria-label="Summary" role="region">
+          <span className="pt-eb">Summary</span>
+          {items.length ? (
+            <ul className="pt-sum-list">
+              {items.map((it, i) => (
+                <li key={i}>
+                  <span>{it.label}</span>
+                  {it.price && <span className="pt-mono">{it.price}</span>}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="pt-sum-empty">Choose what you need and it adds up here.</p>
+          )}
+          {totalText && (
+            <div className="pt-sum-total">
+              <span>Estimated total</span>
+              <b>{totalText}</b>
+            </div>
+          )}
+        </div>
+      )}
       <button
         type="button"
-        className="pt-sum-toggle"
+        className="pt-sumbar-toggle"
         aria-expanded={open}
         aria-controls="pt-sum-body"
         onClick={() => setOpen((o) => !o)}
       >
-        {totalText ? (
-          <>
-            Estimated <b>{totalText}</b>
-          </>
-        ) : (
-          "Summary"
-        )}
-        <span className="pt-sum-chev" aria-hidden="true" />
+        <span className="pt-sumbar-k">Summary</span>
+        <span className="pt-sumbar-v">
+          {totalText ? (
+            <>
+              Estimated <b>{totalText}</b>
+            </>
+          ) : items.length ? (
+            `${items.length} item${items.length > 1 ? "s" : ""}`
+          ) : (
+            "Nothing yet"
+          )}
+          <span className="pt-sum-chev" aria-hidden="true" />
+        </span>
       </button>
-      <button type="button" className="btn btn-p btn-s pt-sum-next" onClick={onNext}>
-        Continue
-      </button>
-    </aside>
+    </div>
+  );
+}
+
+/** Wizard steps joined by a rail: done = filled with a check, current = outlined, next = muted. */
+function WizardSteps({ steps, at }: { steps: string[]; at: number }) {
+  return (
+    <ol className="pt-wiz" aria-label="Steps">
+      {steps.map((label, i) => {
+        const n = i + 1;
+        const state = n < at ? "done" : n === at ? "current" : "next";
+        return (
+          <li key={label} data-state={state} aria-current={state === "current" ? "step" : undefined}>
+            <span className="pt-wiz-dot" aria-hidden="true">
+              {state === "done" ? <Icon name="check" size={14} /> : n}
+            </span>
+            <span className="pt-wiz-label">{label}</span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -371,22 +395,11 @@ export function BookingModal({
         title={edit ? "Shoot details" : "Book a shoot"}
         onClose={onClose}
         testId="booking-modal"
-      >
-        <div className="pt-form" role="status">
-          <span className="pt-eb">{done} · Requested</span>
-          <b style={{ fontSize: 20 }}>
-            {edit?.status === "confirmed"
-              ? "Change requested"
-              : edit
-                ? "Details saved"
-                : "Booking request sent"}
-          </b>
-          <p style={{ margin: 0 }}>
-            {edit?.status === "confirmed"
-              ? "We’ll look at the change and confirm the shoot again. You’ll get an email."
-              : "We’ll confirm the date and time, usually within the hour during working hours. You’ll get an email when it’s confirmed."}
-          </p>
-          <div className="pt-btns">
+        footer={
+          <>
+            <button type="button" className="btn btn-g btn-s" onClick={onClose}>
+              Done
+            </button>
             <Link
               href={`/portal/shoots/${encodeURIComponent(done)}`}
               className="btn btn-p btn-s"
@@ -394,10 +407,57 @@ export function BookingModal({
             >
               View in Shoots
             </Link>
-            <button type="button" className="btn btn-g btn-s" onClick={onClose}>
-              Close
-            </button>
-          </div>
+          </>
+        }
+      >
+        <div className="pt-done" role="status">
+          <span className="pt-done-ic" aria-hidden="true">
+            <Icon name="check" size={28} />
+          </span>
+          <b className="pt-done-h">
+            {edit?.status === "confirmed"
+              ? "Change requested"
+              : edit
+                ? "Details saved"
+                : "Thanks — your booking request is in"}
+          </b>
+          <p className="pt-done-p">
+            {edit?.status === "confirmed"
+              ? "We’ll look at the change and confirm the shoot again by email."
+              : "We’ll confirm your slot shortly by email."}
+          </p>
+          <ul className="pt-summary pt-done-card" aria-label="Booking details">
+            <li>
+              <span>Booking ID</span>
+              <b className="pt-mono">{done}</b>
+            </li>
+            {service && (
+              <>
+                <li>
+                  <span>Shoot type</span>
+                  <b>{SERVICE_LABEL[service.service]}</b>
+                </li>
+                <li>
+                  <span>{service.service === "property" ? "Property and services" : "Details"}</span>
+                  <b>{serviceSummary(service, pricing)}</b>
+                </li>
+              </>
+            )}
+            <li>
+              <span>Date and slot</span>
+              <b>
+                {dateLabel(date, { weekday: "short", year: undefined })} ·{" "}
+                {fullDay ? "Full day" : SLOTS.find(([k]) => k === slot)?.[1]}
+              </b>
+            </li>
+            <li>
+              <span>Location</span>
+              <b>
+                {loc.address}
+                {loc.unit ? ` · ${loc.unit}` : ""}
+              </b>
+            </li>
+          </ul>
         </div>
       </Modal>
     );
@@ -410,7 +470,8 @@ export function BookingModal({
       onClose={guard.request}
       testId="booking-modal"
       footer={
-        step === 1 && !onBack ? undefined : (
+        <>
+          <SummaryBar cfg={cfg} service={service} prop={prop} lines={lines} total={total} />
           <>
             {step === 1 && onBack && (
               <button
@@ -436,9 +497,9 @@ export function BookingModal({
                 Back
               </button>
             )}
-            {step === 1 ? null : step === 2 ? (
+            {step < 3 ? (
               <button type="button" className="btn btn-p btn-s" onClick={next}>
-                Continue
+                Next
               </button>
             ) : (
               <button
@@ -457,7 +518,7 @@ export function BookingModal({
               </button>
             )}
           </>
-        )
+        </>
       }
     >
       <div className="pt-form">
@@ -466,11 +527,7 @@ export function BookingModal({
           onContinue={draft.continueOffer}
           onFresh={draft.startFresh}
         />
-        <ol className="pt-book-steps" aria-label="Steps">
-          <li aria-current={step === 1 ? "step" : undefined}>1 · Shoot type</li>
-          <li aria-current={step === 2 ? "step" : undefined}>2 · When and where</li>
-          <li aria-current={step === 3 ? "step" : undefined}>3 · Summary</li>
-        </ol>
+        <WizardSteps steps={["Shoot type", "When and where", "Summary"]} at={step} />
         <FormBanner text={form.banner} />
 
         {step === 1 && (
@@ -556,14 +613,6 @@ export function BookingModal({
               )}
               {ta && <span className="pt-turnaround">Usual turnaround: {ta}</span>}
             </div>
-            <LiveSummary
-              cfg={cfg}
-              service={service}
-              prop={prop}
-              lines={lines}
-              total={total}
-              onNext={next}
-            />
           </div>
         )}
 

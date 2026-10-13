@@ -37,28 +37,31 @@ export default async function Shoots() {
   ]);
   const active = all.filter((p) => p.status !== "completed" && p.status !== "cancelled");
   const done = all.filter((p) => p.status === "completed" || p.status === "cancelled");
-  const covers = await projectCovers(
-    db,
-    active.filter((p) => p.delivered_at || p.status === "delivered").map((p) => p.id),
-  );
-  // Prices: only for those who see billing (the database returns no line items to others).
+  // Covers and prices don't depend on each other: one round trip, not two.
+  const [covers, { data: items }] = await Promise.all([
+    projectCovers(
+      db,
+      active.filter((p) => p.delivered_at || p.status === "delivered").map((p) => p.id),
+    ),
+    // Prices: only for those who see billing (the database returns no line items to others).
+    seesMoney(current) && all.length
+      ? db
+          .from("line_items")
+          .select("project_id, qty, unit_price, currency")
+          .in(
+            "project_id",
+            all.map((p) => p.id),
+          )
+      : Promise.resolve({ data: null }),
+  ]);
   const price = new Map<string, string>();
-  if (seesMoney(current) && all.length) {
-    const { data } = await db
-      .from("line_items")
-      .select("project_id, qty, unit_price, currency")
-      .in(
-        "project_id",
-        all.map((p) => p.id),
-      );
-    const sums = new Map<string, { t: number; c: string }>();
-    for (const i of data ?? []) {
-      const s = sums.get(i.project_id) ?? { t: 0, c: i.currency };
-      s.t += Number(i.qty) * Number(i.unit_price);
-      sums.set(i.project_id, s);
-    }
-    for (const [id, s] of sums) price.set(id, `${s.c} ${s.t.toLocaleString("en-US")}`);
+  const sums = new Map<string, { t: number; c: string }>();
+  for (const i of items ?? []) {
+    const s = sums.get(i.project_id) ?? { t: 0, c: i.currency };
+    s.t += Number(i.qty) * Number(i.unit_price);
+    sums.set(i.project_id, s);
   }
+  for (const [id, s] of sums) price.set(id, `${s.c} ${s.t.toLocaleString("en-US")}`);
 
   return (
     <>

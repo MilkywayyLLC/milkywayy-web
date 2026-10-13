@@ -1,7 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- media is pre-sized WebP on R2 (signed URLs), not next/image */
 import { headers } from "next/headers";
 import { pageMediaUrl } from "@/lib/r2";
-import { BrandLogo } from "@/components/layout/Logo";
 import { Icon } from "@/components/portal/Icon";
 import {
   FURNISHING,
@@ -190,13 +189,12 @@ export function Facts({ l }: { l: Partial<ShareListing> }) {
 
 const FOOTER = "https://milkywayy.com/?utm_source=listing&utm_medium=footer";
 
-/** The cross-marketing loop (§6.2): a slim footer, one link. */
+/** The cross-marketing loop (§6.2): one small, low-profile text link (no logo). */
 export function Byline() {
   return (
     <footer className="sh-byline">
       <a href={FOOTER} target="_blank" rel="noopener">
-        <BrandLogo tone="light" className="sh-byline-logo" />
-        <span>Media &amp; page by Milkywayy</span>
+        Media &amp; page by Milkywayy
       </a>
     </footer>
   );

@@ -83,6 +83,29 @@ function unlockDocumentScroll() {
 
 const stack: object[] = [];
 
+/*
+ * Milkywayy: `inert` on the page behind a dialog is reference-counted. Two stacked dialogs that
+ * close in the same commit (a form and its "save draft?" prompt) used to restore each other's
+ * snapshot in the wrong order and leave the whole page inert until a refresh, so "Book media"
+ * wouldn't open again. Now the attribute goes only when the last dialog releases it, and an
+ * element that was inert before any dialog keeps it.
+ */
+const inertHolds = new WeakMap<Element, { n: number; had: boolean }>();
+function holdInert(el: Element) {
+  const h = inertHolds.get(el) ?? { n: 0, had: el.hasAttribute("inert") };
+  h.n += 1;
+  inertHolds.set(el, h);
+  el.setAttribute("inert", "");
+}
+function releaseInert(el: Element) {
+  const h = inertHolds.get(el);
+  if (!h) return;
+  h.n -= 1;
+  if (h.n > 0) return;
+  inertHolds.delete(el);
+  if (!h.had) el.removeAttribute("inert");
+}
+
 export type UseModalOptions = {
   open: boolean;
   onClose: () => void;
@@ -158,19 +181,9 @@ export function useModal({
     const parent = overlay?.parentElement;
     if (!overlay || !parent) return;
 
-    const changed: Array<[Element, string | null]> = [];
-    for (const child of Array.from(parent.children)) {
-      if (child === overlay) continue;
-      changed.push([child, child.getAttribute("inert")]);
-      child.setAttribute("inert", "");
-    }
-
-    return () => {
-      for (const [child, previous] of changed) {
-        if (previous === null) child.removeAttribute("inert");
-        else child.setAttribute("inert", previous);
-      }
-    };
+    const held = Array.from(parent.children).filter((child) => child !== overlay);
+    held.forEach(holdInert);
+    return () => held.forEach(releaseInert);
   }, [open, target]);
 
   useEffect(() => {

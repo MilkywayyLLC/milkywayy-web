@@ -69,12 +69,12 @@ test.afterAll(async () => {
 async function book(page: Page, kind: RegExp) {
   const m = page.getByTestId("booking-modal");
   await m.getByRole("group", { name: "Type of shoot" }).getByRole("button", { name: kind }).click();
-  await m.getByRole("button", { name: "Continue" }).click();
+  await m.getByRole("button", { name: "Next", exact: true }).click();
   await m.getByLabel("Date").fill(today);
   await m.getByRole("button", { name: "Morning" }).click();
   await m.getByLabel("Location", { exact: true }).fill("Marina Gate 1, Dubai Marina");
   await m.getByLabel("Access notes (optional)").fill("Concierge has the key");
-  await m.getByRole("button", { name: "Continue" }).click();
+  await m.getByRole("button", { name: "Next", exact: true }).click();
   return m;
 }
 
@@ -85,8 +85,8 @@ test("Book a shoot: a modal; nothing sent until it's filled in; the estimate fro
   await page.goto("/portal/shoots");
   await page.getByRole("button", { name: "Book a shoot" }).click();
   const m = page.getByTestId("booking-modal");
-  // Continue with nothing chosen: the banner and the field's own message, nothing sent.
-  await m.getByRole("button", { name: "Continue" }).click();
+  // Next with nothing chosen: the banner and the field's own message, nothing sent.
+  await m.getByRole("button", { name: "Next", exact: true }).click();
   await expect(m.getByText("Please fix the highlighted fields")).toBeVisible();
   await expect(m.getByText("Choose the type of shoot.")).toBeVisible();
   await book(page, /Agent \/ social reels/);
@@ -95,7 +95,7 @@ test("Book a shoot: a modal; nothing sent until it's filled in; the estimate fro
     "Counts toward your monthly package (estimated ~AED 2,600)",
   );
   await m.getByRole("button", { name: "Confirm booking" }).click();
-  await expect(m.getByText("Booking request sent")).toBeVisible();
+  await expect(m.getByText("Thanks — your booking request is in")).toBeVisible();
   await m.getByRole("link", { name: "View in Shoots" }).click();
   await expect(page).toHaveURL(/\/portal\/shoots\/MW-\d+$/);
   shootRef = decodeURIComponent(page.url().split("/shoots/")[1].split("?")[0]);
