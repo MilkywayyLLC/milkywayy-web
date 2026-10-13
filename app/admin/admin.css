@@ -828,6 +828,39 @@
   .ad-used i {
     color: var(--muted);
   }
+  .ad-appears {
+    margin: -4px 0 4px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .ad-details > summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    width: max-content;
+  }
+  .ad-details[open] > summary {
+    margin-bottom: 6px;
+  }
+  .ad-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 12px;
+  }
+  .ad-chips a {
+    padding: 4px 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 13px;
+    text-decoration: none;
+    color: inherit;
+  }
+  .ad-chips a[aria-current="true"] {
+    background: var(--fg);
+    color: var(--bg);
+    border-color: var(--fg);
+  }
   .ad-warn {
     margin: 0;
     padding: 8px 10px 8px 26px;

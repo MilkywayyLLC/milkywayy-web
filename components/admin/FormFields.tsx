@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { Fragment, useId, useState } from "react";
 import type { Media } from "@/content/types";
 import { getPath, type AdminCtx, type Field, type Option } from "@/lib/admin/fields";
 import { isInstagramUrl } from "@/lib/instagram-link";
@@ -43,18 +43,27 @@ export function FormFields({
     <>
       {fields
         .filter((f) => (!f.ownerOnly || isOwner) && (!f.when || f.when(values)))
-        .map((f) => (
-          <FieldInput
-            key={f.name}
-            field={f}
-            value={getPath(values, f.name)}
-            onChange={(v) => onChange(f.name, v)}
-            error={errors[f.name]}
-            portfolio={portfolio}
-            row={values}
-            ctx={ctx}
-          />
-        ))}
+        .map((f) => {
+          const line = f.line?.(values, ctx);
+          return (
+            <Fragment key={f.name}>
+              <FieldInput
+                field={f}
+                value={getPath(values, f.name)}
+                onChange={(v) => onChange(f.name, v)}
+                error={errors[f.name]}
+                portfolio={portfolio}
+                row={values}
+                ctx={ctx}
+              />
+              {line && (
+                <p className="ad-appears" role="status" data-testid={`line-${f.name}`}>
+                  {line}
+                </p>
+              )}
+            </Fragment>
+          );
+        })}
     </>
   );
 }

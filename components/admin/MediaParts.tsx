@@ -14,36 +14,49 @@ import { compressVideo, mb, VIDEO_MAX_BYTES, videoInfo } from "@/lib/video-compr
  * optimising.
  */
 
-export function MediaFacts({ kind, usedOn }: { kind: MediaKind; usedOn?: string[] }) {
+export function MediaFacts({
+  kind,
+  usedOn,
+  children,
+}: {
+  kind: MediaKind;
+  usedOn?: string[];
+  children?: React.ReactNode;
+}) {
   const s = MEDIA[kind];
+  // Technical facts stay collapsed (owner, 13 Oct 2026): "This will appear on" is the plain answer.
   return (
-    <div className="ad-facts" data-testid="media-facts">
-      <span>
-        Shown at: <b>{s.ratioLabel}</b>
-      </span>
-      <span>
-        Recommended export: <b>{exportSize(kind)}</b>
-        {s.video && kind !== "photo" && (
-          <>
-            {" "}
-            (video {s.video.width}×{s.video.height})
-          </>
-        )}
-      </span>
-      {usedOn && (
-        <span className="ad-used" data-testid="used-on">
-          Used on:{" "}
-          {usedOn.length ? (
-            <b>{usedOn.join(" · ")}</b>
-          ) : (
-            <i>
-              not shown anywhere yet
-              {kind === "photo" || kind === "reel" ? ". Tick where it shows below." : "."}
-            </i>
+    <details className="ad-details">
+      <summary>Details</summary>
+      <div className="ad-facts" data-testid="media-facts">
+        <span>
+          Shown at: <b>{s.ratioLabel}</b>
+        </span>
+        <span>
+          Recommended export: <b>{exportSize(kind)}</b>
+          {s.video && kind !== "photo" && (
+            <>
+              {" "}
+              (video {s.video.width}×{s.video.height})
+            </>
           )}
         </span>
-      )}
-    </div>
+        {usedOn && (
+          <span className="ad-used" data-testid="used-on">
+            Used on:{" "}
+            {usedOn.length ? (
+              <b>{usedOn.join(" · ")}</b>
+            ) : (
+              <i>
+                not shown anywhere yet
+                {kind === "photo" || kind === "reel" ? ". Tick where it shows below." : "."}
+              </i>
+            )}
+          </span>
+        )}
+        {children}
+      </div>
+    </details>
   );
 }
 
@@ -134,7 +147,7 @@ export function FocalCrop({
           alt=""
           style={{ aspectRatio: MEDIA[kind].ratio, objectPosition: `${f.x}% ${f.y}%` }}
         />
-        <figcaption className="ad-eb">On the site · {MEDIA[kind].ratioLabel}</figcaption>
+        <figcaption className="ad-eb">On the site</figcaption>
       </figure>
     </div>
   );
@@ -248,8 +261,7 @@ export function VideoUpload({
           onChange={(e) => pick(e.target.files?.[0])}
         />
         <span className="ad-small ad-muted">
-          MP4 or MOV, up to 150 MB. Optimised in your browser to {box.width}×{box.height} before it
-          uploads.
+          MP4 or MOV, up to 150 MB. Optimised in your browser before it uploads.
         </span>
       </div>
       <p id={`${id}-st`} className="ad-small" role="status" aria-live="polite">

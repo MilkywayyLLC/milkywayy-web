@@ -17,6 +17,8 @@ export type AdminCtx = {
   categories: Option[];
   /** Pins and modes, for "Where it shows" (lib/placements). */
   placements: import("@/lib/placements").PlacementState;
+  /** INSTAGRAM_ACCESS_TOKEN is set: only then is "Instagram reel link" offered. */
+  instagram?: boolean;
 };
 export type UsedOn = (row: Record<string, unknown>, ctx: AdminCtx) => string[];
 /** Where uploaded video files go in R2 (site/<folder>/…). */
@@ -31,6 +33,8 @@ type Base = {
   ownerOnly?: boolean;
   /** Show the field only when this is true for the current values (e.g. one format's fields). */
   when?: (row: Record<string, unknown>) => boolean;
+  /** A plain line under the field, worked out live from the current values. */
+  line?: (row: Record<string, unknown>, ctx: AdminCtx) => string | null;
 };
 
 export type Field = Base &

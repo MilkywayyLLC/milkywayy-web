@@ -123,6 +123,36 @@ const postHero = postHeroReels(
   realFirst(items.filter((x) => x.published).sort((a, b) => a.sortOrder - b.sortOrder)),
 ).filter((x) => x.sample);
 if (postHero.length) portfolioProblem("post-hero-reels", postHero.length);
+// Empty sections (owner, 13 Oct 2026): after the portfolio reset every section fills from the
+// library, so one with nothing in it would launch blank. The showreel and Adam are checked below.
+const emptyProblem = (where: string, fix: string) =>
+  problems.push(`${where}: empty, nothing would show. ${fix}`);
+for (const def of ALL_PLACEMENTS) {
+  if (def.source === "before-after" || def.key === "home-showreel" || def.key === "avatars-hero")
+    continue;
+  const label = `${def.page.split(",")[0]} · ${def.title}`;
+  if (def.key === "post-hero-reels") {
+    const shown = postHeroReels(
+      resolve(def, items, state).items.filter((x) => x.published),
+      items.filter((x) => x.published),
+    );
+    if (!shown.length) emptyProblem(label, "Upload a reel in Admin → Portfolio.");
+    continue;
+  }
+  const r = resolve(def, items, state);
+  if (r.legacy || r.items.some((x) => x.published)) continue;
+  emptyProblem(
+    label,
+    def.hero
+      ? "Choose it in Admin → Placements."
+      : "Upload matching work in Admin → Portfolio (right type and category) and it fills itself.",
+  );
+}
+if (!live(beforeAfter).length)
+  emptyProblem("Property shoots · Hero (before / after)", "Add a pair in Admin → Before / after.");
+if (!live(avatars).length)
+  emptyProblem("AI avatars · Examples", "Add avatar examples in Admin → AI avatars.");
+
 // Property shoots hero still reads its placement rows.
 const propHero = shownSamples(items.filter((x) => x.placements.includes("property-hero")));
 if (propHero.length) portfolioProblem("property-hero", propHero.length);

@@ -8,9 +8,10 @@ import { checkInstagramReel, importInstagramCover } from "@/lib/admin/media-acti
 import { imageProblem, uploadImage } from "@/lib/admin/upload-image";
 import type { ReelMatch } from "@/lib/instagram";
 import { instagramShortcode, isInstagramUrl, OUR_INSTAGRAM } from "@/lib/instagram-link";
-import { isFileVideo, kindOf, MEDIA } from "@/lib/media-config";
+import { isFileVideo, kindOf } from "@/lib/media-config";
 import { TOUR_HINT, tourEmbed } from "@/lib/tours";
-import { libFields, whereItShows } from "@/lib/placements";
+import { appearsOn } from "@/lib/admin/sections";
+import { youtubeShort } from "@/lib/video";
 import { mb } from "@/lib/video-compress";
 import { ImageField } from "./ImageField";
 import { FocalCrop, imageWarnings, MediaFacts, VideoUpload, Warnings } from "./MediaParts";
@@ -18,27 +19,13 @@ import { FocalCrop, imageWarnings, MediaFacts, VideoUpload, Warnings } from "./M
 type Photo = NonNullable<Media["photos"]>[number];
 const MAX_PHOTOS = 60;
 
-/** Where the item shows, worked out from the editor's current values (lib/placements). */
-function usage(row: Record<string, unknown>, ctx: AdminCtx): string[] {
-  const id = String(row.id || "new");
-  const saved = ctx.portfolio.find((p) => p.id === id);
-  const me = {
-    ...(saved ?? { sortOrder: Number(row.sort_order ?? 1e6), createdAt: new Date().toISOString() }),
-    ...libFields({ ...row, created_at: saved?.createdAt ?? new Date().toISOString() }),
-    id,
-    published: true,
-    sortOrder: saved?.sortOrder ?? Number(row.sort_order ?? 1e6),
-  };
-  const all = [...ctx.portfolio.filter((p) => p.id !== id), me];
-  return whereItShows(id, all, ctx.placements).map((w) => w.label);
-}
-
 /**
  * The portfolio item's media, by format (owner, 7 Oct 2026). Only the fields the chosen format
  * uses are shown, with hints written for it:
  *   Photo     a set of photos: multi-upload, drag to reorder, star the cover, alt text each
- *   Reel      our Instagram reel link (default) or an uploaded video, plus the cover image
- *   Long-form a YouTube/Vimeo link plus the cover image
+ *   Reel      an uploaded video (default) or a YouTube Shorts link, plus the cover image; our
+ *             Instagram reel link only while INSTAGRAM_ACCESS_TOKEN is set (owner, 13 Oct 2026)
+ *   Long-form a YouTube link (default) or an uploaded video, plus the cover image
  *   360 tour  a Matterport, Panoee or Kuula link plus the cover image
  * Any item can also link to its Instagram post.
  */
@@ -61,14 +48,21 @@ export function PortfolioMedia({
     category: (row.category as PortfolioItem["category"]) ?? "property",
     format: (row.format as PortfolioItem["format"]) ?? "reel",
   });
-  const used = usage(row, ctx);
+  const used = appearsOn(row, ctx);
 
   return (
     <div className="ad-pm" data-format={row.format as string} data-testid="portfolio-media">
       {kind === "photo" ? (
         <PhotoSet m={m} onChange={onChange} usedOn={used} />
       ) : kind === "reel" || kind === "ai-avatar" ? (
-        <Reel m={m} set={set} onChange={onChange} usedOn={used} kind={kind} />
+        <Reel
+          m={m}
+          set={set}
+          onChange={onChange}
+          usedOn={used}
+          kind={kind}
+          instagram={!!ctx.instagram}
+        />
       ) : kind === "long-form" ? (
         <ImageField
           label="Cover image"
@@ -322,48 +316,83 @@ function Reel({
   onChange,
   usedOn,
   kind,
+  instagram,
 }: {
   m: Media;
   set: (p: Partial<Media>) => void;
   onChange: (m: Media) => void;
   usedOn: string[];
   kind: "reel" | "ai-avatar";
+  instagram: boolean;
 }) {
   const id = useId();
-  const source = m.source ?? (isFileVideo(m.video) ? "upload" : "instagram");
+  const saved =
+    m.source ??
+    (isFileVideo(m.video) ? "upload" : m.instagram ? "instagram" : m.video ? "youtube" : "upload");
+  // Without INSTAGRAM_ACCESS_TOKEN the Instagram option is hidden, and an old Instagram item
+  // opens on "Upload video file".
+  const source = saved === "instagram" && !instagram ? "upload" : saved;
+  const file = isFileVideo(m.video);
+  const yt = !file ? (m.video ?? "") : "";
+  const ytOk = !yt || !!youtubeShort(yt);
+  const pick = (next: "upload" | "youtube" | "instagram") =>
+    set(
+      next === "instagram"
+        ? { source: next }
+        : {
+            source: next,
+            instagram: undefined,
+            ...(next === "youtube" && file ? { video: undefined, file: undefined } : {}),
+            ...(next === "upload" && !file ? { video: undefined } : {}),
+          },
+    );
+  const options: { value: "upload" | "youtube" | "instagram"; label: string }[] = [
+    { value: "upload", label: "Upload video file (recommended)" },
+    { value: "youtube", label: "YouTube link" },
+    ...(instagram ? [{ value: "instagram" as const, label: "Instagram reel link" }] : []),
+  ];
   return (
     <>
       <fieldset className="ad-field" data-testid="reel-source">
-        <legend className="ad-label">Where the reel comes from</legend>
+        <legend className="ad-label">Video</legend>
         <div className="ad-checks">
-          <label className="ad-check">
-            <input
-              type="radio"
-              name={`${id}-src`}
-              checked={source === "instagram"}
-              onChange={() => set({ source: "instagram" })}
-            />
-            <span>Instagram reel link</span>
-          </label>
-          <label className="ad-check">
-            <input
-              type="radio"
-              name={`${id}-src`}
-              checked={source === "upload"}
-              onChange={() => set({ source: "upload" })}
-            />
-            <span>Upload video</span>
-          </label>
+          {options.map((o) => (
+            <label key={o.value} className="ad-check">
+              <input
+                type="radio"
+                name={`${id}-src`}
+                checked={source === o.value}
+                onChange={() => pick(o.value)}
+              />
+              <span>{o.label}</span>
+            </label>
+          ))}
         </div>
         {source === "instagram" ? (
           <InstagramReel m={m} set={set} onChange={onChange} />
+        ) : source === "youtube" ? (
+          <div className="ad-field">
+            <label htmlFor={`${id}-yt`}>YouTube link</label>
+            <input
+              id={`${id}-yt`}
+              type="url"
+              inputMode="url"
+              placeholder="https://youtube.com/shorts/…"
+              value={yt}
+              aria-invalid={!ytOk}
+              onChange={(e) =>
+                set({ source: "youtube", video: e.target.value.trim() || undefined })
+              }
+            />
+            <span className={ytOk ? "ad-help" : "ad-err"} role={ytOk ? undefined : "alert"}>
+              {ytOk
+                ? "A YouTube Shorts link (youtube.com/shorts/…) or a youtu.be/… link. Unlisted is fine."
+                : "Link not recognised. Use youtube.com/shorts/… or youtu.be/…"}
+            </span>
+          </div>
         ) : (
           <>
-            <p className="ad-small ad-muted">
-              For reels that aren’t on our Instagram. Vertical, exported at{" "}
-              {MEDIA[kind].video!.width}×{MEDIA[kind].video!.height}.
-            </p>
-            {isFileVideo(m.video) && (
+            {file && (
               <div className="ad-btns">
                 <span className="ad-small" data-testid="video-stored">
                   Uploaded video{m.file?.bytes ? ` (${mb(m.file.bytes)})` : ""}
@@ -382,7 +411,7 @@ function Reel({
             <VideoUpload
               kind={kind}
               folder="reels"
-              label={isFileVideo(m.video) ? "Replace video" : "Upload video"}
+              label={file ? "Replace video" : "Upload video file"}
               onDone={(ref, meta) => set({ video: ref, file: meta, source: "upload" })}
             />
           </>
@@ -396,7 +425,7 @@ function Reel({
         usedOn={usedOn}
         bright={kind === "ai-avatar"}
         required
-        hint={`${MEDIA[kind].coverHint} Required: it shows before the reel plays.`}
+        hint="Required: it shows before the video plays."
       />
     </>
   );

@@ -5,15 +5,32 @@ import {
   ALL_PLACEMENTS,
   detectOrientation,
   legacyFields,
+  libFields,
   MEDIA_TYPES,
   ORIENTATIONS,
   placementByKey,
   typeLabel,
+  whereItShows,
   type MediaType,
   type Orientation,
 } from "@/lib/placements";
 import { VIDEO_HINT } from "@/lib/video";
-import type { Field, Option } from "./fields";
+import type { AdminCtx, Field, Option } from "./fields";
+
+/** Where a portfolio item shows, worked out from the editor's current values (lib/placements). */
+export function appearsOn(row: Record<string, unknown>, ctx: AdminCtx): string[] {
+  const id = String(row.id || "new");
+  const saved = ctx.portfolio.find((p) => p.id === id);
+  const me = {
+    ...(saved ?? { sortOrder: Number(row.sort_order ?? 1e6), createdAt: new Date().toISOString() }),
+    ...libFields({ ...row, created_at: saved?.createdAt ?? new Date().toISOString() }),
+    id,
+    published: true,
+    sortOrder: saved?.sortOrder ?? Number(row.sort_order ?? 1e6),
+  };
+  const all = [...ctx.portfolio.filter((p) => p.id !== id), me];
+  return whereItShows(id, all, ctx.placements).map((w) => w.label);
+}
 
 /**
  * Every list the admin edits (guide §18.2). One config per table drives the list screen, the
@@ -156,7 +173,7 @@ export const SECTIONS: Section[] = [
         label: "Media type",
         required: true,
         options: MEDIA_TYPES,
-        help: "Choose this first: it decides the fields below and the ratio the site uses.",
+        help: "Choose this first: it decides the fields below.",
       },
       {
         name: "orientation",
@@ -164,7 +181,7 @@ export const SECTIONS: Section[] = [
         label: "Orientation",
         options: ORIENTATIONS,
         when: (r) => r.media_type === "video" || r.media_type === "avatar",
-        help: "Preselected from the file or link once it’s added. Short form is 9:16, long form 16:9. Confirm it.",
+        help: "Preselected from the file or link once it’s added. Confirm it.",
       },
       {
         name: "category_id",
@@ -172,6 +189,13 @@ export const SECTIONS: Section[] = [
         label: "Category",
         required: true,
         help: "Pick one, or type a new name to save it as a category for future uploads.",
+        // Plain answer, right under Type / Orientation / Category (owner, 13 Oct 2026).
+        line: (r, ctx) => {
+          const on = appearsOn(r, ctx);
+          return on.length
+            ? `This will appear on: ${on.join(", ")}`
+            : "This won’t appear anywhere yet. Change the type or category, or turn on “Show on Work page”.";
+        },
       },
       { name: "title", kind: "text", label: "Title", required: true, max: 80 },
       { name: "client", kind: "text", label: "Client (optional)", max: 80 },

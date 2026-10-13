@@ -173,5 +173,6 @@ export async function adminCtx(db: SupabaseClient): Promise<import("./fields").A
     avatarOrder: (real.length ? real : live).map((a) => a.id),
     categories,
     placements: await placementState(db, portfolio),
+    instagram: !!process.env.INSTAGRAM_ACCESS_TOKEN?.trim(),
   };
 }

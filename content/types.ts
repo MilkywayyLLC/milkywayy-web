@@ -44,7 +44,7 @@ export interface Media {
   /** Photo sets (format photo): every image in order; `src` is the starred cover. */
   photos?: { src: string; alt?: string; width?: number; height?: number; focus?: string }[];
   /** Reels: where the video comes from (default Instagram). */
-  source?: "instagram" | "upload";
+  source?: "instagram" | "upload" | "youtube";
   /**
    * An Instagram reel. `id` is set when the reel is on our own account (@milkywayy.media) and
    * plays in our player; without it the item is a "View on Instagram ↗" link only.

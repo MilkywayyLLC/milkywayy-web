@@ -2,7 +2,7 @@ import type { Media, PortfolioItem } from "@/content/types";
 import { instagramShortcode, isInstagramUrl } from "@/lib/instagram-link";
 import { isFileVideo, kindOf } from "@/lib/media-config";
 import { tourEmbed } from "@/lib/tours";
-import { embedUrl, VIDEO_REFUSED } from "@/lib/video";
+import { embedUrl, VIDEO_REFUSED, youtubeShort } from "@/lib/video";
 import { getPath, setPath, type Field } from "./fields";
 
 /**
@@ -109,15 +109,20 @@ export function portfolioMedia(
 
     if (kind === "reel" || kind === "ai-avatar") {
       const source =
-        m.source === "upload"
-          ? "upload"
+        m.source === "upload" || m.source === "youtube"
+          ? m.source
           : m.source === "instagram" || m.instagram
             ? "instagram"
             : isFileVideo(m.video)
               ? "upload"
               : "instagram";
       out.source = source;
-      if (source === "instagram") {
+      if (source === "youtube") {
+        const video = typeof m.video === "string" ? m.video.trim() : "";
+        if (!youtubeShort(video))
+          return { error: "Paste a YouTube link: youtube.com/shorts/… or youtu.be/…" };
+        out.video = video;
+      } else if (source === "instagram") {
         const url = String(m.instagram?.url ?? "").trim();
         const shortcode = url ? instagramShortcode(url) : null;
         if (!url) {

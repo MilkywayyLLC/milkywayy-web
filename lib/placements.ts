@@ -352,6 +352,8 @@ export function detectOrientation(m: Media | undefined): Orientation | undefined
   const file = shape(m.file?.width, m.file?.height);
   if (file) return file;
   if (m.source === "instagram" && m.instagram?.url) return "9:16";
+  // A reel's YouTube link is only offered for 9:16 (youtu.be links don't say which).
+  if (m.source === "youtube" && m.video) return "9:16";
   const v = m.video ?? "";
   if (/youtube\.com\/shorts\//i.test(v)) return "9:16";
   if (/youtube\.com|youtu\.be|vimeo\.com/i.test(v)) return "16:9";

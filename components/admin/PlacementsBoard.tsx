@@ -70,10 +70,9 @@ export function PlacementsBoard({
           <h1 className="ad-h1">Placements</h1>
         </div>
       </div>
-      <p className="ad-small ad-muted">
-        What each part of the site shows right now, in order. Sections fill themselves with the
-        newest library items that match their rule; a pin holds an item in its slot regardless of
-        newer uploads. A manual section shows only its pins. Hero slots are always set by hand.
+      <p className="ad-appears" data-testid="placements-howto">
+        Upload in Portfolio with the right type and category, and sections fill automatically. Only
+        hero slots are chosen by hand.
       </p>
       {!migrated && (
         <p className="ad-small ad-err" role="alert">
