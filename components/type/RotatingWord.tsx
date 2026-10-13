@@ -1,45 +1,78 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
- * A word that cycles through `words` like a combination-lock dial (home hero, 13 Oct 2026): each
- * holds about 1.2s, then the next rolls up into place (450ms) as the last rolls away.
- * `children` is the longest word: it sits invisibly in the same grid cell, so the line keeps its
- * width and height whatever word shows (no layout shift), and HeroTitle fits the line to it.
- * The server and first paint show words[0]. Paused while the tab is hidden; with reduced motion
- * it stays on words[0]. aria-hidden: the heading carries the full sentence as its label.
+ * Home hero's rotating word as a combination-lock dial (13 Oct 2026). The words are rows of a
+ * list, one line tall each; a window shows three rows (previous faint above, current sharp in
+ * the centre, next faint below) and the whole list moves up exactly one row every 1.6s with a
+ * snap. The list is [last, ...words, first, second], so when the dial lands on the repeated first
+ * word it jumps back to the original one without a transition: the same three rows, so the jump
+ * doesn't show. Row looks come from each row's distance to the centre (CSS, data-d).
+ * The list is as wide as its longest row, so the line always reserves the longest word.
+ * `children` is that longest word, for HeroTitle's server-side width estimate (not rendered).
+ * Server and first paint: words[0] centred, no animation. Paused while the tab is hidden; with
+ * reduced motion, words[0] alone (CSS). aria-hidden: the heading carries the full sentence.
  */
-export function RotatingWord({ words, children }: { words: string[]; children: ReactNode }) {
-  // `n` counts changes; only changes animate, so the first paint is still.
-  const [n, setN] = useState(0);
-  const i = n % words.length;
+export function RotatingWord({ words }: { words: string[]; children?: ReactNode }) {
+  const rows = [words[words.length - 1], ...words, words[0], words[1]];
+  const loop = words.length + 1; // index of the repeated first word
+  const [c, setC] = useState(1);
+  const [instant, setInstant] = useState(false);
+  const at = useRef(1);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let timer = 0;
+    let jump = 0;
+    const tick = () => {
+      at.current += 1;
+      setC(at.current);
+      if (at.current === loop)
+        jump = window.setTimeout(() => {
+          at.current = 1;
+          setInstant(true);
+          setC(1);
+        }, 560);
+    };
     const start = () => {
       window.clearInterval(timer);
-      if (!document.hidden) timer = window.setInterval(() => setN((c) => c + 1), 1650);
+      if (!document.hidden) timer = window.setInterval(tick, 1600);
     };
     start();
     document.addEventListener("visibilitychange", start);
     return () => {
       window.clearInterval(timer);
+      window.clearTimeout(jump);
       document.removeEventListener("visibilitychange", start);
     };
-  }, []);
+  }, [loop]);
+
+  // Transitions back on once the instant jump has painted.
+  useEffect(() => {
+    if (!instant) return;
+    let b = 0;
+    const a = requestAnimationFrame(() => {
+      b = requestAnimationFrame(() => setInstant(false));
+    });
+    return () => {
+      cancelAnimationFrame(a);
+      cancelAnimationFrame(b);
+    };
+  }, [instant]);
 
   return (
     <span className="rot" aria-hidden="true">
-      <span className="rot-size">{children}</span>
-      {n > 0 && (
-        <span className="rot-word" key={n - 1} data-out>
-          {words[(n - 1) % words.length]}
-        </span>
-      )}
-      <span className="rot-word" key={n} data-moved={n > 0 || undefined}>
-        {words[i]}
+      <span
+        className="rot-list"
+        data-instant={instant || undefined}
+        style={{ transform: `translateY(calc(var(--rot-peek) - ${c}em))` }}
+      >
+        {rows.map((w, i) => (
+          <span key={i} className="rot-row" data-d={Math.max(-2, Math.min(2, i - c))}>
+            {w}
+          </span>
+        ))}
       </span>
     </span>
   );
