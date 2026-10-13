@@ -743,7 +743,7 @@ test("pay as you go: the suggestion card (monthly and 6-month), last month's fin
     m.getByRole("navigation", { name: "Portal sections" }).getByRole("link", { name: "Billing" }),
   ).toHaveCount(0);
   await m.goto("/portal/billing");
-  await expect(m.getByText("Billing is for the account’s owner and admins")).toBeVisible();
+  await expect(m.getByText("Your access doesn’t include billing")).toBeVisible();
   await expect(m.getByText(/AED \d/)).toHaveCount(0);
   await m.close();
 });

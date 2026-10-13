@@ -205,8 +205,9 @@ test("paused, expired, turned off or unknown: a friendly page, not an error", as
   await page.goto("/portal/listings");
   const card = page.getByRole("article", { name: "Sky-high 3 bed penthouse" });
   await expect(card).toContainText("Live");
-  await expect(card).toContainText("2views");
-  await expect(card).toContainText("2WhatsApp/Call taps");
+  await expect(card).toContainText("2 views");
+  await expect(card).toContainText("1 WhatsApp");
+  await expect(card).toContainText("1 Call");
   await card.getByRole("button", { name: /^More actions/ }).click();
   await card.getByRole("menuitem", { name: "Pause" }).click();
   await expect(card).toContainText("Paused");

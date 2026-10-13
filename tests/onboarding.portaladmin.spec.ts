@@ -123,8 +123,9 @@ test("a past property shoot: Completed, files published without an email, kept 1
   await client.goto("/portal/shoots");
   await expect(client.getByText("3 Bed villa, Arabian Ranches")).toBeVisible();
   await client.getByText("3 Bed villa, Arabian Ranches").click();
-  await expect(client.getByTestId("delivery")).toContainText("360 tour");
-  await expect(client.getByTestId("delivery")).toContainText("IMG_1.jpg");
+  // Grouped delivery cards (10 Oct 2026): the tour link has its own card.
+  await expect(client.getByTestId("deliv-tour")).toBeVisible();
+  await expect(client.getByTestId("deliv-photos")).toContainText("Photos (1)");
   // And a share page can be made from it.
   await expect(client.getByRole("link", { name: "Create share link" })).toBeVisible();
   const [contact] = await must<{ id: string }[]>(

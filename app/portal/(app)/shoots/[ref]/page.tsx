@@ -89,21 +89,22 @@ export default async function ShootPage({
   const GROUPED = ["photos", "reel", "long_form", "tour"];
   const r2 = r2Ready();
   const outFiles = (files ?? []) as (ProjectFile & { deliverable_id?: string | null })[];
+  // A photos *link* (a shared folder) has nothing for the photo grid: it goes in the plain list.
+  const grouped = (f: ProjectFile) =>
+    GROUPED.includes(f.kind) && !(f.kind === "photos" && f.source === "link");
   const delivList = (deliv ?? []) as Deliverable[];
   const dfiles: DFile[] = [
-    ...outFiles
-      .filter((f) => GROUPED.includes(f.kind))
-      .map((f) => ({
-        id: f.id,
-        label: f.label,
-        kind: f.kind,
-        link: f.source === "link" ? f.url : null,
-        download: f.source === "r2" && r2 && f.r2_key ? downloadUrl(f.r2_key, f.label, 3600) : null,
-        view:
-          f.source === "r2" && r2 && f.r2_key ? presign("GET", f.web_key ?? f.r2_key, 3600) : null,
-        thumb: r2 && f.thumb_key ? presign("GET", f.thumb_key, 3600) : null,
-        deliverableId: f.deliverable_id ?? null,
-      })),
+    ...outFiles.filter(grouped).map((f) => ({
+      id: f.id,
+      label: f.label,
+      kind: f.kind,
+      link: f.source === "link" ? f.url : null,
+      download: f.source === "r2" && r2 && f.r2_key ? downloadUrl(f.r2_key, f.label, 3600) : null,
+      view:
+        f.source === "r2" && r2 && f.r2_key ? presign("GET", f.web_key ?? f.r2_key, 3600) : null,
+      thumb: r2 && f.thumb_key ? presign("GET", f.thumb_key, 3600) : null,
+      deliverableId: f.deliverable_id ?? null,
+    })),
     // Long-form and 360 delivered as links on the deliverable itself.
     ...delivList
       .filter((d) => d.link_url && (d.kind === "long_form" || d.kind === "tour"))
@@ -199,7 +200,7 @@ export default async function ShootPage({
           </section>
         )}
       <ShootDeliveries files={dfiles} title={p.title} photosDeliverable={photosDeliverable} />
-      <DeliveryList files={outFiles.filter((f) => !GROUPED.includes(f.kind))} />
+      <DeliveryList files={outFiles.filter((f) => !grouped(f))} />
 
       <div className="pt-grid2">
         <section className="pt-card">

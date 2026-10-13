@@ -1,5 +1,5 @@
 import type { Media, PortfolioCategory, PortfolioFormat } from "@/content/types";
-import { realFirst } from "@/lib/data/sample";
+import { realFirst } from "./data/sample.ts";
 
 /**
  * Where library items show on the site (media library rework, 24 Oct 2026). Every section the

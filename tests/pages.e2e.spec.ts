@@ -10,7 +10,6 @@ const PAGES = [
   "/ai-avatars",
   "/contact",
   "/work",
-  "/work/sample-monthly-content-for-a-brokerage",
   "/about",
   "/privacy",
   "/terms",
@@ -46,9 +45,16 @@ test("hero titles are exactly two lines @mobile", async ({ page }) => {
   ]) {
     await page.goto(path);
     await page.evaluate(() => document.fonts.ready);
+    // Each .ln is a line; Home's rotating word (.rot) is one word but taller than a line.
     const lines = await page.locator("h1.two").evaluate((h) => {
       const lh = parseFloat(getComputedStyle(h).lineHeight);
-      return Math.round(h.getBoundingClientRect().height / lh);
+      const lns = [...h.querySelectorAll<HTMLElement>(".ln")];
+      if (!lns.length) return Math.round(h.getBoundingClientRect().height / lh);
+      return lns.reduce(
+        (n, l) =>
+          n + (l.querySelector(".rot") ? 1 : Math.round(l.getBoundingClientRect().height / lh)),
+        0,
+      );
     });
     expect(lines, path).toBe(2);
   }
@@ -87,29 +93,20 @@ test.describe("navigation", () => {
     for (const from of ["/production/property-shoots", "/book", "/booking"]) {
       const res = await request.get(from, { maxRedirects: 0 });
       expect(res.status(), from).toBe(301);
-      // Old booking links land on the booking builder itself (owner, 4 Oct 2026).
-      expect(res.headers()["location"], from).toMatch(
-        from === "/production/property-shoots"
-          ? /\/property-shoots$/
-          : /\/property-shoots#booking$/,
-      );
+      // Booking happens in the portal now (owner, 12 Oct 2026): old links land on the page.
+      expect(res.headers()["location"], from).toMatch(/\/property-shoots$/);
     }
   });
 
-  test("Price my shoot and property-shoot links land on the page or its builder", async ({
-    page,
-  }) => {
+  test("property-shoot links land on the page; no builder left on it", async ({ page }) => {
     await page.goto("/production");
     await expect(page.getByRole("link", { name: /Book a property shoot/ })).toHaveAttribute(
       "href",
       "/property-shoots",
     );
     await page.goto("/property-shoots");
-    for (const l of await page.getByRole("link", { name: "Price my shoot" }).all()) {
-      await expect(l).toHaveAttribute("href", "#booking");
-    }
-    await page.getByRole("link", { name: "Price my shoot" }).first().click();
-    await expect(page.locator("#booking")).toBeInViewport();
+    await expect(page.locator("#booking")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Price my shoot" })).toHaveCount(0);
   });
 });
 
@@ -178,28 +175,6 @@ test.describe("page changes open at the top", () => {
       });
     }
   }
-});
-
-test.describe("mobile menu covers the bottom bars @mobile-only", () => {
-  test("booking bar and action bar hide while the menu is open", async ({ page }) => {
-    await page.goto("/property-shoots");
-    const bar = page.getByRole("region", { name: "Booking total" });
-    await expect(bar).toBeVisible();
-    await page.getByRole("button", { name: "Open menu" }).click();
-    await expect(bar).toBeHidden();
-    const menu = page.getByRole("dialog", { name: "Menu" });
-    await expect(menu.getByRole("link", { name: "About" })).toBeVisible();
-    await menu.getByRole("button", { name: "Close menu" }).click();
-    await expect(bar).toBeVisible();
-
-    await page.goto("/production");
-    const mbar = page.locator(".mbar");
-    await expect(mbar).toBeVisible();
-    await page.getByRole("button", { name: "Open menu" }).click();
-    await expect(mbar).toBeHidden();
-    await page.keyboard.press("Escape");
-    await expect(mbar).toBeVisible();
-  });
 });
 
 test.describe("layout rules", () => {

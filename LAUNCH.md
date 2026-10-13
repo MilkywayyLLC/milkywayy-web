@@ -51,7 +51,7 @@ What it found on 4 Oct 2026 (every item below must be cleared):
 - [ ] Should fix: client names in the proof strip (permission; logos optional) · Cal.com link (`NEXT_PUBLIC_CAL_LINK`, 15-minute call) · booking slots/window confirmed · post-production starting rates · AI avatar tiers wording.
 
 Portal and billing set-up in the admin (no build check; do before inviting clients):
-- [ ] **Rate card** (Admin → Billing → Rate card): real AED and USD prices; the seeded AED values are USD × 3.67 placeholders.
+- [ ] **Rate card** (Admin → Billing → Rate card): real AED and USD prices; the seeded AED values are USD × 3.67 placeholders. Items with **no price yet** (checked on dev, 13 Oct): Reel shot and edited, Long-form shot and edited, Half-day and Full-day shoot, Shoot day, and the four AI avatar items. Until they're priced, logging a portal-booked reel or long-form shoot stops with "No rate for … yet" and each line needs a manual price with a reason.
 - [ ] **Template packages** (Admin → Billing → Packages, client "Template"): AED + USD prices, inclusions, overage rates, 6-month discount % (default 10). Internal only.
 - [ ] **Suggestions** (Admin → Billing → Suggestions): on by default; minimum saving AED 500 / USD 135 a month.
 - [ ] **Bank details and VAT** (Admin → Billing → Settings): account name, bank, IBAN, SWIFT. Tick "VAT registered" only once Milkywayy is.
@@ -89,6 +89,9 @@ Portal and billing set-up in the admin (no build check; do before inviting clien
   20. `20261021090000_portal_booking_changes.sql` *(clients edit or cancel a shoot before it's shot; Cancelled status; cancelled shoots drop their unbilled line items)*
   21. `20261022090000_site_refine_location_dates.sql` *(map picker: building and community saved with bookings; listed/updated dates on public listing pages)*
   22. `20261023090000_avatar_language_versions.sql` *(AI avatars → Multilingual: language versions on avatar examples)*
+  23. `20261024090000_media_library_placements.sql` *(admin media library: categories, media type/orientation, pinned and automatic placements; additive only)*
+
+  Note: 22 and 23 are website-content migrations and are **already applied** on `milkywayy-web` (checked 13 Oct 2026); **skip them** there (23 is not re-runnable: its policies already exist and it would reset every item's "Show on Work page"). Check with `list_migrations` first.
 - [ ] **Claude** — a new `PORTAL_ADMIN_SECRET`: added to Vercel Production by CLI (never printed) and its SHA-256 stored in `private.app_secrets` under `portal_admin`. Then the security advisor.
 - [ ] **Claude** — data hygiene check (read-only): no `e2e-portal-%` users, no "E2E …" or "Milkywayy Demo Realty" accounts, no "Sample: …" listings, no test invoices. No script can create them in production: the sample-listing script refuses anything but the dev project, the Stripe preview script takes test keys only, the e2e helpers need functions that exist only in dev (`supabase/dev/`), and `supabase/seed.sql` only fills empty content tables ("on conflict do nothing").
 - [ ] **Akash decides, Claude applies** — the website's e2e test accounts (`e2e-owner@`, `e2e-editor@`, `e2e-stranger@example.com`). Recommendation: delete `e2e-owner` (a second Owner key on Claude's laptop), keep the other two for the public/editor tests; Owner-level admin tests then run on a temporary Supabase branch when needed.
@@ -144,10 +147,11 @@ adds the rest by CLI without printing them.
 **New for the portal:**
 - `PORTAL_ADMIN_SECRET` (Claude, section 2) · `PORTAL_EMAIL_FROM=Milkywayy <portal@milkywayy.com>` (Claude)
 - (A) `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` for the production token · `R2_BUCKET=milkywayy-deliverables` (Claude)
+- (A) `R2_SITE_ACCESS_KEY_ID`, `R2_SITE_SECRET_ACCESS_KEY` for the `milkywayy-media` token · `R2_SITE_BUCKET=milkywayy-media` (Claude) (section 4: without them site video uploads fail and hosted videos 404)
 - (A) `STRIPE_SECRET_KEY` = the **live** secret key (Stripe → Developers → API keys) · `STRIPE_WEBHOOK_SECRET` is stored by the live webhook script (section 7)
 - (A) `INSTAGRAM_ACCESS_TOKEN` (section 4b)
 - (A) `NEXT_PUBLIC_GOOGLE_MAPS_KEY` (section 4c) · optional `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`
-- Optional: `NEXT_PUBLIC_CAL_LINK`, `PORTAL_UPLOAD_MAX_GB` (default 5), `LEAD_WEBHOOK_URL`, `SUPABASE_SERVER_URL`.
+- Optional: `NEXT_PUBLIC_CAL_LINK`, `PORTAL_UPLOAD_MAX_GB` (default 5), `LEAD_WEBHOOK_URL`, `SUPABASE_SERVER_URL`, `NEXT_PUBLIC_SHOW_CASE_STUDIES=1` (only when case studies come back; off = hidden and 404).
 
 **Must NOT be set in Production:** `LEADS_DB`, `NEXT_PUBLIC_PORTAL_SUPABASE_URL`, `NEXT_PUBLIC_PORTAL_SUPABASE_ANON_KEY` (the portal then uses the website's project), `SHARE_DEV_MEDIA_ORIGIN`, `INSTAGRAM_GRAPH_URL` (tests only), `META_TEST_EVENT_CODE`, any `E2E_*`, `NEXT_PUBLIC_PORTAL_PHONE_SIGNIN` (unless phone sign-in comes back), any `sk_test_…` key. Live Stripe keys are refused anywhere but production (`lib/stripe.ts`), and previews only ever get test keys (`scripts/deploy-portal-preview.sh`).
 
@@ -160,7 +164,7 @@ adds the rest by CLI without printing them.
 - [ ] **Claude** — set the production env (section 5) and redeploy. The build runs the content check: if it lists anything, fix it in the admin (section 1) and redeploy.
 - [ ] **Claude** — Vercel → `milkywayy-web` → Settings → Domains: add `milkywayy.com` (primary) and `www.milkywayy.com` (redirect 308 → `milkywayy.com`). Vercel shows the exact records.
 - [ ] **Akash** — Cloudflare DNS for `milkywayy.com`: `A @ 76.76.21.21` and `CNAME www cname.vercel-dns.com` (exactly what Vercel shows), both **DNS only (grey cloud)** so Vercel can issue the certificate.
-- [ ] **Claude** — SSL check: both domains "Valid Configuration" with a certificate; `https://milkywayy.com` loads; `http://` → `https://`; `www` → apex; old paths redirect for good (`/booking`, `/book-now` → `/property-shoots#booking`; `/client-login`, `/login`, `/dashboard`, `/portal-login` → `/portal/login`; `/portfolio`, `/privacy-policy`).
+- [ ] **Claude** — SSL check: both domains "Valid Configuration" with a certificate; `https://milkywayy.com` loads; `http://` → `https://`; `www` → apex; old paths redirect for good (`/booking`, `/book-now` → `/property-shoots`; `/client-login`, `/login`, `/dashboard`, `/portal-login` → `/portal/login`; `/portfolio`, `/privacy-policy`).
 - [ ] **Akash** — Supabase Site URL `https://milkywayy.com` (section 2) if not done.
 - [ ] **Akash + Claude** — Stripe live (section 7).
 - [ ] **Akash** — Google Search Console: Domain property for `milkywayy.com` (TXT record in Cloudflare) → Sitemaps → `https://milkywayy.com/sitemap.xml` → URL inspection → request indexing for `/`. Optional: Bing Webmaster Tools import. Meta → Business settings → Domains → verify `milkywayy.com`.
@@ -183,7 +187,7 @@ adds the rest by CLI without printing them.
 - [ ] The portal on production: sign in with a test email code, create a test client in the admin, invite email arrives (in the inbox, not spam), add a past project with one file, download it as the client, make a share page and open it signed out, then delete the test client.
 
 **Akash, on his phone:**
-- [ ] Tap WhatsApp in the header, the mobile bar, a form hand-off and the booking builder; each opens the business chat.
+- [ ] Tap WhatsApp in the header, a form hand-off and an "Ask on WhatsApp" button; each opens the business chat.
 - [ ] Send one real request (Contact, reply by WhatsApp): "Ref #MW-1001", the alert email arrives, it's in Admin → Leads. Then mark it Lost or delete it.
 - [ ] Tracking: Meta Events Manager → Overview shows PageView, ViewContent, Contact, Lead (Browser + Server, deduplicated); GA4 Realtime shows page views and `generate_lead`; Clarity shows a recording within ~2 hours.
 - [ ] Open one live listing link in WhatsApp and check the preview card.

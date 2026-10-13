@@ -1880,8 +1880,13 @@
     min-width: 0;
     font-size: 14px;
     white-space: nowrap;
+    overflow: hidden;
   }
+  /* Never runs under Back / Confirm on a phone: the value shortens instead. */
   .pt-sumbar-v b {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-variant-numeric: tabular-nums;
   }
   .pt-sum-chev {
@@ -2633,6 +2638,13 @@
   @media (max-width: 559px) {
     .pt-wsteps li:not(.is-now) {
       visibility: hidden;
+    }
+    /* Only the current label shows: it may use its hidden neighbours' room ("Deliver…" before). */
+    .pt-wsteps li.is-now {
+      overflow: visible;
+    }
+    .pt-wsteps li.is-now:last-child {
+      direction: rtl;
     }
   }
   @media (min-width: 720px) {

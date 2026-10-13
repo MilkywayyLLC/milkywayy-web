@@ -202,8 +202,8 @@ test("suggestions (on by default, with minimums); a template in AED and USD; VAT
   });
 
   await page.goto("/admin/billing/rates");
-  await expect(page.getByLabel("Label reel")).toHaveValue("Short-form reel");
-  await expect(page.getByLabel("AED reel")).toBeVisible();
+  await expect(page.getByLabel("Label reel", { exact: true })).toHaveValue("Short-form reel");
+  await expect(page.getByLabel("AED reel", { exact: true })).toBeVisible();
 });
 
 test("the invoice form takes the amount from the frozen statement and warns if it differs; a bank transfer is confirmed", async ({

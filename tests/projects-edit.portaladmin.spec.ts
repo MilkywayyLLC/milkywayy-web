@@ -42,7 +42,7 @@ test("Editing board: a new batch waits under Submitted with its files", async ({
   await expect(page.getByRole("link", { name: "Editing" })).toHaveAttribute("aria-current", "page");
   const col = page.getByTestId("board").getByRole("region", { name: "Submitted" });
   await expect(col).toContainText(batch.ref);
-  await expect(col).toContainText("Short-form · 4 items · 1 file in");
+  await expect(col).toContainText("Short form (vertical reels) · 4 items · 1 file in");
   await col.getByRole("link", { name: new RegExp(batch.ref) }).click();
   await expect(page.getByTestId("files-in")).toContainText("Raw footage");
   await expect(page.getByTestId("files-in").getByRole("button", { name: "Open" })).toBeVisible();

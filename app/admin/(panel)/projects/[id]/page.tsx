@@ -418,7 +418,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                       {e.kind === "status"
                         ? `: ${statusLabel(e.from_status ?? "")} → ${statusLabel(e.to_status ?? "")}`
                         : ""}
-                      {e.note && e.kind !== "status" ? `: ${e.note}` : ""}
+                      {/* Status notes too: "Change requested", "Cancelled by the client", reasons. */}
+                      {e.note ? (e.kind === "status" ? ` · ${e.note}` : `: ${e.note}`) : ""}
                     </span>
                     <span className="ad-row-meta" style={{ display: "block" }}>
                       {e.actor_name} · {dubai(e.at, true)}

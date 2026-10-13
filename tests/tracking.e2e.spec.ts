@@ -172,17 +172,16 @@ test.describe("EU/EEA, UK, Switzerland: opt-in banner", () => {
     expect(third.length).toBeGreaterThan(0);
   });
 
-  test("the banner sits above the mobile action bar and doesn't block it @mobile-only", async ({
-    page,
-    context,
-  }) => {
+  test("the banner fits on a phone screen @mobile-only", async ({ page, context }) => {
     test.skip(!!process.env.BASE_URL, "Vercel sets the real country header");
     await stubTags(context);
     await page.goto("/production");
     const banner = page.getByRole("dialog", { name: "Cookie choice" });
     await expect(banner).toBeVisible();
     const b = (await banner.boundingBox())!;
-    const bar = (await page.locator(".mbar").boundingBox())!;
-    expect(b.y + b.height).toBeLessThanOrEqual(bar.y);
+    const vp = page.viewportSize()!;
+    expect(b.x).toBeGreaterThanOrEqual(0);
+    expect(b.x + b.width).toBeLessThanOrEqual(vp.width);
+    expect(b.y + b.height).toBeLessThanOrEqual(vp.height);
   });
 });

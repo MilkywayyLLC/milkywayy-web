@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Icon } from "@/components/portal/Icon";
 import { SpringDialog } from "@/components/interior/modal";
 import {
@@ -102,10 +111,23 @@ export function Field({
   group?: boolean;
   children: ReactNode;
 }) {
+  // A single input/select/textarea is named by the label text only; the hint or error is its
+  // description (otherwise the wrapping <label> makes them part of the field's name).
+  const id = useId();
+  const note = error ? `${id}-msg` : hint ? `${id}-hint` : undefined;
+  const control =
+    !group &&
+    isValidElement<Record<string, unknown>>(children) &&
+    ["input", "select", "textarea"].includes(children.type as string)
+      ? cloneElement(children, {
+          "aria-labelledby": children.props["aria-labelledby"] ?? `${id}-label`,
+          "aria-describedby": children.props["aria-describedby"] ?? note,
+        })
+      : children;
   const body = (
     <>
       <span className="pt-field-label">
-        {label}
+        <span id={`${id}-label`}>{label}</span>
         {required && (
           <span className="pt-req" aria-hidden="true">
             {" "}
@@ -113,9 +135,17 @@ export function Field({
           </span>
         )}
       </span>
-      {children}
-      {hint && !error && <span className="pt-meta pt-field-hint">{hint}</span>}
-      {error && <span className="pt-field-msg">{error}</span>}
+      {control}
+      {hint && !error && (
+        <span className="pt-meta pt-field-hint" id={`${id}-hint`}>
+          {hint}
+        </span>
+      )}
+      {error && (
+        <span className="pt-field-msg" id={`${id}-msg`}>
+          {error}
+        </span>
+      )}
     </>
   );
   const cls = `pt-field${error ? " is-bad" : ""}`;

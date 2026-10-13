@@ -72,7 +72,9 @@ async function book(page: Page, kind: RegExp) {
   await m.getByRole("button", { name: "Next", exact: true }).click();
   await m.getByLabel("Date").fill(today);
   await m.getByRole("button", { name: "Morning" }).click();
-  await m.getByLabel("Location", { exact: true }).fill("Marina Gate 1, Dubai Marina");
+  // With a Maps key the map picker shows (search + "Address"); without, one "Location" field.
+  const where = m.getByRole("textbox", { name: /^(Address|Location)\b/ }).first();
+  await where.fill("Marina Gate 1, Dubai Marina");
   await m.getByLabel("Access notes (optional)").fill("Concierge has the key");
   await m.getByRole("button", { name: "Next", exact: true }).click();
   return m;
@@ -113,7 +115,7 @@ test("a Member books without seeing an estimate", async ({ page }) => {
   await signInUI(page, member);
   await page.goto("/portal/shoots?new=booking");
   const m = await book(page, /Long-form walkthrough/);
-  await expect(m.getByText("Summary")).toBeVisible();
+  await expect(m.getByRole("list", { name: "Summary" })).toBeVisible();
   await expect(m.getByTestId("estimate")).toHaveCount(0);
 });
 
@@ -166,7 +168,7 @@ test("Billing: the budget card and activity; past 100% the bar is full and the w
 test("Members never see money: no Billing tab, no amounts on shoots", async ({ page }) => {
   await signInUI(page, member);
   await page.goto("/portal/billing");
-  await expect(page.getByText("Billing is for the account’s owner and admins")).toBeVisible();
+  await expect(page.getByText("Your access doesn’t include billing")).toBeVisible();
   await page.goto("/portal/shoots");
   await expect(page.locator("main")).not.toContainText("AED");
   await expect(page.getByRole("link", { name: "Billing" })).toHaveCount(0);

@@ -44,7 +44,25 @@ test.beforeAll(async () => {
     }),
   );
   await must(A.rpc("claim_my_bookings", { p_account: acme }));
-  await must(A.from("account_invites").insert({ account_id: acme, email: m, name: "Mo" }));
+  // Invites default to the Production preset (all company projects, 10 Oct 2026); this Member
+  // is invited to see only their own.
+  await must(
+    A.from("account_invites").insert({
+      account_id: acme,
+      email: m,
+      name: "Mo",
+      access: {
+        preset: "custom",
+        shoots: true,
+        editing: true,
+        avatars: true,
+        listings: true,
+        billing: false,
+        all_projects: false,
+        team: false,
+      },
+    }),
+  );
   M = await signedIn(m);
   await must(M.rpc("accept_my_invites"));
   await must(B.rpc("create_my_account", { p_type: "individual", p_name: "Bea" }));
@@ -63,7 +81,7 @@ test("a claimed booking is a project its Owner sees, with the price; nobody else
   expect(
     await must<unknown[]>(A.from("line_items").select("unit_price").eq("project_id", id)),
   ).toHaveLength(1);
-  // A Member (company set to "own projects") and a stranger see neither the project nor the price.
+  // A Member with "own projects" access and a stranger see neither the project nor the price.
   expect(await must<unknown[]>(M.from("projects").select("id").eq("id", id))).toEqual([]);
   expect(await must<unknown[]>(M.from("line_items").select("id").eq("project_id", id))).toEqual([]);
   expect(await must<unknown[]>(B.from("projects").select("id").eq("id", id))).toEqual([]);

@@ -135,7 +135,7 @@ test("Member: no Billing tab, no plan badge, no prices anywhere", async ({ page 
   ).toHaveCount(0);
   await expect(page.locator(".pt-plan")).toHaveCount(0);
   await page.goto("/portal/billing");
-  await expect(page.getByText("Billing is for the account’s owner and admins")).toBeVisible();
+  await expect(page.getByText("Your access doesn’t include billing")).toBeVisible();
   await expect(page.getByText(/AED \d/)).toHaveCount(0);
   await page.goto("/portal/editing?tab=completed");
   await expect(page.getByText(/AED \d/)).toHaveCount(0);

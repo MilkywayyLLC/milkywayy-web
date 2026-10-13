@@ -142,7 +142,7 @@ test("uploads go straight to storage (single and multipart) and download again",
   ]);
   for (const f of files) expect(f.r2_key).toMatch(new RegExp(`^projects/${p.ref}/in/`));
 
-  await page.getByRole("link", { name: "Open the batch" }).click();
+  await page.getByRole("link", { name: "Open it", exact: true }).click();
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     page.getByRole("button", { name: "Download small.txt" }).click(),

@@ -13,7 +13,6 @@ const PAGES = [
   "/ai-avatars",
   "/contact",
   "/work",
-  "/work/sample-monthly-content-for-a-brokerage",
   "/about",
   "/privacy",
   "/terms",
@@ -121,8 +120,6 @@ test("every form shows and fits at each width @mobile", async ({ page }) => {
       expect(box.x, `${w} ${path} left`).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width, `${w} ${path} right`).toBeLessThanOrEqual(w);
     }
-    await page.goto("/property-shoots");
-    await expect(page.locator("#booking .prop").first(), `${w} booking`).toBeVisible();
   }
 });
 
@@ -258,14 +255,5 @@ test.describe("keyboard", () => {
     // Submit with Enter from a text field: validation runs, errors are announced.
     await page.keyboard.press("Enter");
     await expect(form.getByRole("alert").first()).toBeVisible();
-  });
-
-  test("booking summary sheet closes with Escape @mobile-only", async ({ page }) => {
-    await page.goto("/property-shoots");
-    await page.getByRole("button", { name: "Review & send" }).click();
-    const sheet = page.getByRole("dialog", { name: "Booking summary" });
-    await expect(sheet).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(sheet).toBeHidden();
   });
 });

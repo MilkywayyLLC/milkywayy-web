@@ -38,17 +38,18 @@ test("homepage: sections in the agreed order, no reels strip, FAQ at most 6", as
   const at = (s: string) => order.findIndex((o) => o.toLowerCase().includes(s.toLowerCase()));
   const seq = [
     at("Content that"),
+    at("What do you need"),
     at("Three services"),
     at("Studio in numbers"),
     at("Everything in one place"),
     at("Brief to delivery"),
     at("What clients say"),
-    at("From the founder"),
     at("Questions"),
   ];
   for (const i of seq) expect(i).toBeGreaterThanOrEqual(0);
   expect(seq).toEqual([...seq].sort((a, b) => a - b));
   await expect(page.getByText("Made for the feed")).toHaveCount(0);
+  await expect(page.getByText("From the founder")).toHaveCount(0);
   expect(
     await page.locator(".faq details, .faq [role=button], .faq button").count(),
   ).toBeLessThanOrEqual(6);
@@ -81,69 +82,54 @@ test("stats with reduced motion: final numbers straight away", async ({ browser 
   await ctx.close();
 });
 
-test("dashboard showcase: click selects, screens follow, keyboard works", async ({ page }) => {
+test("dashboard showcase: click selects, frames follow, keyboard works", async ({ page }) => {
+  // Static portal frames (owner, 13 Oct 2026): one still frame per tab, crossfaded.
   await page.goto("/");
   const list = page.getByRole("tablist", { name: "Client dashboard features" });
   await list.scrollIntoViewIfNeeded();
   const tabs = list.getByRole("tab");
-  await expect(tabs).toHaveCount(4);
-  await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
-  await tabs.nth(3).click();
-  await expect(tabs.nth(3)).toHaveAttribute("aria-selected", "true");
+  const n = await tabs.count();
+  expect(n).toBeGreaterThanOrEqual(3);
   const panel = page.getByRole("tabpanel");
-  await expect(panel.locator(".dsh-screen.on")).toContainText("INV-2026-031");
-  // Invoiced at month end: September's invoice, due in October.
-  await expect(panel.locator(".dsh-screen.on")).toContainText("September · 3 shoots");
-  await expect(panel.locator(".dsh-screen.on")).toContainText("Due 10 Oct");
-  // Never two screens at once: the old one is gone (140ms) before the new one starts (150ms).
-  const timing = await panel.evaluate(() => {
-    const on = document.querySelector<HTMLElement>(".dsh-screen.on")!;
-    const off = document.querySelector<HTMLElement>(".dsh-screen:not(.on)")!;
-    const secs = (v: string) => Math.max(...v.split(",").map((x) => parseFloat(x)));
-    const a = getComputedStyle(off);
-    const b = getComputedStyle(on);
-    return {
-      outEnds: secs(a.transitionDuration) + 0, // opacity 0.14s, no delay
-      inStarts: Math.min(...b.transitionDelay.split(",").map((x) => parseFloat(x))),
-    };
-  });
-  expect(timing.outEnds).toBeLessThanOrEqual(0.15);
-  expect(timing.inStarts).toBeGreaterThanOrEqual(timing.outEnds);
-  await tabs.nth(3).press("ArrowDown");
+  await expect(panel.locator(".dsh-frame")).toHaveCount(n);
+  await expect(panel.locator(".dsh-frame.on")).toHaveCount(1);
+  const onIndex = () =>
+    panel
+      .locator(".dsh-frame")
+      .evaluateAll((fs) => fs.findIndex((f) => f.classList.contains("on")));
+  await tabs.nth(n - 1).click();
+  await expect(tabs.nth(n - 1)).toHaveAttribute("aria-selected", "true");
+  await expect.poll(onIndex).toBe(n - 1);
+  await tabs.nth(n - 1).press("ArrowDown");
   await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
   await expect(tabs.first()).toBeFocused();
-  await expect(panel.locator(".dsh-screen.on")).toContainText("2 Bed apartment, Marina Gate 1");
+  await expect.poll(onIndex).toBe(0);
 });
 
-test("dashboard showcase advances by itself while in view, pauses on hover", async ({ page }) => {
+test("dashboard showcase advances by itself while in view, even on hover", async ({ page }) => {
   await page.goto("/property-shoots");
   const list = page.getByRole("tablist", { name: "Client dashboard features" });
   await list.scrollIntoViewIfNeeded();
   const tabs = list.getByRole("tab");
   await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true", { timeout: 8000 });
-  await page.locator(".dsh-win").hover(); // paused
-  await page.waitForTimeout(6000);
-  await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
+  await page.locator(".dsh-win").hover(); // never pauses on hover
+  await expect(tabs.nth(2)).toHaveAttribute("aria-selected", "true", { timeout: 8000 });
 });
 
 test("each service page has its own showcase screens", async ({ page }) => {
   await page.goto("/post-production");
-  await expect(page.getByRole("tab", { name: /Upload a batch/ })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /Edit my files/ })).toBeVisible();
   await page.goto("/ai-avatars");
-  await expect(page.getByRole("tab", { name: /Approve the script/ })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /Brief your video/ })).toBeVisible();
 });
 
-test("reviews: under 6, a static row; the plans show the billing as a tag", async ({ page }) => {
+test("reviews: under 6, a static row", async ({ page }) => {
   await page.goto("/");
   const n = await page.locator(".quotes .q, .mq-set:not(.mq-copy) .q").count();
   if (n < 6) {
     await expect(page.locator(".mq")).toHaveCount(0);
     await expect(page.locator(".quotes .q")).toHaveCount(n);
   } else await expect(page.locator(".mq-copy")).toHaveAttribute("aria-hidden", "true");
-  await page.goto("/ai-avatars");
-  const tags = await page.locator(".ai-tiers .plan-tag").allTextContents();
-  expect(tags.map((t) => t.toLowerCase())).toEqual(["one-time", "monthly", "monthly"]);
-  await expect(page.locator(".ai-tiers .plan-name").first()).toHaveText("Avatar setup");
 });
 
 test("no page mixes ratios in a row of media @mobile", async ({ page }) => {

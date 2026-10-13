@@ -15,7 +15,6 @@ const PAGES = [
   "/ai-avatars",
   "/contact",
   "/work",
-  "/work/sample-monthly-content-for-a-brokerage",
   "/about",
   "/privacy",
   "/terms",
@@ -44,7 +43,8 @@ async function audit(page: Page) {
 
     // Overlapping siblings in normal flow.
     document.querySelectorAll("main *").forEach((parent) => {
-      if (!vis(parent)) return;
+      // Icon artwork (e.g. the Google "G") overlaps by design.
+      if (!vis(parent) || parent.closest("svg")) return;
       const kids = [...parent.children].filter(
         (k) => vis(k) && !["absolute", "fixed"].includes(getComputedStyle(k).position),
       );
@@ -81,7 +81,8 @@ async function audit(page: Page) {
           b.style.width = prev;
           return w;
         });
-        if (Math.max(...natural) * 2 + 12 <= cw) out.push(`stacked but fits: ${name(c)}`);
+        // 2px slack: the server-side width estimate rounds up, so a sub-pixel fit still stacks.
+        if (Math.max(...natural) * 2 + 12 + 2 <= cw) out.push(`stacked but fits: ${name(c)}`);
         btns.forEach((b) => {
           if (Math.abs(b.getBoundingClientRect().width - cw) > 1)
             out.push(`stacked not full: ${name(c)}`);

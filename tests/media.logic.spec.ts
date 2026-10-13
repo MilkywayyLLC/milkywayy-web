@@ -115,9 +115,11 @@ test("“Used on” lists exactly where an item shows", () => {
   // A sample hides once real work exists in the same place.
   const sample = item("s", { placements: ["work"], sample: true });
   expect(usedOn(sample, [sample, me])).toEqual([]);
-  // Post-production rows take the first item of each format.
+  // Post-production rows take the first item of each format; the hero fills its 3 slots with
+  // any published reel.
   const reel = item("r", { format: "reel", placements: ["post-service-cards"] });
   expect(usedOn(reel, [reel])).toEqual([
+    "Post-production → Hero",
     "Post-production → Services row (Short-form reels)",
     "Post-production → Work we've delivered (Reels)",
   ]);

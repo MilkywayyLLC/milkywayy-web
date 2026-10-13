@@ -64,7 +64,7 @@ test("tabs: every service and Listings for everyone; Billing and Team for the ow
     "Settings",
   ]);
   await expect(page.locator(".pt-plan")).toHaveText("Pay as you go");
-  await expect(page.getByText("Hello, Olivia")).toBeVisible();
+  await expect(page.locator(".pt-hello")).toHaveText("Hello, Olivia");
   await expect(page.getByRole("button", { name: /Olivia Owner: account menu/ })).toBeVisible();
   await rail(page).getByRole("link", { name: "Shoots" }).click();
   await expect(page.getByTestId("shoots")).toContainText("Marina Gate 1");
@@ -121,9 +121,10 @@ test("Team: invite by email, share it, cancel; change a role; set what members s
 test("a member sees fewer tabs, no prices, and switches accounts", async ({ page }) => {
   await signInUI(page, e.member);
   // Their own account comes first (Owner), so switch to the company.
-  await page.getByRole("button", { name: /Switch account/ }).click();
+  // The switcher lives in the account menu (12 Oct 2026).
+  await page.getByRole("button", { name: /account menu/ }).click();
   await page.getByRole("menuitemradio", { name: /Shell Homes/ }).click();
-  await expect(page.getByRole("button", { name: /Account: Shell Homes/ })).toBeVisible();
+  await expect(page.locator(".pt-switch-name")).toHaveText("Shell Homes");
   await expect(rail(page).getByRole("link")).toHaveText([
     "Home",
     "Shoots",
@@ -148,7 +149,7 @@ test("a member sees fewer tabs, no prices, and switches accounts", async ({ page
     },
   ]);
   await page.goto("/portal");
-  await expect(page.getByRole("button", { name: /Account: Max Solo/ })).toBeVisible();
+  await expect(page.locator(".pt-switch-name")).toHaveText("Max Solo");
 });
 
 test("Contacts: add, default moves, edit, remove", async ({ page }) => {
@@ -185,6 +186,11 @@ test("Contacts: add, default moves, edit, remove", async ({ page }) => {
     .locator(".pt-row", { hasText: "Karim Agent" })
     .getByRole("button", { name: "Remove" })
     .click();
+  // Removing asks first.
+  await page
+    .getByRole("alertdialog", { name: "Remove Karim Agent?" })
+    .getByRole("button", { name: "Remove" })
+    .click();
   await expect(page.getByTestId("contacts")).not.toContainText("Karim Agent");
 });
 
@@ -201,7 +207,7 @@ test("Settings: name, notifications and company details save; bad TRN is refused
   await page.getByLabel("WhatsApp number (optional)").fill("50 000 0008");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
-  await expect(page.getByText("Hello, Olivia")).toBeVisible();
+  await expect(page.locator(".pt-hello")).toHaveText("Hello, Olivia");
   await page.reload();
   await expect(page.getByLabel("WhatsApp number (optional)")).toHaveValue("500000008");
 

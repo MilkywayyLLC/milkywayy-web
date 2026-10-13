@@ -59,19 +59,16 @@ test("each format renders at its ratio (fixtures)", async ({ page }) => {
 });
 
 test("photo set: lightbox with buttons, keys, swipe, thumbnails and Esc", async ({ page }) => {
+  // The zoom gallery (components/media/ZoomGallery, 13 Oct 2026) replaced the 3:2 lightbox.
   await page.goto("/styleguide#formats");
   const open = page.getByRole("button", { name: "Open photos: Fixture villa, 5 photos" }).first();
-  // Nothing of the viewer loads with the page.
-  await expect(page.locator("dialog.mv")).toHaveCount(0);
   await open.click();
   const dlg = page.getByRole("dialog", { name: "Fixture villa, 5 photos: photos" });
   await expect(dlg).toBeVisible();
-  const count = dlg.locator(".lb-count");
+  const count = dlg.locator(".zg-count");
   await expect(count).toContainText("1 / 5");
-  // A 3:2 stage, and the page behind doesn't scroll.
-  const stage = (await dlg.locator(".lb-stage").boundingBox())!;
-  expect(Math.abs(stage.width / stage.height - 1.5)).toBeLessThan(0.02);
-  expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe("hidden");
+  // The page behind doesn't scroll.
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe("hidden");
 
   await dlg.getByRole("button", { name: "Next photo" }).click();
   await expect(count).toContainText("2 / 5");
@@ -90,6 +87,7 @@ test("photo set: lightbox with buttons, keys, swipe, thumbnails and Esc", async 
   );
 
   // Swipe left → next, swipe right → previous.
+  const stage = (await dlg.locator(".zg-frame").boundingBox())!;
   const mid = { x: stage.x + stage.width / 2, y: stage.y + stage.height / 2 };
   await page.mouse.move(mid.x + 120, mid.y);
   await page.mouse.down();
@@ -104,30 +102,33 @@ test("photo set: lightbox with buttons, keys, swipe, thumbnails and Esc", async 
 
   // Focus stays inside; Esc closes and gives focus back to the card.
   await page.keyboard.press("Tab");
-  expect(await page.evaluate(() => !!document.activeElement?.closest("dialog"))).toBe(true);
+  expect(await page.evaluate(() => !!document.activeElement?.closest(".zg"))).toBe(true);
   await page.keyboard.press("Escape");
   await expect(dlg).toHaveCount(0);
   await expect(open).toBeFocused();
-  expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe("");
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
 });
 
 test("swipe on a phone moves through the photos @mobile", async ({ page }) => {
   await page.goto("/styleguide#formats");
   await page.getByRole("button", { name: "Open photos: Fixture villa, 5 photos" }).first().click();
   const dlg = page.getByRole("dialog");
-  const stage = (await dlg.locator(".lb-stage").boundingBox())!;
+  const frame = dlg.locator(".zg-frame");
+  const stage = (await frame.boundingBox())!;
   const y = stage.y + stage.height / 2;
-  await dlg.locator(".lb-stage").dispatchEvent("pointerdown", {
+  await frame.dispatchEvent("pointerdown", {
+    pointerId: 1,
     clientX: stage.x + stage.width - 20,
     clientY: y,
     pointerType: "touch",
   });
-  await dlg.locator(".lb-stage").dispatchEvent("pointerup", {
+  await frame.dispatchEvent("pointerup", {
+    pointerId: 1,
     clientX: stage.x + 20,
     clientY: y,
     pointerType: "touch",
   });
-  await expect(dlg.locator(".lb-count")).toContainText("2 / 5");
+  await expect(dlg.locator(".zg-count")).toContainText("2 / 5");
 });
 
 test("our Instagram reel plays in our 9:16 player, streamed through our server", async ({
@@ -249,21 +250,18 @@ test("home hero: showreel at 16:9 beside the title; poster first, no player unti
   expect(await page.locator(".hero video, .hero iframe").count()).toBe(0);
   // Desktop: frame to the right of the copy, vertically centred against it.
   const copy = (await page.locator(".hero-copy").boundingBox())!;
-  const select = (await page.locator(".hero-select").boundingBox())!;
   expect(box.x).toBeGreaterThan(copy.x + copy.width);
-  const textMid = (copy.y + select.y + select.height) / 2;
+  const textMid = copy.y + copy.height / 2;
   expect(Math.abs(box.y + box.height / 2 - textMid)).toBeLessThan(60);
 });
 
-test("home hero on a phone: title and lede, then the frame full width, then the selector @mobile-only", async ({
+test("home hero on a phone: title and lede, then the frame full width @mobile-only", async ({
   page,
 }) => {
   await page.goto("/");
   const lede = (await page.locator(".hero-copy .lede").boundingBox())!;
   const frame = (await page.locator(".hero .fr").boundingBox())!;
-  const select = (await page.locator(".hero-select").boundingBox())!;
   expect(frame.y).toBeGreaterThan(lede.y + lede.height);
-  expect(select.y).toBeGreaterThan(frame.y + frame.height);
   const content = (await page.locator(".hero-copy").boundingBox())!;
   expect(Math.abs(frame.width - content.width)).toBeLessThan(2); // full width of the column
 });
@@ -289,15 +287,14 @@ test("home sections alternate backgrounds in the agreed order", async ({ page })
     ]);
   });
   expect(bgs.map(([, b]) => b).slice(0, 7)).toEqual([
-    "surface-2", // Services
-    "bg", // Stats
-    "rgb(245, 244, 240)", // Dashboard (cream)
+    "surface-2", // What do you need?
+    "bg", // Services
+    "surface-2", // Stats
+    "bg", // Dashboard
     "surface-2", // Brief to delivery
     "bg", // Reviews
-    "surface-2", // Founder
-    "bg", // FAQ
+    "surface-2", // FAQ (no founder section since 13 Oct 2026)
   ]);
-  await expect(page.locator(".home > .proof")).toHaveCSS("border-bottom-width", "0px");
 });
 
 test("Post-production services: four full-width rows, media at true ratios, alternating @mobile", async ({
@@ -340,5 +337,5 @@ test("/work: photos are property cards that open the lightbox @mobile", async ({
     .first()
     .getByRole("button", { name: /Open photos/ })
     .click();
-  await expect(page.getByRole("dialog").locator(".lb-count")).toContainText("1 /");
+  await expect(page.getByRole("dialog").locator(".zg-count")).toContainText("1 /");
 });

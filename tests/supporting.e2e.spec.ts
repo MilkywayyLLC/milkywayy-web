@@ -40,10 +40,8 @@ test("work: one tab per format, each a uniform grid at that format's ratio", asy
     for (const r of ratios) expect(Math.abs(r - ratios[0]), name).toBeLessThan(0.02);
     if (expected[name]) expect(Math.abs(ratios[0] - expected[name]), name).toBeLessThan(0.02);
   }
-  // Case study card leads to the template.
-  await page.getByRole("link", { name: "Read the case study →" }).first().click();
-  await expect(page).toHaveURL(/\/work\/.+/);
-  await expect(page.getByText("Sample case study")).toBeVisible();
+  // Case studies are hidden for now (lib/flags, 12 Oct 2026).
+  await expect(page.getByRole("link", { name: "Read the case study →" })).toHaveCount(0);
 });
 
 test("about: story, team, company details, clients @mobile", async ({ page }) => {
@@ -83,7 +81,7 @@ test("Client login opens the portal; old sign-in and booking paths redirect for 
   for (const old of ["/booking", "/book-now", "/book", "/booking/success"]) {
     const r = await request.get(old, { maxRedirects: 0 });
     expect(r.status(), old).toBe(301);
-    expect(r.headers().location, old).toMatch(/\/property-shoots#booking$/);
+    expect(r.headers().location, old).toMatch(/\/property-shoots$/);
   }
   // No more clickable mockup.
   expect((await request.get("/portal-preview/home", { maxRedirects: 0 })).status()).toBe(404);

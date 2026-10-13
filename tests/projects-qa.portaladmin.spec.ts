@@ -176,7 +176,7 @@ test("photo upload makes a preview; removing a published file asks first", async
   // Removing it after publishing needs a confirmation.
   await page.reload();
   await page.getByTestId("deliveries").getByRole("button", { name: "Remove" }).click();
-  const dialog = page.getByRole("dialog", { name: "Remove “living.png”?" });
+  const dialog = page.getByRole("alertdialog", { name: "Remove “living.png”?" });
   await expect(dialog).toContainText("already published");
   await dialog.getByRole("button", { name: "Remove it" }).click();
   await expect(page.getByTestId("deliveries")).not.toContainText("living.png");

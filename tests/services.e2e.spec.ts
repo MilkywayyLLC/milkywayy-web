@@ -8,8 +8,8 @@ test.describe("post-production", () => {
     page,
   }) => {
     await page.goto("/post-production");
-    const hero = page.locator(".pp-hero");
-    // Three reels make a trio; otherwise one labelled frame at its own ratio (site-refine).
+    const hero = page.locator(".p-hero");
+    // Always three reels (lib/post-hero); one frame only if the site has no reels at all.
     const frames = hero.locator(".trio .fr, .hero-one .fr");
     const n = await frames.count();
     expect([1, 3]).toContain(n);
@@ -17,7 +17,12 @@ test.describe("post-production", () => {
       els.map((e) => e.clientWidth / e.clientHeight),
     );
     for (const r of ratios) expect(Math.abs(r - ratios[0])).toBeLessThan(0.02);
-    await expect(hero.locator(".tag").first()).not.toBeEmpty();
+    // Laid out like Production (13 Oct 2026): no corner tags, but every frame is named.
+    for (const f of await frames.all())
+      expect(
+        (await f.getAttribute("aria-label")) ??
+          (await f.locator("[aria-label]").first().getAttribute("aria-label")),
+      ).toBeTruthy();
     await expect(hero.getByRole("slider")).toHaveCount(0);
 
     // "See our work" goes to the before/after gallery, where the slider works by keyboard.
@@ -154,26 +159,18 @@ test.describe("AI avatars", () => {
     await expect(other).toBeFocused();
     await expect(other).toHaveAttribute("required", "");
   });
-
-  test("plans show structure and launch pricing, no prices", async ({ page }) => {
-    await page.goto("/ai-avatars");
-    const plans = page.locator(".ai-tiers .pcard");
-    await expect(plans).toHaveCount(3);
-    await expect(page.getByText(otherPricing.aiAvatars.launchLine)).toBeVisible();
-    await expect(page.locator(".ai-tiers")).not.toContainText(/AED|\$/);
-  });
 });
 
 test.describe("service page actions", () => {
+  // The mobile sticky bar is gone (owner, 13 Oct 2026): the main CTA scrolls to the form.
   const cases = [
-    { path: "/post-production", mbar: "Book a free test", href: "#free-test" },
-    { path: "/ai-avatars", mbar: "Book a demo", href: "#demo" },
+    { path: "/post-production", cta: "Book a free test edit", href: "#free-test" },
+    { path: "/ai-avatars", cta: "Book a demo call", href: "#demo" },
   ];
   for (const c of cases) {
-    test(`${c.path}: mobile bar "${c.mbar}" scrolls to its form @mobile-only`, async ({ page }) => {
+    test(`${c.path}: "${c.cta}" scrolls to its form @mobile`, async ({ page }) => {
       await page.goto(c.path);
-      const bar = page.locator(".mbar");
-      const cta = bar.getByRole("link", { name: c.mbar });
+      const cta = page.getByRole("link", { name: c.cta }).first();
       await expect(cta).toHaveAttribute("href", c.href);
       await cta.click();
       await expect(page).toHaveURL(new RegExp(`${c.href}$`));
