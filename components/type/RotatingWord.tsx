@@ -3,7 +3,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 /**
- * A word that cycles through `words` every 3s with a short slide + fade (home hero, 13 Oct 2026).
+ * A word that cycles through `words` like a combination-lock dial (home hero, 13 Oct 2026): each
+ * holds about 1.2s, then the next rolls up into place (450ms) as the last rolls away.
  * `children` is the longest word: it sits invisibly in the same grid cell, so the line keeps its
  * width and height whatever word shows (no layout shift), and HeroTitle fits the line to it.
  * The server and first paint show words[0]. Paused while the tab is hidden; with reduced motion
@@ -19,7 +20,7 @@ export function RotatingWord({ words, children }: { words: string[]; children: R
     let timer = 0;
     const start = () => {
       window.clearInterval(timer);
-      if (!document.hidden) timer = window.setInterval(() => setN((c) => c + 1), 3000);
+      if (!document.hidden) timer = window.setInterval(() => setN((c) => c + 1), 1650);
     };
     start();
     document.addEventListener("visibilitychange", start);
@@ -32,6 +33,11 @@ export function RotatingWord({ words, children }: { words: string[]; children: R
   return (
     <span className="rot" aria-hidden="true">
       <span className="rot-size">{children}</span>
+      {n > 0 && (
+        <span className="rot-word" key={n - 1} data-out>
+          {words[(n - 1) % words.length]}
+        </span>
+      )}
       <span className="rot-word" key={n} data-moved={n > 0 || undefined}>
         {words[i]}
       </span>
