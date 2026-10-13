@@ -6,15 +6,26 @@ import { createHash, createHmac } from "node:crypto";
  * presigned URLs instead: PUTs for the admin's uploads (one per part, so big files go up in 16 MB
  * pieces and can resume), GETs for clients' downloads.
  *
- *   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+ * Two buckets on the same account: portal files (client deliveries, uploads, invoices) and the
+ * website's own media. A key under `site/` (admin video uploads, served by /media/file/…) always
+ * goes to the site bucket; every other key to the portal bucket (24 Oct 2026).
+ *
+ *   R2_ACCOUNT_ID                                                   both (one endpoint)
+ *   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET               portal
+ *   R2_SITE_ACCESS_KEY_ID, R2_SITE_SECRET_ACCESS_KEY, R2_SITE_BUCKET website
  */
-const cfg = () => ({
-  account: process.env.R2_ACCOUNT_ID ?? "",
-  key: process.env.R2_ACCESS_KEY_ID ?? "",
-  secret: process.env.R2_SECRET_ACCESS_KEY ?? "",
-  bucket: process.env.R2_BUCKET ?? "",
-});
-export const r2Ready = () => Object.values(cfg()).every(Boolean);
+export type Store = "portal" | "site";
+export const storeOf = (key: string): Store => (key.startsWith("site/") ? "site" : "portal");
+const cfg = (store: Store = "portal") => {
+  const site = store === "site";
+  return {
+    account: process.env.R2_ACCOUNT_ID ?? "",
+    key: (site ? process.env.R2_SITE_ACCESS_KEY_ID : process.env.R2_ACCESS_KEY_ID) ?? "",
+    secret: (site ? process.env.R2_SITE_SECRET_ACCESS_KEY : process.env.R2_SECRET_ACCESS_KEY) ?? "",
+    bucket: (site ? process.env.R2_SITE_BUCKET : process.env.R2_BUCKET) ?? "",
+  };
+};
+export const r2Ready = (store: Store = "portal") => Object.values(cfg(store)).every(Boolean);
 
 export const PART_SIZE = 16 * 1024 * 1024;
 
@@ -26,15 +37,15 @@ const enc = (s: string) =>
     /[!'()*]/g,
     (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
   );
-const path = (key: string) => `/${cfg().bucket}/${key.split("/").map(enc).join("/")}`;
+const path = (key: string) => `/${cfg(storeOf(key)).bucket}/${key.split("/").map(enc).join("/")}`;
 const host = () => `${cfg().account}.r2.cloudflarestorage.com`;
 
 function stamp(at = new Date()) {
   const amz = at.toISOString().replace(/[:-]|\.\d{3}/g, "");
   return { amz, day: amz.slice(0, 8) };
 }
-function signingKey(day: string) {
-  return hmac(hmac(hmac(hmac(`AWS4${cfg().secret}`, day), "auto"), "s3"), "aws4_request");
+function signingKey(day: string, secret: string) {
+  return hmac(hmac(hmac(hmac(`AWS4${secret}`, day), "auto"), "s3"), "aws4_request");
 }
 const canonicalQuery = (q: Record<string, string>) =>
   Object.keys(q)
@@ -50,7 +61,7 @@ export function presign(
   extra: Record<string, string> = {},
   at?: Date,
 ) {
-  const c = cfg();
+  const c = cfg(storeOf(key));
   const { amz, day } = stamp(at);
   const scope = `${day}/auto/s3/aws4_request`;
   const q: Record<string, string> = {
@@ -63,7 +74,7 @@ export function presign(
   };
   const qs = canonicalQuery(q);
   const canon = [method, path(key), qs, `host:${host()}\n`, "host", "UNSIGNED-PAYLOAD"].join("\n");
-  const sig = createHmac("sha256", signingKey(day))
+  const sig = createHmac("sha256", signingKey(day, c.secret))
     .update(["AWS4-HMAC-SHA256", amz, scope, sha(canon)].join("\n"))
     .digest("hex");
   return `https://${host()}${path(key)}?${qs}&X-Amz-Signature=${sig}`;
@@ -71,7 +82,7 @@ export function presign(
 
 /** A signed server-side request (create/complete/abort multipart, list parts, delete). */
 async function call(method: string, key: string, q: Record<string, string> = {}, body = "") {
-  const c = cfg();
+  const c = cfg(storeOf(key));
   const { amz, day } = stamp();
   const scope = `${day}/auto/s3/aws4_request`;
   const payload = sha(body);
@@ -90,7 +101,7 @@ async function call(method: string, key: string, q: Record<string, string> = {},
     names.join(";"),
     payload,
   ].join("\n");
-  const sig = createHmac("sha256", signingKey(day))
+  const sig = createHmac("sha256", signingKey(day, c.secret))
     .update(["AWS4-HMAC-SHA256", amz, scope, sha(canon)].join("\n"))
     .digest("hex");
   const res = await fetch(`https://${host()}${path(key)}${qs ? `?${qs}` : ""}`, {
@@ -177,7 +188,7 @@ const SIX_HOURS = 6 * 3600 * 1000;
  */
 export function pageMediaUrl(key: string | null | undefined) {
   if (!key) return null;
-  if (!r2Ready()) {
+  if (!r2Ready(storeOf(key))) {
     const dev = process.env.SHARE_DEV_MEDIA_ORIGIN;
     return dev ? `${dev.replace(/\/$/, "")}/${key.split("/").map(enc).join("/")}` : null;
   }
@@ -193,7 +204,7 @@ export function pageMediaUrl(key: string | null | undefined) {
 
 /** Read an object on the server (e.g. the share-preview image); null if it isn't there. */
 export async function getObject(key: string) {
-  if (!r2Ready()) return null;
+  if (!r2Ready(storeOf(key))) return null;
   const res = await fetch(presign("GET", key, 60));
   return res.ok ? res : null;
 }

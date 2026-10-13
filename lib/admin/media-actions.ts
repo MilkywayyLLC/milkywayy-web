@@ -29,7 +29,7 @@ export async function startSiteVideoUpload(
     return { ok: false, error: "Videos can be up to 150 MB. Export a shorter or smaller file." };
   const ext = type === "video/quicktime" ? "mov" : type === "video/webm" ? "webm" : "mp4";
   const key = `site/${folder}/${crypto.randomUUID()}.${ext}`;
-  if (r2Ready()) return { ok: true, url: presign("PUT", key, 3600), ref: `r2:${key}` };
+  if (r2Ready("site")) return { ok: true, url: presign("PUT", key, 3600), ref: `r2:${key}` };
   // Local runs without R2 (tests): the dev media origin stands in for the bucket.
   const dev = process.env.SHARE_DEV_MEDIA_ORIGIN;
   if (dev && process.env.NEXT_PUBLIC_SITE_ENV !== "production")
