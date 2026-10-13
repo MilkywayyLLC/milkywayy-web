@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { CTABand } from "@/components/blocks/CTABand";
 import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
 import { FAQ } from "@/components/blocks/FAQ";
-import { FounderBlock } from "@/components/blocks/FounderBlock";
 import { NeedSelector, type Need } from "@/components/blocks/NeedSelector";
 import { ProofStrip } from "@/components/blocks/ProofStrip";
 import { rowMedia, ServiceRow } from "@/components/blocks/ServiceRow";
@@ -287,12 +286,6 @@ export default async function HomePage() {
             </div>
           </section>
         )}
-
-        <section className="sec" id="founder" aria-label="From the founder">
-          <div className="w">
-            <FounderBlock founder={site.founder} />
-          </div>
-        </section>
 
         <section className="sec" aria-label="Questions">
           <div className="w">
