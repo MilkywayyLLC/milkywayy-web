@@ -306,6 +306,8 @@
   }
   .nav {
     display: flex;
+    flex-wrap: nowrap;
+    white-space: nowrap;
     gap: 4px;
     font-size: 14.5px;
     font-weight: 500;
@@ -340,7 +342,7 @@
   .menu-btn {
     display: none;
   }
-  @media (max-width: 1020px) {
+  @media (max-width: 1199px) {
     .nav,
     .login {
       display: none;
@@ -991,9 +993,28 @@
     .door {
       grid-template-columns: 1fr;
     }
-    .door-media {
-      order: -1;
+    .door-media,
+    .door.flip .door-media {
+      order: 0;
     }
+  }
+  .door-ph {
+    place-items: center;
+    border: 1px dashed var(--line);
+    border-radius: var(--r, 12px);
+    background: color-mix(in srgb, var(--fg) 4%, transparent);
+    color: var(--muted);
+    font: 500 12px/1 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    aspect-ratio: 3 / 2;
+  }
+  .door-ph.f-long-form {
+    aspect-ratio: 16 / 9;
+  }
+  .door-ph.f-reel,
+  .door-ph.f-ai-avatar {
+    aspect-ratio: 9 / 16;
   }
 
   /* ---------- chips ---------- */
@@ -3981,12 +4002,12 @@
   }
   .fg-win {
     overflow: hidden;
-    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 44px), transparent);
-    mask-image: linear-gradient(180deg, #000 calc(100% - 44px), transparent);
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - var(--fade, 44px)), transparent);
+    mask-image: linear-gradient(180deg, #000 calc(100% - var(--fade, 44px)), transparent);
   }
   .fg-win.more {
     overflow-y: auto;
-    overscroll-behavior: contain;
+    overscroll-behavior: auto;
     -webkit-mask-image: none;
     mask-image: none;
     scrollbar-width: thin;

@@ -185,7 +185,13 @@ export function DashboardShowcase({
 
   return (
     <div ref={root} className="dsh">
-      <div ref={list} className="dsh-list" role="tablist" aria-label={label} aria-orientation="vertical">
+      <div
+        ref={list}
+        className="dsh-list"
+        role="tablist"
+        aria-label={label}
+        aria-orientation="vertical"
+      >
         {features.map((f, i) => {
           const on = i === active;
           return (
@@ -507,7 +513,11 @@ function BookSteps({ step }: { step: 1 | 2 | 3 }) {
         const n = i + 1;
         const state = n < step ? "done" : n === step ? "current" : "next";
         return (
-          <li key={label} data-state={state} aria-current={state === "current" ? "step" : undefined}>
+          <li
+            key={label}
+            data-state={state}
+            aria-current={state === "current" ? "step" : undefined}
+          >
             <span className="pt-wiz-dot" aria-hidden="true">
               {state === "done" ? <Icon name="check" size={14} /> : n}
             </span>

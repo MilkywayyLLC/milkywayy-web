@@ -217,6 +217,7 @@ export default async function HomePage() {
                 cta="Explore production"
                 href="/production"
                 media={rowMedia(rowOf(rowProd[0]?.id))}
+                placeholder="long-form"
               />
               <ServiceRow
                 kicker="02 · Post-production · Worldwide"
@@ -231,6 +232,7 @@ export default async function HomePage() {
                 cta="Explore post-production"
                 href="/post-production"
                 media={rowMedia(rowOf(rowPost[0]?.id))}
+                placeholder="photo"
                 flip
               />
               <ServiceRow
@@ -245,6 +247,7 @@ export default async function HomePage() {
                 cta="Explore AI avatars"
                 href="/ai-avatars"
                 media={rowMedia(rowOf(rowAv[0]?.id))}
+                placeholder="reel"
               />
             </div>
           </div>

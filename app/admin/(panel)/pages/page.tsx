@@ -75,22 +75,25 @@ export default async function PagesPage({
   const block = (d: PlacementDef, over?: Partial<PBlock>): PBlock => {
     const standalone = !!d.standalone;
     if (d.source === "before-after") {
-      const pin = st.pins.find((p) => p.section === d.key);
-      const pair = pin && pairs.find((p) => p.id === pin.item_id && p.published);
+      // Slot 0 = Before photo, slot 1 = After photo, both library photos.
+      const pins = st.pins.filter((p) => p.section === d.key && p.slot < 2);
+      const halves = pins.filter((p) => lib.some((x) => x.id === p.item_id));
+      const oldPair = pins.find((p) => p.slot === 0 && pairs.some((x) => x.id === p.item_id));
       return {
         key: d.key,
         title: d.title,
         rule: ruleText(d),
         ratio: "3:2",
-        count: 1,
+        count: 2,
         kind: "hero",
         mode: "manual",
-        legacy: pair ? undefined : d.legacy,
-        slots: pair ? [{ slot: 0, id: pair.id, pinned: true }] : [],
-        candidates: pairs.filter((p) => p.published).map((p) => p.id),
-        lookup: "pairs",
-        uploadHref: "/admin/before-after/new",
+        legacy: halves.length || oldPair ? undefined : d.legacy,
+        slots: halves.map((p) => ({ slot: p.slot, id: p.item_id, pinned: true })),
+        candidates: lib.filter((x) => x.mediaType === "photo").map((x) => x.id),
+        lookup: "lib",
+        uploadHref: "/admin/portfolio/new",
         path: d.path,
+        pair: true,
         ...over,
       };
     }
@@ -125,9 +128,12 @@ export default async function PagesPage({
     const b = block(def, {
       title: "Hero",
       kind: "hero",
-      count: t.slots,
+      count: template === "ba" ? 2 : t.slots,
       ratio: t.ratio,
-      rule: `${t.label} · ${t.ratio} · ${t.slots === 1 ? "1 slot" : `${t.slots} slots`} · picked by hand`,
+      rule:
+        template === "ba"
+          ? `${t.label} · ${t.ratio} · Before photo + After photo · picked by hand`
+          : `${t.label} · ${t.ratio} · ${t.slots === 1 ? "1 slot" : `${t.slots} slots`} · picked by hand`,
       hero: {
         page: tab.page,
         template,

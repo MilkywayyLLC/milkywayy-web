@@ -56,6 +56,8 @@ export type PBlock = {
   /** Ids a hand pick may choose: any item of a compatible type. */
   candidates: string[];
   lookup: "lib" | "pairs";
+  /** Before/after hero: two fields, slot 0 Before photo and slot 1 After photo. */
+  pair?: boolean;
   uploadHref: string;
   path: string;
   hero?: {
@@ -255,15 +257,19 @@ function HeroBlock({
           Nothing picked: the page shows {b.legacy} until you pick something here.
         </p>
       )}
-      <div className="ad-pl-slots" data-ratio={b.ratio}>
+      <div className="ad-pl-slots ad-pl-hero" data-ratio={b.ratio}>
         {Array.from({ length: b.count }, (_, slot) => {
           const s = at.get(slot);
           const it = s ? lookup.get(s.id) : undefined;
           return (
             <div key={slot} className="ad-pl-slot" data-pinned={s ? true : undefined}>
+              {b.pair && (
+                <span className="ad-pl-field">{slot === 0 ? "Before photo" : "After photo"}</span>
+              )}
               <Thumb it={it} label={`${b.ratio}`} />
               <span className="ad-pl-name" title={it?.title}>
-                {slot + 1}. {it ? it.title : "Empty"}
+                {b.pair ? "" : `${slot + 1}. `}
+                {it ? it.title : "Empty"}
               </span>
               <div className="ad-pl-actions">
                 <button
@@ -281,7 +287,7 @@ function HeroBlock({
                   <button
                     type="button"
                     className="ad-btn quiet small"
-                    aria-label={`Remove slot ${slot + 1}`}
+                    aria-label={`Remove ${b.pair ? (slot === 0 ? "before" : "after") + " photo" : `slot ${slot + 1}`}`}
                     disabled={pending}
                     onClick={() => run(() => unpinSlot(b.key, slot), "Removed.")}
                   >
@@ -515,7 +521,9 @@ function Picker({
   onChoose: (id: string) => void;
 }) {
   const ids = new Set(picking?.block.candidates ?? []);
-  const taken = new Set(picking?.block.slots.map((s) => s.id));
+  const taken = new Set(
+    picking?.block.slots.filter((s) => s.slot !== picking.slot).map((s) => s.id),
+  );
   const list = lookup.filter((i) => ids.has(i.id) && !taken.has(i.id));
 
   return (
@@ -529,7 +537,12 @@ function Picker({
       {picking && (
         <div className="ad-dialog-body">
           <h2 className="ad-h2" id="pl-pick-title">
-            {picking.block.title}: slot {picking.slot + 1}
+            {picking.block.title}:{" "}
+            {picking.block.pair
+              ? picking.slot === 0
+                ? "Before photo"
+                : "After photo"
+              : `slot ${picking.slot + 1}`}
           </h2>
           <p className="ad-pl-rule">
             Any{" "}

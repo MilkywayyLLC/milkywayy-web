@@ -17,6 +17,8 @@ type Layout = {
   sizes: string;
   /** Window variant: rows visible before "See more". */
   rows?: number;
+  /** Fraction of the next row left showing (faded) under the window; default a 44px sliver. */
+  peek?: number;
 };
 
 /**
@@ -26,7 +28,8 @@ type Layout = {
  * - "page" (/work, Post-production): photos 2 per row, reels and AI avatars 3 (2 on phones, each
  *   card at most 78vh tall, the grid centred), long-form 2, 360 tours one large card per row.
  * - "window" (Property shoots): a symmetrical grid inside a fixed-height window showing two rows
- *   of photos or one row of reels, with "See more" to scroll inside it; the page doesn't grow.
+ *   of photos or one row of reels, or one 360 tour and a half; "See more" scrolls inside it (and hands the wheel
+ *   back to the page at either end); the page doesn't grow.
  * Tabs without items are hidden.
  */
 const REEL_SIZES = "(max-width: 900px) 33vw, 360px";
@@ -48,7 +51,13 @@ const LAYOUTS: Record<"page" | "window", Record<GalleryTab, Layout>> = {
       sizes: "(max-width: 560px) 100vw, 50vw",
       rows: 2,
     },
-    "360": { kind: "360", cols: [2, 2, 1], sizes: "(max-width: 560px) 100vw, 50vw", rows: 2 },
+    "360": {
+      kind: "360",
+      cols: [1, 1, 1],
+      sizes: "(max-width: 1200px) 100vw, 1200px",
+      rows: 1,
+      peek: 0.5,
+    },
   },
 };
 
@@ -122,7 +131,7 @@ export function FormatGallery({
         />
       )}
       {variant === "window" ? (
-        <Window key={tab} rows={layout.rows ?? 2}>
+        <Window key={tab} rows={layout.rows ?? 2} peek={layout.peek}>
           {grid}
         </Window>
       ) : (
@@ -136,9 +145,18 @@ export function FormatGallery({
  * A fixed-height window onto a grid: `rows` full rows and a faded sliver of the next. "See more"
  * turns on scrolling inside the window. Grids of that many rows or fewer show in full.
  */
-function Window({ rows, children }: { rows: number; children: React.ReactNode }) {
+function Window({
+  rows,
+  peek,
+  children,
+}: {
+  rows: number;
+  peek?: number;
+  children: React.ReactNode;
+}) {
   const box = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState<number | null>(null);
+  const [fade, setFade] = useState(44);
   const [more, setMore] = useState(false);
 
   useEffect(() => {
@@ -150,13 +168,15 @@ function Window({ rows, children }: { rows: number; children: React.ReactNode })
       const tops = [...new Set(cards.map((c) => c.offsetTop))].sort((a, b) => a - b);
       if (tops.length <= rows) return setHeight(null);
       const next = cards.find((c) => c.offsetTop === tops[rows])!;
-      setHeight(Math.round(tops[rows] - tops[0] + Math.min(44, next.offsetHeight * 0.25)));
+      const sliver = peek ? next.offsetHeight * peek : Math.min(44, next.offsetHeight * 0.25);
+      setFade(Math.round(sliver));
+      setHeight(Math.round(tops[rows] - tops[0] + sliver));
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(grid);
     return () => ro.disconnect();
-  }, [rows]);
+  }, [rows, peek]);
 
   const windowed = height !== null;
   return (
@@ -164,7 +184,7 @@ function Window({ rows, children }: { rows: number; children: React.ReactNode })
       <div
         ref={box}
         className={windowed ? (more ? "fg-win more" : "fg-win") : undefined}
-        style={windowed ? { height } : undefined}
+        style={windowed ? ({ height, "--fade": `${fade}px` } as CSSProperties) : undefined}
         tabIndex={windowed && more ? 0 : undefined}
       >
         {children}

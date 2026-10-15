@@ -1581,6 +1581,29 @@
   .ad-pl-slots[data-ratio="3:2"] .ad-pl-thumb {
     aspect-ratio: 3 / 2;
   }
+  .ad-pl-slots.ad-pl-hero {
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  }
+  .ad-pl-slots.ad-pl-hero[data-ratio="3:2"] {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+  /* A hero slot's buttons stack full-width under its thumbnail, so they never overlap. */
+  .ad-pl-slot > .ad-pl-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ad-pl-slot > .ad-pl-actions > .ad-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+  }
+  .ad-pl-field {
+    font: 500 11px/1.2 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
   .ad-pl-empty {
     display: grid;
     place-items: center;

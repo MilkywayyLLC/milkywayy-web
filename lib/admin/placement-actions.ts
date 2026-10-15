@@ -60,8 +60,13 @@ export async function pinItem(section: string, slot: number, itemId: string): Pr
     const def = placementByKey(section);
     if (!def || !Number.isInteger(slot) || slot < 0 || slot > 500)
       return { ok: false, error: "Unknown slot." };
-    const table = def.source === "before-after" ? "before_after" : "portfolio_items";
-    const { data: item } = await db.from(table).select("id").eq("id", itemId).maybeSingle();
+    // A before/after hero takes two library photos: slot 0 Before, slot 1 After.
+    if (def.source === "before-after" && slot > 1) return { ok: false, error: "Unknown slot." };
+    const { data: item } = await db
+      .from("portfolio_items")
+      .select("id")
+      .eq("id", itemId)
+      .maybeSingle();
     if (!item) return { ok: false, error: "That item no longer exists." };
     // One slot per item within a section.
     const clear = await db

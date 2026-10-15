@@ -321,9 +321,27 @@ async function avatarHeroPlaced(): Promise<AvatarHero> {
 /** The pinned before/after pair for the Property shoots hero, if one is pinned. */
 export async function getPinnedPair() {
   const { st } = await placementState();
-  const pin = st.pins.find((p) => p.section === "property-hero-pair");
-  return pin
-    ? (await getBeforeAfter()).find((p) => p.id === pin.item_id && p.published)
+  // Slot 0 = Before photo, slot 1 = After photo (library photos picked in Admin → Pages). An older
+  // pin of a whole before/after pair in slot 0 alone still works.
+  const at = (slot: number) =>
+    st.pins.find((p) => p.section === "property-hero-pair" && p.slot === slot)?.item_id;
+  const [b, a] = [at(0), at(1)];
+  if (!b) return undefined;
+  if (!a) return (await getBeforeAfter()).find((p) => p.id === b && p.published);
+  const all = await getPortfolio();
+  const before = all.find((p) => p.id === b);
+  const after = all.find((p) => p.id === a);
+  return before && after
+    ? {
+        id: "hero-pair",
+        published: true,
+        sortOrder: 0,
+        tab: "Hero",
+        title: "Before / after",
+        description: "",
+        before: before.media,
+        after: after.media,
+      }
     : undefined;
 }
 

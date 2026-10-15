@@ -34,7 +34,7 @@ export default async function EditItem({ params, searchParams }: Props) {
     // "Upload new" from Admin → Pages: that section's type, orientation and category, and
     // the slot the new item takes once saved ("<section>:<slot>").
     const def = key === "portfolio" ? placementByKey(String(place ?? "").split(":")[0]) : undefined;
-    if (def && def.source !== "before-after") {
+    if (def) {
       // "<section>:<slot>:<hero template>": a hero's template decides the type and orientation.
       const tpl = String(place).split(":")[2];
       const t = def.hero && isHeroTemplate(tpl) ? HERO_TEMPLATES[tpl] : undefined;

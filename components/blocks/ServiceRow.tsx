@@ -20,8 +20,8 @@ const SIZES: Partial<Record<MediaKind, string>> = {
 /**
  * Full-width service rows (Home "Three services. One studio.", Post-production "Anything on your
  * plate."): copy, a price line and ONE media item at its own format's ratio (photo 3:2, reel and
- * AI avatar 9:16, long-form 16:9). Rows alternate the media left and right (`flip`); on phones
- * the media sits on top. The media plays in place (shared player); only the copy links to the page.
+ * AI avatar 9:16, long-form 16:9). Rows alternate the media right, left, right (`flip` on the second); on phones
+ * the copy comes first, then the media. A row without media shows a placeholder card. The media plays in place (shared player); only the copy links to the page.
  */
 export function ServiceRow({
   kicker,
@@ -32,6 +32,7 @@ export function ServiceRow({
   href,
   media,
   flip,
+  placeholder = "photo",
 }: {
   kicker: string;
   title: string;
@@ -41,6 +42,8 @@ export function ServiceRow({
   href: string;
   media?: RowMedia;
   flip?: boolean;
+  /** Shape of the placeholder card shown while the row has no media yet. */
+  placeholder?: MediaKind;
 }) {
   return (
     <div className={flip ? "door flip" : "door"}>
@@ -51,6 +54,11 @@ export function ServiceRow({
         <span className="price">{price}</span>
         <span className="lnk">{cta} →</span>
       </Link>
+      {!media && (
+        <div className={`door-media door-ph f-${placeholder}`} aria-hidden="true">
+          <span>Media coming soon</span>
+        </div>
+      )}
       {media && (
         <div className={`door-media f-${media.kind}`}>
           <MediaFrame

@@ -13,7 +13,7 @@ import type { Tone } from "@/content/types";
 import { Logo } from "./Logo";
 
 /**
- * Sticky header in the page's tone (it sits inside the [data-tone] wrapper). Under 1020px the nav
+ * Sticky header in the page's tone (it sits inside the [data-tone] wrapper). Under 1200px the nav
  * collapses to logo + Get a quote + menu, which opens a full-screen menu (guide §5).
  *
  * While the menu is open: page scroll is locked, every fixed bottom bar is hidden
