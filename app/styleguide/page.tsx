@@ -455,7 +455,7 @@ export default async function StyleguidePage() {
                     }
                     sizes="240px"
                   >
-                    {f.play && <MediaOpen play={f.play} preview={kindOf(f) === "reel"} />}
+                    {f.play && <MediaOpen play={f.play} />}
                   </MediaFrame>
                   <figcaption style={{ fontSize: 13 }}>{f.title}</figcaption>
                   {f.instagramLink && (
@@ -759,7 +759,6 @@ export default async function StyleguidePage() {
             <FormatGallery
               items={propertyShown}
               tabs={["photo", "reel", "long-form", "360"]}
-              captions={false}
             />
             <DashboardShowcase features={SHOWCASE.property} />
             <CompareTable
@@ -833,7 +832,6 @@ export default async function StyleguidePage() {
                 media={{
                   media: { alt: "Placeholder: short-form edit", placeholder: "night" },
                   kind: "reel",
-                  video: true,
                 }}
                 flip
               />

@@ -1,48 +1,32 @@
 "use client";
 
-import { useState } from "react";
 import { fileVideoUrl, isFileVideo } from "@/lib/media-ref";
+import type { Playable } from "@/lib/playable";
 import { embedUrl } from "@/lib/video";
+import { MediaOpen } from "./MediaOpen";
 
 /**
- * Plays in place (the showreel, the AI avatars hero): a square play button over the poster; the
- * player loads only on click (guide §2 "Video"), so the poster is all the page loads. Takes a
- * YouTube/Vimeo link or a file we host ("r2:<key>"). Render inside a MediaFrame. Without a
- * playable video it renders nothing interactive, so a placeholder never shows a dead button.
+ * A video that plays in its own frame (the showreel, the AI avatars hero): the shared player
+ * (MediaOpen) over the poster. Takes a YouTube/Vimeo link or a file we host ("r2:<key>").
+ * Renders nothing when there is no playable video. Render inside a MediaFrame.
  */
-export function LiteVideo({ video, title }: { video?: string; title: string }) {
-  const [playing, setPlaying] = useState(false);
-  const file = isFileVideo(video) ? fileVideoUrl(video!) : null;
-  const src = file ?? (video ? embedUrl(video) : null);
-  if (!src) return <span className="play" aria-hidden="true" style={{ opacity: 0.55 }} />;
-  if (playing) {
-    const fill = {
-      position: "absolute",
-      inset: 0,
-      width: "100%",
-      height: "100%",
-      border: 0,
-      zIndex: 6,
-      background: "#000",
-    } as const;
-    return file ? (
-      <video src={file} title={title} controls autoPlay playsInline style={fill} />
-    ) : (
-      <iframe
-        src={src}
-        title={title}
-        allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-        allowFullScreen
-        style={fill}
-      />
-    );
+export function LiteVideo({
+  video,
+  title,
+  ratio = "16 / 9",
+  poster,
+}: {
+  video?: string;
+  title: string;
+  ratio?: string;
+  poster?: string;
+}) {
+  if (!video) return null;
+  let play: Playable | undefined;
+  if (isFileVideo(video)) play = { type: "file", title, src: fileVideoUrl(video), ratio, poster };
+  else {
+    const src = embedUrl(video);
+    if (src) play = { type: "embed", title, src, ratio };
   }
-  return (
-    <button
-      type="button"
-      className="play"
-      aria-label={`Play ${title}`}
-      onClick={() => setPlaying(true)}
-    />
-  );
+  return play ? <MediaOpen play={play} /> : null;
 }

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { MediaFrame } from "@/components/media/MediaFrame";
 import type { Media } from "@/content/types";
 import type { MediaKind } from "@/lib/media-config";
+import { isLocked, setSoundOn, useSound } from "./sound";
 
 export type CarouselAvatar = {
   id: string;
@@ -33,8 +34,8 @@ const WHEEL_PX = 60;
  * - `mode="auto"` (AI avatars): advances every 1.2s with a 300ms ease-out and the centre card's
  *   clip plays muted on loop. A manual move pauses it; it resumes after 4s idle.
  * - `mode="pick"` (Production recent work): posters only, slowly advancing. Choosing a card
- *   (click, drag, swipe) stops the auto-advance, centres it and plays its video muted, with
- *   mute and pause controls. Auto-advance resumes when the section leaves the viewport and comes
+ *   (click, drag, swipe) stops the auto-advance, centres it and plays its video, with
+ *   sound (the shared site-wide sound state) and pause controls. Auto-advance resumes when the section leaves the viewport and comes
  *   back, or 8s after the video ends.
  *
  * Pauses off-screen. Reduced motion: no auto-advance.
@@ -211,7 +212,10 @@ function CentreVideo({
   onEnded: () => void;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
-  const [muted, setMuted] = useState(true);
+  // "pick" (controls) uses the site-wide sound state; the looping "auto" deck stays muted.
+  const sound = useSound();
+  const muted = !(controls && sound.unlocked && sound.on);
+  const wasLocked = useRef(false);
   const [paused, setPaused] = useState(false);
   useEffect(() => {
     ref.current?.play().catch(() => setPaused(true));
@@ -249,9 +253,10 @@ function CentreVideo({
             type="button"
             aria-label={muted ? "Unmute" : "Mute"}
             aria-pressed={!muted}
+            onPointerDown={() => (wasLocked.current = isLocked())}
             onClick={(e) => {
               e.stopPropagation();
-              setMuted((m) => !m);
+              setSoundOn(wasLocked.current ? true : !sound.on);
             }}
           >
             {muted ? "Sound off" : "Sound on"}

@@ -70,8 +70,8 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
     },
     {
       icon: "bell",
-      title: "Confirmed",
-      text: "No payment now. We confirm the slot, usually within the hour.",
+      title: "Request sent",
+      text: "No payment now. We confirm the slot by email, usually within the hour.",
       screen: "confirmed",
     },
     {

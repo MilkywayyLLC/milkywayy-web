@@ -20,6 +20,7 @@ export function MediaFrame({
   topLeft,
   tag,
   tagRight,
+  title,
   badge,
   play,
   small,
@@ -39,6 +40,8 @@ export function MediaFrame({
   topLeft?: string;
   tag?: string;
   tagRight?: string;
+  /** The item's title, bottom-left (photos show it on hover). */
+  title?: string;
   /** A small label in the top-left corner, e.g. "360°" or "24 photos". */
   badge?: string;
   /** Decorative play icon (a real control comes from MediaOpen / LiteVideo children). */
@@ -102,6 +105,7 @@ export function MediaFrame({
           {tagRight && <span>{tagRight}</span>}
         </span>
       )}
+      {title && <span className="fr-title">{title}</span>}
       {children}
     </div>
   );

@@ -717,8 +717,13 @@
   .p-hero .stack {
     gap: 24px;
   }
+  /* Production and Post-production: a narrower text column so the three reels get ~40% more width. */
+  .p-hero.p-hero-wide {
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+  }
   @media (max-width: 900px) {
-    .p-hero {
+    .p-hero,
+    .p-hero.p-hero-wide {
       grid-template-columns: 1fr;
     }
   }
@@ -789,31 +794,38 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
+  /* One continuous line on every width: the list is doubled and slides left (the copy is hidden
+     from assistive tech). Reduced motion: a static row that scrolls by hand. */
+  .clients {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  }
+  .clients-track {
+    width: max-content;
+    animation: proof-marquee 40s linear infinite;
+  }
+  .clients-row {
+    flex-wrap: nowrap;
+    padding-right: 32px;
+  }
+  .clients-dup {
+    display: flex;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .clients-track {
+      animation: none;
+    }
+  }
   @media (max-width: 760px) {
     .proof-in {
       flex-wrap: wrap;
     }
     .clients {
       flex-basis: 100%;
-      overflow: hidden;
-      -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-      mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
     }
     .clients-track {
-      width: max-content;
-      animation: proof-marquee 32s linear infinite;
-    }
-    .clients-row {
-      flex-wrap: nowrap;
-      padding-right: 32px;
-    }
-    .clients-dup {
-      display: flex;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .clients-track {
-        animation: none;
-      }
+      animation-duration: 32s;
     }
   }
   @keyframes proof-marquee {
@@ -911,6 +923,8 @@
   .door-copy {
     display: grid;
     gap: 14px;
+    color: inherit;
+    text-decoration: none;
   }
   .door .k {
     font: 500 12px/1 var(--font-mono);
@@ -951,7 +965,7 @@
       padding-block: clamp(40px, 5vw, 72px);
     }
   }
-  .door:hover .lnk {
+  .door-copy:hover .lnk {
     text-decoration: underline;
     text-underline-offset: 4px;
   }
@@ -3900,36 +3914,40 @@
     color: var(--muted);
     white-space: nowrap;
   }
-  .fg-grid.cols-3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .fg-grid.cols-2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .fg-grid.strip {
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(200px, 260px);
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    padding-bottom: 10px;
-    scrollbar-width: thin;
-  }
-  .fg-grid.strip figure {
-    scroll-snap-align: start;
+  .fg-grid {
+    position: relative;
+    grid-template-columns: repeat(var(--c, 3), minmax(0, 1fr));
   }
   @media (max-width: 900px) {
-    .fg-grid.cols-3 {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+    .fg-grid {
+      grid-template-columns: repeat(var(--ct, 2), minmax(0, 1fr));
     }
   }
   @media (max-width: 560px) {
-    .fg-grid.cols-3,
-    .fg-grid.cols-2 {
-      grid-template-columns: 1fr;
+    .fg-grid {
+      grid-template-columns: repeat(var(--cp, 1), minmax(0, 1fr));
     }
-    .fg-grid.strip {
-      grid-auto-columns: 62vw;
-    }
+  }
+  /* Property shoots: a fixed-height window (set from the grid's rows) with the third row faded. */
+  .fg-win-wrap {
+    display: grid;
+    gap: 16px;
+    justify-items: center;
+  }
+  .fg-win-wrap > div {
+    width: 100%;
+  }
+  .fg-win {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 90px), transparent);
+    mask-image: linear-gradient(180deg, #000 calc(100% - 90px), transparent);
+  }
+  .fg-win.more {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-mask-image: none;
+    mask-image: none;
+    scrollbar-width: thin;
   }
   .cs-cards {
     display: grid;
@@ -4305,6 +4323,82 @@
   }
   .fr-open .play {
     pointer-events: none;
+  }
+  /* Hover/tap area over a card; holds the open button and the speaker. */
+  .fr-hit {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+  }
+  .fr-snd {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 6;
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    color: #f5f4f0;
+    background: rgba(17, 17, 17, 0.6);
+    backdrop-filter: blur(4px);
+    cursor: pointer;
+  }
+  .fr-snd:focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+  }
+  .fr-inline {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    z-index: 6;
+    background: #000;
+  }
+  /* The item's title, bottom-left; photos show it on hover (always on touch screens). */
+  .fr-title {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 12px;
+    z-index: 5;
+    pointer-events: none;
+    color: #f5f4f0;
+    font: 600 14px/1.3 var(--font-sans);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .fr[data-kind="photo"] .fr-title {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .fr[data-kind="photo"]:hover .fr-title,
+  .fr[data-kind="photo"]:focus-within .fr-title {
+    opacity: 1;
+  }
+  @media (hover: none) {
+    .fr[data-kind="photo"] .fr-title {
+      opacity: 1;
+    }
+  }
+  .fr.clean:has(.fr-title)::after {
+    display: block;
+    background: linear-gradient(180deg, transparent 65%, rgba(0, 0, 0, 0.5));
+  }
+  @media (max-width: 767px) {
+    .mv-tour .mv-stage {
+      aspect-ratio: auto !important;
+      width: 100%;
+      height: 100%;
+    }
   }
   .fr-preview {
     position: absolute;

@@ -83,7 +83,8 @@ export default async function PropertyShootsPage() {
   const whatsapp = pageWhatsappLink("Property shoots", site.whatsapp.number);
   const [heroItems, samples] = await Promise.all([
     withPlayback(oneFormat(hero).items),
-    withPlayback([...photos, ...videos, ...tours]),
+    // Up to nine photos, so the grid ends on a full row.
+    withPlayback([...photos.slice(0, 9), ...videos, ...tours]),
   ]);
   const d = pricing.delivery;
   const services: Included[] = [
@@ -171,7 +172,7 @@ export default async function PropertyShootsPage() {
             items={samples}
             tabs={["photo", "reel", "long-form", "360"]}
             label="Sample type"
-            captions={false}
+            variant="window"
           />
         </div>
       </section>

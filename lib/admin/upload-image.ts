@@ -5,14 +5,28 @@
 export const IMAGE_MAX_BYTES = 15 * 1024 * 1024;
 const PRE_EDGE = 2560;
 
-async function shrink(file: File): Promise<Blob> {
+/** With `ratio` (width / height) the image is first cropped, centred, to that ratio. */
+async function shrink(file: File, ratio?: number): Promise<Blob> {
   try {
     const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
-    const scale = Math.min(1, PRE_EDGE / Math.max(bmp.width, bmp.height));
+    let sx = 0;
+    let sy = 0;
+    let sw = bmp.width;
+    let sh = bmp.height;
+    if (ratio && Math.abs(sw / sh / ratio - 1) > 0.01) {
+      if (sw / sh > ratio) {
+        sw = Math.round(sh * ratio);
+        sx = Math.round((bmp.width - sw) / 2);
+      } else {
+        sh = Math.round(sw / ratio);
+        sy = Math.round((bmp.height - sh) / 2);
+      }
+    }
+    const scale = Math.min(1, PRE_EDGE / Math.max(sw, sh));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bmp.width * scale);
-    canvas.height = Math.round(bmp.height * scale);
-    canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    canvas.width = Math.round(sw * scale);
+    canvas.height = Math.round(sh * scale);
+    canvas.getContext("2d")!.drawImage(bmp, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.9));
     if (blob) return blob;
   } catch {}
@@ -44,9 +58,14 @@ export function imageProblem(file: File) {
   return null;
 }
 
-export async function uploadImage(file: File, onProgress: (p: number | "shrink") => void) {
+/** Any shape is accepted; with `ratio` it is auto-cropped to it (the focal point can adjust). */
+export async function uploadImage(
+  file: File,
+  onProgress: (p: number | "shrink") => void,
+  ratio?: number,
+) {
   onProgress("shrink");
-  const blob = await shrink(file);
+  const blob = await shrink(file, ratio);
   onProgress(0);
   return post(blob, onProgress);
 }

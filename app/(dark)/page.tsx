@@ -11,7 +11,6 @@ import { Testimonials } from "@/components/blocks/Testimonials";
 import { Ctas } from "@/components/ui/Ctas";
 import { LiteVideo } from "@/components/media/LiteVideo";
 import { RotatingWord } from "@/components/type/RotatingWord";
-import { Timecode } from "@/components/media/Timecode";
 import { MediaFrame } from "@/components/media/MediaFrame";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
@@ -33,6 +32,7 @@ import {
 } from "@/lib/data";
 import { formatNumber, formatUSD } from "@/lib/format";
 import { lowestShootPrice } from "@/lib/pricing";
+import { withPlayback } from "@/lib/playable";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { pageMetadata } from "@/lib/seo/meta";
 import { placedShowcase, SHOWCASE } from "@/lib/showcase";
@@ -116,7 +116,12 @@ export default async function HomePage() {
     getOtherPricing(),
     getPortfolio(),
   ]);
-  const [showreel, showcase] = await Promise.all([getShowreel(), getPlaced("showcase-photos")]);
+  const [showreel, showcase, rows] = await Promise.all([
+    getShowreel(),
+    getPlaced("showcase-photos"),
+    withPlayback([rowProd[0], rowPost[0], rowAv[0]].filter((i) => i !== undefined)),
+  ]);
+  const rowOf = (id?: string) => rows.find((r) => r.id === id);
 
   const shootsFrom = lowestShootPrice(property);
   const photoRate = other.postProduction.rates.find((r) => r.key === "photo");
@@ -158,14 +163,15 @@ export default async function HomePage() {
                 <MediaFrame
                   media={showreel}
                   kind="showreel"
-                  topLeft="4K · 25P"
-                  timecode={<Timecode start="00:14:08" />}
-                  tag="Showreel 2026"
-                  tagRight={showreel.duration}
+                  corners={false}
                   priority
                   sizes="(max-width: 900px) 100vw, 640px"
                 >
-                  <LiteVideo video={showreel.video} title="Milkywayy showreel" />
+                  <LiteVideo
+                    video={showreel.video}
+                    title="Milkywayy showreel"
+                    poster={showreel.src}
+                  />
                 </MediaFrame>
                 {showreelIsSample && <SampleLabel>Placeholder · showreel coming</SampleLabel>}
               </div>
@@ -210,7 +216,7 @@ export default async function HomePage() {
                 }
                 cta="Explore production"
                 href="/production"
-                media={rowMedia(rowProd[0])}
+                media={rowMedia(rowOf(rowProd[0]?.id))}
               />
               <ServiceRow
                 kicker="02 · Post-production · Worldwide"
@@ -224,7 +230,7 @@ export default async function HomePage() {
                 }
                 cta="Explore post-production"
                 href="/post-production"
-                media={rowMedia(rowPost[0])}
+                media={rowMedia(rowOf(rowPost[0]?.id))}
                 flip
               />
               <ServiceRow
@@ -238,7 +244,7 @@ export default async function HomePage() {
                 }
                 cta="Explore AI avatars"
                 href="/ai-avatars"
-                media={rowMedia(rowAv[0])}
+                media={rowMedia(rowOf(rowAv[0]?.id))}
               />
             </div>
           </div>

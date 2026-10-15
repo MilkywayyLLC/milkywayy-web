@@ -101,12 +101,6 @@ const RECENT = [
   ["Brands", "Product, team and launch content"],
 ] as const;
 
-const CATEGORY: Record<string, string> = {
-  property: "Property",
-  brand: "Brand",
-  "holiday-home": "Holiday home",
-};
-
 export default async function ProductionPage() {
   const [site, clients, proof, faqs, hero, other, property, recent] = await Promise.all([
     getSiteSettings(),
@@ -118,14 +112,11 @@ export default async function ProductionPage() {
     getPropertyPricing(),
     getPlaced("production-recent"),
   ]);
-  // Placements → Production · Recent work: 9:16 reels, the centre one plays muted.
+  // Placements → Production · Recent work: 9:16 reels, the chosen one plays.
   const reels = recent.items.map((p) => ({
     id: p.id,
     name: p.title,
-    industry:
-      (p.meta ?? "").split("·")[0].trim() ||
-      CATEGORY[p.categoryId ?? p.category] ||
-      (p.client ?? ""),
+    industry: p.title,
     poster: p.media,
     src: isFileVideo(p.media.video) ? fileVideoUrl(p.media.video!) : undefined,
   }));
@@ -137,7 +128,7 @@ export default async function ProductionPage() {
     <>
       <PageLd page="production" />
       <div className="w">
-        <section className="p-hero" aria-labelledby="production-title">
+        <section className="p-hero p-hero-wide" aria-labelledby="production-title">
           <div className="stack">
             <Eyebrow rec>Production · UAE</Eyebrow>
             <HeroTitle

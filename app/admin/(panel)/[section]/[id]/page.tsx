@@ -44,7 +44,7 @@ export default async function EditItem({ params, searchParams }: Props) {
         orientation: orientation ?? null,
         category_id: category,
         ...legacyFields(type, orientation, category),
-        show_on_work: true,
+        show_on_work: !def.standalone,
         _place: place,
       });
     }

@@ -79,23 +79,14 @@ export default async function AiAvatarsPage() {
   // versions stay in the admin, unused here.
   const [ml] = await withPlayback(mlItems.slice(0, 1));
   const whatsapp = pageWhatsappLink("AI avatars", site.whatsapp.number);
-  // The carousel plays hosted files inline; a linked clip shows its poster.
-  // From Placements → Avatar carousel; the AI avatars list while that section has no pins.
-  const deck = carousel.legacy
-    ? avatars.map((a) => ({
-        id: a.id,
-        name: a.name,
-        industry: a.niche.split("·")[0].trim(),
-        poster: a.poster,
-        src: isFileVideo(a.clip) ? fileVideoUrl(a.clip!) : undefined,
-      }))
-    : carousel.items.map((p) => ({
-        id: p.id,
-        name: p.title,
-        industry: (p.meta ?? p.client ?? "").split("·")[0].trim(),
-        poster: p.media,
-        src: isFileVideo(p.media.video) ? fileVideoUrl(p.media.video!) : undefined,
-      }));
+  // Placements → Avatar styles carousel: its own slots, never filled from the library.
+  const deck = carousel.items.map((p) => ({
+    id: p.id,
+    name: p.title,
+    industry: (p.meta ?? p.client ?? "").split("·")[0].trim(),
+    poster: p.media,
+    src: isFileVideo(p.media.video) ? fileVideoUrl(p.media.video!) : undefined,
+  }));
   // The Plans section is off the page (12 Oct 2026); its data and admin entries stay.
 
   return (
@@ -204,7 +195,8 @@ export default async function AiAvatarsPage() {
                 }
               }
               kind="long-form"
-              play={ml && !ml.play ? "icon" : undefined}
+              corners={false}
+              title={ml?.title}
               sizes="(max-width: 760px) 100vw, 600px"
             >
               {ml?.play && <MediaOpen play={ml.play} />}

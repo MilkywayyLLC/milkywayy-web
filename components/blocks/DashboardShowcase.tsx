@@ -464,10 +464,10 @@ function YourWork() {
 
 /* ---------------- Book media and the shoot booking ---------------- */
 
+/** "Book media": Shoot and Editing, each with its icon (components/portal/StartRequests). */
 const TILES = [
-  ["Shoot", "Property, reels or a long-form walkthrough"],
-  ["Editing", "Send us your photos or footage"],
-  ["AI avatar video", "A video with an AI presenter"],
+  ["shoots", "Shoot", "Property, reels or a long-form walkthrough"],
+  ["scissors", "Editing", "Send us your photos or footage"],
 ] as const;
 
 function BookMedia() {
@@ -477,11 +477,16 @@ function BookMedia() {
         <Modal title="Book media">
           <div className="pt-form">
             <b style={{ fontSize: 18 }}>What do you need?</b>
-            <div className="pt-tiles pt-tiles-lg">
-              {TILES.map(([t, hint]) => (
-                <span key={t} className="pt-tile">
-                  <b>{t}</b>
-                  <small>{hint}</small>
+            <div className="pt-pick">
+              {TILES.map(([icon, t, hint]) => (
+                <span key={t} className="pt-pick-tile">
+                  <span className="pt-pick-ic" aria-hidden="true">
+                    <Icon name={icon} size={22} />
+                  </span>
+                  <span className="pt-pick-txt">
+                    <b>{t}</b>
+                    <small>{hint}</small>
+                  </span>
                 </span>
               ))}
             </div>
@@ -494,19 +499,41 @@ function BookMedia() {
   );
 }
 
+/** The wizard rail: done = check, current = outlined, next = muted (BookingModal). */
 function BookSteps({ step }: { step: 1 | 2 | 3 }) {
   return (
-    <ol className="pt-book-steps">
-      <li aria-current={step === 1 ? "step" : undefined}>1 · Shoot type</li>
-      <li aria-current={step === 2 ? "step" : undefined}>2 · When and where</li>
-      <li aria-current={step === 3 ? "step" : undefined}>3 · Summary</li>
+    <ol className="pt-wiz" aria-label="Steps">
+      {["Shoot type", "When and where", "Summary"].map((label, i) => {
+        const n = i + 1;
+        const state = n < step ? "done" : n === step ? "current" : "next";
+        return (
+          <li key={label} data-state={state} aria-current={state === "current" ? "step" : undefined}>
+            <span className="pt-wiz-dot" aria-hidden="true">
+              {state === "done" ? <Icon name="check" size={14} /> : n}
+            </span>
+            <span className="pt-wiz-label">{label}</span>
+          </li>
+        );
+      })}
     </ol>
   );
 }
 
-function BookFoot({ next = "Next" }: { next?: string }) {
+/** The footer: the summary bar on the left, Back / Next on the right (BookingModal). */
+function BookFoot({ next = "Next", summary }: { next?: string; summary?: string }) {
   return (
     <>
+      {summary && (
+        <div className="pt-sumbar">
+          <div className="pt-sumbar-toggle">
+            <span className="pt-sumbar-k">Summary</span>
+            <span className="pt-sumbar-v">
+              {summary}
+              <span className="pt-sum-chev" aria-hidden="true" />
+            </span>
+          </div>
+        </div>
+      )}
       <span className="btn btn-g btn-s">Back</span>
       <span className="btn btn-p btn-s">{next}</span>
     </>
@@ -533,7 +560,7 @@ function BookProperty({ pricing }: { pricing?: PropertyPricing }) {
   return (
     <Portal
       modal={
-        <Modal title="Book a shoot" footer={<BookFoot />}>
+        <Modal title="Book a shoot" footer={<BookFoot summary="2 items" />}>
           <div className="pt-form">
             <BookSteps step={1} />
             {pricing ? <RealOptions pricing={pricing} /> : <ShootType />}
@@ -565,7 +592,7 @@ function BookWhere() {
   return (
     <Portal
       modal={
-        <Modal title="Book a shoot" footer={<BookFoot />}>
+        <Modal title="Book a shoot" footer={<BookFoot summary="2 items" />}>
           <div className="pt-form">
             <BookSteps step={2} />
             <div className="pt-grid2">
@@ -630,27 +657,53 @@ function ShootHead({ status, at }: { status: string; at: number }) {
   );
 }
 
+/** The thank-you screen after Confirm (BookingModal `done`). */
 function Confirmed() {
   return (
-    <Portal tab="Shoots">
-      <ShootHead status="Confirmed" at={1} />
-      <section className="pt-card">
-        <ul className="pt-summary">
-          <li>
-            <span>What</span>
-            <b>Property shoot · Photography, short-form video</b>
-          </li>
-          <li>
-            <span>When</span>
-            <b>Thu, 16 Oct · Morning, 9:30 am</b>
-          </li>
-          <li>
-            <span>Where</span>
-            <b>Marina Gate 1, Dubai Marina · Apt 2304</b>
-          </li>
-        </ul>
-        <span className="pt-meta">Confirmed. Photos in 24 hours, videos in 48–72 hours.</span>
-      </section>
+    <Portal
+      modal={
+        <Modal
+          title="Book a shoot"
+          footer={
+            <>
+              <span className="btn btn-g btn-s">Done</span>
+              <span className="btn btn-p btn-s">View in Shoots</span>
+            </>
+          }
+        >
+          <div className="pt-done">
+            <span className="pt-done-ic" aria-hidden="true">
+              <Icon name="check" size={28} />
+            </span>
+            <b className="pt-done-h">Thanks — your booking request is in</b>
+            <p className="pt-done-p">We’ll confirm your slot shortly by email.</p>
+            <ul className="pt-summary pt-done-card">
+              <li>
+                <span>Booking ID</span>
+                <b className="pt-mono">MW-1424</b>
+              </li>
+              <li>
+                <span>Shoot type</span>
+                <b>Property</b>
+              </li>
+              <li>
+                <span>Property and services</span>
+                <b>2 Bed apartment · Photography, short-form video</b>
+              </li>
+              <li>
+                <span>Date and slot</span>
+                <b>Thu, 16 Oct · Morning</b>
+              </li>
+              <li>
+                <span>Location</span>
+                <b>Marina Gate 1, Dubai Marina · Apt 2304</b>
+              </li>
+            </ul>
+          </div>
+        </Modal>
+      }
+    >
+      <YourWork />
     </Portal>
   );
 }

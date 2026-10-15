@@ -1,6 +1,5 @@
 import { MediaFrame } from "@/components/media/MediaFrame";
 import { MediaOpen } from "@/components/media/MediaOpen";
-import type { PortfolioFormat } from "@/content/types";
 import { kindOf } from "@/lib/media-config";
 import type { Shown } from "@/lib/playable";
 
@@ -11,11 +10,9 @@ import type { Shown } from "@/lib/playable";
  */
 export function HeroMedia({
   items,
-  labels,
   trioSizes,
 }: {
   items: Shown[];
-  labels?: Record<PortfolioFormat, string>;
   trioSizes: string;
 }) {
   if (items.length > 1)
@@ -27,8 +24,8 @@ export function HeroMedia({
             media={m.media}
             kind="reel"
             small
-            play={m.play ? undefined : "icon"}
-            tag={labels?.[m.format]}
+            corners={false}
+            title={m.title}
             priority={i === 1}
             sizes={trioSizes}
           >
@@ -45,9 +42,8 @@ export function HeroMedia({
       <MediaFrame
         media={one.media}
         kind={kind}
-        tag={labels?.[one.format]}
-        play={one.play || kind === "photo" || kind === "360" ? undefined : "icon"}
-        badge={kind === "360" ? "360°" : undefined}
+        corners={false}
+        title={one.title}
         priority
         sizes="(max-width: 900px) 100vw, 45vw"
       >

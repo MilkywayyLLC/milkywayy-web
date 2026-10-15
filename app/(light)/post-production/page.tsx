@@ -20,7 +20,7 @@ import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Hl, SectionHead } from "@/components/ui/Section";
 import type { Media } from "@/content/types";
 import { kindOf } from "@/lib/media-config";
-import { withPlayback } from "@/lib/playable";
+import { videoPlayable, withPlayback } from "@/lib/playable";
 import {
   getAvatars,
   getBeforeAfter,
@@ -133,10 +133,9 @@ export default async function PostProductionPage() {
   };
   // Each row takes the first placed item of its own format (lib/used-on POST_ROWS).
   const media = (k: "photo" | "reel" | "long-form"): RowMedia =>
-    rowMedia(cardMedia.find((m) => kindOf(m) === k)) ?? {
+    rowMedia(work.find((m) => m.id === cardMedia.find((c) => kindOf(c) === k)?.id)) ?? {
       media: PLACEHOLDER[k],
       kind: k,
-      video: k !== "photo",
     };
 
   const rows: Row[] = [
@@ -181,7 +180,13 @@ export default async function PostProductionPage() {
           bright: true,
         },
         kind: "ai-avatar",
-        video: !!avatars[0]?.clip,
+        title: avatars[0]?.name,
+        play: videoPlayable(
+          avatars[0]?.clip,
+          avatars[0]?.name ?? "AI avatar",
+          "ai-avatar",
+          avatars[0]?.poster.src,
+        ),
       },
     },
   ];
@@ -190,7 +195,7 @@ export default async function PostProductionPage() {
     <>
       <PageLd page="post-production" />
       <div className="w">
-        <section className="p-hero" aria-labelledby="post-title">
+        <section className="p-hero p-hero-wide" aria-labelledby="post-title">
           <div className="stack">
             <Eyebrow>Post-production · Worldwide</Eyebrow>
             <HeroTitle id="post-title" line1="Your remote" line2={<Hl>edit team.</Hl>} />

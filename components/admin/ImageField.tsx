@@ -5,14 +5,14 @@ import type { Media } from "@/content/types";
 import type { VideoFolder } from "@/lib/admin/fields";
 import { imageProblem, uploadImage } from "@/lib/admin/upload-image";
 import { isInstagramUrl } from "@/lib/instagram-link";
-import { isFileVideo, MEDIA, type MediaKind } from "@/lib/media-config";
+import { isFileVideo, MEDIA, ratioOf, type MediaKind } from "@/lib/media-config";
 import { embedUrl, VIDEO_HINT, VIDEO_REFUSED } from "@/lib/video";
 import { FocalCrop, imageWarnings, MediaFacts, VideoUpload, Warnings } from "./MediaParts";
 
 /**
  * One image (Media JSON) for a known format (lib/media-config): upload (WebP, 15 MB), alt text,
- * a live crop at the format's ratio with a draggable focal point, warnings when the file is
- * small or far off the ratio, and "Shown at / Recommended export / Used on". With `video` it
+ * any shape accepted and auto-cropped (centred) to the format's ratio, a live crop with a
+ * draggable focal point to adjust, a warning when the file is small, and "Shown at / Recommended export / Used on". With `video` it
  * also takes the video: a YouTube/Vimeo link, or (with `upload`) a file optimised and stored in R2.
  */
 export function ImageField({
@@ -54,7 +54,7 @@ export function ImageField({
     const bad = imageProblem(file);
     if (bad) return setProblem(bad);
     try {
-      const r = await uploadImage(file, setBusy);
+      const r = await uploadImage(file, setBusy, ratioOf(kind));
       const next: Media = {
         ...m,
         src: r.src,

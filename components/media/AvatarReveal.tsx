@@ -48,14 +48,21 @@ export function AvatarStage({ hero, priority }: { hero: AvatarHero; priority?: b
     <div className="av-stage">
       <MediaFrame
         media={hero.poster}
-        timecode={hero.timecode}
+        corners={false}
         priority={priority}
         sizes="(max-width: 860px) 100vw, 50vw"
       >
         <p className="caption">
           “{hero.captionLead} <b>{hero.captionHighlight}</b>”
         </p>
-        {hero.clip && <LiteVideo video={hero.clip} title={`${hero.name}, AI presenter`} />}
+        {hero.clip && (
+          <LiteVideo
+            video={hero.clip}
+            title={`${hero.name}, AI presenter`}
+            ratio="4 / 5"
+            poster={hero.poster.src}
+          />
+        )}
       </MediaFrame>
       <div className={on ? "reveal on" : "reveal"} id={id} aria-live="polite">
         <div aria-hidden={!on}>

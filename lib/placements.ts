@@ -53,6 +53,8 @@ export interface PlacementDef {
   source?: "library" | "before-after";
   /** While manual with no pins, the page keeps its previous source (described here). */
   legacy?: string;
+  /** Its own slots: items uploaded here start with "Show on Work page" off. */
+  standalone?: boolean;
 }
 
 const ALL: MediaType[] = ["photo", "video", "avatar", "tour"];
@@ -122,6 +124,18 @@ export const HEROES: PlacementDef[] = [
     count: 1,
     ratio: "16:9",
     hero: true,
+    standalone: true,
+  },
+  {
+    key: "avatars-carousel",
+    page: "AI avatars",
+    path: "/ai-avatars",
+    title: "Avatar styles carousel",
+    rule: { types: ["avatar"], orientation: "9:16" },
+    count: 5,
+    ratio: "9:16",
+    hero: true,
+    standalone: true,
   },
 ];
 
@@ -221,16 +235,6 @@ export const SECTIONS: PlacementDef[] = [
     rule: { types: ["photo", "video", "avatar"], categories: ["editing"] },
     count: 9,
     ratio: "3:2 / 9:16 / 16:9",
-  },
-  {
-    key: "avatars-carousel",
-    page: "AI avatars",
-    path: "/ai-avatars",
-    title: "Avatar carousel",
-    rule: { types: ["avatar"], orientation: "9:16" },
-    count: 5,
-    ratio: "9:16",
-    legacy: "the AI avatars list",
   },
   {
     key: "work",
