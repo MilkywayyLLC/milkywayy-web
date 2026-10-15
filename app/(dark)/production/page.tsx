@@ -12,8 +12,8 @@ import { LeadForm } from "@/components/forms/LeadForm";
 import { HeroMedia } from "@/components/blocks/HeroMedia";
 import { AvatarCarousel } from "@/components/media/AvatarCarousel";
 import { fileVideoUrl, isFileVideo } from "@/lib/media-ref";
+import { HERO_TEMPLATES } from "@/lib/placements";
 import { withPlayback } from "@/lib/playable";
-import { oneFormat } from "@/lib/media";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -22,6 +22,7 @@ import {
   getClients,
   getFaqs,
   getOtherPricing,
+  getHeroTemplate,
   getPlaced,
   getPortfolio,
   getPropertyPricing,
@@ -102,7 +103,7 @@ const RECENT = [
 ] as const;
 
 export default async function ProductionPage() {
-  const [site, clients, proof, faqs, hero, other, property, recent] = await Promise.all([
+  const [site, clients, proof, faqs, hero, other, property, recent, template] = await Promise.all([
     getSiteSettings(),
     getClients(),
     showsProofStrip("production"),
@@ -111,6 +112,7 @@ export default async function ProductionPage() {
     getOtherPricing(),
     getPropertyPricing(),
     getPlaced("production-recent"),
+    getHeroTemplate("Production"),
   ]);
   // Placements → Production · Recent work: 9:16 reels, the chosen one plays.
   const reels = recent.items.map((p) => ({
@@ -120,7 +122,7 @@ export default async function ProductionPage() {
     poster: p.media,
     src: isFileVideo(p.media.video) ? fileVideoUrl(p.media.video!) : undefined,
   }));
-  const heroItems = await withPlayback(oneFormat(hero).items);
+  const heroItems = await withPlayback(hero.slice(0, HERO_TEMPLATES[template].slots));
   const whatsapp = pageWhatsappLink("Production", site.whatsapp.number);
   const from = formatNumber(other.production.fromMonthly);
 
@@ -128,7 +130,11 @@ export default async function ProductionPage() {
     <>
       <PageLd page="production" />
       <div className="w">
-        <section className="p-hero p-hero-wide" aria-labelledby="production-title">
+        <section
+          className={template === "v3" ? "p-hero p-hero-wide" : "p-hero"}
+          data-hero={template}
+          aria-labelledby="production-title"
+        >
           <div className="stack">
             <Eyebrow rec>Production · UAE</Eyebrow>
             <HeroTitle
@@ -155,7 +161,11 @@ export default async function ProductionPage() {
               </span>
             </div>
           </div>
-          <HeroMedia items={heroItems} trioSizes="(max-width: 900px) 33vw, 15vw" />
+          <HeroMedia
+            items={heroItems}
+            trioSizes="(max-width: 900px) 33vw, 15vw"
+            template={template as Exclude<typeof template, "ba">}
+          />
         </section>
       </div>
 

@@ -93,6 +93,7 @@ export type PortfolioPlacement =
   | "home-row-avatars"
   | "production-hero"
   | "property-hero"
+  | "property-hero-media"
   | "property-gallery-photo"
   | "property-gallery-video"
   | "property-gallery-360"

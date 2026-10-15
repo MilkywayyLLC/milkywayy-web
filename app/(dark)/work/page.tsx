@@ -26,7 +26,7 @@ export default async function WorkPage() {
   return (
     <>
       <PageLd page="work" />
-      <section className="sec alt" aria-label="Portfolio">
+      <section className="sec alt work-sec" aria-label="Portfolio">
         <div className="w">
           <h1 className="sr">Work</h1>
           {hasSamples && (

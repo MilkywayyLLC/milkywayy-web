@@ -28,8 +28,8 @@ const GROUPS: { title: string; items: Item[] }[] = [
   {
     title: "Content",
     items: [
-      { href: "/admin/portfolio", label: "Portfolio" },
-      { href: "/admin/placements", label: "Placements" },
+      { href: "/admin/library", label: "Library" },
+      { href: "/admin/pages", label: "Pages" },
       { href: "/admin/case-studies", label: "Case studies" },
       { href: "/admin/before-after", label: "Before / after" },
       { href: "/admin/avatars", label: "AI avatars" },
@@ -63,7 +63,8 @@ const current = (path: string, href: string) =>
       ? path === href
       : path === href ||
         path.startsWith(`${href}/`) ||
-        (href === "/admin/avatars" && path === "/admin/avatar-hero");
+        (href === "/admin/avatars" && path === "/admin/avatar-hero") ||
+        (href === "/admin/library" && path.startsWith("/admin/portfolio"));
 
 /** Sidebar on desktop; a full-screen menu behind the Menu button on phones. */
 export function AdminNav({ role, email }: { role: "owner" | "editor"; email: string }) {

@@ -49,10 +49,13 @@ import { TAGS, type Tag } from "./tags";
 import * as map from "./rows";
 import { realFirst, REAL_REVIEWS_NEEDED } from "./sample";
 import {
+  heroTemplateFor,
   legacyState,
   libFields,
+  PAGE_HEROES,
   placementByKey,
   resolve,
+  type HeroTemplate,
   type LibItem,
   type Mode,
   type Pin,
@@ -250,6 +253,27 @@ const loadPlacements = source<PlacementState | null>(
   },
   () => null,
 );
+
+/** Chosen hero templates by hero key. Empty before the migration: every page uses its default. */
+const loadHeroTemplates = source<Record<string, string>>(
+  "hero-templates",
+  [TAGS.portfolio],
+  async (db) => {
+    const { data, error } = await db.from("placement_heroes").select("section, template");
+    if (error) {
+      if (notMigrated(error)) return {};
+      throw new Error(`placement_heroes: ${error.message}`);
+    }
+    return Object.fromEntries((data ?? []).map((r) => [r.section, r.template as string]));
+  },
+  () => ({}),
+);
+
+/** The template a page's hero is set to (Admin → Pages), or that page's default. */
+export async function getHeroTemplate(page: string): Promise<HeroTemplate> {
+  const h = PAGE_HEROES.find((p) => p.page === page);
+  return heroTemplateFor(page, h ? (await loadHeroTemplates())[h.key] : undefined);
+}
 
 /** Portfolio items with their library fields filled in (older rows and the seed lack them). */
 const toLib = (p: PortfolioItem): PortfolioItem & LibItem =>

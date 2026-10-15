@@ -8,7 +8,7 @@ import { HeroMedia } from "@/components/blocks/HeroMedia";
 import { BeforeAfter } from "@/components/media/BeforeAfter";
 import { IncludedGrid, type Included } from "@/components/blocks/IncludedGrid";
 import { Steps, type Step } from "@/components/blocks/Steps";
-import { oneFormat } from "@/lib/media";
+import { HERO_TEMPLATES } from "@/lib/placements";
 import { withPlayback } from "@/lib/playable";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
@@ -19,6 +19,7 @@ import {
   getBeforeAfter,
   getFaqs,
   getPinnedPair,
+  getHeroTemplate,
   getPlaced,
   getPortfolio,
   getPropertyPricing,
@@ -67,22 +68,24 @@ const STEPS: Step[] = [
  */
 export default async function PropertyShootsPage() {
   const site = await getSiteSettings();
-  const [faqs, hero, photos, videos, tours, pricing, pairs] = await Promise.all([
+  const [faqs, hero, photos, videos, tours, pricing, pairs, template] = await Promise.all([
     getFaqs("property-shoots"),
-    getPortfolio("property-hero"),
+    getPortfolio("property-hero-media"),
     getPortfolio("property-gallery-photo"),
     getPortfolio("property-gallery-video"),
     getPortfolio("property-gallery-360"),
     getPropertyPricing(),
     getBeforeAfter(),
+    getHeroTemplate("Property shoots"),
   ]);
   // Hero: a before/after slider with the first published Before/after pair (13 Oct 2026).
   // Placements → Hero slots can pin one (lib/placements).
   const [pinnedPair, showcase] = await Promise.all([getPinnedPair(), getPlaced("showcase-photos")]);
-  const pair = pinnedPair ?? pairs.find((p) => p.published);
+  const pair = template === "ba" ? (pinnedPair ?? pairs.find((p) => p.published)) : undefined;
+  const mediaTemplate = template === "ba" ? "photo" : template;
   const whatsapp = pageWhatsappLink("Property shoots", site.whatsapp.number);
   const [heroItems, samples] = await Promise.all([
-    withPlayback(oneFormat(hero).items),
+    withPlayback(hero.slice(0, HERO_TEMPLATES[mediaTemplate].slots)),
     // Up to nine photos, so the grid ends on a full row.
     withPlayback([...photos.slice(0, 9), ...videos, ...tours]),
   ]);
@@ -122,7 +125,7 @@ export default async function PropertyShootsPage() {
     <>
       <PageLd page="property-shoots" />
       <div className="w">
-        <section className="p-hero" aria-labelledby="property-title">
+        <section className="p-hero" data-hero={template} aria-labelledby="property-title">
           <div className="stack">
             <Eyebrow rec>Production · Property shoots</Eyebrow>
             <HeroTitle id="property-title" line1="Don't just list." line2={<Hl>Dominate.</Hl>} />
@@ -146,7 +149,12 @@ export default async function PropertyShootsPage() {
           {pair ? (
             <BeforeAfter pair={pair} className="p-hero-ba" />
           ) : (
-            <HeroMedia items={heroItems} trioSizes="(max-width: 900px) 33vw, 15vw" />
+            <HeroMedia
+              items={template === "ba" ? [] : heroItems}
+              trioSizes="(max-width: 900px) 33vw, 15vw"
+              template={mediaTemplate}
+              label={template === "ba" ? "Before / after" : undefined}
+            />
           )}
         </section>
       </div>

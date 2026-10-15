@@ -5,7 +5,7 @@ import { realFirst } from "./data/sample.ts";
  * Where library items show on the site (media library rework, 24 Oct 2026). Every section the
  * live pages render from the portfolio is defined here once: a rule (type + orientation +
  * categories), how many it shows and its card ratio. A section shows its pinned items in their
- * slots and fills the rest with the newest items matching its rule. "manual" sections (every
+ * slots and fills the rest with the items matching its rule, in Library order. "manual" sections (every
  * placement that existed before this rework, until "Reset to automatic") show only their pins.
  * Hero slots are always manual. The public pages, the admin's Placements screen and each item's
  * "Where it shows" tags all use `resolve` below, so they always agree.
@@ -32,6 +32,8 @@ export interface Rule {
   orientation?: Orientation;
   /** Category ids; omitted = any category. */
   categories?: string[];
+  /** Every category except these (so categories added later are included automatically). */
+  excludeCategories?: string[];
   /** Only items with "Show on Work page" on (pins included). */
   work?: boolean;
 }
@@ -95,6 +97,16 @@ export const HEROES: PlacementDef[] = [
     legacy: "the first published Before / after pair",
   },
   {
+    key: "property-hero-media",
+    page: "Property shoots",
+    path: "/property-shoots",
+    title: "Hero (library media)",
+    rule: { types: ["video"], orientation: "9:16" },
+    count: 3,
+    ratio: "9:16",
+    hero: true,
+  },
+  {
     key: "post-hero-reels",
     page: "Post-production",
     path: "/post-production",
@@ -146,7 +158,7 @@ export const SECTIONS: PlacementDef[] = [
     page: "Home",
     path: "/",
     title: "Services row · Production",
-    rule: { types: ["video"] },
+    rule: { types: ["video"], excludeCategories: ["editing"] },
     count: 1,
     ratio: "frame",
   },
@@ -173,11 +185,7 @@ export const SECTIONS: PlacementDef[] = [
     page: "Production",
     path: "/production",
     title: "Recent work",
-    rule: {
-      types: ["video"],
-      orientation: "9:16",
-      categories: ["property", "brand", "holiday-home"],
-    },
+    rule: { types: ["video"], orientation: "9:16", excludeCategories: ["editing"] },
     count: 5,
     ratio: "9:16",
   },
@@ -258,7 +266,11 @@ export function ruleText(d: PlacementDef, catLabel: (id: string) => string = (id
       : d.rule.types.map((t) => typeLabel(t)).join(" / "),
     d.rule.orientation ?? "",
     d.rule.work ? "Show on Work page" : "",
-    d.rule.categories ? d.rule.categories.map(catLabel).join(" + ") : "Any category",
+    d.rule.categories
+      ? d.rule.categories.map(catLabel).join(" + ")
+      : d.rule.excludeCategories
+        ? `All categories except ${d.rule.excludeCategories.map(catLabel).join(" + ")}`
+        : "Any category",
     d.ratio === "frame" ? "" : d.ratio,
     d.count === Infinity ? "shows all" : `shows ${d.count}`,
   ];
@@ -278,6 +290,8 @@ export interface LibItem {
   categoryId?: string;
   showOnWork: boolean;
   createdAt?: string;
+  /** The Library's drag order (portfolio_items.library_order); none = newer than any dragged item. */
+  libraryOrder?: number;
 }
 
 /** The new columns, or (before the migration runs) the same values worked out from the old ones. */
@@ -320,6 +334,7 @@ export function libFields(
     categoryId,
     showOnWork,
     createdAt: (r.created_at as string | undefined) ?? undefined,
+    libraryOrder: typeof r.library_order === "number" ? r.library_order : undefined,
   };
 }
 
@@ -375,6 +390,8 @@ export function matches(rule: Rule, x: LibItem) {
   if (!rule.types.includes(x.mediaType)) return false;
   if (rule.orientation && x.orientation !== rule.orientation) return false;
   if (rule.categories && !(x.categoryId && rule.categories.includes(x.categoryId))) return false;
+  if (rule.excludeCategories && x.categoryId && rule.excludeCategories.includes(x.categoryId))
+    return false;
   if (rule.work && !x.showOnWork) return false;
   return true;
 }
@@ -435,11 +452,28 @@ export interface Resolved<T> {
   items: T[];
 }
 
-const newest = <T extends LibItem>(a: T, b: T) =>
+export type OrderKey = Pick<LibItem, "libraryOrder" | "createdAt" | "sortOrder">;
+const newest = (a: OrderKey, b: OrderKey) =>
   (b.createdAt ?? "").localeCompare(a.createdAt ?? "") || b.sortOrder - a.sortOrder;
 
+/** Library order: dragged items by their position; items never placed (newest uploads) first. */
+export function byLibrary(a: OrderKey, b: OrderKey) {
+  const x = a.libraryOrder;
+  const y = b.libraryOrder;
+  if (x == null && y == null) return newest(a, b);
+  if (x == null) return -1;
+  if (y == null) return 1;
+  return x - y || newest(a, b);
+}
+
 export function modeOf(def: PlacementDef, st: PlacementState): Mode {
-  return def.hero ? "manual" : (st.modes[def.key] ?? "auto");
+  return def.hero || def.standalone ? "manual" : (st.modes[def.key] ?? "auto");
+}
+
+/** Items already in the hero of `page`; its other automatic sections avoid them. */
+function heroIds(page: string, st: PlacementState) {
+  const keys = new Set(HEROES.filter((h) => h.page === page && !h.standalone).map((h) => h.key));
+  return new Set(st.pins.filter((p) => keys.has(p.section)).map((p) => p.item_id));
 }
 
 export function resolve<T extends LibItem>(
@@ -450,8 +484,8 @@ export function resolve<T extends LibItem>(
   const live = all.filter((x) => x.published);
   const byId = new Map(live.map((x) => [x.id, x]));
   const mode = modeOf(def, st);
-  const pins = st.pins
-    .filter((p) => p.section === def.key)
+  // The Work page follows the Library order alone; pins don't apply there.
+  const pins = (def.key === "work" ? [] : st.pins.filter((p) => p.section === def.key))
     .sort((a, b) => a.slot - b.slot)
     .map((p) => ({ slot: p.slot, item: byId.get(p.item_id) }))
     .filter(
@@ -464,9 +498,18 @@ export function resolve<T extends LibItem>(
     slots = pins.map((p) => ({ ...p, pinned: true }));
   } else {
     const taken = new Set(pins.map((p) => p.item.id));
-    const pool = realFirst(live.filter((x) => matches(def.rule, x) && !taken.has(x.id))).sort(
-      newest,
+    let pool = realFirst(live.filter((x) => matches(def.rule, x) && !taken.has(x.id))).sort(
+      byLibrary,
     );
+    // Not repeating the hero: skipped on a page's sections, only de-prioritised on Home's rows.
+    if (!def.hero) {
+      const used = heroIds(def.page, st);
+      if (used.size)
+        pool =
+          def.page === "Home"
+            ? [...pool.filter((x) => !used.has(x.id)), ...pool.filter((x) => used.has(x.id))]
+            : pool.filter((x) => !used.has(x.id));
+    }
     const at = new Map(pins.map((p) => [p.slot, p.item]));
     const lastPin = pins.length ? pins[pins.length - 1].slot : -1;
     slots = [];
@@ -491,4 +534,72 @@ export function whereItShows<T extends LibItem>(
   return ALL_PLACEMENTS.filter(
     (d) => d.source !== "before-after" && resolve(d, all, st).items.some((x) => x.id === id),
   ).map((d) => ({ key: d.key, label: `${d.page.split(",")[0]} · ${d.title}` }));
+}
+
+/* ---------- hero templates ---------- */
+
+export type HeroTemplate = "v3" | "v1" | "h1" | "ba" | "photo";
+export const HERO_TEMPLATES: Record<
+  HeroTemplate,
+  { label: string; slots: number; ratio: string; types: MediaType[]; orientation?: Orientation }
+> = {
+  v3: {
+    label: "3 vertical videos",
+    slots: 3,
+    ratio: "9:16",
+    types: ["video"],
+    orientation: "9:16",
+  },
+  v1: { label: "1 vertical video", slots: 1, ratio: "9:16", types: ["video"], orientation: "9:16" },
+  h1: {
+    label: "1 horizontal video",
+    slots: 1,
+    ratio: "16:9",
+    types: ["video"],
+    orientation: "16:9",
+  },
+  ba: { label: "Before/after slider", slots: 1, ratio: "3:2", types: ["photo"] },
+  photo: { label: "1 photo", slots: 1, ratio: "3:2", types: ["photo"] },
+};
+
+/** One entry per page: which hero it has, the templates that make sense there and the default. */
+export const PAGE_HEROES: {
+  page: string;
+  /** Pins and template are stored under this key. */
+  key: string;
+  templates: HeroTemplate[];
+  fallback: HeroTemplate;
+  /** The section the library-media templates pin into (when it isn't `key`). */
+  mediaKey?: string;
+}[] = [
+  { page: "Home", key: "home-showreel", templates: ["h1"], fallback: "h1" },
+  {
+    page: "Production",
+    key: "production-hero",
+    templates: ["v3", "v1", "h1", "photo"],
+    fallback: "v3",
+  },
+  {
+    page: "Property shoots",
+    key: "property-hero-pair",
+    mediaKey: "property-hero-media",
+    templates: ["ba", "v3", "v1", "h1", "photo"],
+    fallback: "ba",
+  },
+  {
+    page: "Post-production",
+    key: "post-hero-reels",
+    templates: ["v3", "v1", "h1", "photo"],
+    fallback: "v3",
+  },
+  { page: "AI avatars", key: "avatars-hero", templates: ["v1"], fallback: "v1" },
+];
+
+export const isHeroTemplate = (t: unknown): t is HeroTemplate =>
+  typeof t === "string" && t in HERO_TEMPLATES;
+
+/** The template a page's hero uses: the saved choice if that page offers it, else its default. */
+export function heroTemplateFor(page: string, saved?: string | null): HeroTemplate {
+  const h = PAGE_HEROES.find((p) => p.page === page)!;
+  return isHeroTemplate(saved) && h.templates.includes(saved) ? saved : h.fallback;
 }

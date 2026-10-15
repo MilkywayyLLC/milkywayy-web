@@ -14,6 +14,7 @@ import { FormatGallery } from "@/components/blocks/FormatGallery";
 import { placedShowcase, SHOWCASE } from "@/lib/showcase";
 import { HeroMedia } from "@/components/blocks/HeroMedia";
 import { postHeroReels } from "@/lib/post-hero";
+import { HERO_TEMPLATES } from "@/lib/placements";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -27,6 +28,7 @@ import {
   getClients,
   getFaqs,
   getOtherPricing,
+  getHeroTemplate,
   getPlaced,
   getPortfolio,
   getSiteSettings,
@@ -115,9 +117,17 @@ export default async function PostProductionPage() {
   ]);
   // Always three reels side by side, like Production (13 Oct 2026): the placement first, then
   // the latest published editing reels (lib/post-hero).
-  const showcase = await getPlaced("showcase-photos");
+  const [showcase, template] = await Promise.all([
+    getPlaced("showcase-photos"),
+    getHeroTemplate("Post-production"),
+  ]);
   const [hero, work] = await Promise.all([
-    withPlayback(postHeroReels(heroReelMedia, allMedia)),
+    // Three vertical videos keeps the fill above; the other templates show only what's picked.
+    withPlayback(
+      template === "v3"
+        ? postHeroReels(heroReelMedia, allMedia)
+        : heroReelMedia.slice(0, HERO_TEMPLATES[template].slots),
+    ),
     // Everything this page shows, once each, for the format gallery.
     withPlayback(
       [...heroReelMedia, ...heroMedia, ...cardMedia].filter(
@@ -195,7 +205,11 @@ export default async function PostProductionPage() {
     <>
       <PageLd page="post-production" />
       <div className="w">
-        <section className="p-hero p-hero-wide" aria-labelledby="post-title">
+        <section
+          className={template === "v3" ? "p-hero p-hero-wide" : "p-hero"}
+          data-hero={template}
+          aria-labelledby="post-title"
+        >
           <div className="stack">
             <Eyebrow>Post-production · Worldwide</Eyebrow>
             <HeroTitle id="post-title" line1="Your remote" line2={<Hl>edit team.</Hl>} />
@@ -215,7 +229,11 @@ export default async function PostProductionPage() {
               </ButtonLink>
             </Ctas>
           </div>
-          <HeroMedia items={hero} trioSizes="(max-width: 900px) 33vw, 15vw" />
+          <HeroMedia
+            items={hero}
+            trioSizes="(max-width: 900px) 33vw, 15vw"
+            template={template as Exclude<typeof template, "ba">}
+          />
         </section>
       </div>
 

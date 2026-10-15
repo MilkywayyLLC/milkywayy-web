@@ -3,7 +3,7 @@ import { ItemEditor } from "@/components/admin/ItemEditor";
 import { requireAdmin } from "@/lib/admin/auth";
 import { adminCtx, getRow, listRows } from "@/lib/admin/data";
 import { sectionByKey, type Row } from "@/lib/admin/sections";
-import { legacyFields, placementByKey } from "@/lib/placements";
+import { HERO_TEMPLATES, isHeroTemplate, legacyFields, placementByKey } from "@/lib/placements";
 
 type Props = {
   params: Promise<{ section: string; id: string }>;
@@ -31,20 +31,26 @@ export default async function EditItem({ params, searchParams }: Props) {
       if (section.fields.some((f) => f.name === "page")) preset.page = show;
       if (section.fields.some((f) => f.name === "placements")) preset.placements = [show];
     }
-    // "Upload new" from Admin → Placements: that section's type, orientation and category, and
+    // "Upload new" from Admin → Pages: that section's type, orientation and category, and
     // the slot the new item takes once saved ("<section>:<slot>").
     const def = key === "portfolio" ? placementByKey(String(place ?? "").split(":")[0]) : undefined;
     if (def && def.source !== "before-after") {
-      const type = def.rule.types[0];
+      // "<section>:<slot>:<hero template>": a hero's template decides the type and orientation.
+      const tpl = String(place).split(":")[2];
+      const t = def.hero && isHeroTemplate(tpl) ? HERO_TEMPLATES[tpl] : undefined;
+      const type = t && !def.rule.types.includes("avatar") ? t.types[0] : def.rule.types[0];
       const orientation =
-        type === "video" || type === "avatar" ? (def.rule.orientation ?? "9:16") : undefined;
+        type === "video" || type === "avatar"
+          ? (t?.orientation ?? def.rule.orientation ?? "9:16")
+          : undefined;
       const category = def.rule.categories?.[0] ?? "property";
       Object.assign(preset, {
         media_type: type,
         orientation: orientation ?? null,
         category_id: category,
         ...legacyFields(type, orientation, category),
-        show_on_work: !def.standalone,
+        // Hero slots and standalone blocks start off the Work page.
+        show_on_work: !def.hero,
         _place: place,
       });
     }

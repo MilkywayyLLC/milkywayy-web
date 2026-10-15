@@ -721,11 +721,29 @@
   .p-hero.p-hero-wide {
     grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
   }
+  /* Hero templates (Admin → Pages): the text column and the media share the width to suit the
+     media. The heading fits itself to its column (HeroTitle). 3 vertical keeps .p-hero-wide. */
+  .p-hero[data-hero="v1"] {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.5fr);
+  }
+  .p-hero[data-hero="h1"],
+  .p-hero[data-hero="photo"],
+  .p-hero[data-hero="ba"] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .p-hero[data-hero="v1"] .hero-one.f-reel {
+    width: min(100%, 300px);
+  }
   @media (max-width: 900px) {
     .p-hero,
-    .p-hero.p-hero-wide {
+    .p-hero.p-hero-wide,
+    .p-hero[data-hero] {
       grid-template-columns: 1fr;
     }
+  }
+  /* Work: about half the space between the nav and the tabs. */
+  .sec.work-sec {
+    padding-top: clamp(32px, 4.5vw, 60px);
   }
 
   /* ---------- proof strip ---------- */
@@ -1518,6 +1536,30 @@
   .hero-one.f-reel {
     width: min(100%, 340px);
     justify-self: center;
+  }
+  .hero-one.f-long-form,
+  .hero-one.f-photo {
+    width: 100%;
+  }
+  /* Empty hero frames: a labelled card in the template's shape. */
+  .hero-ph {
+    display: grid;
+    place-items: center;
+    background: var(--surface);
+    border: 1px dashed var(--line);
+    color: var(--muted);
+    font: 500 12px/1 var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .hero-ph[data-kind="reel"] {
+    aspect-ratio: 9 / 16;
+  }
+  .hero-ph[data-kind="long-form"] {
+    aspect-ratio: 16 / 9;
+  }
+  .hero-ph[data-kind="photo"] {
+    aspect-ratio: 3 / 2;
   }
   /* Stagger by pushing the outer frames down, never by lifting a frame into the content above. */
   .trio .fr:nth-child(odd) {
@@ -3939,8 +3981,8 @@
   }
   .fg-win {
     overflow: hidden;
-    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 90px), transparent);
-    mask-image: linear-gradient(180deg, #000 calc(100% - 90px), transparent);
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 44px), transparent);
+    mask-image: linear-gradient(180deg, #000 calc(100% - 44px), transparent);
   }
   .fg-win.more {
     overflow-y: auto;
@@ -3948,6 +3990,26 @@
     -webkit-mask-image: none;
     mask-image: none;
     scrollbar-width: thin;
+  }
+  /* Reels and AI avatars: each card at most min(78vh, natural) tall, the width follows, the grid
+     is centred (Work, Property shoots). */
+  .fg-grid[data-tab="reel"],
+  .fg-grid[data-tab="ai-avatar"] {
+    --cap: calc(78vh * 9 / 16);
+    justify-content: center;
+    grid-template-columns: repeat(var(--c, 3), minmax(0, var(--cap)));
+  }
+  @media (max-width: 900px) {
+    .fg-grid[data-tab="reel"],
+    .fg-grid[data-tab="ai-avatar"] {
+      grid-template-columns: repeat(var(--ct, 3), minmax(0, var(--cap)));
+    }
+  }
+  @media (max-width: 560px) {
+    .fg-grid[data-tab="reel"],
+    .fg-grid[data-tab="ai-avatar"] {
+      grid-template-columns: repeat(var(--cp, 2), minmax(0, var(--cap)));
+    }
   }
   .cs-cards {
     display: grid;

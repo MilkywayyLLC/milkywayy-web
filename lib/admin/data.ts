@@ -176,3 +176,13 @@ export async function adminCtx(db: SupabaseClient): Promise<import("./fields").A
     instagram: !!process.env.INSTAGRAM_ACCESS_TOKEN?.trim(),
   };
 }
+
+/** Chosen hero templates by hero key (Admin → Pages); none before the migration. */
+export async function heroTemplates(db: SupabaseClient): Promise<Record<string, string>> {
+  const { data, error } = await db.from("placement_heroes").select("section, template");
+  if (error) {
+    if (notMigrated(error)) return {};
+    throw new Error(`placement_heroes: ${error.message}`);
+  }
+  return Object.fromEntries((data ?? []).map((r) => [r.section, r.template as string]));
+}
