@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { MediaFrame } from "@/components/media/MediaFrame";
 import type { Media } from "@/content/types";
 import type { MediaKind } from "@/lib/media-config";
-import { isLocked, setSoundOn, useSound } from "./sound";
+import { useSound } from "./sound";
+import { VideoControls } from "./VideoControls";
 
 export type CarouselAvatar = {
   id: string;
@@ -16,7 +17,7 @@ export type CarouselAvatar = {
   src?: string;
 };
 
-/** Designed for exactly five: the centre card and two each side. */
+/** Designed for five: the centre card and two each side. */
 const MAX = 5;
 const AUTO_MS = { auto: 1200, pick: 3200 };
 /** "auto": idle time after a manual move before auto-advance resumes. */
@@ -27,7 +28,7 @@ const SWIPE_PX = 40;
 const WHEEL_PX = 60;
 
 /**
- * Layered carousel (12 Oct 2026): always five positions (fewer items repeat in the loop); the
+ * Layered carousel (12 Oct 2026): up to five positions, one per item (never repeated); the
  * centre card is 9:16 (16px corners), two each side sit behind it (scaled, offset, dimmed).
  * Move by drag, swipe, horizontal trackpad scroll, arrow keys or a click on a card; no buttons.
  *
@@ -51,14 +52,15 @@ export function AvatarCarousel({
   kind?: MediaKind;
   mode?: "auto" | "pick";
 }) {
-  // Always five positions, symmetric: with fewer items the loop repeats them.
-  const items = all.length ? Array.from({ length: MAX }, (_, k) => all[k % all.length]) : [];
+  // Each card is its own item, never a repeat: fewer than five items means fewer cards.
+  const items = all.slice(0, MAX);
   const root = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const [inView, setInView] = useState(false);
   const [held, setHeld] = useState(false); // a manual move stopped auto-advance
   const [moved, setMoved] = useState(0); // bumps on each manual move (restarts the idle timer)
-  const [ended, setEnded] = useState(false); // "pick": the chosen video finished
+  const [ended, setEnded] = useState(false); // the chosen video finished
+  const [sounded, setSounded] = useState(false); // "auto": the centre card was clicked, so it plays with sound
   const drag = useRef<{ x: number; dx: number } | null>(null);
   const dragged = useRef(false); // swallow the click that ends a drag
   const wheel = useRef({ acc: 0, lock: 0 });
@@ -83,16 +85,20 @@ export function AvatarCarousel({
   // Auto-advance while in view and not held.
   useEffect(() => {
     if (!inView || held || n < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const t = setInterval(() => setActive((a) => (a + 1) % n), AUTO_MS[mode]);
+    const t = setInterval(() => {
+      setActive((a) => (a + 1) % n);
+      setSounded(false);
+    }, AUTO_MS[mode]);
     return () => clearInterval(t);
   }, [inView, held, n, mode]);
 
   // Resume: "auto" after 4s idle; "pick" 8s after the video ends.
   useEffect(() => {
-    if (!held || (pick && !ended)) return;
-    const t = setTimeout(() => setHeld(false), pick ? ENDED_IDLE_MS : IDLE_MS);
+    const chosen = pick || sounded;
+    if (!held || (chosen && !ended)) return;
+    const t = setTimeout(() => setHeld(false), chosen ? ENDED_IDLE_MS : IDLE_MS);
     return () => clearTimeout(t);
-  }, [held, moved, ended, pick]);
+  }, [held, moved, ended, pick, sounded]);
 
   // A manual choice: hold auto-advance and (re)start the centre card's video.
   const choose = () => {
@@ -102,6 +108,7 @@ export function AvatarCarousel({
   };
   const go = (d: number) => {
     setActive((a) => (a + d + n) % n);
+    setSounded(false);
     choose();
   };
   const half = Math.floor(n / 2);
@@ -123,7 +130,7 @@ export function AvatarCarousel({
         }
       }}
       onPointerDown={(e) => {
-        if ((e.target as HTMLElement).closest(".av-ctl")) return;
+        if ((e.target as HTMLElement).closest(".vc")) return;
         drag.current = { x: e.clientX, dx: 0 };
         dragged.current = false;
       }}
@@ -168,6 +175,11 @@ export function AvatarCarousel({
                 if (Math.abs(off) > 2) return;
                 if (off) go(off);
                 else if (pick && (!held || ended)) choose(); // centre card: play it in place
+                else if (!pick && !sounded) {
+                  // The muted loop becomes a normal player: from the start, with sound.
+                  choose();
+                  setSounded(true);
+                }
               }}
             >
               <MediaFrame
@@ -182,8 +194,8 @@ export function AvatarCarousel({
                   <CentreVideo
                     key={`${a.id}:${i}:${moved}`}
                     src={a.src}
-                    loop={!pick}
-                    controls={pick}
+                    loop={!pick && !sounded}
+                    controls={pick || sounded}
                     onEnded={() => setEnded(true)}
                   />
                 )}
@@ -212,57 +224,38 @@ function CentreVideo({
   onEnded: () => void;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
-  // "pick" (controls) uses the site-wide sound state; the looping "auto" deck stays muted.
+  // Chosen by a click: plays with the site-wide sound state. The idle auto deck stays muted.
   const sound = useSound();
-  const muted = !(controls && sound.unlocked && sound.on);
-  const wasLocked = useRef(false);
-  const [paused, setPaused] = useState(false);
+  const on = useRef(sound.on);
   useEffect(() => {
-    ref.current?.play().catch(() => setPaused(true));
-  }, []);
+    const v = ref.current;
+    if (!v) return;
+    v.muted = !(controls && on.current);
+    v.play().catch(() => {
+      v.muted = true;
+      v.play().catch(() => {});
+    });
+  }, [controls]);
   return (
     <>
       <video
         ref={ref}
         className="av-car-vid"
         src={src}
-        muted={muted}
+        muted
         loop={loop}
         playsInline
         preload="metadata"
-        onPlay={() => setPaused(false)}
-        onPause={() => setPaused(true)}
         onEnded={onEnded}
+        onClick={(e) => {
+          if (!controls) return;
+          e.stopPropagation();
+          const v = e.currentTarget;
+          if (v.paused) v.play().catch(() => {});
+          else v.pause();
+        }}
       />
-      {controls && (
-        <span className="av-ctl">
-          <button
-            type="button"
-            aria-label={paused ? "Play" : "Pause"}
-            onClick={(e) => {
-              e.stopPropagation();
-              const v = ref.current;
-              if (!v) return;
-              if (v.paused) v.play().catch(() => {});
-              else v.pause();
-            }}
-          >
-            {paused ? "▶" : "❚❚"}
-          </button>
-          <button
-            type="button"
-            aria-label={muted ? "Unmute" : "Mute"}
-            aria-pressed={!muted}
-            onPointerDown={() => (wasLocked.current = isLocked())}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSoundOn(wasLocked.current ? true : !sound.on);
-            }}
-          >
-            {muted ? "Sound off" : "Sound on"}
-          </button>
-        </span>
-      )}
+      {controls && <VideoControls video={ref} />}
     </>
   );
 }

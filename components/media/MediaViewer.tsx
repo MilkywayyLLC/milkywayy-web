@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import { getImageProps } from "next/image";
 import { useEffect, useRef } from "react";
 import type { Playable } from "@/lib/playable";
+import { useSound } from "./sound";
+import { VideoControls } from "./VideoControls";
 
 // Photos open the zoom viewer, loaded on its own so opening a video never fetches Motion.
 const ZoomGallery = dynamic(() => import("./ZoomGallery").then((m) => m.ZoomGallery), {
@@ -91,8 +93,7 @@ function Player({
       </div>
       {play.type === "file" ? (
         <div className="mv-stage" style={{ aspectRatio: play.ratio }} data-ratio={play.ratio}>
-          {/* Opened by a click, so it may start with sound; controls let people mute. */}
-          <video src={play.src} poster={play.poster} controls autoPlay playsInline />
+          <ModalVideo src={play.src} poster={play.poster} />
         </div>
       ) : play.type === "embed" ? (
         <div className="mv-stage" style={{ aspectRatio: play.ratio }} data-ratio={play.ratio}>
@@ -119,5 +120,38 @@ function Player({
         </>
       )}
     </dialog>
+  );
+}
+
+/** Opened by a click, so it starts with sound (unless turned off); same controls as the cards. */
+function ModalVideo({ src, poster }: { src: string; poster?: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const sound = useSound();
+  const on = useRef(sound.on);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    v.muted = !on.current;
+    v.play().catch(() => {
+      v.muted = true;
+      v.play().catch(() => {});
+    });
+  }, []);
+  return (
+    <>
+      <video
+        ref={ref}
+        src={src}
+        poster={poster}
+        playsInline
+        loop
+        onClick={(e) => {
+          const v = e.currentTarget;
+          if (v.paused) v.play().catch(() => {});
+          else v.pause();
+        }}
+      />
+      <VideoControls video={ref} />
+    </>
   );
 }

@@ -132,7 +132,7 @@ export function PagesBoard({
 
       {blocks.map((b) => {
         const lookup = new Map((b.lookup === "pairs" ? pairs : items).map((i) => [i.id, i]));
-        return b.kind === "hero" ? (
+        return b.kind === "hero" || b.kind === "standalone" ? (
           <HeroBlock
             key={`${b.key}:${b.hero?.template}`}
             b={b}
@@ -220,13 +220,13 @@ function HeroBlock({
   run: Run;
   onPick: (slot: number) => void;
 }) {
-  const hero = b.hero!;
+  const hero = b.hero;
   const at = new Map(b.slots.map((s) => [s.slot, s]));
   const hidden = b.slots.filter((s) => s.slot >= b.count).length;
   return (
     <section className="ad-card" aria-label={b.title} data-testid={`placement-${b.key}`}>
       <Head b={b}>
-        {hero.options.length > 1 ? (
+        {!hero ? null : hero.options.length > 1 ? (
           <label className="ad-small">
             Template{" "}
             <select
@@ -255,6 +255,11 @@ function HeroBlock({
       {b.legacy && (
         <p className="ad-small ad-muted">
           Nothing picked: the page shows {b.legacy} until you pick something here.
+        </p>
+      )}
+      {b.kind === "standalone" && (
+        <p className="ad-small ad-muted">
+          Picked by hand only: never auto-fills, and what you upload here stays off the Work page.
         </p>
       )}
       <div className="ad-pl-slots ad-pl-hero" data-ratio={b.ratio}>

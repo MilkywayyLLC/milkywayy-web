@@ -96,9 +96,9 @@ export default async function PostProductionPage() {
     stats,
     faqs,
     other,
-    cardMedia,
+    cardSlots,
     avatars,
-    heroMedia,
+    delivered,
     heroReelMedia,
     allMedia,
   ] = await Promise.all([
@@ -109,9 +109,15 @@ export default async function PostProductionPage() {
     getStats("post-production"),
     getFaqs("post-production"),
     getOtherPricing(),
-    getPortfolio("post-service-cards"),
+    // The four service blocks, each with its own slot (Admin → Pages → Post-production).
+    Promise.all(
+      (["photo", "reel", "long", "avatar"] as const).map(
+        async (k) => (await getPlaced(`post-card-${k}`)).items[0],
+      ),
+    ),
     getAvatars(),
-    getPortfolio("post-hero"),
+    // "Work we've delivered": exactly what that section holds, in its order.
+    getPlaced("post-hero"),
     getPortfolio("post-hero-reels"),
     getPortfolio(),
   ]);
@@ -121,19 +127,15 @@ export default async function PostProductionPage() {
     getPlaced("showcase-photos"),
     getHeroTemplate("Post-production"),
   ]);
-  const [hero, work] = await Promise.all([
+  const [hero, work, cards] = await Promise.all([
     // Three vertical videos keeps the fill above; the other templates show only what's picked.
     withPlayback(
       template === "v3"
         ? postHeroReels(heroReelMedia, allMedia)
         : heroReelMedia.slice(0, HERO_TEMPLATES[template].slots),
     ),
-    // Everything this page shows, once each, for the format gallery.
-    withPlayback(
-      [...heroReelMedia, ...heroMedia, ...cardMedia].filter(
-        (m, i, all) => all.findIndex((x) => x.id === m.id) === i,
-      ),
-    ),
+    withPlayback(delivered.items),
+    withPlayback(cardSlots.filter((c) => !!c)),
   ]);
   const rate = (k: "photo" | "short" | "long") =>
     other.postProduction.rates.find((r) => r.key === k);
@@ -141,12 +143,17 @@ export default async function PostProductionPage() {
     const r = rate(k);
     return r ? `From ${formatUSD(r.amount)} / ${r.unit}` : "";
   };
-  // Each row takes the first placed item of its own format (lib/used-on POST_ROWS).
-  const media = (k: "photo" | "reel" | "long-form"): RowMedia =>
-    rowMedia(work.find((m) => m.id === cardMedia.find((c) => kindOf(c) === k)?.id)) ?? {
-      media: PLACEHOLDER[k],
-      kind: k,
-    };
+  // Each row shows its own slot; a slot nobody has filled takes the first delivered item of its
+  // format, then a placeholder.
+  const media = (k: "photo" | "reel" | "long-form", slot: number): RowMedia => {
+    const pinned = cards.find((m) => m.id === cardSlots[slot]?.id);
+    return (
+      rowMedia(pinned ?? work.find((m) => kindOf(m) === k)) ?? {
+        media: PLACEHOLDER[k],
+        kind: k,
+      }
+    );
+  };
 
   const rows: Row[] = [
     {
@@ -156,7 +163,7 @@ export default async function PostProductionPage() {
       price: from("photo"),
       cta: "Free test",
       href: "#free-test",
-      media: media("photo"),
+      media: media("photo", 0),
     },
     {
       kicker: "Short-form",
@@ -165,7 +172,7 @@ export default async function PostProductionPage() {
       price: from("short"),
       cta: "Free test",
       href: "#free-test",
-      media: media("reel"),
+      media: media("reel", 1),
     },
     {
       kicker: "Long-form",
@@ -174,7 +181,7 @@ export default async function PostProductionPage() {
       price: from("long"),
       cta: "Free test",
       href: "#free-test",
-      media: media("long-form"),
+      media: media("long-form", 2),
     },
     {
       kicker: "AI avatars",
@@ -183,21 +190,23 @@ export default async function PostProductionPage() {
       price: "White-label",
       cta: "See AI avatars",
       href: "/ai-avatars",
-      media: {
-        media: avatars[0]?.poster ?? {
-          alt: "AI avatar video presenter edit",
-          placeholder: "adam",
-          bright: true,
-        },
-        kind: "ai-avatar",
-        title: avatars[0]?.name,
-        play: videoPlayable(
-          avatars[0]?.clip,
-          avatars[0]?.name ?? "AI avatar",
-          "ai-avatar",
-          avatars[0]?.poster.src,
-        ),
-      },
+      media:
+        rowMedia(cards.find((m) => m.id === cardSlots[3]?.id)) ??
+        ({
+          media: avatars[0]?.poster ?? {
+            alt: "AI avatar video presenter edit",
+            placeholder: "adam",
+            bright: true,
+          },
+          kind: "ai-avatar",
+          title: avatars[0]?.name,
+          play: videoPlayable(
+            avatars[0]?.clip,
+            avatars[0]?.name ?? "AI avatar",
+            "ai-avatar",
+            avatars[0]?.poster.src,
+          ),
+        } satisfies RowMedia),
     },
   ];
 

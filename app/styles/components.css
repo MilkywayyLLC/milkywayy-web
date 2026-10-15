@@ -1582,6 +1582,19 @@
   .hero-ph[data-kind="photo"] {
     aspect-ratio: 3 / 2;
   }
+  /* Page-hero cards only (owner, 15 Oct 2026): 12px corners and a soft shadow. Other cards stay square. */
+  .trio .fr,
+  .hero-one .fr,
+  .hero-ph,
+  .hero-media-col > .fr,
+  .hero-media-col > .av-stage > .fr,
+  .ba.p-hero-ba {
+    border-radius: 12px;
+    box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.35);
+  }
+  [data-tone="light"] :is(.trio .fr, .hero-one .fr, .hero-ph, .hero-media-col > .fr, .hero-media-col > .av-stage > .fr, .ba.p-hero-ba) {
+    box-shadow: 0 16px 40px -14px rgba(0, 0, 0, 0.18);
+  }
   /* Stagger by pushing the outer frames down, never by lifting a frame into the content above. */
   .trio .fr:nth-child(odd) {
     margin-top: 28px;
@@ -2560,6 +2573,7 @@
     height: 100%;
     object-fit: cover;
   }
+  /* Before is the clipped left side, After shows through on the right. */
   .ba .clip {
     position: absolute;
     inset: 0;
@@ -4413,11 +4427,27 @@
     inset: 0;
     z-index: 4;
   }
-  .fr-snd {
+  /* Video controls (components/media/VideoControls): speaker + scrubbable progress bar, shown on
+     hover / while playing and faded out after 2s without pointer movement. */
+  .vc {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+  }
+  .vc > * {
+    pointer-events: auto;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .vc[data-show] > *,
+  .vc:focus-within > * {
+    opacity: 1;
+  }
+  .vc-snd {
     position: absolute;
     top: 10px;
     right: 10px;
-    z-index: 6;
     width: 36px;
     height: 36px;
     display: grid;
@@ -4430,9 +4460,54 @@
     backdrop-filter: blur(4px);
     cursor: pointer;
   }
-  .fr-snd:focus-visible {
+  .vc-snd:focus-visible,
+  .vc-track:focus-visible {
     outline: 2px solid var(--acc);
     outline-offset: 2px;
+  }
+  .vc-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 22px 12px 8px;
+    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.55));
+    color: #f5f4f0;
+    font: 500 11px/1 var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .vc-track {
+    position: relative;
+    flex: 1;
+    height: 20px;
+    cursor: pointer;
+    touch-action: none;
+  }
+  .vc-track::before,
+  .vc-track i {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 3px;
+    margin-top: -1.5px;
+    border-radius: 2px;
+  }
+  .vc-track::before {
+    right: 0;
+    background: rgba(255, 255, 255, 0.3);
+  }
+  .vc-track i {
+    background: var(--acc, #fff);
+  }
+  .vc-time {
+    min-width: 3ch;
+  }
+  .fr:has(.vc[data-show]) .fr-title {
+    opacity: 0;
   }
   .fr-inline {
     position: absolute;
@@ -4963,28 +5038,6 @@
     font: 500 11px/1 var(--font-mono);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-  }
-  /* "pick" mode (Production): pause and sound controls on the playing centre card. */
-  .av-ctl {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 2;
-    display: flex;
-    gap: 6px;
-  }
-  .av-ctl button {
-    min-width: 36px;
-    height: 32px;
-    padding: 0 10px;
-    border: 0;
-    border-radius: 6px;
-    background: rgb(17 17 16 / 0.72);
-    color: #fff;
-    font: 500 11px/1 var(--font-mono);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    cursor: pointer;
   }
   /* Phones: the centre card with the neighbours peeking in. */
   @media (max-width: 760px) {

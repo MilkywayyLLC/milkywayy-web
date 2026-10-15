@@ -57,9 +57,19 @@ export interface PlacementDef {
   legacy?: string;
   /** Its own slots: items uploaded here start with "Show on Work page" off. */
   standalone?: boolean;
+  /** Manual with no pins: show the items matching any of these rules (Library order) until the admin pins its own. */
+  fallback?: Rule[];
 }
 
 const ALL: MediaType[] = ["photo", "video", "avatar", "tour"];
+
+/** Production → Recent work: the Production portfolio's rule (Post-production's default fill reuses it). */
+const PRODUCTION_RECENT: Rule = {
+  types: ["video"],
+  orientation: "9:16",
+  excludeCategories: ["editing"],
+};
+const EDITING: Rule = { types: ["photo", "video", "avatar"], categories: ["editing"] };
 
 /** Hero slots, manual only (Placements → Hero slots). */
 export const HEROES: PlacementDef[] = [
@@ -149,6 +159,26 @@ export const HEROES: PlacementDef[] = [
     hero: true,
     standalone: true,
   },
+  ...(
+    [
+      ["photo", "Photo edits", { types: ["photo"] }, "3:2"],
+      ["reel", "Short-form reels", { types: ["video"], orientation: "9:16" }, "9:16"],
+      ["long", "Long-form", { types: ["video"], orientation: "16:9" }, "16:9"],
+      ["avatar", "AI avatars", { types: ["avatar"], orientation: "9:16" }, "9:16"],
+    ] as [string, string, Rule, string][]
+  ).map(
+    ([k, title, rule, ratio]): PlacementDef => ({
+      key: `post-card-${k}`,
+      page: "Post-production",
+      path: "/post-production",
+      title: `${title} block`,
+      rule: { ...rule, categories: ["editing"] },
+      count: 1,
+      ratio,
+      hero: true,
+      standalone: true,
+    }),
+  ),
 ];
 
 /** Automatic sections, in page order. */
@@ -185,7 +215,7 @@ export const SECTIONS: PlacementDef[] = [
     page: "Production",
     path: "/production",
     title: "Recent work",
-    rule: { types: ["video"], orientation: "9:16", excludeCategories: ["editing"] },
+    rule: PRODUCTION_RECENT,
     count: 5,
     ratio: "9:16",
   },
@@ -227,21 +257,14 @@ export const SECTIONS: PlacementDef[] = [
     ratio: "16:9",
   },
   {
-    key: "post-service-cards",
-    page: "Post-production",
-    path: "/post-production",
-    title: "Service cards",
-    rule: { types: ["photo", "video"], categories: ["editing"] },
-    count: 6,
-    ratio: "frame",
-  },
-  {
     key: "post-hero",
     page: "Post-production",
     path: "/post-production",
     title: "Work we've delivered",
-    rule: { types: ["photo", "video", "avatar"], categories: ["editing"] },
-    count: 9,
+    rule: EDITING,
+    // Until the admin pins its own: the Production portfolio's items plus Editing-tagged ones.
+    fallback: [PRODUCTION_RECENT, EDITING],
+    count: 24,
     ratio: "3:2 / 9:16 / 16:9",
   },
   {
@@ -494,8 +517,13 @@ export function resolve<T extends LibItem>(
 
   let slots: Slot<T>[];
   if (mode === "manual") {
-    if (!pins.length && def.legacy) return { mode, legacy: true, slots: [], items: [] };
-    slots = pins.map((p) => ({ ...p, pinned: true }));
+    if (!pins.length && def.fallback) {
+      const pool = realFirst(live.filter((x) => def.fallback!.some((r) => matches(r, x)))).sort(
+        byLibrary,
+      );
+      slots = pool.slice(0, def.count).map((item, slot) => ({ slot, item, pinned: false }));
+    } else if (!pins.length && def.legacy) return { mode, legacy: true, slots: [], items: [] };
+    else slots = pins.map((p) => ({ ...p, pinned: true }));
   } else {
     const taken = new Set(pins.map((p) => p.item.id));
     let pool = realFirst(live.filter((x) => matches(def.rule, x) && !taken.has(x.id))).sort(
