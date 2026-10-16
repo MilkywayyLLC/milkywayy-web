@@ -60,6 +60,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   if (!d) notFound();
   const origin = originFrom(await headers());
   const p = d.project;
+  const people = await rpc<{
+    agent: {
+      name: string;
+      email: string | null;
+      whatsapp: string | null;
+      has_login: boolean;
+    } | null;
+    shared_with: string[];
+  }>("portal_admin_project_people", { p_project: p.id });
   const clients =
     !p.account_id && d.lead
       ? ((await rpc<ClientListRow[]>("portal_admin_clients", {})) ?? [])
@@ -312,6 +321,20 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                 <dd>
                   {[d.submitter?.name, d.submitter?.email].filter(Boolean).join(" · ") || "—"}
                 </dd>
+              </>
+            )}
+            <dt>Agent</dt>
+            <dd data-testid="admin-agent">
+              {people?.agent
+                ? [people.agent.name, people.agent.whatsapp ?? people.agent.email]
+                    .filter(Boolean)
+                    .join(" · ")
+                : "—"}
+            </dd>
+            {!!people?.shared_with.length && (
+              <>
+                <dt>Shared with</dt>
+                <dd>{people.shared_with.join(", ")}</dd>
               </>
             )}
             <dt>Client</dt>

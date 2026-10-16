@@ -18,13 +18,15 @@ export default async function Contacts() {
     );
   const { data } = await db
     .from("contacts")
-    .select("id, name, role, whatsapp, email, brn, is_default, created_by, photo_url")
+    .select("id, name, role, whatsapp, email, brn, is_default, created_by, member_id, photo_url")
     .eq("account_id", current.account.id)
     .order("is_default", { ascending: false })
     .order("name");
-  const rows: ContactRow[] = (data ?? []).map(({ photo_url, ...c }) => ({
+  const rows: ContactRow[] = (data ?? []).map(({ photo_url, member_id, ...c }) => ({
     ...c,
-    canEdit: isManager(current) || c.created_by === user.id,
+    hasLogin: !!member_id,
+    // Matches RLS: admins, the author, or the teammate whose own card it is.
+    canEdit: isManager(current) || c.created_by === user.id || member_id === user.id,
     photo: photo_url && r2Ready() ? presign("GET", photo_url, 3600) : null,
   }));
   return <ContactsManager contacts={rows} />;

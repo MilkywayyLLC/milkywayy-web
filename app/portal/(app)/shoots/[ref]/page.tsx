@@ -1,3 +1,5 @@
+import { ShareWith } from "@/components/portal/ShareWith";
+import { contactName, sharedLabel, teammates } from "@/lib/portal/agents";
 import { notFound } from "next/navigation";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
 import { ProjectActions, ProjectMessages } from "@/components/portal/ProjectActions";
@@ -45,6 +47,7 @@ export default async function ShootPage({
   const { ref } = await params;
   const { booked } = await searchParams;
   const { db, current } = await requireAccount(`/portal/shoots/${ref}`);
+  const admin = current.role === "owner" || current.role === "admin";
   const { data } = await db
     .from("projects")
     .select("*")
@@ -123,6 +126,10 @@ export default async function ShootPage({
   const groups = deliveries((files ?? []) as ProjectFile[]);
   const latest = groups[0];
   const zip = latest?.files.find((f) => f.kind === "zip");
+  const [agentName, team] = await Promise.all([
+    contactName(db, p.agent_contact_id),
+    admin ? teammates(db, current.account.id) : Promise.resolve([]),
+  ]);
   const when = [shootDay(p.shoot_date), p.slot].filter(Boolean).join(" · ");
   const total = (items ?? []).reduce((t, i) => t + Number(i.qty) * Number(i.unit_price), 0);
 
@@ -172,6 +179,16 @@ export default async function ShootPage({
           Requested. We’ll confirm the date and slot shortly; you’ll get an email when it’s
           confirmed.
         </p>
+      )}
+      {(agentName || p.shared_with?.length) && (
+        <p className="pt-meta" data-testid="shoot-people" style={{ margin: 0 }}>
+          {[agentName && `Agent: ${agentName}`, sharedLabel(p.shared_with?.length)]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      )}
+      {admin && team.length > 1 && (
+        <ShareWith kind="p" id={p.id} team={team} chosen={p.shared_with ?? []} />
       )}
       <Deliverables items={delivList} />
 

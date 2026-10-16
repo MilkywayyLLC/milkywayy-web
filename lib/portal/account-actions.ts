@@ -429,3 +429,18 @@ export async function saveCompany(_: Result | undefined, form: FormData): Promis
     .eq("id", current.account.id);
   return error ? dbError(error, "company") : done("Company details saved.");
 }
+
+// ---------- share with (agency teams) ----------
+
+/** Share a shoot ('p') or listing ('l') with teammates. Owner/Admins only (set_share_with checks). */
+export async function setShareWith(kind: "p" | "l", id: string, users: string[]): Promise<Result> {
+  const { db, current } = await requireAccount("/portal");
+  if (current.role !== "owner" && current.role !== "admin")
+    return fail("Only the account owner and admins can share.");
+  const ids = z.array(z.uuid()).max(50).safeParse(users);
+  if (!ids.success || !z.uuid().safeParse(id).success)
+    return fail("Choose teammates to share with.");
+  const { error } = await db.rpc("set_share_with", { p_kind: kind, p_id: id, p_users: ids.data });
+  if (error) return dbError(error, "share with");
+  return done(ids.data.length ? `Shared with ${ids.data.length}.` : "Not shared.");
+}

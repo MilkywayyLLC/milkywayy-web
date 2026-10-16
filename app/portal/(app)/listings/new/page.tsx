@@ -15,7 +15,7 @@ export default async function NewListing({
   searchParams: Promise<{ shoot?: string }>;
 }) {
   const { shoot } = await searchParams;
-  const { db, current } = await requireAccount(
+  const { db, user, current } = await requireAccount(
     `/portal/listings/new${shoot ? `?shoot=${encodeURIComponent(shoot)}` : ""}`,
   );
   const { data } = await db
@@ -64,7 +64,7 @@ export default async function NewListing({
       </>
     );
 
-  const f = await listingFormData(db, current.account, p);
+  const f = await listingFormData(db, current.account, p, undefined, user.id);
   return (
     <>
       <Back href="/portal/listings" label="Listings" />

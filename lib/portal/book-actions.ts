@@ -52,6 +52,8 @@ export async function bookShoot(b: {
   location: BookingLocation;
   services: BookingService[];
   note?: string;
+  /** The Agent (a contact id); empty leaves the database default (an agent's own card). */
+  agent?: string | null;
 }): Promise<BookResult> {
   const { db, user, current } = await requireAccount("/portal/shoots");
   if (!can(current, "shoots"))
@@ -100,6 +102,14 @@ export async function bookShoot(b: {
     return { ok: false, error: why(error.message) };
   }
   const out = data as { id: string; ref: string };
+  if (b.agent) {
+    // The database checks the contact is this account's and that you booked it.
+    const { error: ae } = await db.rpc("set_project_agent", {
+      p_project: out.id,
+      p_contact: b.agent,
+    });
+    if (ae) console.error("[portal] set_project_agent:", ae.message);
+  }
   const origin = originFrom(await headers());
   const slot = SLOTS.find(([k]) => k === b.slot)![1];
   await notifyMilkywayy(

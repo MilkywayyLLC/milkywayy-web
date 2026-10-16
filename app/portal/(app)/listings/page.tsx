@@ -59,7 +59,7 @@ export default async function Listings() {
     db
       .from("listings")
       .select(
-        "id, slug, title, purpose, price, status, expires_on, disabled_at, disabled_reason, created_by, project_id, photo_ids, created_at",
+        "id, slug, title, purpose, price, status, expires_on, disabled_at, disabled_reason, created_by, project_id, photo_ids, created_at, agent_user_id, shared_with",
       )
       .eq("account_id", a)
       .order("created_at", { ascending: false }),
@@ -196,6 +196,9 @@ export default async function Listings() {
                     {s === "disabled" && l.disabled_reason && (
                       <span className="pt-meta">Reason: {l.disabled_reason}. WhatsApp us.</span>
                     )}
+                    {l.shared_with?.length ? (
+                      <span className="pt-meta">Shared with {l.shared_with.length}</span>
+                    ) : null}
                     <Stats t={t} />
                     <ShareControls
                       kind="l"
@@ -203,7 +206,8 @@ export default async function Listings() {
                       slug={l.slug}
                       title={l.title}
                       status={l.status}
-                      canEdit={canEdit(l.created_by)}
+                      canEdit={canEdit(l.created_by) || l.agent_user_id === user.id}
+                      editOnly={!canEdit(l.created_by)}
                       disabled={s === "disabled"}
                       editHref={`/portal/listings/${l.id}`}
                     />

@@ -164,6 +164,7 @@ export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; 
                     `submitted ${day(p.created_at)}`,
                     p.due_at ? `wanted by ${day(p.due_at)}` : "",
                     latestLabel(p.id) ?? "",
+                    p.shared_with?.length ? `Shared with ${p.shared_with.length}` : "",
                   ]
                     .filter(Boolean)
                     .join(" · ")}

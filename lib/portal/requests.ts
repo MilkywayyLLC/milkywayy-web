@@ -4,7 +4,7 @@ import type { PropertyPricing } from "@/content/types";
 import { getPropertyPricing } from "@/lib/data";
 import { maxUploadGb } from "@/lib/r2";
 import { can } from "./access";
-import type { Membership } from "./auth";
+import { getPortal, type Membership } from "./auth";
 import { dubaiToday } from "./billing";
 import type { Rates } from "./booking";
 
@@ -30,6 +30,9 @@ export type RequestConfig = {
   today: string;
   maxGb: number;
   turnaround: Record<string, string>;
+  /** The Agent picker: the account's contacts, and this person's own linked card (the default). */
+  agents: { id: string; name: string }[];
+  myContactId: string | null;
 };
 
 /**
@@ -40,11 +43,19 @@ export const requestConfig = cache(loadRequestConfig);
 
 async function loadRequestConfig(db: SupabaseClient, m: Membership): Promise<RequestConfig> {
   // Fail safe: an error here means no prices and no turnaround, never a broken page.
-  const [{ data: opts, error: e1 }, { data: ta, error: e2 }, pricing] = await Promise.all([
-    db.rpc("my_booking_options", { p_account: m.account.id }),
-    db.from("service_turnaround").select("key, text"),
-    getPropertyPricing(),
-  ]);
+  const [{ data: opts, error: e1 }, { data: ta, error: e2 }, pricing, { data: people }, portal] =
+    await Promise.all([
+      db.rpc("my_booking_options", { p_account: m.account.id }),
+      db.from("service_turnaround").select("key, text"),
+      getPropertyPricing(),
+      db
+        .from("contacts")
+        .select("id, name, member_id")
+        .eq("account_id", m.account.id)
+        .order("name"),
+      getPortal(),
+    ]);
+  const uid = portal.state === "signed-in" ? portal.user.id : null;
   if (e1 || e2) console.error("[portal] request config:", e1?.message ?? e2?.message);
   const o = (opts ?? {}) as {
     mode?: PriceView["mode"];
@@ -65,6 +76,8 @@ async function loadRequestConfig(db: SupabaseClient, m: Membership): Promise<Req
     },
     today: dubaiToday(),
     maxGb: maxUploadGb(),
+    agents: (people ?? []).map((c) => ({ id: c.id, name: c.name })),
+    myContactId: (uid && people?.find((c) => c.member_id === uid)?.id) || null,
     turnaround: Object.fromEntries(
       ((ta ?? []) as { key: string; text: string }[]).map((t) => [t.key, t.text]),
     ),

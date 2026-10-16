@@ -206,7 +206,11 @@ function WizardSteps({ steps, at }: { steps: string[]; at: number }) {
         const n = i + 1;
         const state = n < at ? "done" : n === at ? "current" : "next";
         return (
-          <li key={label} data-state={state} aria-current={state === "current" ? "step" : undefined}>
+          <li
+            key={label}
+            data-state={state}
+            aria-current={state === "current" ? "step" : undefined}
+          >
             <span className="pt-wiz-dot" aria-hidden="true">
               {state === "done" ? <Icon name="check" size={14} /> : n}
             </span>
@@ -272,6 +276,7 @@ export function BookingModal({
   const [slot, setSlot] = useState<Slot | "">(edit?.slot ?? "");
   const [loc, setLoc] = useState<BookingLocation>(edit?.location ?? { address: "" });
   const [note, setNote] = useState(edit?.note ?? "");
+  const [agent, setAgent] = useState(cfg.myContactId ?? "");
   const [touched, setTouched] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -374,7 +379,7 @@ export function BookingModal({
       note,
     };
     start(async () => {
-      const r = edit ? await updateBooking(edit.projectId, b) : await bookShoot(b);
+      const r = edit ? await updateBooking(edit.projectId, b) : await bookShoot({ ...b, agent });
       if (!r.ok) return form.fail(r.error ?? "Couldn’t send the booking. Try again.");
       setDone(edit ? edit.ref : r.ref!);
     });
@@ -438,7 +443,9 @@ export function BookingModal({
                   <b>{SERVICE_LABEL[service.service]}</b>
                 </li>
                 <li>
-                  <span>{service.service === "property" ? "Property and services" : "Details"}</span>
+                  <span>
+                    {service.service === "property" ? "Property and services" : "Details"}
+                  </span>
                   <b>{serviceSummary(service, pricing)}</b>
                 </li>
               </>
@@ -658,6 +665,25 @@ export function BookingModal({
               onChange={touch((v: BookingLocation) => setLoc(v))}
               error={form.errors.location}
             />
+            {!edit && cfg.agents.length > 0 && (
+              <label className="pt-field">
+                Agent
+                <select
+                  name="agent"
+                  value={agent}
+                  onChange={touch((e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setAgent(e.target.value),
+                  )}
+                >
+                  <option value="">No agent</option>
+                  {cfg.agents.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="pt-field">
               Anything else we should know?
               <textarea

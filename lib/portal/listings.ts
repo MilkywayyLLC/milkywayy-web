@@ -33,6 +33,8 @@ export type ListingInput = {
   permit_no: string;
   permit_qr_key: string;
   contact_ids: string[];
+  /** The Agent this listing is for (a contact id, or ""). */
+  agent_contact_id: string;
   photo_ids: string[];
   reel_id: string;
   video_url: string;
@@ -55,6 +57,8 @@ export type ListingRow = {
   project_id: string;
   photo_ids: string[];
   created_at: string;
+  agent_user_id?: string | null;
+  shared_with?: string[];
 };
 export type CollectionRow = {
   id: string;

@@ -89,6 +89,7 @@ export function ShareControls({
   title,
   status,
   canEdit,
+  editOnly,
   disabled,
   editHref,
 }: {
@@ -98,6 +99,8 @@ export function ShareControls({
   title: string;
   status: "live" | "paused";
   canEdit: boolean;
+  /** A listing's Agent edits it but doesn't pause or delete it. */
+  editOnly?: boolean;
   disabled: boolean;
   editHref: string;
 }) {
@@ -169,7 +172,7 @@ export function ShareControls({
             <a role="menuitem" href={editHref} aria-label={`Edit: ${title}`}>
               Edit
             </a>
-            {!disabled && (
+            {!disabled && !editOnly && (
               <button
                 type="button"
                 role="menuitem"
@@ -182,18 +185,20 @@ export function ShareControls({
                 {status === "live" ? "Pause" : "Resume"}
               </button>
             )}
-            <button
-              type="button"
-              role="menuitem"
-              className="pt-danger"
-              disabled={pending}
-              onClick={() => {
-                setMenu(false);
-                setSure(true);
-              }}
-            >
-              Delete
-            </button>
+            {!editOnly && (
+              <button
+                type="button"
+                role="menuitem"
+                className="pt-danger"
+                disabled={pending}
+                onClick={() => {
+                  setMenu(false);
+                  setSure(true);
+                }}
+              >
+                Delete
+              </button>
+            )}
           </div>
         </div>
       )}

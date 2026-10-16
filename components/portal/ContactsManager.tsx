@@ -24,6 +24,8 @@ export type ContactRow = {
   brn: string | null;
   is_default: boolean;
   canEdit: boolean;
+  /** Linked to a teammate's login. */
+  hasLogin?: boolean;
   /** Signed preview of the contact's photo (shown on share pages). */
   photo: string | null;
 };
@@ -87,7 +89,8 @@ export function ContactsManager({ contacts }: { contacts: ContactRow[] }) {
             {contacts.map((c) => (
               <div key={c.id} className="pt-row" style={{ flexWrap: "wrap" }}>
                 <div>
-                  <b>{c.name}</b> {c.is_default && <Badge>Default</Badge>}
+                  <b>{c.name}</b> {c.is_default && <Badge>Default</Badge>}{" "}
+                  {c.hasLogin && <Badge>Has login</Badge>}
                   <div className="pt-meta">
                     {[c.role, c.whatsapp, c.email, c.brn].filter(Boolean).join(" · ")}
                   </div>

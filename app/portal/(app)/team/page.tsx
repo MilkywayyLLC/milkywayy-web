@@ -18,7 +18,7 @@ export default async function Team() {
       </div>
     );
   const id = current.account.id;
-  const [{ data: members }, { data: invites }] = await Promise.all([
+  const [{ data: members }, { data: invites }, { data: linked }] = await Promise.all([
     db
       .from("account_members")
       .select("user_id, role, access, created_at")
@@ -30,6 +30,7 @@ export default async function Team() {
       .eq("account_id", id)
       .is("accepted_at", null)
       .order("created_at"),
+    db.from("contacts").select("name, member_id").eq("account_id", id).not("member_id", "is", null),
   ]);
   const ids = (members ?? []).map((m) => m.user_id);
   const { data: profiles } = ids.length
@@ -45,6 +46,7 @@ export default async function Team() {
         name: p?.full_name ?? null,
         contact: p?.email ?? p?.phone_e164 ?? null,
         me: m.user_id === user.id,
+        linkedContact: linked?.find((c) => c.member_id === m.user_id)?.name ?? null,
       };
     })
     .sort((a, b) => Number(b.role === "owner") - Number(a.role === "owner"));

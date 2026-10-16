@@ -23,6 +23,8 @@ export async function listingFormData(
   account: Account,
   project: Project & { listing_defaults?: Partial<ListingInput> | null },
   editing?: Partial<ListingInput> & { permit_qr_key?: string | null },
+  /** The signed-in person: their own linked card is the default point of contact and Agent. */
+  me?: string,
 ) {
   const [{ data: files }, { data: cs }] = await Promise.all([
     db
@@ -34,7 +36,9 @@ export async function listingFormData(
       .order("created_at"),
     db
       .from("contacts")
-      .select("id, name, role, is_default, whatsapp, email, show_whatsapp, brn, photo_url")
+      .select(
+        "id, name, role, is_default, whatsapp, email, show_whatsapp, brn, photo_url, member_id",
+      )
       .eq("account_id", account.id)
       .order("is_default", { ascending: false })
       .order("name"),
@@ -57,6 +61,8 @@ export async function listingFormData(
     brn: c.brn,
     photo: sign(c.photo_url),
   }));
+  const mine = (me && cs?.find((c) => c.member_id === me)?.id) || "";
+  const projectAgent = (project as { agent_contact_id?: string | null }).agent_contact_id ?? "";
   // Older shoots delivered only as a zip: no single photos to put on a page.
   const zipOnly = !photos.length && fs.some((f) => f.kind === "zip");
   const tour = fs.find((f) => f.kind === "tour" && f.source === "link")?.url ?? "";
@@ -75,7 +81,8 @@ export async function listingFormData(
     highlights: [],
     permit_no: "",
     permit_qr_key: "",
-    contact_ids: contacts.slice(0, 1).map((c) => c.id),
+    contact_ids: mine ? [mine] : contacts.slice(0, 1).map((c) => c.id),
+    agent_contact_id: projectAgent || mine,
     photo_ids: photos.map((p) => p.id),
     reel_id: videos[0]?.id ?? "",
     video_url: "",
@@ -107,6 +114,7 @@ export async function listingFormData(
     contact_ids: ((s.contact_ids as string[] | undefined) ?? fromBooking.contact_ids).filter((id) =>
       contactIds.has(id),
     ),
+    agent_contact_id: editing ? String(s.agent_contact_id ?? "") : fromBooking.agent_contact_id,
     // Saved photos still delivered, in the saved order; or all of them.
     photo_ids: ((s.photo_ids as string[] | undefined) ?? fromBooking.photo_ids).filter((id) =>
       known.has(id),

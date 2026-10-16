@@ -84,6 +84,7 @@ const Listing = z.object({
     .refine((s) => !s || /^[A-Za-z0-9-]{3,40}$/.test(s), "Check the permit number."),
   permit_qr_key: z.string(),
   contact_ids: z.array(z.uuid()).min(1, "Choose a contact.").max(2, "Up to 2 contacts."),
+  agent_contact_id: z.union([z.literal(""), z.uuid()]).default(""),
   photo_ids: z.array(z.uuid()).min(1, "Choose at least one photo.").max(80),
   reel_id: z.union([z.literal(""), z.uuid()]),
   video_url: z

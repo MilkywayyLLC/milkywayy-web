@@ -115,6 +115,9 @@ export type Project = {
     source?: "portal";
     booking?: import("./booking").PortalBooking;
   };
+  /** Agency teams: the Agent (contact) and teammates it's shared with. */
+  agent_contact_id?: string | null;
+  shared_with?: string[];
   due_at: string | null;
   shoot_date: string | null;
   slot: string | null;

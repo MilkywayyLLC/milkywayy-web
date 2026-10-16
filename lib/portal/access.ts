@@ -55,6 +55,21 @@ export const PRESETS = {
       team: false,
     },
   },
+  // Sees only shoots and listings where they're the Agent, shared with them or made by them
+  // (enforced in the database: projects.assigned_member_ids, listings.agent_user_id/shared_with).
+  agent: {
+    label: "Agent",
+    hint: "Books shoots for their own listings, downloads files, shares listings. No prices.",
+    access: {
+      shoots: true,
+      editing: false,
+      avatars: false,
+      listings: true,
+      billing: false,
+      all_projects: false,
+      team: false,
+    },
+  },
   custom: { label: "Custom", hint: "Choose exactly what they can use", access: {} },
 } as const satisfies Record<string, { label: string; hint: string; access: Access }>;
 export type PresetKey = keyof typeof PRESETS;

@@ -368,6 +368,22 @@ export function ListingForm({
         error={form.errors.contacts}
       />
 
+      <label className="pt-field">
+        Agent
+        <select
+          name="agent"
+          value={v.agent_contact_id ?? ""}
+          onChange={(e) => set("agent_contact_id", e.target.value)}
+        >
+          <option value="">No agent</option>
+          {people.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
       <PhotoOrder
         photos={photos}
         order={v.photo_ids}

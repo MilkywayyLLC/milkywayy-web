@@ -25,6 +25,8 @@ export type MemberRow = {
   name: string | null;
   contact: string | null;
   me: boolean;
+  /** Their linked card in Contacts (agents get one on invite). */
+  linkedContact?: string | null;
 };
 export type InviteRow = {
   id: string;
@@ -149,6 +151,10 @@ export function TeamManager({
       <p className="pt-meta" style={{ margin: 0 }}>
         Each person signs in with their own email. Choose what each one can see and do.
       </p>
+      <p className="pt-meta" style={{ margin: 0 }} data-testid="agents-note">
+        Agents see only shoots and listings booked for them or shared with them. Bookings are billed
+        to {account.name}.
+      </p>
 
       <div className="pt-list" data-testid="members">
         {members.map((m) => (
@@ -159,6 +165,11 @@ export function TeamManager({
                 {m.me ? " (you)" : ""}
               </b>
               <div className="pt-meta">{m.contact ?? "No contact on file"}</div>
+              {m.linkedContact && (
+                <div className="pt-meta" data-testid="linked-contact">
+                  Contact card: {m.linkedContact}
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <Badge tone={m.role === "owner" ? "solid" : undefined}>{accessLabel(m)}</Badge>
