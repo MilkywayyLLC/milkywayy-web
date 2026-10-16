@@ -290,7 +290,7 @@ export const KINDS = [
   ["reel", "Short-form reel"],
   ["long_form", "Long-form video"],
   ["avatar_video", "AI avatar video"],
-  ["avatar_setup", "AI avatar setup"],
+  ["avatar_setup", "AI character creation"],
 ] as const;
 export const kindLabel = (k: string | null | undefined) =>
   KINDS.find((x) => x[0] === k)?.[1] ?? k ?? "Other";

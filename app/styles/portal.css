@@ -3032,3 +3032,111 @@
     font-size: 14px;
   }
 }
+/* AI characters (17 Oct 2026): the "Your characters" row, variations, the presenter picker. */
+@layer components {
+  .pt-char-sec {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .pt-char-row {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(150px, 180px);
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .pt-char-card {
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    padding: 10px !important;
+    gap: 8px;
+  }
+  .pt-char-card img,
+  .pt-char-card .pt-char-ph,
+  .pt-char-grid img,
+  .pt-char-grid .pt-char-ph {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    display: grid;
+    place-items: center;
+    background: var(--line);
+    color: var(--muted, #5f5a52);
+  }
+  .pt-char-card .pt-title {
+    font-size: 15px;
+  }
+  .pt-char-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+  .pt-char-grid figure {
+    margin: 0;
+    display: grid;
+    gap: 8px;
+    border: 1px solid var(--line);
+    padding: 6px;
+  }
+  .pt-char-grid figure.is-picked {
+    border-color: var(--fg);
+  }
+  .pt-char-grid figcaption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+  .pt-char-approved {
+    display: grid;
+    gap: 12px;
+    justify-items: start;
+  }
+  .pt-char-approved img {
+    width: min(100%, 320px);
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    border: 1px solid var(--line);
+  }
+  .pt-char-log {
+    margin: 8px 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 6px;
+    font-size: 14px;
+  }
+  .pt-char-pick {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  }
+  .pt-char-opt {
+    display: grid;
+    gap: 6px;
+    padding: 6px;
+    min-height: 44px;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    cursor: pointer;
+  }
+  .pt-char-opt[aria-pressed="true"] {
+    border-color: var(--fg);
+    box-shadow: inset 0 0 0 1px var(--fg);
+  }
+  .pt-char-opt img,
+  .pt-char-opt .pt-char-ph {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    background: var(--line);
+  }
+}

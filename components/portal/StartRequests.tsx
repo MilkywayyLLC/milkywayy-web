@@ -7,7 +7,7 @@ import { discardDraft, type DraftKind } from "@/lib/portal/draft-actions";
 import type { RequestConfig } from "@/lib/portal/requests";
 import { BookingModal } from "./BookingModal";
 import { draftDate, Modal } from "./forms";
-import { ProjectRequestModal } from "./NewProjectForm";
+import { ProjectRequestModal, type Presenter } from "./NewProjectForm";
 
 type Kind = "booking" | "edit" | "avatar";
 const TILES: {
@@ -59,6 +59,7 @@ export function StartRequests({
   label,
   autoOpen = false,
   primary = true,
+  characters,
 }: {
   cfg: RequestConfig;
   /** Open this flow directly instead of the "What do you need?" choice. */
@@ -67,6 +68,8 @@ export function StartRequests({
   /** This launcher answers ?new= (one per page). */
   autoOpen?: boolean;
   primary?: boolean;
+  /** Avatar videos: the approved characters to choose the presenter(s) from. */
+  characters?: Presenter[];
 }) {
   const router = useRouter();
   const path = usePathname();
@@ -143,6 +146,7 @@ export function StartRequests({
           key={run}
           type={open.kind}
           cfg={cfg}
+          characters={characters}
           resume={open.resume}
           onClose={close}
           onBack={back}

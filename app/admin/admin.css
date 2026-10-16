@@ -1640,3 +1640,31 @@
     z-index: 5;
     opacity: 0.85;
   }
+/* AI characters (17 Oct 2026) */
+.ad-char-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+.ad-char-grid figure {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line, #dad6cd);
+  padding: 6px;
+}
+.ad-char-grid figure.is-picked {
+  border-color: currentColor;
+}
+.ad-char-grid img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+.ad-char-grid figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}

@@ -80,6 +80,13 @@ export default async function ClientPage({ params, searchParams }: Props) {
           </span>
         </div>
         <div className="ad-btns">
+          <Link
+            className="ad-btn ghost"
+            href={`/admin/accounts/${a.id}/characters`}
+            prefetch={false}
+          >
+            AI characters
+          </Link>
           <Link className="ad-btn ghost" href={`/admin/accounts/${a.id}/view`} prefetch={false}>
             View as client
           </Link>

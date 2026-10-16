@@ -57,6 +57,14 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const rpc = await portalAdminPage();
   const d = await rpc<ProjectDetail | null>("portal_admin_project", { p_id: id });
+  // Avatar videos: the approved character(s) the client chose to present it.
+  const presenters =
+    d?.project.type === "avatar"
+      ? await rpc<{ id: string; name: string | null; account_id: string }[]>(
+          "portal_admin_project_characters",
+          { p_project: id },
+        ).catch(() => [])
+      : [];
   if (!d) notFound();
   const origin = originFrom(await headers());
   const p = d.project;
@@ -295,6 +303,22 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                   <>
                     <dt>Script</dt>
                     <dd>{p.meta.script_by === "client" ? "Client sends it" : "We write it"}</dd>
+                    <dt>AI avatar{presenters.length > 1 ? "s" : ""}</dt>
+                    <dd data-testid="presenters">
+                      {presenters.length
+                        ? presenters.map((c, i) => (
+                            <span key={c.id}>
+                              {i ? ", " : ""}
+                              <Link
+                                href={`/admin/accounts/${c.account_id}/characters#${c.id}`}
+                                prefetch={false}
+                              >
+                                {c.name}
+                              </Link>
+                            </span>
+                          ))
+                        : "—"}
+                    </dd>
                   </>
                 )}
                 <dt>Wanted by</dt>

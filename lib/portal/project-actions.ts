@@ -131,6 +131,8 @@ export type NewProject = {
   references?: string[];
   scriptBy?: "milkywayy" | "client";
   links?: { label: string; url: string }[];
+  /** Avatar videos: the approved character(s) presenting it (17 Oct 2026). */
+  characters?: string[];
 };
 
 /** Start a batch or avatar brief; emails the client's "received" and tells Milkywayy. */
@@ -143,6 +145,21 @@ export async function createProject(
   const av = input.type === "avatar" ? input.avatar : undefined;
   if (input.type === "avatar" && (!av || !(av.format in AVATAR_FORMATS)))
     return { ok: false, error: "Choose the format." };
+  const chars = input.type === "avatar" ? [...new Set(input.characters ?? [])].slice(0, 4) : [];
+  let charNames: string[] = [];
+  if (input.type === "avatar") {
+    const { data: ok } = chars.length
+      ? await db
+          .from("ai_characters")
+          .select("id, name")
+          .in("id", chars)
+          .eq("account_id", current.account.id)
+          .eq("status", "approved")
+      : { data: [] };
+    if (!chars.length || (ok ?? []).length !== chars.length)
+      return { ok: false, error: "Choose your AI avatar (an approved character)." };
+    charNames = (ok ?? []).map((c) => c.name as string);
+  }
   const avLabel = av
     ? `${av.format === "short" ? "Short form" : "Long form"} · ${avatarLength(av.format, av.length)}`
     : "";
@@ -183,6 +200,13 @@ export async function createProject(
     };
   }
   const out = data as { id: string; ref: string; recipients: Recipient[] };
+  if (chars.length) {
+    const { error: e } = await db.rpc("set_project_characters", {
+      p_project: out.id,
+      p_characters: chars,
+    });
+    if (e) console.error("[portal] set_project_characters:", e.message);
+  }
   for (const l of links)
     await db.rpc("add_project_file_in", {
       p_project: out.id,
@@ -208,6 +232,9 @@ export async function createProject(
         title,
         avLabel || briefKindLabel(input.type as ProjectType, kind),
         input.type === "edit" && input.kind === "other" ? `Type: ${input.kindOther!.trim()}` : "",
+        charNames.length
+          ? `Presenter${charNames.length > 1 ? "s" : ""}: ${charNames.join(", ")}`
+          : "",
         input.quantity ? `Quantity: ${input.quantity}` : "",
         links.length ? `${links.length} link${links.length === 1 ? "" : "s"} to raw files` : "",
       ]

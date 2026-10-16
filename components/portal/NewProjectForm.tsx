@@ -44,7 +44,11 @@ type Snap = {
   format: AvatarFormat | "";
   stop: number;
   scriptBy: "milkywayy" | "client";
+  /** Avatar videos: the approved character(s) presenting it. */
+  presenters?: string[];
 };
+/** An approved character, as the video form's presenter picker shows it. */
+export type Presenter = { id: string; name: string; src: string | null };
 const isHttps = (u: string) => /^https:\/\/\S+$/.test(u.trim());
 const QTY_FOR: Record<string, number> = { hdr_photos: 50, short_form: 5, long_form: 2 };
 const EDIT_TURNAROUND: Record<string, string> = {
@@ -66,9 +70,12 @@ export function ProjectRequestModal({
   resume,
   onClose,
   onBack,
+  characters = [],
 }: {
   type: "edit" | "avatar";
   cfg: RequestConfig;
+  /** Avatar videos: the account's approved characters (one or more present the video). */
+  characters?: Presenter[];
   resume?: boolean;
   onClose: () => void;
   /** Back to "What do you need?". */
@@ -88,6 +95,8 @@ export function ProjectRequestModal({
     format: avatar ? "short" : "",
     stop: 0,
     scriptBy: "milkywayy",
+    // One approved character: chosen already.
+    presenters: avatar && characters.length === 1 ? [characters[0].id] : [],
   });
   const [touched, setTouched] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -121,6 +130,10 @@ export function ProjectRequestModal({
   const form = useFormCheck(() => ({
     kind: !avatar && !s.kind && "Choose the type of edit.",
     kindOther: !avatar && s.kind === "other" && !s.kindOther.trim() && "Say what type of edit.",
+    presenters:
+      avatar &&
+      !(s.presenters ?? []).some((id) => characters.some((c) => c.id === id)) &&
+      "Choose your AI avatar.",
     format: avatar && !s.format && "Choose short form or long form.",
     title: !avatar && !s.title.trim() && "Give it a title.",
     quantity:
@@ -155,6 +168,9 @@ export function ProjectRequestModal({
       references: [s.reference],
       scriptBy: s.scriptBy,
       links: s.mode === "links" ? s.links : [],
+      characters: avatar
+        ? (s.presenters ?? []).filter((id) => characters.some((c) => c.id === id))
+        : undefined,
     });
     if (!r.ok) {
       setSaving(false);
@@ -249,6 +265,43 @@ export function ProjectRequestModal({
 
         {avatar ? (
           <>
+            <Field
+              name="presenters"
+              label="Your AI avatar"
+              required
+              group
+              error={form.errors.presenters}
+              hint="Choose more than one for a video with several presenters."
+            >
+              <div className="pt-char-pick" role="group" aria-label="Your AI avatar">
+                {characters.map((c) => {
+                  const on = (s.presenters ?? []).includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className="pt-char-opt"
+                      aria-pressed={on}
+                      onClick={() =>
+                        set({
+                          presenters: on
+                            ? (s.presenters ?? []).filter((x) => x !== c.id)
+                            : [...(s.presenters ?? []), c.id].slice(0, 4),
+                        })
+                      }
+                    >
+                      {c.src ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={c.src} alt="" />
+                      ) : (
+                        <span className="pt-char-ph" aria-hidden="true" />
+                      )}
+                      <b>{c.name}</b>
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
             <Field name="format" label="Format" required group error={form.errors.format}>
               <div className="pt-seg pt-seg-stack" role="group" aria-label="Format">
                 {(Object.keys(AVATAR_FORMATS) as AvatarFormat[]).map((f) => (

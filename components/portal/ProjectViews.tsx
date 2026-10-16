@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CharacterLauncher, CharactersRow } from "@/components/portal/Characters";
 import { AddFiles } from "@/components/portal/ClientUpload";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
 import {
@@ -19,6 +20,7 @@ import { DraftsRow, StartRequests } from "@/components/portal/StartRequests";
 import { Back, Badge, Stepper } from "@/components/portal/ui";
 import { AREA_OF, can } from "@/lib/portal/access";
 import { requireAccount } from "@/lib/portal/auth";
+import { characterTitle, coverOf, myCharacters } from "@/lib/portal/characters";
 import { myDrafts } from "@/lib/portal/draft-actions";
 import { requestConfig } from "@/lib/portal/requests";
 import {
@@ -78,11 +80,15 @@ export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; 
         <span className="pt-meta">Ask the account owner if you need it.</span>
       </div>
     );
-  const [all, cfg, drafts] = await Promise.all([
+  const [all, cfg, drafts, characters] = await Promise.all([
     myProjects(db, current.account.id, type),
     requestConfig(db, current),
     myDrafts(),
+    type === "avatar" ? myCharacters(db, current.account.id) : Promise.resolve([]),
   ]);
+  const presenters = characters
+    .filter((ch) => ch.status === "approved")
+    .map((ch) => ({ id: ch.id, name: characterTitle(ch), src: coverOf(ch)?.src ?? null }));
   const active = all.filter((p) => p.status !== "completed");
   const query = (q ?? "").trim().toLowerCase();
   const done = all
@@ -118,8 +124,13 @@ export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; 
           <span className="pt-eb">{c.eyebrow}</span>
           <h1 className="pt-h1">{c.title}</h1>
         </div>
-        <StartRequests cfg={cfg} only={type} label={c.newLabel} />
+        {type === "avatar" ? (
+          <CharacterLauncher cfg={cfg} presenters={presenters} />
+        ) : (
+          <StartRequests cfg={cfg} only={type} label={c.newLabel} />
+        )}
       </div>
+      {type === "avatar" && <CharactersRow characters={characters} />}
       <DraftsRow
         drafts={drafts.filter((d) => d.kind === type)}
         hrefs={{ [type]: `${base}?new=${type}&draft=1` }}
