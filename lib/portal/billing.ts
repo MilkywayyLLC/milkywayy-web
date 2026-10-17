@@ -127,6 +127,8 @@ export type ClientPlan = {
   ends_on: string | null;
   renews_on: string;
   usage: Pick<Usage, "key" | "label" | "qty" | "used" | "remaining" | "over">[];
+  /** This month's Extras as counts (owner, 17 Oct 2026); money stays on invoices. */
+  extra_items?: { description: string; qty: number; ref: string | null }[];
 };
 export type ClientOffer = Pick<
   Offer,

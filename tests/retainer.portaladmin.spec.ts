@@ -40,28 +40,40 @@ test.afterAll(async () => {
   await cleanup(RUN);
 });
 
-test("client page: put on a budget package, set a rate from a date; history kept", async ({
+test("client page: services, the client's price list (from today, history kept), a budget client's panel", async ({
   page,
 }) => {
+  // Budget packages are kept for existing clients (no longer offered as a new plan).
+  await must(
+    adminRpc("portal_admin_set_budget", {
+      p_account: account,
+      p_amount: 10000,
+      p_from: month,
+      p_advance: false,
+    }),
+  );
   await page.goto(`/admin/accounts/${account}`);
-  const panel = page.getByTestId("budget-panel");
-  await panel.getByLabel(/Monthly amount/).fill("10000");
-  await panel.getByLabel("Starts").selectOption(month);
-  await panel.getByRole("button", { name: "Put on a budget package" }).click();
-  await expect(panel.getByRole("status")).toContainText("Monthly package saved.");
-  await expect(panel).toContainText("of AED 10,000");
-  await page.getByText("Rates for this client").click();
-  const rates = page.getByTestId("client-rates");
-  const reel = rates.getByRole("form", { name: "Short-form reel rate" });
-  await reel.getByLabel("Short-form reel: new rate").fill("450");
-  await reel.getByLabel("Short-form reel: applies from").fill(month);
-  await reel.getByRole("button", { name: "Save" }).click();
-  await expect(reel.getByRole("status")).toContainText("already logged keep their price");
+  // Services: Production on by default, the others off; a toggle saves straight away.
+  const svc = page.getByTestId("client-services");
+  await expect(svc.getByRole("checkbox", { name: /Production/ })).toBeChecked();
+  await expect(svc.getByRole("checkbox", { name: /Post-production/ })).not.toBeChecked();
+  await svc.getByRole("checkbox", { name: /Post-production/ }).check();
+  await expect(svc.getByRole("status")).toHaveText("Saved.");
+  // The price list: one Save for every row; blank keeps the default.
+  const prices = page.getByTestId("client-prices");
+  await prices.getByLabel("Short-form edit: this client's price").fill("450");
+  await prices.getByRole("button", { name: "Save prices" }).click();
+  await expect(prices.getByRole("status")).toHaveText("Saved. 1 price changed from today.");
   await page.reload();
-  await page.getByText("Rates for this client").click();
+  await expect(
+    page.getByTestId("client-prices").getByLabel("Short-form edit: this client's price"),
+  ).toHaveValue("450");
+  await page.getByText("Price history").click();
   await page.getByTestId("client-rates").getByText("Rate history").click();
-  await expect(page.getByTestId("rate-history")).toContainText("Short-form reel: AED 450 from");
-  await page.getByTestId("budget-panel").getByText("Package history").click();
+  await expect(page.getByTestId("rate-history")).toContainText("Short-form edit: AED 450 from");
+  const panel = page.getByTestId("budget-panel");
+  await expect(panel).toContainText("of AED 10,000");
+  await panel.getByText("Package history").click();
   await expect(page.getByTestId("budget-history")).toContainText("AED 10,000/month from");
 });
 

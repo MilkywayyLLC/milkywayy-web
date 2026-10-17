@@ -6,8 +6,10 @@ import { getPropertyPricing } from "@/lib/data";
 import { can } from "./access";
 import { requireAccount } from "./auth";
 import {
+  clientPricing,
   DAY_LABEL,
   estimate,
+  isRaw,
   SERVICE_LABEL,
   serviceSummary,
   SLOTS,
@@ -28,23 +30,36 @@ import { notifyMilkywayy } from "./notify";
 export type BookResult = { ok: boolean; error?: string; ref?: string };
 
 const why = (m: string) =>
-  /include shoots/.test(m)
-    ? "Your access doesn’t include booking shoots. Ask the account owner."
-    : /choose a date/.test(m)
-      ? "Choose a date from today."
-      : /time slot/.test(m)
-        ? "Choose a time slot."
-        : /add the location/.test(m)
-          ? "Add the location."
-          : /in the UAE/.test(m)
-            ? "The pin must be in the UAE."
-            : /at least one service/.test(m)
-              ? "Add at least one service."
-              : /https:\/\/ links/.test(m)
-                ? "Reference links must start with https:// (5 at most per service)."
-                : /too many/.test(m)
-                  ? "That’s a lot at once. WhatsApp us and we’ll sort it out."
-                  : "Couldn’t send the booking. Try again.";
+  /isn't enabled/.test(m)
+    ? "Shoots aren’t part of your account yet. Message us to add them."
+    : /include shoots/.test(m)
+      ? "Your access doesn’t include booking shoots. Ask the account owner."
+      : /choose a date/.test(m)
+        ? "Choose a date from today."
+        : /time slot/.test(m)
+          ? "Choose a time slot."
+          : /add the location/.test(m)
+            ? "Add the location."
+            : /in the UAE/.test(m)
+              ? "The pin must be in the UAE."
+              : /at least one service/.test(m)
+                ? "Add at least one service."
+                : /https:\/\/ links/.test(m)
+                  ? "Reference links must start with https:// (5 at most per service)."
+                  : /too many/.test(m)
+                    ? "That’s a lot at once. WhatsApp us and we’ll sort it out."
+                    : "Couldn’t send the booking. Try again.";
+
+/** What the database stores for a service: shot & edited by quantity, shoot only by day. */
+function cleanService(s: BookingService): BookingService {
+  const mode = s.mode === "raw" ? "raw" : "edited";
+  if (s.service === "property")
+    return { service: "property", mode, ...(s.property ? { property: s.property } : {}) };
+  return mode === "raw"
+    ? { service: s.service, mode, day: s.day === "full" ? "full" : "half" }
+    : { service: s.service, mode, qty: Math.round(s.qty ?? 1) };
+}
+const startTime = (t?: string) => (t && /^([01]\d|2[0-3]):[0-5]\d$/.test(t) ? t : null);
 
 export async function bookShoot(b: {
   date: string;
@@ -52,6 +67,8 @@ export async function bookShoot(b: {
   location: BookingLocation;
   services: BookingService[];
   note?: string;
+  /** Preferred start time (HH:MM), optional: scheduling only. */
+  startTime?: string;
   /** The Agent (a contact id); empty leaves the database default (an agent's own card). */
   agent?: string | null;
 }): Promise<BookResult> {
@@ -68,12 +85,9 @@ export async function bookShoot(b: {
   const pricing = await getPropertyPricing();
   const { data: opts } = await db.rpc("my_booking_options", { p_account: current.account.id });
   const rates = (opts as { rates: Rates | null } | null)?.rates ?? null;
-  const est = rates ? estimate(b.services, rates, pricing) : null;
+  const est = rates ? estimate(b.services, rates, clientPricing(pricing, rates)) : null;
   const services = b.services.map((s) => ({
-    service: s.service,
-    ...(s.service === "property"
-      ? { property: s.property }
-      : { qty: Math.round(s.qty ?? 1), ...(s.day ? { day: s.day } : {}) }),
+    ...cleanService(s),
     ...(s.notes?.trim() ? { notes: s.notes.trim() } : {}),
     ...(s.links?.length ? { links: s.links.map((l) => l.trim()).filter(Boolean) } : {}),
   }));
@@ -96,6 +110,7 @@ export async function bookShoot(b: {
     p_services: services,
     p_note: b.note?.trim() || null,
     p_estimate: est,
+    p_start_time: startTime(b.startTime),
   });
   if (error) {
     console.error("[portal] book_shoot:", error.message);
@@ -121,7 +136,7 @@ export async function bookShoot(b: {
       `Where: ${loc.address}${loc.unit ? ` · ${loc.unit}` : ""}`,
       ...b.services.map(
         (s) =>
-          `${SERVICE_LABEL[s.service]}: ${serviceSummary(s, pricing)}${s.day ? ` (${DAY_LABEL[s.day]})` : ""}`,
+          `${SERVICE_LABEL[s.service]}: ${serviceSummary(s, pricing)}${s.day && !isRaw(s) ? ` (${DAY_LABEL[s.day]})` : ""}`,
       ),
       ...(est != null
         ? [`Estimate at their rates: ${current.account.currency} ${est.toLocaleString("en-US")}`]
@@ -162,13 +177,8 @@ export async function updateBooking(projectId: string, b: BookingInput): Promise
   const pricing = await getPropertyPricing();
   const { data: opts } = await db.rpc("my_booking_options", { p_account: current.account.id });
   const rates = (opts as { rates: Rates | null } | null)?.rates ?? null;
-  const est = rates ? estimate(b.services, rates, pricing) : null;
-  const services = b.services.map((s) => ({
-    service: s.service,
-    ...(s.service === "property"
-      ? { property: s.property }
-      : { qty: Math.round(s.qty ?? 1), ...(s.day ? { day: s.day } : {}) }),
-  }));
+  const est = rates ? estimate(b.services, rates, clientPricing(pricing, rates)) : null;
+  const services = b.services.map(cleanService);
   const loc: BookingLocation = {
     address: b.location.address.trim(),
     ...(b.location.lat != null && b.location.lng != null
@@ -188,6 +198,7 @@ export async function updateBooking(projectId: string, b: BookingInput): Promise
     p_services: services,
     p_note: b.note?.trim() || null,
     p_estimate: est,
+    p_start_time: startTime(b.startTime),
   });
   if (error) {
     console.error("[portal] update_booking:", error.message);

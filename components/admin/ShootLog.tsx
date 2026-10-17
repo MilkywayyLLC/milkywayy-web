@@ -63,7 +63,10 @@ export function ShootLog({
   const set = (i: number, patch: Partial<LogLine>) =>
     setLines((ls) => ls.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const preview = hasDeliverables ? [] : deliverablesFrom(lines);
-  const options = rates.filter((x) => x.key !== "shoot");
+  // Property parts are priced through the property line (the client's price list), not alone.
+  const options = rates.filter(
+    (x) => x.key !== "shoot" && !/^prop_(photo_|short|long|tour|twilight)/.test(x.key),
+  );
 
   return (
     <section className="ad-card ad-form" aria-label="Log what we shot" data-testid="shoot-log">
@@ -73,6 +76,10 @@ export function ShootLog({
         </h2>
         <span className="ad-small ad-muted">{logged ? "Logged" : "Not logged yet"}</span>
       </div>
+      <p className="ad-small ad-muted" style={{ margin: 0 }}>
+        On a monthly package, items within what’s left of this month’s inclusions are saved as
+        Included (AED 0); the rest are Extras at the client’s price.
+      </p>
       {locked && (
         <p className="ad-note" style={{ margin: 0 }}>
           These items are already on an invoice. Change them on the invoice draft instead.

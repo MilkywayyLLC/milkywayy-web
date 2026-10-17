@@ -643,6 +643,18 @@
     font-weight: 400;
     font-size: 13px;
   }
+  .pt-choice .pt-choice-price {
+    margin-top: 4px;
+    color: var(--fg);
+    font-size: 12px;
+  }
+  .pt-mode {
+    justify-self: start;
+    max-width: 100%;
+  }
+  .pt-mode button {
+    white-space: normal;
+  }
   .pt-choice input {
     position: absolute;
     opacity: 0;

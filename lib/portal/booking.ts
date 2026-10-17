@@ -1,4 +1,5 @@
-import type { PropertyPricing } from "@/content/types";
+import type { PropertyPricing, TwilightQty } from "@/content/types";
+import { AVATAR_FORMATS } from "./booking-labels";
 import {
   normalize,
   servicesText,
@@ -33,10 +34,21 @@ export type PropertyConfig = Pick<
   | "tour"
 >;
 
+/** Shot & edited (we film and edit) or Shoot only (raw files) (owner, 17 Oct 2026). */
+export type ShootMode = "edited" | "raw";
+export const MODE_LABEL: Record<ShootMode, string> = {
+  edited: "Shot & edited",
+  raw: "Shoot only (raw files)",
+};
+
 export type BookingService = {
   service: "reels" | "long_form" | "property";
+  /** Absent on older bookings: shot & edited. */
+  mode?: ShootMode;
+  /** Shot & edited reels and long-form: how many videos. */
   qty?: number;
-  /** Reels and long-form: a half-day or a full-day shoot (owner, 10 Oct 2026). */
+  /** Shoot only, reels and long-form: a half-day or a full-day shoot. (Older shot & edited
+   *  bookings carry one too.) */
   day?: "half" | "full";
   notes?: string;
   links?: string[];
@@ -59,21 +71,61 @@ export type PortalBooking = {
   location: BookingLocation;
   services: BookingService[];
   slot?: Slot;
+  /** Preferred start time (HH:MM), scheduling only: we confirm the exact time. */
+  start_time?: string;
   note?: string;
   estimate?: number | null;
 };
 
-export const SERVICE_LABEL: Record<BookingService["service"], string> = {
-  reels: "Agent / social reels",
-  long_form: "Long-form walkthrough",
-  property: "Property shoot",
-};
-export const SERVICE_HINT: Record<BookingService["service"], string> = {
-  property: "Photos, videography and 360 tour for a listing, priced like the website",
-  reels: "Vertical 9:16 walkthroughs and agent-presented videos",
-  long_form: "Horizontal 16:9 walkthrough for YouTube",
-};
+// The labels live in a small module of their own: the website's dashboard previews import them
+// without the booking logic (JS budget).
+export { SERVICE_HINT, SERVICE_LABEL } from "./booking-labels";
 export const DAY_LABEL = { half: "Half day", full: "Full day" } as const;
+export const isRaw = (s: Pick<BookingService, "mode">) => s.mode === "raw";
+
+/** The rate card key a booked service counts against (package inclusions, the price list). */
+export function serviceKey(s: BookingService): string {
+  if (s.service === "property") return isRaw(s) ? "prop_raw" : "shoot";
+  if (isRaw(s)) return s.day === "full" ? "full_day" : "half_day";
+  return s.service === "reels" ? "reel_shoot" : "long_form_shoot";
+}
+
+/**
+ * The website price list with this client's own prices in it (owner, 17 Oct 2026): photos by
+ * size, and flat videography, 360 tour and twilight (per image) prices where set. Everything
+ * built on the price list (the property builder, subtotals, the shoot log) then uses them.
+ */
+export function clientPricing(pricing: PropertyPricing, rates: Rates | null): PropertyPricing {
+  if (!rates) return pricing;
+  const r = (k: string) => (rates[k] == null ? null : Number(rates[k]));
+  const short = r("prop_short");
+  const long = r("prop_long");
+  const tour = r("prop_tour");
+  const twi = r("prop_twilight");
+  const sizes = (t: "apt" | "villa", list: PropertyPricing["apartment"]["sizes"]) =>
+    list.map((z, i) => ({
+      ...z,
+      photo: r(`prop_photo_${t}_${i}`) ?? z.photo,
+      short: short ?? z.short,
+      long: long == null ? z.long : { day: long, night: long, dayNight: long },
+      tour: tour ?? z.tour,
+    }));
+  const twTable = (t: Record<TwilightQty, number>) =>
+    twi == null
+      ? t
+      : (Object.fromEntries(
+          Object.keys(t).map((k) => [k, Math.round(Number(k) * twi * 100) / 100]),
+        ) as Record<TwilightQty, number>);
+  return {
+    ...pricing,
+    apartment: { ...pricing.apartment, sizes: sizes("apt", pricing.apartment.sizes) },
+    villa: { ...pricing.villa, sizes: sizes("villa", pricing.villa.sizes) },
+    twilight: {
+      standard: twTable(pricing.twilight.standard),
+      villa: twTable(pricing.twilight.villa),
+    },
+  };
+}
 
 /** The property config as the website builder's state (no location or date of its own). */
 export function asProperty(c: PropertyConfig, pricing: PropertyPricing): BookingProperty {
@@ -88,7 +140,12 @@ export const propertyLabel = (c: PropertyConfig, pricing: PropertyPricing) => {
 
 /** One line, for the collapsed chip: "4 reels · notes", "2BR apartment: photos + reel". */
 export function serviceSummary(s: BookingService, pricing: PropertyPricing) {
+  if (s.service === "property" && isRaw(s))
+    return s.property
+      ? `Shoot only (raw files) · ${propertyLabel(s.property, pricing)}`
+      : "Shoot only (raw files)";
   if (s.service === "property" && s.property) return propertyLabel(s.property, pricing);
+  if (isRaw(s)) return `Shoot only (raw files) · ${DAY_LABEL[s.day ?? "half"].toLowerCase()}`;
   const n = s.qty ?? 1;
   const day = s.day ? ` · ${DAY_LABEL[s.day].toLowerCase()}` : "";
   return s.service === "reels"
@@ -96,20 +153,16 @@ export function serviceSummary(s: BookingService, pricing: PropertyPricing) {
     : `${n} long-form video${n === 1 ? "" : "s"}${day}`;
 }
 
-/** The client's own rates (null where none is set), from my_booking_options. */
-export type Rates = {
-  reel: number | null;
-  long_form: number | null;
-  reel_shoot?: number | null;
-  long_form_shoot?: number | null;
-  half_day?: number | null;
-  full_day?: number | null;
-  avatar_short?: number | null;
-  avatar_long?: number | null;
-};
+/** The client's own prices by rate card key (null where none is set), from my_booking_options. */
+export type Rates = Record<string, number | null | undefined>;
+
+/** What's left of each package inclusion this month, by key (package clients with price access). */
+export type Left = Record<string, { qty: number; remaining: number }>;
 
 /** One line of an estimate; amount null when that rate isn't set (priced on confirmation). */
 export type EstimateLine = {
+  /** The rate card key it counts against (package inclusions). */
+  key?: string;
   label: string;
   qty: number;
   unit: number | null;
@@ -123,34 +176,82 @@ export function estimateLines(
   pricing: PropertyPricing,
 ): EstimateLine[] {
   const out: EstimateLine[] = [];
-  const line = (label: string, qty: number, unit: number | null | undefined) => {
+  const line = (key: string, label: string, qty: number, unit: number | null | undefined) => {
     const u = unit == null ? null : Number(unit);
-    out.push({ label, qty, unit: u, amount: u == null ? null : Math.round(u * qty * 100) / 100 });
+    out.push({
+      key,
+      label,
+      qty,
+      unit: u,
+      amount: u == null ? null : Math.round(u * qty * 100) / 100,
+    });
   };
   for (const s of services) {
-    if (s.service === "property" && s.property) {
-      const amount = subtotal(asProperty(s.property, pricing), pricing);
-      out.push({
-        label: `Property shoot · ${propertyLabel(s.property, pricing)}`,
-        qty: 1,
-        unit: amount,
-        amount,
-      });
+    const key = serviceKey(s);
+    if (s.service === "property") {
+      if (isRaw(s)) line(key, "Property shoot, shoot only (raw files)", 1, rates.prop_raw);
+      else if (s.property) {
+        const amount = subtotal(asProperty(s.property, pricing), pricing);
+        out.push({
+          key,
+          label: `Property shoot · ${propertyLabel(s.property, pricing)}`,
+          qty: 1,
+          unit: amount,
+          amount,
+        });
+      }
       continue;
     }
-    const n = s.qty ?? 1;
-    if (s.service === "reels")
-      line("Reel, shot and edited", n, s.day ? rates.reel_shoot : rates.reel);
+    if (isRaw(s))
+      line(key, `Shoot only · ${DAY_LABEL[s.day ?? "half"].toLowerCase()}`, 1, rates[key]);
     else
-      line("Long-form video, shot and edited", n, s.day ? rates.long_form_shoot : rates.long_form);
-    if (s.day)
       line(
-        s.day === "half" ? "Half-day shoot" : "Full-day shoot",
-        1,
-        rates[s.day === "half" ? "half_day" : "full_day"],
+        key,
+        s.service === "reels" ? "Reel, shot & edited" : "Long-form, shot & edited",
+        s.qty ?? 1,
+        rates[key],
       );
   }
   return out;
+}
+
+/**
+ * Package clients (owner, 17 Oct 2026): each line as Included (what's left of that inclusion this
+ * month covers it) or Extra at the client's price; a line can be part of each. Amounts are the
+ * extras only.
+ */
+export type PackageLine = EstimateLine & {
+  included: number;
+  left: number | null;
+  total: number | null;
+};
+export function packageLines(lines: EstimateLine[], left: Left | null): PackageLine[] {
+  const rem = Object.fromEntries(
+    Object.entries(left ?? {}).map(([k, v]) => [k, Number(v.remaining)]),
+  );
+  return lines.map((l) => {
+    const inc = l.key && l.key in rem ? Math.min(l.qty, Math.max(0, rem[l.key])) : 0;
+    const before = l.key && l.key in rem ? rem[l.key] : null;
+    if (l.key && l.key in rem) rem[l.key] -= inc;
+    const extra = l.qty - inc;
+    return {
+      ...l,
+      included: inc,
+      left: before,
+      total: l.key && left?.[l.key] ? Number(left[l.key].qty) : null,
+      amount: l.unit == null ? (extra ? null : 0) : Math.round(l.unit * extra * 100) / 100,
+    };
+  });
+}
+/** "Included (5 of 8 left this month)", "Extra · AED 400", or both. */
+export function packageLineText(l: PackageLine, money: (n: number) => string) {
+  const inc = l.included > 0 ? `Included (${l.left} of ${l.total} left this month)` : "";
+  const extra = l.qty - l.included;
+  const ex =
+    extra > 0
+      ? `${l.included > 0 ? `${extra} extra` : "Extra"} · ${l.amount == null ? "priced on confirmation" : money(l.amount)}`
+      : "";
+  return [inc, ex].filter(Boolean).join(" + ");
 }
 
 /** The estimate total (lines without a rate left out). */
@@ -161,15 +262,7 @@ export function estimate(services: BookingService[], rates: Rates, pricing: Prop
 
 /* ---------- AI avatar videos (owner, 10 Oct 2026) ---------- */
 
-export const AVATAR_FORMATS = {
-  short: {
-    label: "Short form (Instagram reels, 9:16)",
-    stops: [30, 60, 90, 120],
-    unit: "s",
-    def: 30,
-  },
-  long: { label: "Long form (YouTube, 16:9)", stops: [2, 5, 10, 15], unit: "min", def: 2 },
-} as const;
+export { AVATAR_FORMATS };
 export type AvatarFormat = keyof typeof AVATAR_FORMATS;
 export const avatarLength = (f: AvatarFormat, n: number) => (f === "short" ? `${n}s` : `${n} min`);
 /** The brief's kind in the database: 30s / 60s / 90s, else "longer". */
@@ -202,6 +295,22 @@ export type LogLine = {
 export function logPrefill(services: BookingService[], pricing: PropertyPricing): LogLine[] {
   return services
     .map((s): LogLine => {
+      if (s.service === "property" && isRaw(s))
+        return {
+          key: "prop_raw",
+          description: "Property shoot, shoot only (raw files)",
+          qty: 1,
+          basis: "client_rate",
+        };
+      if (isRaw(s)) {
+        const d = s.day ?? "half";
+        return {
+          key: d === "half" ? "half_day" : "full_day",
+          description: `Shoot only · ${DAY_LABEL[d].toLowerCase()} (${s.service === "reels" ? "reels" : "long-form"})`,
+          qty: 1,
+          basis: "client_rate",
+        };
+      }
       if (s.service === "property" && s.property) {
         const p = asProperty(s.property, pricing);
         return {
@@ -229,7 +338,8 @@ export function logPrefill(services: BookingService[], pricing: PropertyPricing)
           };
     })
     .flatMap((l, i): LogLine[] => {
-      const d = services[i].day;
+      // Older shot & edited bookings had a day fee too; shoot-only lines are the day itself.
+      const d = isRaw(services[i]) ? undefined : services[i].day;
       return d
         ? [
             l,
@@ -257,17 +367,25 @@ export function servicesFromLog(lines: LogLine[], before: BookingService[]): Boo
   const keep = (k: BookingService["service"]) => before.find((s) => s.service === k);
   for (const l of lines)
     if (l.key === "property" && l.property) out.push({ service: "property", property: l.property });
+    else if (l.key === "prop_raw")
+      out.push({ ...keep("property"), service: "property", mode: "raw" });
   const reels = count(["reel", "reel_shoot"]);
   const longs = count(["long_form", "long_form_shoot"]);
   if (reels)
-    out.push({ ...keep("reels"), service: "reels", qty: reels, day: day ?? keep("reels")?.day });
+    out.push({ ...keep("reels"), service: "reels", mode: "edited", qty: reels, day: undefined });
   if (longs)
     out.push({
       ...keep("long_form"),
       service: "long_form",
+      mode: "edited",
       qty: longs,
-      day: day ?? keep("long_form")?.day,
+      day: undefined,
     });
+  // A shoot-only day with no edited videos: the shoot-only booking it was.
+  if (!reels && !longs && day) {
+    const b = before.find((s) => s.service !== "property");
+    out.push({ ...b, service: b?.service ?? "reels", mode: "raw", day, qty: undefined });
+  }
   return out;
 }
 
@@ -294,6 +412,9 @@ export function deliverablesFrom(lines: LogLine[]): DeliverableDraft[] {
       if (l.property.video && l.property.long)
         out.push({ label: `Long-form ${++longs}`, kind: "long_form" });
       if (l.property.tour) out.push({ label: "360 tour", kind: "tour" });
+    } else if (l.key === "prop_raw" || l.key === "half_day" || l.key === "full_day") {
+      if (!out.some((d) => d.label === "Raw files"))
+        out.push({ label: "Raw files", kind: "other" });
     } else if (l.key === "photo")
       out.push({ label: l.description.trim().slice(0, 80) || "Photos", kind: "photos" });
   }

@@ -74,11 +74,31 @@ export const PRESETS = {
 } as const satisfies Record<string, { label: string; hint: string; access: Access }>;
 export type PresetKey = keyof typeof PRESETS;
 
-type Who = { role: "owner" | "admin" | "member"; access?: Access | null };
+type Services = { svc_production?: boolean; svc_post?: boolean; svc_avatars?: boolean };
+type Who = {
+  role: "owner" | "admin" | "member";
+  access?: Access | null;
+  /** The account's enabled services: an area of a disabled service is off for everyone. */
+  account?: Services;
+};
+
+/** Which service each area belongs to (Shoots, Listings and Contacts are Production). */
+const SERVICE_OF: Partial<Record<Perm, keyof Services>> = {
+  shoots: "svc_production",
+  listings: "svc_production",
+  editing: "svc_post",
+  avatars: "svc_avatars",
+};
+
+/** Whether the account has that area's service (unknown = yes, for callers without it). */
+export const serviceOn = (m: Who, perm: Perm) => {
+  const svc = SERVICE_OF[perm];
+  return !svc || !m.account || m.account[svc] !== false;
+};
 
 /** Whether this person may use that part of the account. */
 export const can = (m: Who, perm: Perm) =>
-  m.role === "owner" || m.role === "admin" || !!m.access?.[perm];
+  serviceOn(m, perm) && (m.role === "owner" || m.role === "admin" || !!m.access?.[perm]);
 
 /** The preset an access set matches (Admin for Owner/Admin roles), else Custom. */
 export function presetOf(m: Who): PresetKey {

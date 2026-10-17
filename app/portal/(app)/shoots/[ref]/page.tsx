@@ -130,7 +130,13 @@ export default async function ShootPage({
     contactName(db, p.agent_contact_id),
     admin ? teammates(db, current.account.id) : Promise.resolve([]),
   ]);
-  const when = [shootDay(p.shoot_date), p.slot].filter(Boolean).join(" · ");
+  const when = [
+    shootDay(p.shoot_date),
+    p.slot,
+    booking?.start_time ? `preferred start ${booking.start_time}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const total = (items ?? []).reduce((t, i) => t + Number(i.qty) * Number(i.unit_price), 0);
 
   return (
@@ -165,6 +171,7 @@ export default async function ShootPage({
             status: p.status as "requested" | "confirmed",
             date: p.shoot_date ?? "",
             slot: ["morning", "afternoon", "full_day"].includes(slotKey) ? slotKey : "",
+            startTime: booking?.start_time ?? "",
             location: booking?.location ?? {
               address: [p.meta.building, p.meta.area].filter(Boolean).join(", "),
               unit: p.meta.unit,

@@ -197,7 +197,8 @@ export function ClientRateHistory({
           <ul className="ad-history" data-testid="rate-history">
             {h.rates.map((r) => (
               <li key={`${r.key}-${r.effective_from}`}>
-                {r.label}: {money(currency, Number(r.amount))} from {dateLabel(r.effective_from)}
+                {r.label}: {r.amount == null ? "default" : money(currency, Number(r.amount))} from{" "}
+                {dateLabel(r.effective_from)}
                 <span className="ad-muted">
                   {" "}
                   · set {dateLabel(r.created_at)}

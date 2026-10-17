@@ -174,8 +174,10 @@ test("a package's usage meter counts delivered items of each kind in the period"
   }>(O.rpc("my_billing", { p_account: account }));
   expect(b.mode).toBe("package");
   expect(b.plan.name).toBe("Growth");
-  // 3 (earlier this period) + 4 = 7 reels; the back-dated 10 are outside the period.
-  expect(b.plan.usage.find((u) => u.key === "reel")).toMatchObject({ used: 7, qty: 10 });
+  // Each item is decided when it's logged (owner, 17 Oct 2026): the 4 logged on the package are
+  // Included; the 3 logged earlier this period on pay as you go stay Extras; the back-dated 10
+  // are outside the period.
+  expect(b.plan.usage.find((u) => u.key === "reel")).toMatchObject({ used: 4, qty: 10, over: 3 });
   expect(b.plan.usage.find((u) => u.key === "long_form")).toMatchObject({ used: 0, qty: 2 });
   // The Member can't read the package either.
   expect(await must<unknown[]>(M.from("packages").select("id"))).toEqual([]);

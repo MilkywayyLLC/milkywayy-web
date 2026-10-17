@@ -15,6 +15,10 @@ import { dateLabel, money } from "@/lib/portal/billing";
 import {
   DAY_LABEL,
   estimateLines,
+  isRaw,
+  MODE_LABEL,
+  packageLines,
+  packageLineText,
   SERVICE_HINT,
   SERVICE_LABEL,
   serviceSummary,
@@ -22,6 +26,7 @@ import {
   type BookingLocation,
   type BookingService,
   type PropertyConfig,
+  type ShootMode,
   type Slot,
 } from "@/lib/portal/booking";
 import type { RequestConfig } from "@/lib/portal/requests";
@@ -58,11 +63,42 @@ export function PriceBlock({
   total,
 }: {
   cfg: RequestConfig;
-  lines?: { label: string; qty: number; amount: number | null }[];
+  lines?: { key?: string; label: string; qty: number; amount: number | null }[];
   total: number | null;
 }) {
   const p = cfg.price;
   if (!p.rates) return null;
+  // Package clients: each line Included (what's left this month) or Extra at their price.
+  if (p.mode === "package" && p.left && lines?.length) {
+    const pl = packageLines(
+      lines.map((l) => ({
+        ...l,
+        unit: l.qty ? (l.amount == null ? null : l.amount / l.qty) : null,
+      })),
+      p.left,
+    );
+    const extra = pl.reduce((n, l) => n + (l.amount ?? 0), 0);
+    return (
+      <div className="pt-estimate" data-testid="estimate">
+        <ul className="pt-summary" aria-label="Estimate">
+          {pl.map((l, i) => (
+            <li key={i}>
+              <span>
+                {l.label}
+                {l.qty > 1 ? ` × ${l.qty}` : ""}
+              </span>
+              <span className="pt-mono">{packageLineText(l, (n) => money(p.currency, n))}</span>
+            </li>
+          ))}
+        </ul>
+        <b>
+          {extra > 0
+            ? `Extras estimated ${money(p.currency, extra)}, on your month-end invoice.`
+            : "Covered by your monthly package."}
+        </b>
+      </div>
+    );
+  }
   if (p.mode !== "payg")
     return (
       <p className="pt-estimate" data-testid="estimate">
@@ -117,8 +153,10 @@ function SummaryBar({
 }) {
   const [open, setOpen] = useState(false);
   const p = cfg.price;
+  const pkg = p.mode === "package" && !!p.left && !!p.rates;
+  const pl = pkg ? packageLines(lines, p.left) : [];
   const raw: { label: string; amount: number | null }[] =
-    service?.service === "property"
+    service?.service === "property" && !isRaw(service)
       ? priceLines(prop, cfg.pricing)
       : lines.map((l) => ({
           label: `${l.label}${l.qty > 1 ? ` × ${l.qty}` : ""}`,
@@ -126,28 +164,42 @@ function SummaryBar({
         }));
   const items: { label: string; price?: string }[] = !service
     ? []
-    : p.rates || service.service === "property"
-      ? raw.map((l) => ({
-          label: l.label,
-          price: !p.rates
-            ? undefined
-            : p.mode !== "payg"
-              ? "Included in package"
-              : l.amount == null
-                ? "Priced on confirmation"
-                : money(p.currency, l.amount),
+    : pkg
+      ? pl.map((l) => ({
+          label: `${l.label}${l.qty > 1 ? ` × ${l.qty}` : ""}`,
+          price: packageLineText(l, (n) => money(p.currency, n)),
         }))
-      : [{ label: `${SERVICE_LABEL[service.service]} · ${serviceSummary(service, cfg.pricing)}` }];
+      : p.rates || service.service === "property"
+        ? raw.map((l) => ({
+            label: l.label,
+            price: !p.rates
+              ? undefined
+              : p.mode !== "payg"
+                ? "Included in package"
+                : l.amount == null
+                  ? "Priced on confirmation"
+                  : money(p.currency, l.amount),
+          }))
+        : [
+            {
+              label: `${SERVICE_LABEL[service.service]} · ${serviceSummary(service, cfg.pricing)}`,
+            },
+          ];
+  const extras = pl.reduce((n, l) => n + (l.amount ?? 0), 0);
   const totalText =
     !p.rates || !items.length
       ? null
-      : p.mode === "payg"
-        ? total
-          ? money(p.currency, total)
-          : "On confirmation"
-        : p.showAmount && total
-          ? `~${money(p.currency, total)}`
-          : null;
+      : pkg
+        ? extras > 0
+          ? `${money(p.currency, extras)} extra`
+          : "Included"
+        : p.mode === "payg"
+          ? total
+            ? money(p.currency, total)
+            : "On confirmation"
+          : p.showAmount && total
+            ? `~${money(p.currency, total)}`
+            : null;
   return (
     <div className="pt-sumbar" data-open={open ? "" : undefined}>
       {open && (
@@ -198,6 +250,29 @@ function SummaryBar({
   );
 }
 
+/** A shoot type's price for the chosen mode, from this client's price list (price access only). */
+function cardPrice(k: Kind, mode: ShootMode, cfg: RequestConfig): string | null {
+  const r = cfg.price.rates;
+  if (!r) return null;
+  const m = (n: number | null | undefined) =>
+    n == null ? null : money(cfg.price.currency, Number(n));
+  if (k === "property") {
+    if (mode === "raw") return m(r.prop_raw);
+    const from = Math.min(
+      ...cfg.pricing.apartment.sizes.map((z) => z.photo),
+      ...cfg.pricing.villa.sizes.map((z) => z.photo),
+    );
+    return Number.isFinite(from) ? `Photos from ${m(from)} · priced by size` : null;
+  }
+  if (mode === "raw") {
+    const h = m(r.half_day);
+    const f = m(r.full_day);
+    return h || f ? `Half day ${h ?? "on request"} · Full day ${f ?? "on request"}` : null;
+  }
+  const per = m(r[k === "reels" ? "reel_shoot" : "long_form_shoot"]);
+  return per ? `${per} per ${k === "reels" ? "reel" : "video"}` : null;
+}
+
 /** Wizard steps joined by a rail: done = filled with a check, current = outlined, next = muted. */
 function WizardSteps({ steps, at }: { steps: string[]; at: number }) {
   return (
@@ -224,6 +299,8 @@ function WizardSteps({ steps, at }: { steps: string[]; at: number }) {
 
 type Snap = {
   step: 1 | 2 | 3;
+  mode?: ShootMode;
+  startTime?: string;
   kind: Kind | "";
   prop: PropertyConfig | null;
   qty: number;
@@ -246,6 +323,7 @@ export type BookingEdit = {
   status: "requested" | "confirmed";
   date: string;
   slot: Slot | "";
+  startTime?: string;
   location: BookingLocation;
   service: BookingService | null;
   note: string;
@@ -269,11 +347,13 @@ export function BookingModal({
   const { pricing } = cfg;
   const s0 = edit?.service;
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [mode, setMode] = useState<ShootMode>(s0?.mode === "raw" ? "raw" : "edited");
   const [kind, setKind] = useState<Kind | "">(s0?.service ?? "");
   const [qty, setQty] = useState(s0?.qty ?? 4);
-  const [day, setDay] = useState<"half" | "full" | "">(s0?.day ?? "");
+  const [day, setDay] = useState<"half" | "full" | "">(s0?.mode === "raw" ? (s0.day ?? "") : "");
   const [date, setDate] = useState(edit?.date ?? "");
   const [slot, setSlot] = useState<Slot | "">(edit?.slot ?? "");
+  const [startTime, setStartTime] = useState(edit?.startTime ?? "");
   const [loc, setLoc] = useState<BookingLocation>(edit?.location ?? { address: "" });
   const [note, setNote] = useState(edit?.note ?? "");
   const [agent, setAgent] = useState(cfg.myContactId ?? "");
@@ -286,8 +366,6 @@ export function BookingModal({
     blankProperty(1, pricing, "", ""),
     (p) => (s0?.property ? { ...p, ...s0.property } : p),
   );
-  // Reels and long-form: half day picks morning or afternoon; a full day has no time choice.
-  const fullDay = kind !== "" && kind !== "property" && day === "full";
   const touch =
     <A extends unknown[]>(f: (...a: A) => void) =>
     (...a: A) => {
@@ -297,15 +375,21 @@ export function BookingModal({
 
   const service: BookingService | null =
     kind === "property"
-      ? { service: "property", property: toConfig(prop) }
+      ? mode === "raw"
+        ? { service: "property", mode }
+        : { service: "property", mode, property: toConfig(prop) }
       : kind
-        ? { service: kind, qty, ...(day ? { day } : {}) }
+        ? mode === "raw"
+          ? { service: kind, mode, day: day || "half" }
+          : { service: kind, mode, qty }
         : null;
 
   const snap: Snap = {
     step,
+    mode,
+    startTime,
     kind,
-    prop: kind === "property" ? toConfig(prop) : null,
+    prop: kind === "property" && mode === "edited" ? toConfig(prop) : null,
     qty,
     day,
     date,
@@ -315,6 +399,8 @@ export function BookingModal({
   };
   const restore = useCallback((d: Snap) => {
     setStep(d.step ?? 1);
+    setMode(d.mode === "raw" ? "raw" : "edited");
+    setStartTime(d.startTime ?? "");
     setKind(d.kind ?? "");
     setQty(d.qty ?? 4);
     setDay(d.day ?? "");
@@ -344,17 +430,24 @@ export function BookingModal({
           kind: !kind && "Choose the type of shoot.",
           property:
             kind === "property" &&
+            mode === "edited" &&
             !prop.photo &&
             !prop.video &&
             !prop.tour &&
             "Choose at least one: photos, videography or 360 tour.",
-          qty: kind && kind !== "property" && !(qty >= 1 && qty <= 100) && "Between 1 and 100.",
-          day: kind && kind !== "property" && !day && "Choose half day or full day.",
+          qty:
+            kind &&
+            kind !== "property" &&
+            mode === "edited" &&
+            !(qty >= 1 && qty <= 100) &&
+            "Between 1 and 100.",
+          day:
+            kind && kind !== "property" && mode === "raw" && !day && "Choose half day or full day.",
         }
       : step === 2
         ? {
             date: (!date && "Choose a date.") || (date < cfg.today && "Choose a date from today."),
-            slot: !fullDay && slot !== "morning" && slot !== "afternoon" && "Choose a time.",
+            slot: !SLOTS.some(([k]) => k === slot) && "Choose a time.",
             location: loc.address.trim().length < 3 && "Add the location.",
           }
         : {},
@@ -373,7 +466,8 @@ export function BookingModal({
     if (!service) return;
     const b = {
       date,
-      slot: (fullDay ? "full_day" : slot) as Slot,
+      slot: slot as Slot,
+      startTime: startTime || undefined,
       location: loc,
       services: [service],
       note,
@@ -440,7 +534,9 @@ export function BookingModal({
               <>
                 <li>
                   <span>Shoot type</span>
-                  <b>{SERVICE_LABEL[service.service]}</b>
+                  <b>
+                    {SERVICE_LABEL[service.service]} · {MODE_LABEL[mode]}
+                  </b>
                 </li>
                 <li>
                   <span>
@@ -454,7 +550,8 @@ export function BookingModal({
               <span>Date and slot</span>
               <b>
                 {dateLabel(date, { weekday: "short", year: undefined })} ·{" "}
-                {fullDay ? "Full day" : SLOTS.find(([k]) => k === slot)?.[1]}
+                {SLOTS.find(([k]) => k === slot)?.[1]}
+                {startTime ? ` · from ${startTime}` : ""}
               </b>
             </li>
             <li>
@@ -540,25 +637,44 @@ export function BookingModal({
         {step === 1 && (
           <div className="pt-book1">
             <div className="pt-book1-main">
+              <div className="pt-seg pt-mode" role="group" aria-label="What we deliver">
+                {(["edited", "raw"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    aria-pressed={mode === m}
+                    onClick={touch(() => {
+                      setMode(m);
+                      if (m === "raw" && !day) setDay("half");
+                    })}
+                  >
+                    {MODE_LABEL[m]}
+                  </button>
+                ))}
+              </div>
               <Field name="kind" label="Type of shoot" required group error={form.errors.kind}>
                 <div className="pt-choice" role="group" aria-label="Type of shoot">
-                  {(["property", "reels", "long_form"] as Kind[]).map((k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      aria-pressed={kind === k}
-                      onClick={touch(() => {
-                        setKind(k);
-                        if (k !== "property" && !day) setDay("half");
-                      })}
-                    >
-                      {SERVICE_LABEL[k]}
-                      <small>{SERVICE_HINT[k]}</small>
-                    </button>
-                  ))}
+                  {(["property", "reels", "long_form"] as Kind[]).map((k) => {
+                    const price = cardPrice(k, mode, cfg);
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        aria-pressed={kind === k}
+                        onClick={touch(() => {
+                          setKind(k);
+                          if (mode === "raw" && !day) setDay("half");
+                        })}
+                      >
+                        {SERVICE_LABEL[k]}
+                        <small>{SERVICE_HINT[k]}</small>
+                        {price && <small className="pt-choice-price pt-mono">{price}</small>}
+                      </button>
+                    );
+                  })}
                 </div>
               </Field>
-              {kind === "property" && (
+              {kind === "property" && mode === "edited" && (
                 <div
                   className={`pt-book-prop ${form.errors.property ? "is-bad" : ""}`}
                   data-field="property"
@@ -572,51 +688,58 @@ export function BookingModal({
                   />
                 </div>
               )}
-              {kind && kind !== "property" && (
-                <div className="pt-grid2">
-                  <Field
-                    name="qty"
-                    label={kind === "reels" ? "Number of reels" : "Number of videos"}
-                    required
-                    group
-                    error={form.errors.qty}
-                  >
-                    <div className="pt-stepper">
+              {kind === "property" && mode === "raw" && (
+                <p className="pt-note" style={{ margin: 0 }}>
+                  We shoot the property and send you the raw files. Tell us about it in the notes on
+                  the next step.
+                </p>
+              )}
+              {kind && kind !== "property" && mode === "edited" && (
+                <Field
+                  name="qty"
+                  label={kind === "reels" ? "Number of reels" : "Number of videos"}
+                  required
+                  group
+                  error={form.errors.qty}
+                >
+                  <div className="pt-stepper">
+                    <button
+                      type="button"
+                      aria-label="Fewer"
+                      onClick={touch(() => setQty((n) => Math.max(1, n - 1)))}
+                    >
+                      −
+                    </button>
+                    <output aria-live="polite">{qty}</output>
+                    <button
+                      type="button"
+                      aria-label="More"
+                      onClick={touch(() => setQty((n) => Math.min(100, n + 1)))}
+                    >
+                      +
+                    </button>
+                  </div>
+                </Field>
+              )}
+              {kind && kind !== "property" && mode === "raw" && (
+                <Field name="day" label="Shoot length" required group error={form.errors.day}>
+                  <div className="pt-seg" role="group" aria-label="Shoot length">
+                    {(["half", "full"] as const).map((d) => (
                       <button
+                        key={d}
                         type="button"
-                        aria-label="Fewer"
-                        onClick={touch(() => setQty((n) => Math.max(1, n - 1)))}
+                        aria-pressed={day === d}
+                        onClick={touch(() => {
+                          setDay(d);
+                          if (d === "full") setSlot("full_day");
+                          else if (slot === "full_day") setSlot("");
+                        })}
                       >
-                        −
+                        {DAY_LABEL[d]}
                       </button>
-                      <output aria-live="polite">{qty}</output>
-                      <button
-                        type="button"
-                        aria-label="More"
-                        onClick={touch(() => setQty((n) => Math.min(100, n + 1)))}
-                      >
-                        +
-                      </button>
-                    </div>
-                  </Field>
-                  <Field name="day" label="Shoot length" required group error={form.errors.day}>
-                    <div className="pt-seg" role="group" aria-label="Shoot length">
-                      {(["half", "full"] as const).map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          aria-pressed={day === d}
-                          onClick={touch(() => {
-                            setDay(d);
-                            setSlot(d === "full" ? "full_day" : slot === "full_day" ? "" : slot);
-                          })}
-                        >
-                          {DAY_LABEL[d]}
-                        </button>
-                      ))}
-                    </div>
-                  </Field>
-                </div>
+                    ))}
+                  </div>
+                </Field>
               )}
               {ta && <span className="pt-turnaround">Usual turnaround: {ta}</span>}
             </div>
@@ -636,30 +759,36 @@ export function BookingModal({
                   )}
                 />
               </Field>
-              {fullDay ? (
-                <div className="pt-field">
-                  <span className="pt-field-label">Time</span>
-                  <p className="pt-note" style={{ margin: 0 }}>
-                    Full day, we’ll confirm the start time.
-                  </p>
+              <Field name="slot" label="Time" required group error={form.errors.slot}>
+                <div className="pt-seg pt-seg-line" role="group" aria-label="Time">
+                  {SLOTS.map(([k, label]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      aria-pressed={slot === k}
+                      onClick={touch(() => setSlot(k))}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
-              ) : (
-                <Field name="slot" label="Time" required group error={form.errors.slot}>
-                  <div className="pt-seg pt-seg-line" role="group" aria-label="Time">
-                    {SLOTS.filter(([k]) => k !== "full_day").map(([k, label]) => (
-                      <button
-                        key={k}
-                        type="button"
-                        aria-pressed={slot === k}
-                        onClick={touch(() => setSlot(k))}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-              )}
+              </Field>
             </div>
+            <label className="pt-field">
+              Preferred start time (optional)
+              <input
+                type="time"
+                name="start_time"
+                value={startTime}
+                min="06:00"
+                max="21:00"
+                step={900}
+                onChange={touch((e: React.ChangeEvent<HTMLInputElement>) =>
+                  setStartTime(e.target.value),
+                )}
+              />
+              <span className="pt-meta">We’ll confirm the exact time.</span>
+            </label>
             <PlacesField
               value={loc}
               onChange={touch((v: BookingLocation) => setLoc(v))}
@@ -706,13 +835,15 @@ export function BookingModal({
                 <span>What</span>
                 <b>
                   {SERVICE_LABEL[service.service]} · {serviceSummary(service, pricing)}
+                  {mode === "edited" ? " · shot & edited" : ""}
                 </b>
               </li>
               <li>
                 <span>When</span>
                 <b>
                   {dateLabel(date, { weekday: "short", year: undefined })} ·{" "}
-                  {fullDay ? "Full day" : SLOTS.find(([k]) => k === slot)?.[1]}
+                  {SLOTS.find(([k]) => k === slot)?.[1]}
+                  {startTime ? ` · preferred start ${startTime}` : ""}
                 </b>
               </li>
               <li>

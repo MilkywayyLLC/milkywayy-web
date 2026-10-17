@@ -12,6 +12,7 @@ import { portalAdminPage, type ClientListRow, type ProjectDetail } from "@/lib/p
 import { DeliverablesAdmin, ShootLog, type RateOption } from "@/components/admin/ShootLog";
 import { getPropertyPricing } from "@/lib/data";
 import {
+  clientPricing,
   logPrefill,
   SERVICE_LABEL,
   serviceSummary,
@@ -113,6 +114,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     list_price: number | null;
     override_reason: string | null;
     billed_invoice_id: string | null;
+    included?: boolean | null;
   };
   const work =
     shoot && p.account_id
@@ -129,7 +131,13 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           rates: RateOption[];
         }>("portal_admin_deliverables", { p_project: p.id })
       : null;
-  const pricing = work ? await getPropertyPricing() : null;
+  // The property price list with this client's own prices in it (owner, 17 Oct 2026).
+  const pricing = work
+    ? clientPricing(
+        await getPropertyPricing(),
+        Object.fromEntries(work.rates.map((r) => [r.key, r.amount])),
+      )
+    : null;
   const booking = p.meta.booking;
   const logLines: LogLine[] = work?.logged.length
     ? work.logged.map((l) => ({
@@ -143,7 +151,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             : l.price_basis === "price_list"
               ? "price_list"
               : "client_rate",
-        unit_price: Number(l.unit_price),
+        // An Included item is stored at 0: re-logging prices it again (the database re-decides).
+        unit_price: Number(l.included && l.list_price != null ? l.list_price : l.unit_price),
         list_price: l.list_price != null ? Number(l.list_price) : undefined,
         reason: l.override_reason ?? undefined,
       }))
@@ -229,7 +238,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             {shoot ? (
               <>
                 <dt>When</dt>
-                <dd>{[shootDay(p.shoot_date), p.slot].filter(Boolean).join(" · ") || "—"}</dd>
+                <dd>
+                  {[
+                    shootDay(p.shoot_date),
+                    p.slot,
+                    booking?.start_time ? `preferred start ${booking.start_time}` : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </dd>
                 <dt>Where</dt>
                 <dd>
                   {booking ? (

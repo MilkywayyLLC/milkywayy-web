@@ -17,7 +17,7 @@ import { BrandLogo } from "@/components/layout/Logo";
 import { Icon } from "@/components/portal/Icon";
 import type { PropertyPricing } from "@/content/types";
 import { blankProperty, reducer, type Action, type BookingProperty } from "@/lib/booking";
-import { AVATAR_FORMATS, SERVICE_HINT, SERVICE_LABEL } from "@/lib/portal/booking";
+import { AVATAR_FORMATS, SERVICE_HINT, SERVICE_LABEL } from "@/lib/portal/booking-labels";
 import { EDIT_KINDS } from "@/lib/portal/projects";
 
 /**

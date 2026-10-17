@@ -19,15 +19,15 @@ const TILES: {
 }[] = [
   {
     kind: "booking",
-    label: "Shoot",
-    hint: "Property, reels or a long-form walkthrough",
+    label: "Shoot in Dubai",
+    hint: "We film and edit for you",
     icon: "shoots",
     perm: "shoots",
   },
   {
     kind: "edit",
-    label: "Editing",
-    hint: "Send us your photos or footage",
+    label: "Edit your footage",
+    hint: "You send the files, we edit",
     icon: "scissors",
     perm: "editing",
   },
@@ -80,6 +80,9 @@ export function StartRequests({
   const allowed = TILES.filter(
     (t) => cfg[t.perm] && (only ? t.kind === only : t.kind !== "avatar"),
   );
+  // One service enabled (owner, 17 Oct 2026): Book media opens its flow, no choice screen.
+  const single = !only && allowed.length === 1 ? allowed[0].kind : undefined;
+  const direct = only ?? single;
   // The website links here: ?new=shoot (Property shoots) and ?new=choose (Home's "Book media").
   const asked = params.get("new");
   const fromUrl = (asked === "shoot" ? "booking" : asked) as Kind | "choose" | null;
@@ -89,10 +92,13 @@ export function StartRequests({
     !urlDone &&
     fromUrl &&
     (fromUrl === "choose" ? !only : allowed.some((t) => t.kind === fromUrl))
-      ? { kind: fromUrl, resume: params.get("draft") === "1" }
+      ? {
+          kind: fromUrl === "choose" && single ? single : fromUrl,
+          resume: params.get("draft") === "1",
+        }
       : null);
   // Back to the choice: only when this launcher offers the choice.
-  const back = only ? undefined : () => setOpen({ kind: "choose", resume: false });
+  const back = direct ? undefined : () => setOpen({ kind: "choose", resume: false });
 
   // Closing resets everything, so Book media opens again every time.
   const close = () => {
@@ -109,7 +115,7 @@ export function StartRequests({
       <button
         type="button"
         className={`btn ${primary ? "btn-p" : "btn-g"} btn-s`}
-        onClick={() => setOpen({ kind: only ?? "choose", resume: false })}
+        onClick={() => setOpen({ kind: direct ?? "choose", resume: false })}
       >
         <Icon name="plus" size={16} /> {label ?? (only ? ONLY_LABEL[only] : "Book media")}
       </button>

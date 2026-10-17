@@ -6,7 +6,7 @@ import { maxUploadGb } from "@/lib/r2";
 import { can } from "./access";
 import { getPortal, type Membership } from "./auth";
 import { dubaiToday } from "./billing";
-import type { Rates } from "./booking";
+import { clientPricing, type Left, type Rates } from "./booking";
 
 /**
  * What the "Start something" modals need (owner, 10 Oct 2026): which ones this person may open,
@@ -20,6 +20,8 @@ export type PriceView = {
   rates: Rates | null;
   /** Show the amount (pay as you go, or a package with the budget switch on). */
   showAmount: boolean;
+  /** Package clients with price access: what's left of each inclusion this month. */
+  left: Left | null;
 };
 export type RequestConfig = {
   shoots: boolean;
@@ -62,17 +64,20 @@ async function loadRequestConfig(db: SupabaseClient, m: Membership): Promise<Req
     currency?: string;
     rates?: Rates | null;
     show_amount?: boolean;
+    left?: Left | null;
   };
   return {
     shoots: can(m, "shoots"),
     editing: can(m, "editing"),
     avatars: can(m, "avatars"),
-    pricing,
+    // The property builder and estimates use this client's own prices (owner, 17 Oct 2026).
+    pricing: clientPricing(pricing, o.rates ?? null),
     price: {
       mode: o.mode ?? "payg",
       currency: o.currency ?? m.account.currency,
       rates: o.rates ?? null,
       showAmount: !!o.show_amount,
+      left: o.left ?? null,
     },
     today: dubaiToday(),
     maxGb: maxUploadGb(),

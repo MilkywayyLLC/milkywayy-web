@@ -109,29 +109,26 @@ test("upload an invoice PDF; the client sees it in Billing and downloads it; the
 test("a private package, the client on it, and line items counting towards usage", async ({
   page,
 }) => {
-  await page.goto("/admin/billing/packages");
-  const form = page.getByRole("form", { name: "New package" });
-  await form.getByLabel("Package name").fill("Growth");
-  await form.getByLabel("Client (private package)").selectOption({ label: NAME });
-  await form.getByLabel("Monthly price").fill("4000");
-  await form.getByRole("button", { name: "Create package" }).click();
-  await expect(form.getByRole("status")).toContainText("Growth saved");
-
+  // The client's own package (owner, 17 Oct 2026): amount, start and inclusions on the client page.
   await page.goto(`/admin/accounts/${c.account}`);
-  const billing = page.getByTestId("client-billing");
-  await billing.getByRole("button", { name: "Monthly package" }).click();
-  await billing
-    .getByLabel("Package", { exact: true })
-    .selectOption({ label: "Growth · AED 4,000/month" });
+  const plan = page.getByTestId("client-plan");
+  await plan.getByRole("button", { name: "Monthly package" }).click();
+  await plan.getByLabel("Package name").fill("Growth");
+  await plan.getByLabel(/Monthly amount/).fill("4000");
   // Calendar months: start on the 1st (mid-month would pro-rate the first month).
-  await billing
+  await plan
     .getByLabel("Starts on")
     .fill(
       new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" }).format(new Date()).slice(0, 8) +
         "01",
     );
-  await billing.getByRole("button", { name: "Save plan" }).click();
-  await expect(billing.getByRole("status").filter({ hasText: "Plan saved" })).toBeVisible();
+  await plan.getByRole("button", { name: "Add inclusion" }).click();
+  await plan.getByLabel("Inclusion 1: service").selectOption({ label: "Short-form edit" });
+  await plan.getByLabel("Inclusion 1: quantity per month").fill("10");
+  await plan.getByRole("button", { name: "Save plan" }).click();
+  await expect(plan.getByRole("status")).toHaveText("Saved.");
+  const billing = page.getByTestId("client-billing");
+  await expect(billing).toContainText("Growth · AED 4,000/month");
 
   // Line items on a delivered project count straight away.
   const p = await deliveredItems(c.account, "Reels batch", []);
@@ -144,7 +141,7 @@ test("a private package, the client on it, and line items counting towards usage
   await expect(li.getByRole("status").filter({ hasText: "Added." })).toBeVisible();
   await expect(li.locator("table")).toContainText("Short-form reel");
   await page.goto(`/admin/accounts/${c.account}`);
-  await expect(page.getByTestId("client-billing")).toContainText("Reels: 6 of 10");
+  await expect(page.getByTestId("client-billing")).toContainText("Short-form edit: 6 of 10");
 });
 
 test("suggestions (on by default, with minimums); a template in AED and USD; VAT and bank details in Settings", async ({
@@ -202,7 +199,7 @@ test("suggestions (on by default, with minimums); a template in AED and USD; VAT
   });
 
   await page.goto("/admin/billing/rates");
-  await expect(page.getByLabel("Label reel", { exact: true })).toHaveValue("Short-form reel");
+  await expect(page.getByLabel("Label reel", { exact: true })).toHaveValue("Short-form edit");
   await expect(page.getByLabel("AED reel", { exact: true })).toBeVisible();
 });
 

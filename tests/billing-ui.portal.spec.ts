@@ -117,8 +117,9 @@ test("Owner on a package: plan name, usage as counts, renewal date; the badge sa
   await page.goto("/portal/billing");
   const plan = page.getByTestId("plan");
   await expect(plan).toContainText("Growth");
-  await expect(plan.getByRole("meter", { name: "Reels: 7 of 10" })).toBeVisible();
-  await expect(plan).toContainText("3 left this month");
+  // Items logged before the package (pay as you go) stay Extras: listed as counts, no money.
+  await expect(plan.getByRole("meter", { name: "Reels: 4 of 10" })).toBeVisible();
+  await expect(plan.getByTestId("extras")).toBeVisible();
   // Counts only: no price, no estimate.
   await expect(plan).not.toContainText("AED");
   await expect(page.locator(".pt-plan")).toHaveText("Monthly: Growth");

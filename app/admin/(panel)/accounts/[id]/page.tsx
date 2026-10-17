@@ -5,6 +5,13 @@ import {
   ClientRateHistory,
   type BillingHistory,
 } from "@/components/admin/BudgetTools";
+import {
+  PlanBlock,
+  PriceList,
+  ServicesBlock,
+  type ClientSetupData,
+} from "@/components/admin/ClientSetup";
+import { getPropertyPricing } from "@/lib/data";
 import { notFound } from "next/navigation";
 import {
   CancelInvite,
@@ -17,7 +24,6 @@ import {
   ClientOffer,
   HideSuggestions,
   OfferPreview,
-  PlanForm,
   Statements,
   type ClientBilling,
   type InvoiceRowData,
@@ -50,7 +56,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const rpc = await portalAdminPage();
-  const [c, billing, invoices, openInvites, history] = await Promise.all([
+  const [c, billing, invoices, openInvites, history, setup, pricing] = await Promise.all([
     rpc<ClientDetail | null>("portal_admin_client", { p_id: id, p_view_as: false }),
     rpc<ClientBilling>("portal_admin_client_billing", { p_account: id }),
     rpc<InvoiceRowData[]>("portal_admin_invoices", { p_account: id }),
@@ -58,9 +64,11 @@ export default async function ClientPage({ params, searchParams }: Props) {
       p_account: id,
     }),
     rpc<BillingHistory>("portal_admin_billing_history", { p_account: id }),
+    rpc<ClientSetupData | null>("portal_admin_client_setup", { p_account: id }),
+    getPropertyPricing(),
   ]);
   const sentAt = new Map(openInvites.map((i) => [i.id, i.last_sent_at]));
-  if (!c) notFound();
+  if (!c || !setup) notFound();
   const a = c.account;
   const { created, emailed } = await searchParams;
 
@@ -104,6 +112,10 @@ export default async function ClientPage({ params, searchParams }: Props) {
                 : "Send the Owner invite below so they know where to sign in."}
         </p>
       )}
+
+      <ServicesBlock account={a.id} s={setup.services} />
+      <PriceList account={a.id} data={setup} pricing={pricing} />
+      <PlanBlock account={a.id} data={setup} showBudgetSet={history.show_budget_set} />
 
       <div className="ad-grid2">
         <section className="ad-card" aria-label="Details">
@@ -182,10 +194,11 @@ export default async function ClientPage({ params, searchParams }: Props) {
               : ""}
           </span>
         )}
-        <BudgetPanel account={a.id} currency={billing.currency} h={history} />
+        {history.mode === "budget" && (
+          <BudgetPanel account={a.id} currency={billing.currency} h={history} />
+        )}
         <BillingSwitches account={a.id} h={history} />
         <OfferPreview billing={billing} />
-        <PlanForm account={a.id} billing={billing} />
         <HideSuggestions account={a.id} hidden={billing.hide_suggestions} />
         <ClientOffer account={a.id} billing={billing} />
         <details>
@@ -193,12 +206,9 @@ export default async function ClientPage({ params, searchParams }: Props) {
           <Statements account={a.id} billing={billing} />
         </details>
         <details>
-          <summary className="ad-small">Rates for this client</summary>
+          <summary className="ad-small">Price history</summary>
           <ClientRateHistory account={a.id} currency={billing.currency} h={history} />
         </details>
-        <Link className="ad-small" href="/admin/billing/packages" prefetch={false}>
-          Create a private package for this client →
-        </Link>
       </section>
 
       <section className="ad-card ad-form" aria-label="Projects">

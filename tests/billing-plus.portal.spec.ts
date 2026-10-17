@@ -324,6 +324,8 @@ test("a 6-month package: Month n of 6, end date, usage left, overage and the mon
   await deliveredItems(account, "Package work", [
     { kind: "shoot_day", qty: 1, price: 0 },
     { kind: "avatar_video", qty: 1, price: 900 },
+    // Logged on the package (owner, 17 Oct 2026): 10 Included, 2 Extras at the package's 180.
+    { kind: "reel", qty: 12, price: 200 },
   ]);
   // The admin's view: prices, overage and the estimate.
   const plan = (
@@ -348,11 +350,12 @@ test("a 6-month package: Month n of 6, end date, usage left, overage and the mon
   expect(plan.ends_on).toBeTruthy();
   const reels = plan.usage.find((u) => u.key === "reel")!;
   const days = plan.usage.find((u) => u.key === "shoot_day")!;
-  // The 50 reels delivered this month are 40 over 10, at 180 each.
-  expect(reels).toMatchObject({ used: 50, remaining: 0, over: 40, overage: 7200 });
+  // Included items count down the inclusion; everything else is an Extra at its logged price:
+  // the 50 reels logged earlier on pay as you go (200 each), the 2 beyond 10 (180), the avatar.
+  expect(reels).toMatchObject({ used: 10, remaining: 0, over: 52, overage: 0 });
   expect(days).toMatchObject({ used: 1, remaining: 1, over: 0 });
-  expect(plan.extras_total).toBe(900);
-  expect(plan.estimate).toBe(2700 + 7200 + 900);
+  expect(plan.extras_total).toBe(50 * 200 + 2 * 180 + 900);
+  expect(plan.estimate).toBe(2700 + 50 * 200 + 2 * 180 + 900);
   // The client's view: counts only.
   const client = (
     await must<{ plan: Record<string, unknown> & { usage: Record<string, unknown>[] } }>(
@@ -366,9 +369,9 @@ test("a 6-month package: Month n of 6, end date, usage left, overage and the mon
     key: "reel",
     label: "Reels",
     qty: 10,
-    used: 50,
+    used: 10,
     remaining: 0,
-    over: 40,
+    over: 52,
   });
   // On a package: no suggestion.
   expect((await mine()).suggestion).toBeNull();
@@ -393,6 +396,12 @@ test("calendar months: a mid-month start pro-rates the first month (price and in
     p_inclusions: [{ key: "reel", label: "Reels", qty: 10 }],
     p_overage: [{ key: "reel", label: "Extra reel", amount: 200 }],
   });
+  // Items are Included or Extra when they're logged (owner, 17 Oct 2026): work from before the
+  // package is logged while still on pay as you go.
+  const before = await deliveredItems(pro.account, "Before the package", [
+    { kind: "reel", qty: 2, price: 150 },
+  ]);
+  await setDeliveredAt(before.id, `${ym}05T10:00:00+04:00`);
   await admin("portal_admin_set_plan", {
     p_account: pro.account,
     p_mode: "package",
@@ -400,12 +409,8 @@ test("calendar months: a mid-month start pro-rates the first month (price and in
     p_started: `${ym}16`,
     p_renews: null,
   });
-  const before = await deliveredItems(pro.account, "Before the package", [
-    { kind: "reel", qty: 2, price: 150 },
-  ]);
-  await setDeliveredAt(before.id, `${ym}05T10:00:00+04:00`);
   const within = await deliveredItems(pro.account, "On the package", [
-    { kind: "reel", qty: 7, price: 0 },
+    { kind: "reel", qty: 4, price: 200 },
     { kind: "avatar_video", qty: 1, price: 900 },
   ]);
   await setDeliveredAt(within.id, `${ym}20T10:00:00+04:00`);
@@ -419,11 +424,11 @@ test("calendar months: a mid-month start pro-rates the first month (price and in
   const frac = (dim - 15) / dim;
   const price = Math.round(3100 * frac * 100) / 100;
   const reels = Math.round(10 * frac);
-  const over = Math.max(0, 7 - reels);
   expect(st.mode).toBe("package");
   expect(st.package).toMatchObject({ prorated: true, full_price: 3100, price, before_total: 300 });
-  expect(st.overage[0]).toMatchObject({ key: "reel", qty: reels, used: 7, over });
-  expect(Number(st.total)).toBeCloseTo(price + over * 200 + 900 + 300, 2);
+  // The 4 reels were Included (AED 0); the avatar video is an Extra at its price.
+  expect(st.overage[0]).toMatchObject({ key: "reel", qty: reels, used: 4, over: 0 });
+  expect(Number(st.total)).toBeCloseTo(price + 900 + 300, 2);
   // This month is the first full one: full price, full inclusions.
   const now = await must<{
     mode: string;
@@ -785,12 +790,13 @@ test("a package client sees counts only: Month n of 6, usage left, extras as a c
   await expect(plan).toContainText(`Plus Contract ${TAG}`);
   await expect(plan).toContainText(/Month [23] of 6/);
   await expect(plan).toContainText("6-month contract until");
-  await expect(plan.getByRole("meter", { name: "Reels: 12 of 10" })).toBeVisible();
+  // 10 Included count down the inclusion; the 2 beyond are Extras (owner, 17 Oct 2026).
+  await expect(plan.getByRole("meter", { name: "Reels: 10 of 10" })).toBeVisible();
   await expect(plan).toContainText("2 extra reels");
   await expect(plan.getByRole("meter", { name: "Shoot days: 1 of 2" })).toBeVisible();
   await expect(plan).toContainText("1 left this month");
   await expect(page.getByTestId("extras-note")).toHaveText(
-    "Billed at your agreed rate on your next invoice.",
+    "Extras are billed at your agreed prices on your month-end invoice.",
   );
   // No money outside invoices: no price, overage amount, other work or estimate.
   await expect(plan).not.toContainText("AED");

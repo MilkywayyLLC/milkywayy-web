@@ -22,6 +22,10 @@ export type Account = {
   /** Share pages (Phase 13): the company name and logo shown on them. */
   brand_name?: string | null;
   brand_logo_key?: string | null;
+  /** Services Milkywayy enabled for this client (owner, 17 Oct 2026). */
+  svc_production?: boolean;
+  svc_post?: boolean;
+  svc_avatars?: boolean;
 };
 /** Members have an access set (lib/portal/access); Owner and Admins can do everything. */
 export type Membership = { role: Role; access?: Access | null; account: Account };
@@ -49,7 +53,7 @@ export const getPortal = cache(async (): Promise<PortalState> => {
   const { data: rows } = await db
     .from("account_members")
     .select(
-      "role, access, created_at, account:accounts(id, type, name, industry, industry_other, volume_note, trn, billing_address, currency, member_visibility, services_interest, notify_cc, brand_name, brand_logo_key)",
+      "role, access, created_at, account:accounts(id, type, name, industry, industry_other, volume_note, trn, billing_address, currency, member_visibility, services_interest, notify_cc, brand_name, brand_logo_key, svc_production, svc_post, svc_avatars)",
     )
     .eq("user_id", user.id)
     .order("created_at");

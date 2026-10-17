@@ -120,6 +120,7 @@ export default async function Billing({
                 months from {dateLabel(plan.renews_on)}.
               </span>
             )}
+            <span className="pt-eb">This month</span>
             <div className="pt-meters">
               {plan.usage.map((u) => {
                 const used = Number(u.used);
@@ -130,7 +131,7 @@ export default async function Billing({
                     <div className="pt-row">
                       <span>{u.label}</span>
                       <span className="pt-mono">
-                        {used} of {qty}
+                        {used} of {qty} used
                       </span>
                     </div>
                     <span
@@ -152,9 +153,25 @@ export default async function Billing({
                 );
               })}
             </div>
-            {anyOver && (
+            {plan.extra_items && plan.extra_items.length > 0 && (
+              <div className="stack" style={{ gap: 6 }} data-testid="extras">
+                <span className="pt-eb">Extras this month</span>
+                <ul className="pt-summary" aria-label="Extras this month">
+                  {plan.extra_items.map((e, i) => (
+                    <li key={i}>
+                      <span>{e.description}</span>
+                      <span className="pt-mono">
+                        × {Number(e.qty)}
+                        {e.ref ? ` · ${e.ref}` : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {(anyOver || !!plan.extra_items?.length) && (
               <span className="pt-meta" data-testid="extras-note">
-                Billed at your agreed rate on your next invoice.
+                Extras are billed at your agreed prices on your month-end invoice.
               </span>
             )}
           </section>
@@ -365,9 +382,10 @@ function Breakdown({ s }: { s: StatementRow }) {
       Number(s.package.price),
     ]);
     for (const u of s.overage)
-      if (Number(u.over) > 0) rows.push([extraCount(Number(u.over), u.label), Number(u.overage)]);
+      if (Number(u.overage) > 0)
+        rows.push([extraCount(Number(u.over), u.label), Number(u.overage)]);
     if (Number(s.package.extras_total) > 0)
-      rows.push(["Other work at your rates", Number(s.package.extras_total)]);
+      rows.push(["Extras at your prices", Number(s.package.extras_total)]);
     if (Number(s.package.before_total) > 0)
       rows.push(["Before the package started", Number(s.package.before_total)]);
   } else {

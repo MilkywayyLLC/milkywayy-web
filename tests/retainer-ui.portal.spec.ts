@@ -92,9 +92,10 @@ test("Book a shoot: a modal; nothing sent until it's filled in; the estimate fro
   await expect(m.getByText("Please fix the highlighted fields")).toBeVisible();
   await expect(m.getByText("Choose the type of shoot.")).toBeVisible();
   await book(page, /Agent \/ social reels/);
-  // 4 reels shot and edited at 400, plus a half day at 1,000; a package client sees it counted.
+  // Shot & edited (the default, owner 17 Oct 2026): 4 reels at 400, no day fee; a budget
+  // package client sees it counted.
   await expect(m.getByTestId("estimate")).toContainText(
-    "Counts toward your monthly package (estimated ~AED 2,600)",
+    "Counts toward your monthly package (estimated ~AED 1,600)",
   );
   await m.getByRole("button", { name: "Confirm booking" }).click();
   await expect(m.getByText("Thanks — your booking request is in")).toBeVisible();
@@ -103,12 +104,17 @@ test("Book a shoot: a modal; nothing sent until it's filled in; the estimate fro
   shootRef = decodeURIComponent(page.url().split("/shoots/")[1].split("?")[0]);
   const db = await signedIn(owner);
   const [p] = await must<
-    { id: string; status: string; meta: { booking: { services: { day?: string }[] } } }[]
+    {
+      id: string;
+      status: string;
+      meta: { booking: { services: { day?: string; mode?: string; qty?: number }[] } };
+    }[]
   >(db.from("projects").select("id, status, meta").eq("ref", shootRef));
   shoot = p.id;
   expect(p.status).toBe("requested");
   expect(p.meta.booking.services).toHaveLength(1);
-  expect(p.meta.booking.services[0].day).toBe("half");
+  expect(p.meta.booking.services[0]).toMatchObject({ mode: "edited", qty: 4 });
+  expect(p.meta.booking.services[0].day).toBeUndefined();
 });
 
 test("a Member books without seeing an estimate", async ({ page }) => {
