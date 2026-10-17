@@ -47,7 +47,7 @@ export const SEO_PAGES: SeoPage[] = [
     name: "Property shoots",
     title: "Real Estate Photographer Dubai | Property Shoots | Milkywayy",
     description:
-      "Real estate photographer in Dubai: HDR listing photos, video, twilight shots and 360 virtual tours. Price in a minute, photos within 24 hours, often same day.",
+      "Real estate photographer in Dubai: HDR listing photos, video, twilight shots and 360 virtual tours. Price in a minute, photos in 24 hours.",
     og: ["Property shoots,", "booked in a minute."],
     eyebrow: "Property shoots · from AED 450",
     sitemap: 0.9,

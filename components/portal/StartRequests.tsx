@@ -1,10 +1,11 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Icon } from "@/components/portal/Icon";
 import { discardDraft, type DraftKind } from "@/lib/portal/draft-actions";
 import type { RequestConfig } from "@/lib/portal/requests";
+import { BookingModal } from "./BookingModal";
 import { draftDate, Modal } from "./forms";
 import { ProjectRequestModal, type Presenter } from "./NewProjectForm";
 
@@ -50,8 +51,7 @@ const ONLY_LABEL: Record<Kind, string> = {
  * continues into its own flow, with Back returning to the choice. With
  * `only`, the button opens that flow directly (the New buttons on Shoots, Editing and Avatars).
  * `?new=booking|edit|avatar|shoot|choose` opens a flow (or the choice) on arrival (one launcher per page answers it, the
- * header's); `&draft=1` restores the saved draft straight away. Booking a shoot is a page now
- * (`/portal/book`, UI rebuild 17 Oct 2026): choosing it, or `?new=booking|shoot`, goes there.
+ * header's); `&draft=1` restores the saved draft straight away.
  */
 export function StartRequests({
   cfg,
@@ -77,7 +77,6 @@ export function StartRequests({
   const [picked, setOpen] = useState<{ kind: Kind | "choose"; resume: boolean } | null>(null);
   const [urlDone, setUrlDone] = useState(false);
   const [run, setRun] = useState(0); // each opening gets fresh modal state
-  const toBooking = (draft = false) => router.push(`/portal/book${draft ? "?draft=1" : ""}`);
   const allowed = TILES.filter(
     (t) => cfg[t.perm] && (only ? t.kind === only : t.kind !== "avatar"),
   );
@@ -87,8 +86,9 @@ export function StartRequests({
   // The website links here: ?new=shoot (Property shoots) and ?new=choose (Home's "Book media").
   const asked = params.get("new");
   const fromUrl = (asked === "shoot" ? "booking" : asked) as Kind | "choose" | null;
-  const arrived =
-    autoOpen &&
+  const open =
+    picked ??
+    (autoOpen &&
     !urlDone &&
     fromUrl &&
     (fromUrl === "choose" ? !only : allowed.some((t) => t.kind === fromUrl))
@@ -96,15 +96,8 @@ export function StartRequests({
           kind: fromUrl === "choose" && single ? single : fromUrl,
           resume: params.get("draft") === "1",
         }
-      : null;
-  // Booking a shoot is a page: arriving with ?new=booking or ?new=shoot goes straight there.
-  useEffect(() => {
-    if (arrived?.kind === "booking") {
-      router.replace(`/portal/book${arrived.resume ? "?draft=1" : ""}`);
-    }
-  }, [arrived?.kind, arrived?.resume, router]);
-  const open = picked ?? (arrived?.kind === "booking" ? null : arrived);
-  // Back to the choice: only when this launcher offers the choice (editing and avatars).
+      : null);
+  // Back to the choice: only when this launcher offers the choice.
   const back = direct ? undefined : () => setOpen({ kind: "choose", resume: false });
 
   // Closing resets everything, so Book media opens again every time.
@@ -122,11 +115,7 @@ export function StartRequests({
       <button
         type="button"
         className={`btn ${primary ? "btn-p" : "btn-g"} btn-s`}
-        onClick={() => {
-          const kind = direct ?? "choose";
-          if (kind === "booking") toBooking();
-          else setOpen({ kind, resume: false });
-        }}
+        onClick={() => setOpen({ kind: direct ?? "choose", resume: false })}
       >
         <Icon name="plus" size={16} /> {label ?? (only ? ONLY_LABEL[only] : "Book media")}
       </button>
@@ -140,12 +129,7 @@ export function StartRequests({
                   key={t.kind}
                   type="button"
                   className="pt-pick-tile"
-                  onClick={() => {
-                    if (t.kind === "booking") {
-                      setOpen(null);
-                      toBooking();
-                    } else setOpen({ kind: t.kind, resume: false });
-                  }}
+                  onClick={() => setOpen({ kind: t.kind, resume: false })}
                 >
                   <span className="pt-pick-ic" aria-hidden="true">
                     <Icon name={t.icon} size={22} />
@@ -159,6 +143,9 @@ export function StartRequests({
             </div>
           </div>
         </Modal>
+      )}
+      {open?.kind === "booking" && (
+        <BookingModal key={run} cfg={cfg} resume={open.resume} onClose={close} onBack={back} />
       )}
       {(open?.kind === "edit" || open?.kind === "avatar") && (
         <ProjectRequestModal

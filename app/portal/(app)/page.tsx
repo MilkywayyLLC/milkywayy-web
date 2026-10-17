@@ -1,22 +1,11 @@
-import { dateLabel, money, shownStatus, type Invoice, type MyBilling } from "@/lib/portal/billing";
+import { dateLabel, shownStatus, type Invoice } from "@/lib/portal/billing";
 import Link from "next/link";
 import { getSiteSettings } from "@/lib/data";
 import { contactOf, requireAccount } from "@/lib/portal/auth";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
-import { BookingsList, type BookingRow } from "@/components/portal/home/BookingsList";
-import { StatTiles, type Stat } from "@/components/portal/home/StatTiles";
-import { StartRequests } from "@/components/portal/StartRequests";
 import { YourWork } from "@/components/portal/YourWork";
-import { normalizeServices, serviceSummary, SLOTS } from "@/lib/portal/booking";
-import { projectCovers } from "@/lib/portal/covers";
 import { requestConfig } from "@/lib/portal/requests";
-import {
-  clientStatus,
-  SHOOT_SERVICE_LABEL,
-  shootDay,
-  statusLabel,
-  type Project,
-} from "@/lib/portal/projects";
+import { statusLabel, type Project } from "@/lib/portal/projects";
 import { isManager, seesMoney } from "@/lib/portal/shell";
 
 export const metadata = { title: { absolute: "Home · Milkywayy portal" } };
@@ -38,7 +27,6 @@ export default async function PortalHome({
     { data: eventRows },
     { data: invoiceRows },
     cfg,
-    { data: billingRow },
   ] = await Promise.all([
     db
       .from("projects")
@@ -72,10 +60,6 @@ export default async function PortalHome({
           .order("due_on")
       : Promise.resolve({ data: [] }),
     requestConfig(db, current),
-    // The same read the Billing page makes: only for those who see prices (the fourth tile).
-    seesMoney(current)
-      ? db.rpc("my_billing", { p_account: a.id })
-      : Promise.resolve({ data: null }),
   ]);
 
   const unpaid = (invoiceRows ?? []) as Pick<Invoice, "id" | "number" | "due_on" | "status">[];
@@ -97,113 +81,24 @@ export default async function PortalHome({
     project: { ref: string; title: string; type: string };
   }[];
   const claimed = Number(q.claimed ?? 0);
+  const now = new Date().toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "Asia/Dubai",
+  });
   const openInvites = invites.count ?? 0;
 
-  // ---- Bookings (shoots), their thumbnails and prices ----
-  const shoots = projects.filter((p) => p.type === "shoot");
-  const money$ = seesMoney(current);
-  const [covers, { data: itemRows }] = await Promise.all([
-    projectCovers(
-      db,
-      shoots
-        .filter((p) => p.delivered_at || ["delivered", "completed"].includes(p.status))
-        .map((p) => p.id),
-    ),
-    // Line items come back only for those who see billing; included items are priced at 0, so a
-    // booking covered by the package shows no price at all.
-    money$ && shoots.length
-      ? db
-          .from("line_items")
-          .select("project_id, qty, unit_price, currency")
-          .in(
-            "project_id",
-            shoots.map((p) => p.id),
-          )
-      : Promise.resolve({ data: null }),
-  ]);
-  const sums = new Map<string, { t: number; c: string }>();
-  for (const i of itemRows ?? []) {
-    const x = sums.get(i.project_id) ?? { t: 0, c: i.currency };
-    x.t += Number(i.qty) * Number(i.unit_price);
-    sums.set(i.project_id, x);
-  }
-  const chipOf = (p: Project) =>
-    p.status === "cancelled"
-      ? "cancelled"
-      : p.revision_state === "requested" || p.revision_state === "in_progress"
-        ? "revision"
-        : p.status;
-  const rows: BookingRow[] = shoots.map((p) => {
-    const b = p.meta.booking;
-    const services = b ? normalizeServices(b.services) : [];
-    const sum = sums.get(p.id);
-    return {
-      id: p.id,
-      href: `/portal/shoots/${encodeURIComponent(p.ref)}`,
-      ref: p.ref,
-      title: `${p.title}${p.meta.unit ? ` · ${p.meta.unit}` : ""}`,
-      when: [
-        shootDay(p.shoot_date),
-        SLOTS.find(([k]) => k === (p.slot ?? "").toLowerCase().replace(" ", "_"))?.[1] ?? p.slot,
-      ]
-        .filter(Boolean)
-        .join(" · "),
-      service: b
-        ? services.map((s) => serviceSummary(s, cfg.pricing)).join(" · ")
-        : (p.meta.services ?? []).map((s) => SHOOT_SERVICE_LABEL[s] ?? s).join(" · "),
-      chip: chipOf(p),
-      status: clientStatus(p),
-      gold: p.status === "delivered",
-      price: sum && sum.t > 0 ? money(sum.c, sum.t) : "",
-      cover: covers.get(p.id) ?? null,
-      icon: services.length && services.every((s) => s.service === "videos") ? "video" : "photo",
-    };
-  });
-
-  // ---- The four tiles ----
-  const upcoming = shoots.filter(
-    (p) =>
-      (p.status === "requested" || p.status === "confirmed") &&
-      (!p.shoot_date || p.shoot_date >= cfg.today),
-  ).length;
-  const editing = projects.filter(
-    (p) => p.status === "editing" || p.status === "in_editing",
-  ).length;
-  const stats: Stat[] = [
-    { icon: "calendar", value: String(upcoming), label: "Upcoming" },
-    { icon: "clock", value: String(editing), label: "In editing" },
-    { icon: "download", value: String(waiting.length), label: "Ready to download" },
-  ];
-  const bill = billingRow as MyBilling | null;
-  if (bill?.mode === "package" && bill.plan?.usage.length) {
-    const used = bill.plan.usage.reduce((n, u) => n + Number(u.used), 0);
-    const qty = bill.plan.usage.reduce((n, u) => n + Number(u.qty), 0);
-    stats.push({ icon: "billing", value: `${used} of ${qty}`, label: "Package used" });
-  } else if (bill?.budget) {
-    stats.push({
-      icon: "billing",
-      value: money(bill.currency, Number(bill.budget.total)),
-      label: "Spent this month",
-    });
-  } else if (bill?.activity) {
-    stats.push({
-      icon: "billing",
-      value: money(
-        bill.currency,
-        bill.activity.reduce((n, r) => n + Number(r.total), 0),
-      ),
-      label: "Spent this month",
-    });
-  }
-  const offers = [
-    cfg.shoots && "Photography, 360° tours and video",
-    cfg.editing && "editing for your footage",
-    cfg.avatars && "AI avatar videos",
-  ].filter(Boolean) as string[];
-
   return (
-    <div className="pt-home">
+    <>
       <LiveRefresh />
+      <div className="pt-head">
+        <div>
+          <span className="pt-eb">{now}</span>
+          <h1 className="pt-h1">Home</h1>
+        </div>
+      </div>
+
       {claimed > 0 && (
         <p className="pt-note" role="status">
           We found {claimed} earlier booking{claimed === 1 ? "" : "s"} made with {contactOf(user)}{" "}
@@ -220,23 +115,6 @@ export default async function PortalHome({
           Password updated.
         </p>
       )}
-
-      <section className="pt-hm-banner" aria-labelledby="hm-h">
-        <div>
-          <span className="pt-eb">{a.name}</span>
-          <h1 id="hm-h" className="pt-h1">
-            {cfg.shoots ? "Your next listing deserves a great shoot." : "What are we making next?"}
-          </h1>
-          {offers.length > 0 && (
-            <p className="pt-meta">
-              {offers.join(", ").replace(/^./, (c) => c.toUpperCase())}. Start in a few clicks.
-            </p>
-          )}
-        </div>
-        <StartRequests cfg={cfg} />
-      </section>
-
-      <StatTiles stats={stats} />
 
       {/* Only when something needs them (owner, 10 Oct 2026). */}
       {waiting.length + scripts.length + onHold.length + unpaid.length + openInvites > 0 && (
@@ -333,8 +211,7 @@ export default async function PortalHome({
         </section>
       )}
 
-      {cfg.shoots && <BookingsList rows={rows} />}
-      <YourWork projects={projects} cfg={cfg} shoots={false} />
+      <YourWork projects={projects} cfg={cfg} />
 
       <section className="pt-card" aria-labelledby="act">
         <h2 id="act" className="pt-h2">
@@ -395,6 +272,6 @@ export default async function PortalHome({
           WhatsApp us
         </a>
       )}
-    </div>
+    </>
   );
 }

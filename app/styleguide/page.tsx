@@ -277,7 +277,7 @@ export default async function StyleguidePage() {
               <span className="sg-meta">Body · 16px · line-height 1.55 · max ~60ch</span>
               <p style={{ margin: 0, maxWidth: "60ch" }}>
                 Monthly content for agencies and brands: shoot days, reels and long-form. Or one
-                property shoot, booked in a minute. Photos are back within 24 hours, often same day.
+                property shoot, booked in a minute. Photos are back in 24 hours.
               </p>
             </div>
             <div className="stack" style={{ gap: 8 }}>
@@ -619,7 +619,7 @@ export default async function StyleguidePage() {
                   {
                     n: "03",
                     title: "Edit",
-                    text: "In-house editors. Photos within 24 hours, often same day; reels up to 48 hours.",
+                    text: "In-house editors. Photos in 24 hours, reels in 24–48.",
                   },
                   {
                     n: "04",
@@ -693,7 +693,7 @@ export default async function StyleguidePage() {
                 {
                   kicker: "Single shoot",
                   title: "For one property",
-                  text: "Pick the property and services, see the price, request a slot. Photos back within 24 hours, often same day.",
+                  text: "Pick the property and services, see the price, request a slot. Photos back in 24 hours.",
                   cta: "Book a property shoot →",
                   href: "/property-shoots",
                 },
@@ -776,7 +776,7 @@ export default async function StyleguidePage() {
                 items: [
                   "See the price in a minute",
                   "Pick a slot that suits you",
-                  "Photos within 24 hours, in your dashboard",
+                  "Photos in 24 hours, in your dashboard",
                   "Invoices ready to download",
                 ],
               }}

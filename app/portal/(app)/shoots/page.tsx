@@ -79,7 +79,7 @@ export default async function Shoots() {
 
       <DraftsRow
         drafts={drafts.filter((d) => d.kind === "booking")}
-        hrefs={{ booking: "/portal/book?draft=1" }}
+        hrefs={{ booking: "/portal/shoots?new=booking&draft=1" }}
       />
       {all.length === 0 && (
         <div className="pt-card">

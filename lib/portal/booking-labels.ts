@@ -31,10 +31,3 @@ export const AVATAR_FORMATS = {
   },
   long: { label: "Long form (YouTube, 16:9)", stops: [1, 2, 3, 5, 10, 15], unit: "min", def: 1 },
 } as const;
-
-/** What the booking page says when the admin hasn't set a turnaround text for a service. */
-export const TURNAROUND_DEFAULT = {
-  photos: "within 24 hours, often same day",
-  reels: "up to 48 hours",
-  long_form: "48–72 hours",
-} as const;

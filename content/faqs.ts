@@ -2,7 +2,7 @@ import type { Faq, PageKey } from "./types";
 
 /**
  * Draft FAQs from the mockup (guide §10). The owner writes the final set in the admin.
- * Edits agreed 30 Sep 2026: reels are up to 48 hours everywhere (changed again 17 Oct 2026: photos within 24 hours, often same day; short-form reels up to 48 hours; walkthroughs 48–72 hours); removed "every service page has a
+ * Edits agreed 30 Sep 2026: reels are 24–48h everywhere; removed "every service page has a
  * builder" (Home) and "retainer clients pay by card automatically" (Post-production).
  */
 
@@ -26,7 +26,7 @@ export const faqs: Faq[] = [
   draft(
     "home",
     "How fast is delivery?",
-    "Property photos within 24 hours, often same day. Short-form reels up to 48 hours. Walkthroughs 48–72 hours. Monthly packages follow an agreed content calendar.",
+    "Property photos in 24 hours. Reels in 24–48 hours. Monthly packages follow an agreed content calendar.",
   ),
   draft(
     "home",

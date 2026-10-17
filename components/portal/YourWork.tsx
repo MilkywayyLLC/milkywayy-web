@@ -66,19 +66,10 @@ function Steps({ p }: { p: Project }) {
  * editing, AI avatars; empty groups hidden), one full-width text row per item: title and meta,
  * the real stages as a 2px line with labels, and the status in words with Open →.
  */
-export function YourWork({
-  projects,
-  cfg,
-  shoots: withShoots = true,
-}: {
-  projects: Project[];
-  cfg: RequestConfig;
-  /** Home lists shoots in its own Bookings section (UI rebuild, 17 Oct 2026); false leaves them out. */
-  shoots?: boolean;
-}) {
+export function YourWork({ projects, cfg }: { projects: Project[]; cfg: RequestConfig }) {
   const shoots = projects.filter((p) => p.type === "shoot");
   const cats: Cat[] = [
-    ...(cfg.shoots && withShoots
+    ...(cfg.shoots
       ? [
           {
             key: "property",
@@ -116,7 +107,6 @@ export function YourWork({
       : []),
   ].filter((c) => c.items.length > 0);
 
-  if (!cats.length && !withShoots) return null;
   if (!cats.length)
     return (
       <section className="pt-card" aria-labelledby="work">
