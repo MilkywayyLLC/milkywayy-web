@@ -1,5 +1,6 @@
 import { Ctas } from "@/components/ui/Ctas";
 import type { Metadata } from "next";
+import type { PropertyPricing } from "@/content/types";
 import { CTABand } from "@/components/blocks/CTABand";
 import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
 import { FAQ } from "@/components/blocks/FAQ";
@@ -38,7 +39,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata("property-shoots");
 }
 
-const STEPS: Step[] = [
+/** How it works. Delivery times come from the price list, like the Services cards (AUDIT item 6). */
+const steps = (d: PropertyPricing["delivery"]): Step[] => [
   {
     n: "01",
     title: "Book online",
@@ -52,7 +54,7 @@ const STEPS: Step[] = [
   {
     n: "03",
     title: "Fast delivery",
-    text: "Photos in 24 hours, videos in 48–72, in your dashboard with Download all.",
+    text: `Photos in ${d.photo}, videos in ${d.short === d.long ? d.short : `${d.short} (short-form) or ${d.long} (long-form)`}, in your dashboard with Download all.`,
   },
   {
     n: "04",
@@ -188,7 +190,7 @@ export default async function PropertyShootsPage() {
       <section className="sec alt" aria-labelledby="how-title">
         <div className="w">
           <SectionHead id="how-title" eyebrow="How it works" title="Booked to shared." />
-          <Steps steps={STEPS} snap />
+          <Steps steps={steps(d)} snap />
         </div>
       </section>
 

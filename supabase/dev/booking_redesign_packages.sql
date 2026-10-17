@@ -6,11 +6,11 @@
 update public.packages k set
   inclusions = (select coalesce(jsonb_agg(case i ->> 'key'
       when 'reel' then i || jsonb_build_object('key', 'reel_shoot', 'label', 'Short-form video (up to 60s)')
-      when 'long_form' then i || jsonb_build_object('key', 'long_form_shoot', 'label', 'Long-form video (up to 5 min)')
+      when 'long_form' then i || jsonb_build_object('key', 'long_form_shoot', 'label', 'Walkthrough (up to 5 min)')
       else i end), '[]'::jsonb) from jsonb_array_elements(k.inclusions) i),
   overage = (select coalesce(jsonb_agg(case o ->> 'key'
       when 'reel' then o || jsonb_build_object('key', 'reel_shoot', 'label', 'Short-form video (up to 60s)')
-      when 'long_form' then o || jsonb_build_object('key', 'long_form_shoot', 'label', 'Long-form video (up to 5 min)')
+      when 'long_form' then o || jsonb_build_object('key', 'long_form_shoot', 'label', 'Walkthrough (up to 5 min)')
       else o end), '[]'::jsonb) from jsonb_array_elements(coalesce(k.overage, '[]'::jsonb)) o)
 where k.name = 'Growth'
   and exists (select 1 from jsonb_array_elements(k.inclusions) i where i ->> 'key' in ('reel', 'long_form'));

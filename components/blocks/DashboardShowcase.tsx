@@ -736,7 +736,7 @@ function Confirmed() {
               </li>
               <li>
                 <span>Videos</span>
-                <b>2 short-form · 1 long-form</b>
+                <b>2 short-form · 1 walkthrough</b>
               </li>
               <li>
                 <span>Date and slot</span>

@@ -284,18 +284,27 @@ export const dateLabel = (d: string | null | undefined, opts: Intl.DateTimeForma
       })
     : "";
 
-/** What a line item is: also the keys of package inclusions and rates (rate_card.key). */
+/** What a line item is: also the keys of package inclusions and rates (rate_card.key). Current
+ *  services only (AUDIT item 18): the retired shoot day and avatar video are gone; an older item
+ *  of those kinds still shows its key. */
 export const KINDS = [
-  ["shoot", "Property shoot"],
-  ["shoot_day", "Shoot day"],
-  ["photo", "Photo edit"],
-  ["reel", "Short-form reel"],
-  ["long_form", "Long-form video"],
-  ["avatar_video", "AI avatar video"],
+  ["shoot", "Photo shoot"],
+  ["reel_shoot", "Short-form video (up to 60s)"],
+  ["long_form_shoot", "Walkthrough (up to 5 min)"],
+  ["long_form_extra_min", "Walkthrough, extra minute"],
+  ["half_day", "Raw files only · half day"],
+  ["full_day", "Raw files only · full day"],
+  ["photo", "HDR photo edit"],
+  ["reel", "Short-form edit"],
+  ["long_form", "Long-form edit"],
   ["avatar_setup", "AI character creation"],
+  ["avatar_short", "AI avatar · short video"],
+  ["avatar_long", "AI avatar · long video"],
 ] as const;
+/** Kinds that are never picked, only shown (a flexible booking's top-up). */
+const SHOWN_ONLY: Record<string, string> = { day_minimum: "Minimum charge top-up" };
 export const kindLabel = (k: string | null | undefined) =>
-  KINDS.find((x) => x[0] === k)?.[1] ?? k ?? "Other";
+  KINDS.find((x) => x[0] === k)?.[1] ?? (k ? SHOWN_ONLY[k] : undefined) ?? k ?? "Other";
 
 /** "October 2026" from a month's first day. */
 export const monthLabel = (m: string | null | undefined) =>

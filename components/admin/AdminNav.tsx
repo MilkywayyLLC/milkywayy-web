@@ -12,7 +12,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "Workspace",
     items: [
       { href: "/admin", label: "Dashboard" },
-      { href: "/admin/leads", label: "Leads", owner: true },
+      { href: "/admin/leads", label: "Website leads", owner: true },
     ],
   },
   {
@@ -20,7 +20,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     items: [
       { href: "/admin/projects", label: "Projects", owner: true },
       { href: "/admin/characters", label: "AI characters", owner: true },
-      { href: "/admin/inquiries", label: "Inquiries", owner: true },
+      { href: "/admin/inquiries", label: "Client messages", owner: true },
       { href: "/admin/accounts", label: "Client accounts", owner: true },
       { href: "/admin/billing", label: "Billing", owner: true },
       { href: "/admin/listings", label: "Listings", owner: true },
@@ -33,11 +33,11 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: "/admin/pages", label: "Pages" },
       { href: "/admin/case-studies", label: "Case studies" },
       { href: "/admin/before-after", label: "Before / after" },
-      { href: "/admin/avatars", label: "AI avatars" },
+      { href: "/admin/avatars", label: "Website avatars" },
       { href: "/admin/reviews", label: "Reviews" },
       { href: "/admin/faqs", label: "FAQs" },
       { href: "/admin/stats", label: "Stats" },
-      { href: "/admin/clients", label: "Clients" },
+      { href: "/admin/clients", label: "Client logos" },
     ],
   },
   {

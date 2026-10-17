@@ -80,3 +80,20 @@ The name invites it; keep it quiet so it never fights the work.
   https://www.interior.dev (same approach as the spring dialogs in components/interior).
 - **interior.dev logo-marquee technique for marquees:** for the client proof strip and any other
   scrolling marquee.
+
+## Post-launch simplification (docs/AUDIT.md, 18 Oct 2026)
+
+Not launch blockers; each needs a careful pass of its own.
+
+- **Admin client page in tabs (AUDIT 7):** about 16 stacked blocks today. Split into Overview
+  (services, details, projects, bookings) · Prices & plan (price list, plan, billing) · People
+  (members, invites, listing contacts) · Activity (statements, admin history).
+- **Before/after and Website avatars into Library (AUDIT 12):** both are media items with their
+  own sections. Make them Library filters. Check placements and the hero templates first, because
+  the property hero pins a before/after pair.
+- **One "Prices" group in the admin (AUDIT 13):** prices live under Pricing (Property shoots,
+  Other prices) and Billing → Rate card. Put the website list and the rate card side by side
+  under one group. The content and portal databases stay separate.
+- **Team + Contacts → "People" in the portal (AUDIT 15):** one tab with Team (logins and access)
+  and Listing contacts (cards on share pages, which can link to a teammate). Invites, the Agent
+  preset's contact linking and the access rules need retesting together.

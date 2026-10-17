@@ -168,6 +168,11 @@ export function PriceList({
   );
   const [r, setR] = useState<SetupResult>();
   const [pending, start] = useTransition();
+  // This client's own prices only, unless "Show all" (AUDIT item 8). Saved prices decide what
+  // shows, so a row doesn't vanish while you type; hidden rows are saved unchanged.
+  const own = rows.filter((p) => p.client != null).length;
+  const [all, setAll] = useState(own === 0);
+  const shown = (p: (typeof rows)[number]) => all || p.client != null;
   return (
     <form
       className="ad-card ad-form"
@@ -188,7 +193,25 @@ export function PriceList({
         });
       }}
     >
-      <h2 className="ad-h2">Client price list · {data.currency}</h2>
+      <div className="ad-row-between">
+        <h2 className="ad-h2" style={{ margin: 0 }}>
+          Client price list · {data.currency}
+        </h2>
+        <label className="ad-check ad-small">
+          <input
+            type="checkbox"
+            checked={all}
+            data-testid="prices-show-all"
+            onChange={(e) => setAll(e.target.checked)}
+          />
+          <span>Show all ({rows.length})</span>
+        </label>
+      </div>
+      {!all && (
+        <span className="ad-small" data-testid="prices-own-count">
+          {own} custom price{own === 1 ? "" : "s"}. Everything else is the default.
+        </span>
+      )}
       <span className="ad-small ad-muted">
         Blank uses the default. A changed price applies to work logged from today; anything already
         logged keeps its price. Shown on bookings to those who see prices.
@@ -204,8 +227,8 @@ export function PriceList({
             </tr>
           </thead>
           {GROUPS.map(([g, title]) => {
-            const list = rows.filter((p) => p.grp === g);
-            if (!list.length) return null;
+            const list = rows.filter((p) => p.grp === g && shown(p));
+            if (!list.length && !all) return null;
             const svc = GROUP_SERVICE[g];
             if (svc && !data.services[svc])
               return (
@@ -221,6 +244,7 @@ export function PriceList({
                   </tr>
                 </tbody>
               );
+            if (!list.length) return null;
             return (
               <tbody key={g}>
                 <tr>

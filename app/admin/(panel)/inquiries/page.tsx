@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { portalAdminPage } from "@/lib/portal/admin";
 
-export const metadata = { title: "Inquiries" };
+export const metadata = { title: "Client messages" };
 
 type Row = {
   id: string;
@@ -40,7 +40,7 @@ export default async function AdminInquiries({
       <div className="ad-head">
         <div>
           <span className="ad-eb">Portal</span>
-          <h1 className="ad-h1">Inquiries{unread ? ` · ${unread} unread` : ""}</h1>
+          <h1 className="ad-h1">Client messages{unread ? ` · ${unread} unread` : ""}</h1>
           <span className="ad-small ad-muted">
             Clients’ questions, optionally about a shoot. You’re emailed on each new one and each
             reply; they’re emailed when you answer.

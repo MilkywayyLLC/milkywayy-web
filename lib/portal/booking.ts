@@ -268,7 +268,7 @@ export function videoSummary(v: VideoPlan): string {
     const head = v.raw ? `${day} · raw files only` : `${day}, edited`;
     const done = [
       v.short ? plural(v.short, "short-form") : "",
-      v.long ? plural(v.long, "long-form") : "",
+      v.long ? plural(v.long, "walkthrough") : "",
     ].filter(Boolean);
     return [head, done.length ? done.join(" · ") : v.approx ? `about: ${v.approx}` : ""]
       .filter(Boolean)
@@ -276,7 +276,7 @@ export function videoSummary(v: VideoPlan): string {
   }
   const parts = [
     v.short ? plural(v.short, "short-form") : "",
-    v.long ? `${plural(v.long, "long-form")}${v.extra_min ? ` (+${v.extra_min} min)` : ""}` : "",
+    v.long ? `${plural(v.long, "walkthrough")}${v.extra_min ? ` (+${v.extra_min} min)` : ""}` : "",
   ].filter(Boolean);
   return parts.join(" · ") || "No videos yet";
 }
@@ -348,8 +348,8 @@ export function videoLines(v: VideoPlan, rates: Rates): EstimateLine[] {
     return out;
   }
   if (v.short) line(KEY.short, "Short-form video (up to 60s)", v.short);
-  if (v.long) line(KEY.long, `Long-form video (up to ${LONG_FORM_MINUTES} min)`, v.long);
-  if (v.long && v.extra_min) line(KEY.extra, "Long-form, extra minutes", v.extra_min);
+  if (v.long) line(KEY.long, `Walkthrough (up to ${LONG_FORM_MINUTES} min)`, v.long);
+  if (v.long && v.extra_min) line(KEY.extra, "Walkthrough, extra minutes", v.extra_min);
   return out;
 }
 
@@ -518,13 +518,13 @@ export function logPrefill(services: BookingService[], pricing: PropertyPricing)
     if (v.by === "time") {
       // Billed per finished video: set the counts once they're delivered.
       out.push(rate(KEY.short, "Short-form video (up to 60s)", Math.max(1, v.short ?? 1)));
-      if (v.long) out.push(rate(KEY.long, "Long-form video (up to 5 min)", v.long));
+      if (v.long) out.push(rate(KEY.long, "Walkthrough (up to 5 min)", v.long));
       out.push(rate(KEY.min[day], `Minimum · ${DAY_LABEL[day].toLowerCase()}, edited`, 1, true));
       continue;
     }
     if (v.short) out.push(rate(KEY.short, "Short-form video (up to 60s)", v.short));
-    if (v.long) out.push(rate(KEY.long, "Long-form video (up to 5 min)", v.long));
-    if (v.long && v.extra_min) out.push(rate(KEY.extra, "Long-form, extra minutes", v.extra_min));
+    if (v.long) out.push(rate(KEY.long, "Walkthrough (up to 5 min)", v.long));
+    if (v.long && v.extra_min) out.push(rate(KEY.extra, "Walkthrough, extra minutes", v.extra_min));
   }
   return out;
 }

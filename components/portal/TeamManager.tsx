@@ -3,7 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useActionState, useState, useTransition } from "react";
 import { PhoneField } from "@/components/forms/PhoneField";
-import { PERMS, presetOf, PRESETS, type Access, type PresetKey } from "@/lib/portal/access";
+import {
+  defaultPreset,
+  PERMS,
+  presetOf,
+  PRESETS,
+  type Access,
+  type PresetKey,
+} from "@/lib/portal/access";
 import {
   cancelInvite,
   inviteMember,
@@ -116,7 +123,7 @@ export function TeamManager({
   invites,
   origin,
 }: {
-  account: { name: string; type: string };
+  account: { name: string; type: string; industry?: string | null };
   origin: string;
   members: MemberRow[];
   invites: InviteRow[];
@@ -274,7 +281,9 @@ export function TeamManager({
         </section>
       )}
 
-      {sheet === "invite" && <InviteSheet onClose={() => setSheet(null)} say={say} />}
+      {sheet === "invite" && (
+        <InviteSheet industry={account.industry} onClose={() => setSheet(null)} say={say} />
+      )}
       {sheet && typeof sheet === "object" && "access" in sheet && (
         <Sheet
           title={`Access: ${sheet.access.name ?? sheet.access.contact ?? "member"}`}
@@ -381,7 +390,15 @@ function InviteEmailSheet({
 }
 
 /** Mounted fresh each time, so it always opens on the form. */
-function InviteSheet({ onClose, say }: { onClose: () => void; say: (m: string) => void }) {
+function InviteSheet({
+  onClose,
+  say,
+  industry,
+}: {
+  onClose: () => void;
+  say: (m: string) => void;
+  industry?: string | null;
+}) {
   const [state, invite, inviting] = useActionState(inviteMember, undefined);
   const [v, setV] = useState({ name: "", email: "" });
   const form = useFormCheck(() => ({
@@ -463,7 +480,10 @@ function InviteSheet({ onClose, say }: { onClose: () => void; say: (m: string) =
             </span>
             <AccessPicker
               idPrefix="invite"
-              initial={{ preset: "production", access: PRESETS.production.access }}
+              initial={{
+                preset: defaultPreset(industry),
+                access: PRESETS[defaultPreset(industry)].access,
+              }}
             />
           </div>
           <button type="submit" className="btn btn-p" disabled={inviting}>

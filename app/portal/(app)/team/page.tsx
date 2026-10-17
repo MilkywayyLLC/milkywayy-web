@@ -53,7 +53,11 @@ export default async function Team() {
 
   return (
     <TeamManager
-      account={{ name: current.account.name, type: current.account.type }}
+      account={{
+        name: current.account.name,
+        type: current.account.type,
+        industry: current.account.industry,
+      }}
       members={rows}
       invites={((invites ?? []) as Omit<InviteRow, "expired">[]).map((i) => ({
         ...i,

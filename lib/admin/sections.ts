@@ -327,7 +327,7 @@ export const SECTIONS: Section[] = [
   {
     key: "avatars",
     table: "avatars",
-    title: "AI avatars",
+    title: "Website avatars",
     singular: "avatar example",
     tags: ["avatars"],
     idPrefix: "avatar",
@@ -492,8 +492,8 @@ export const SECTIONS: Section[] = [
   {
     key: "clients",
     table: "clients",
-    title: "Clients",
-    singular: "client",
+    title: "Client logos",
+    singular: "client logo",
     tags: ["clients"],
     idPrefix: "client",
     defaults: {},

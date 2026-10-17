@@ -198,15 +198,16 @@ export default async function ClientPage({ params, searchParams }: Props) {
           <BudgetPanel account={a.id} currency={billing.currency} h={history} />
         )}
         <BillingSwitches account={a.id} h={history} />
-        <OfferPreview billing={billing} />
-        <HideSuggestions account={a.id} hidden={billing.hide_suggestions} />
-        <ClientOffer account={a.id} billing={billing} />
         <details>
           <summary className="ad-small">Monthly statements</summary>
           <Statements account={a.id} billing={billing} />
         </details>
-        <details>
-          <summary className="ad-small">Price history</summary>
+        {/* Not needed at launch (AUDIT item 14): offers, suggestions and dated price history. */}
+        <details data-testid="billing-advanced">
+          <summary className="ad-small">Advanced: offers, suggestions, price history</summary>
+          <OfferPreview billing={billing} />
+          <HideSuggestions account={a.id} hidden={billing.hide_suggestions} />
+          <ClientOffer account={a.id} billing={billing} />
           <ClientRateHistory account={a.id} currency={billing.currency} h={history} />
         </details>
       </section>

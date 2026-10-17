@@ -6,6 +6,7 @@ import { PropertyOptions } from "@/components/booking/PropertyOptions";
 import { blankProperty, reducer, type Action, type BookingProperty } from "@/lib/booking";
 import { bookShoot, updateBooking } from "@/lib/portal/book-actions";
 import { dateLabel, money } from "@/lib/portal/billing";
+import { lowestShootPrice } from "@/lib/pricing";
 import {
   cleanVideos,
   DAY_LABEL,
@@ -271,10 +272,8 @@ const rateText = (cfg: RequestConfig, key: string, per: string) => {
 function cardPrice(k: Kind, cfg: RequestConfig): string | null {
   if (!cfg.price.rates) return null;
   if (k === "property") {
-    const from = Math.min(
-      ...cfg.pricing.apartment.sizes.map((z) => z.photo),
-      ...cfg.pricing.villa.sizes.map((z) => z.photo),
-    );
+    // The website's "Photos from" figure, on this client's prices (AUDIT item 23).
+    const from = lowestShootPrice(cfg.pricing);
     return Number.isFinite(from)
       ? `Photos from ${money(cfg.price.currency, from)} · priced by size`
       : null;
@@ -684,7 +683,7 @@ export function BookingModal({
           ? ""
           : [
               cfg.turnaround.reels && `short-form ${cfg.turnaround.reels}`,
-              cfg.turnaround.long_form && `long-form ${cfg.turnaround.long_form}`,
+              cfg.turnaround.long_form && `walkthrough ${cfg.turnaround.long_form}`,
             ]
               .filter(Boolean)
               .join(" · "),
@@ -713,7 +712,7 @@ export function BookingModal({
             <Stepper
               id="qty-extra"
               label="Extra minutes"
-              sub="Longer than 5 min? All long-form together"
+              sub="Longer than 5 min? All walkthroughs together"
               value={video.extra_min ?? 0}
               max={600}
               testId="qty-extra"

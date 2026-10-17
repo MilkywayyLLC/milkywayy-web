@@ -74,6 +74,14 @@ export const PRESETS = {
 } as const satisfies Record<string, { label: string; hint: string; access: Access }>;
 export type PresetKey = keyof typeof PRESETS;
 
+/**
+ * The preset an invite starts on (AUDIT item 16): Agent for brokerages and agencies (members are
+ * mostly agents booking their own listings), Production for everyone else. Admin is always an
+ * explicit choice. Share with starts empty; a booking's Agent starts as the booker's own card.
+ */
+export const defaultPreset = (industry: string | null | undefined): PresetKey =>
+  industry === "real-estate-brokerage" || industry === "agency" ? "agent" : "production";
+
 type Services = { svc_production?: boolean; svc_post?: boolean; svc_avatars?: boolean };
 type Who = {
   role: "owner" | "admin" | "member";

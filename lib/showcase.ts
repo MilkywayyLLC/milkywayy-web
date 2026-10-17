@@ -77,7 +77,7 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
     {
       icon: "download",
       title: "Delivered",
-      text: "Photos in 24 hours, videos in 48–72.",
+      text: "Photos and videos land in your dashboard, with Download all.",
       screen: "deliveries",
     },
     {
