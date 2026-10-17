@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Icon } from "@/components/portal/Icon";
+import { Dropzone } from "@/components/portal/Dropzone";
 import { Sheet } from "@/components/portal/ui";
 import {
   addFileLink,
@@ -77,42 +77,18 @@ export function FilePicker({
 }) {
   return (
     <>
-      <label className="pt-drop">
-        <input
-          type="file"
-          multiple
-          disabled={disabled}
-          aria-label="Choose files"
-          onChange={(e) => {
-            onChange([...files, ...(e.target.files ?? [])]);
-            e.target.value = "";
-          }}
-        />
-        <Icon name="download" size={24} />
-        <b>Choose files</b>
-        <span className="pt-meta">
-          Up to {maxGb} GB per file. Bigger than that? Paste a link instead.
-        </span>
-      </label>
-      {files.length > 0 && (
-        <ul className="pt-list" style={{ margin: 0, padding: 0, listStyle: "none" }}>
-          {files.map((f, i) => (
-            <li key={i} className="pt-file">
-              <span className="pt-small" style={{ overflowWrap: "anywhere" }}>
-                {f.name} · {bytes(f.size)}
-              </span>
-              <button
-                type="button"
-                className="lnk pt-small"
-                disabled={disabled}
-                onClick={() => onChange(files.filter((_, j) => j !== i))}
-              >
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <Dropzone
+        items={files.map((f, i) => ({ id: String(i), name: f.name, size: f.size }))}
+        onAdd={(add) => onChange([...files, ...add])}
+        onRemove={(id) => onChange(files.filter((_, j) => String(j) !== id))}
+        accept=""
+        types="Any file"
+        noun="files"
+        maxMb={maxGb * 1024}
+        disabled={disabled}
+        testId="file-picker"
+      />
+      <span className="pt-meta">Bigger than {maxGb} GB? Paste a link instead.</span>
     </>
   );
 }

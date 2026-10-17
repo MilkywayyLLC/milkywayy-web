@@ -142,7 +142,12 @@ export async function createProject(
   const { db, user, current } = await requireAccount("/portal");
   if (!can(current, AREA_OF[input.type]))
     return { ok: false, error: "Your access doesn’t include this. Ask the account owner." };
-  const av = input.type === "avatar" ? input.avatar : undefined;
+  const a0 = input.type === "avatar" ? input.avatar : undefined;
+  // Short form is up to 30 seconds (the price list's unit); long form is whole minutes.
+  const av = a0 && {
+    format: a0.format,
+    length: a0.format === "short" ? 30 : Math.min(60, Math.max(1, Math.round(a0.length))),
+  };
   if (input.type === "avatar" && (!av || !(av.format in AVATAR_FORMATS)))
     return { ok: false, error: "Choose the format." };
   const chars = input.type === "avatar" ? [...new Set(input.characters ?? [])].slice(0, 4) : [];
@@ -253,6 +258,141 @@ export async function createProject(
     .eq("kind", input.type);
   revalidatePath("/portal", "layout");
   return { ok: true, id: out.id, ref: out.ref, notice: "Received." };
+}
+
+/**
+ * Edit an avatar video's brief before work starts (owner, 17 Oct 2026): the same form, prefilled.
+ * Logged as "Brief edited"; Milkywayy is emailed "[Client] edited their AI avatar request".
+ */
+export async function updateAvatarBrief(
+  projectId: string,
+  input: Omit<NewProject, "type" | "kind">,
+): Promise<ClientResult & { ref?: string }> {
+  const { db, user, current } = await requireAccount("/portal/avatars");
+  if (!can(current, "avatars"))
+    return { ok: false, error: "Your access doesn’t include this. Ask the account owner." };
+  const a0 = input.avatar;
+  if (!a0 || !(a0.format in AVATAR_FORMATS)) return { ok: false, error: "Choose the format." };
+  const av = {
+    format: a0.format,
+    length: a0.format === "short" ? 30 : Math.min(60, Math.max(1, Math.round(a0.length))),
+  };
+  const chars = [...new Set(input.characters ?? [])].slice(0, 4);
+  const avLabel = `${av.format === "short" ? "Short form" : "Long form"} · ${avatarLength(av.format, av.length)}`;
+  const title = input.title.trim() || avLabel;
+  const notes = [
+    `Format: ${AVATAR_FORMATS[av.format].label} · ${avatarLength(av.format, av.length)}`,
+    input.notes?.trim() ?? "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const { error } = await db.rpc("edit_avatar_brief", {
+    p_project: projectId,
+    p_title: title,
+    p_kind: avatarKind(av.format, av.length),
+    p_notes: notes,
+    p_references: (input.references ?? []).map((r) => r.trim()).filter(Boolean),
+    p_script_by: input.scriptBy ?? "milkywayy",
+  });
+  if (error) {
+    console.error("[portal] edit_avatar_brief:", error.message);
+    return {
+      ok: false,
+      error: /work has started/.test(error.message)
+        ? "We’ve started on it: ask for a revision instead. Refresh the page."
+        : why(error.message),
+    };
+  }
+  if (chars.length) {
+    const { error: e } = await db.rpc("set_project_characters", {
+      p_project: projectId,
+      p_characters: chars,
+    });
+    if (e) console.error("[portal] set_project_characters:", e.message);
+  }
+  for (const l of (input.links ?? []).filter((x) => /^https:\/\/\S+$/.test(x.url.trim())))
+    await db.rpc("add_project_file_in", {
+      p_project: projectId,
+      p_source: "link",
+      p_label: l.label.trim() || "Assets",
+      p_url: l.url.trim(),
+    });
+  const p = await projectRef(db, projectId);
+  await notifyMilkywayy(
+    projectId,
+    "avatar_brief_edited",
+    `${current.account.name} edited their AI avatar request`,
+    [
+      `${user.email ?? "A client"} (${current.account.name}) edited the brief of ${p?.ref ?? "an avatar video"} before you started:`,
+      [
+        title,
+        avLabel,
+        `Script: ${input.scriptBy === "client" ? "they send it" : "Milkywayy writes it"}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      input.notes?.trim() ? `Notes: “${input.notes.trim().slice(0, 1500)}”` : "",
+    ].filter(Boolean),
+    `${originFrom(await headers())}/admin/projects/${projectId}`,
+  );
+  revalidatePath("/portal", "layout");
+  return { ok: true, ref: p?.ref, notice: "Brief updated." };
+}
+
+/**
+ * "Request a revision" on an avatar video once work has started (owner, 17 Oct 2026): delivered
+ * videos use the revision rounds; before delivery the request is logged and posted to Messages.
+ * Optional images are uploaded after, as the project's files. Milkywayy is emailed.
+ */
+export async function requestAvatarRevision(
+  projectId: string,
+  note: string,
+  images: number,
+): Promise<ClientResult> {
+  const { db, user, current } = await requireAccount("/portal/avatars");
+  const text = note.trim();
+  if (text.length < 3) return { ok: false, error: "Tell us what should change." };
+  if (text.length > 1000)
+    return { ok: false, error: "Keep it under 1,000 characters (add more in a message)." };
+  const p0 = await visibleProject(db, projectId);
+  if (!p0 || p0.type !== "avatar")
+    return { ok: false, error: "You don’t have access to that project." };
+  let round = "";
+  if (p0.status === "delivered") {
+    const { data, error } = await db.rpc("request_revision", {
+      p_project: projectId,
+      p_note: text,
+    });
+    if (error) return { ok: false, error: why(error.message) };
+    round = ` (round ${data.round} of ${data.of})`;
+  } else {
+    const { error } = await db.rpc("request_avatar_revision", {
+      p_project: projectId,
+      p_note: text,
+    });
+    if (error)
+      return {
+        ok: false,
+        error: /isn't possible/.test(error.message)
+          ? "That isn’t possible right now. Refresh the page."
+          : why(error.message),
+      };
+  }
+  await notifyMilkywayy(
+    projectId,
+    "revision_requested",
+    `${current.account.name} asked for a revision on their AI avatar request${round}`,
+    [
+      `${user.email ?? "A client"} asked for a revision on ${p0.title} (${p0.ref}):`,
+      `“${text}”`,
+      ...(images
+        ? [`${images} image${images === 1 ? "" : "s"} attached (in the project’s files).`]
+        : []),
+    ],
+    `${originFrom(await headers())}/admin/projects/${projectId}`,
+  );
+  revalidatePath("/portal", "layout");
+  return { ok: true, notice: "Revision requested. We’ll let you know when it’s ready." };
 }
 
 /** The project the signed-in client can see (RLS), for uploads. */

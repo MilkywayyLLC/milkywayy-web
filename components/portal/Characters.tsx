@@ -7,9 +7,11 @@ import { Badge } from "@/components/portal/ui";
 import {
   characterFileLink,
   createCharacter,
+  editCharacter,
   finishCharacterUpload,
   pickCharacter,
-  requestCharacterChanges,
+  removeCharacterReference,
+  requestCharacterRevision,
   resumeCharacterUpload,
   startCharacterUpload,
 } from "@/lib/portal/character-actions";
@@ -25,6 +27,7 @@ import {
 } from "@/lib/portal/characters";
 import type { RequestConfig } from "@/lib/portal/requests";
 import { uploadFile } from "@/lib/upload-browser";
+import { Dropzone, usePicked, type DropItem, type Picked } from "./Dropzone";
 import { Field, FormBanner, Modal, useFormCheck } from "./forms";
 import type { Presenter } from "./NewProjectForm";
 import { StartRequests } from "./StartRequests";
@@ -90,20 +93,85 @@ type Brief = {
   similar: string;
 };
 
-export function CreateCharacterModal({ first, onClose }: { first?: boolean; onClose: () => void }) {
+const IMG_TYPES = "image/png,image/jpeg,image/webp,image/heic";
+const MAX_MB = 25;
+type Prog = Record<string, { progress?: number; error?: string }>;
+
+/** Uploads chosen images to a character (references, or a revision's images), with progress. */
+async function uploadImages(
+  id: string,
+  list: Picked[],
+  setProg: (f: (p: Prog) => Prog) => void,
+  revision = false,
+) {
+  let ok = 0;
+  for (const p of list) {
+    const f = p.file;
+    const done = await uploadFile(
+      f,
+      `char-${id}`,
+      {
+        start: () => startCharacterUpload(id, f.name, f.size),
+        resume: (key, uploadId) => resumeCharacterUpload(id, key, uploadId, f.size),
+        finish: (x) =>
+          finishCharacterUpload(id, { ...x, name: f.name, size: f.size, type: f.type }, revision),
+      },
+      (r) =>
+        setProg((g) => ({
+          ...g,
+          [p.id]: {
+            progress:
+              r.done != null ? Math.min(0.99, r.done / Math.max(1, f.size)) : g[p.id]?.progress,
+            error:
+              r.state && !/^(Uploading|Resuming|Waiting|Done)/.test(r.state) ? r.state : undefined,
+          },
+        })),
+    );
+    setProg((g) => ({
+      ...g,
+      [p.id]: done ? { progress: 1 } : { error: g[p.id]?.error ?? "Didn’t upload" },
+    }));
+    if (done) ok++;
+  }
+  return ok;
+}
+const pickedItems = (list: Picked[], prog: Prog): DropItem[] =>
+  list.map((p) => ({
+    id: p.id,
+    name: p.file.name,
+    size: p.file.size,
+    src: p.src,
+    progress: prog[p.id]?.progress,
+    error: prog[p.id]?.error,
+  }));
+
+const briefOf = (c?: Character): Brief => ({
+  brand: c?.brief.brand ?? "",
+  purpose: c?.brief.purpose ?? "",
+  purposeOther: c?.brief.purpose_other ?? "",
+  look: c?.brief.look ?? "",
+  setting: c?.brief.setting ?? "",
+  voice: c?.brief.voice ?? "",
+  language: c?.brief.language ?? "English",
+  links: (c?.brief.links ?? []).join("\n"),
+  similar: c?.brief.similar_note ?? "",
+});
+
+/** "Create your AI avatar", or "Edit request" on a brief we haven't started (prefilled). */
+export function CreateCharacterModal({
+  first,
+  edit,
+  onClose,
+}: {
+  first?: boolean;
+  edit?: Character;
+  onClose: () => void;
+}) {
   const router = useRouter();
-  const [b, setB] = useState<Brief>({
-    brand: "",
-    purpose: "",
-    purposeOther: "",
-    look: "",
-    setting: "",
-    voice: "",
-    language: "English",
-    links: "",
-    similar: "",
-  });
-  const [files, setFiles] = useState<File[]>([]);
+  const [b, setB] = useState<Brief>(briefOf(edit));
+  const picked = usePicked();
+  const [prog, setProg] = useState<Prog>({});
+  const [saved, setSaved] = useState((edit?.files ?? []).filter((f) => f.kind === "reference"));
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState<{ failed: boolean } | null>(null);
   const set = (p: Partial<Brief>) => setB((x) => ({ ...x, ...p }));
@@ -114,13 +182,13 @@ export function CreateCharacterModal({ first, onClose }: { first?: boolean; onCl
     purposeOther: b.purpose === "other" && !b.purposeOther.trim() && "Say what it’s for.",
     look: b.look.trim().length < 2 && "Describe the look and personality.",
     links: links.some((l) => !isHttps(l)) && "Links must start with https://",
-    files: files.some((f) => !/^image\//.test(f.type)) && "Reference files must be images.",
   }));
+  const title = edit ? "Edit request" : "Create your AI avatar";
 
   async function submit() {
     if (!form.check()) return;
     setSaving(true);
-    const r = await createCharacter({
+    const brief = {
       brand: b.brand,
       purpose: b.purpose as Purpose,
       purpose_other: b.purposeOther,
@@ -130,42 +198,33 @@ export function CreateCharacterModal({ first, onClose }: { first?: boolean; onCl
       language: b.language,
       links,
       similar_note: b.similar,
-    });
+    };
+    const r = edit ? await editCharacter(edit.id, brief) : await createCharacter(brief);
     if (!r.ok || !r.id) {
       setSaving(false);
       return form.fail(r.error ?? "Couldn’t send it. Try again.");
     }
-    const id = r.id;
-    let ok = 0;
-    for (const f of files)
-      if (
-        await uploadFile(
-          f,
-          `char-${id}`,
-          {
-            start: () => startCharacterUpload(id, f.name, f.size),
-            resume: (key, uploadId) => resumeCharacterUpload(id, key, uploadId, f.size),
-            finish: (x) =>
-              finishCharacterUpload(id, { ...x, name: f.name, size: f.size, type: f.type }),
-          },
-          () => undefined,
-        )
-      )
-        ok++;
-    setDone({ failed: ok < files.length });
+    const ok = await uploadImages(r.id, picked.list, setProg);
+    setDone({ failed: ok < picked.list.length });
     setSaving(false);
     router.refresh();
+  }
+  async function removeSaved(id: string) {
+    const r = await removeCharacterReference(id);
+    if (!r.ok) return form.fail(r.error ?? "Couldn’t remove it.");
+    setSaved((l) => l.filter((f) => f.id !== id));
   }
 
   if (done)
     return (
-      <Modal title="Create your AI avatar" onClose={onClose} testId="character-modal">
+      <Modal title={title} onClose={onClose} testId="character-modal">
         <div className="pt-form" role="status">
-          <span className="pt-eb">Brief received</span>
-          <b style={{ fontSize: 20 }}>We’re on it</b>
+          <span className="pt-eb">{edit ? "Brief edited" : "Brief received"}</span>
+          <b style={{ fontSize: 20 }}>{edit ? "Saved" : "We’re on it"}</b>
           <p style={{ margin: 0 }}>
-            We’ll design three variations for you to choose from. You’ll get an email when they’re
-            ready.
+            {edit
+              ? "We’ll work from the updated brief. You’ll get an email when the variations are ready."
+              : "We’ll design three variations for you to choose from. You’ll get an email when they’re ready."}
           </p>
           {done.failed && (
             <p className="pt-error" role="alert">
@@ -183,7 +242,7 @@ export function CreateCharacterModal({ first, onClose }: { first?: boolean; onCl
 
   return (
     <Modal
-      title="Create your AI avatar"
+      title={title}
       onClose={onClose}
       testId="character-modal"
       footer={
@@ -193,7 +252,13 @@ export function CreateCharacterModal({ first, onClose }: { first?: boolean; onCl
           disabled={saving}
           onClick={() => void submit()}
         >
-          {saving ? "Sending…" : "Send brief"}
+          {saving
+            ? picked.list.length
+              ? "Uploading…"
+              : "Sending…"
+            : edit
+              ? "Save changes"
+              : "Send brief"}
         </button>
       }
     >
@@ -272,17 +337,27 @@ export function CreateCharacterModal({ first, onClose }: { first?: boolean; onCl
         >
           <textarea rows={2} value={b.links} onChange={(e) => set({ links: e.target.value })} />
         </Field>
-        <Field
-          name="files"
-          label="Reference images"
-          error={form.errors.files}
-          hint={files.length ? `${files.length} chosen` : "Optional."}
-        >
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 10))}
+        <Field name="files" label="Reference images" group hint="Optional.">
+          <Dropzone
+            items={[
+              ...saved.map((f) => ({
+                id: f.id,
+                name: f.label,
+                src: f.src ?? undefined,
+                saved: true,
+              })),
+              ...pickedItems(picked.list, prog),
+            ]}
+            onAdd={(f) => picked.add(f)}
+            onRemove={(id) =>
+              saved.some((f) => f.id === id) ? void removeSaved(id) : picked.remove(id)
+            }
+            accept={IMG_TYPES}
+            types="JPG, PNG, WebP or HEIC"
+            maxMb={MAX_MB}
+            max={12}
+            disabled={saving}
+            testId="ref-dropzone"
           />
         </Field>
         <Field
@@ -297,10 +372,17 @@ export function CreateCharacterModal({ first, onClose }: { first?: boolean; onCl
   );
 }
 
-/** "Your characters": a card per character (approved image, name, status). */
+/** Edit while we haven't started; a revision once variations are out (or it's approved). */
+const canEdit = (c: Character) => c.status === "brief_received" && c.round === 0;
+const canRevise = (c: Character) =>
+  c.status === "variations_ready" || c.status === "picked" || c.status === "approved";
+
+/** "Your characters": a card per character (approved image, name, status, Edit or Revise). */
 export function CharactersRow({ characters }: { characters: Character[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [act, setAct] = useState<{ id: string; kind: "edit" | "revise" } | null>(null);
   const open = characters.find((c) => c.id === openId) ?? null;
+  const acting = characters.find((c) => c.id === act?.id) ?? null;
   return (
     <section className="pt-char-sec" aria-label="Your characters">
       <b className="pt-h2">Your characters</b>
@@ -309,12 +391,7 @@ export function CharactersRow({ characters }: { characters: Character[] }) {
           {characters.map((c) => {
             const img = coverOf(c);
             return (
-              <button
-                key={c.id}
-                type="button"
-                className="pt-card pt-card-link pt-char-card"
-                onClick={() => setOpenId(c.id)}
-              >
+              <div key={c.id} className="pt-card pt-card-link pt-char-card pt-stretch">
                 {img?.src ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={img.src} alt="" />
@@ -323,9 +400,24 @@ export function CharactersRow({ characters }: { characters: Character[] }) {
                     <Icon name="ai" size={28} />
                   </span>
                 )}
-                <b className="pt-title">{characterTitle(c)}</b>
+                <button
+                  type="button"
+                  className="pt-title pt-stretch-link"
+                  onClick={() => setOpenId(c.id)}
+                >
+                  {characterTitle(c)}
+                </button>
                 <Badge tone={toneOf(c.status)}>{CHARACTER_STATUS[c.status]}</Badge>
-              </button>
+                {(canEdit(c) || canRevise(c)) && (
+                  <button
+                    type="button"
+                    className="lnk pt-small pt-stretch-act"
+                    onClick={() => setAct({ id: c.id, kind: canEdit(c) ? "edit" : "revise" })}
+                  >
+                    {canEdit(c) ? "Edit request" : "Request a revision"}
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
@@ -334,24 +426,166 @@ export function CharactersRow({ characters }: { characters: Character[] }) {
           No characters yet. Create your AI avatar: we design three variations, you choose.
         </p>
       )}
-      {open && <CharacterModal c={open} onClose={() => setOpenId(null)} />}
+      {open && (
+        <CharacterModal
+          c={open}
+          onClose={() => setOpenId(null)}
+          onEdit={() => {
+            setOpenId(null);
+            setAct({ id: open.id, kind: "edit" });
+          }}
+        />
+      )}
+      {acting && act?.kind === "edit" && (
+        <CreateCharacterModal edit={acting} onClose={() => setAct(null)} />
+      )}
+      {acting && act?.kind === "revise" && (
+        <Modal title="Request a revision" onClose={() => setAct(null)} testId="character-revision">
+          <RevisionForm c={acting} onDone={() => setAct(null)} onCancel={() => setAct(null)} />
+        </Modal>
+      )}
     </section>
   );
 }
 
-function CharacterModal({ c, onClose }: { c: Character; onClose: () => void }) {
+/** A note, which variation (when there's a round out), optional images: a new round. */
+function RevisionForm({
+  c,
+  onDone,
+  onCancel,
+}: {
+  c: Character;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const router = useRouter();
+  const round = c.files.filter((f) => f.kind === "variation" && f.round === c.round);
+  const [file, setFile] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const picked = usePicked();
+  const [prog, setProg] = useState<Prog>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function send() {
+    setBusy(true);
+    setError(null);
+    const r = await requestCharacterRevision(
+      c.id,
+      file,
+      file ? round.findIndex((f) => f.id === file) + 1 : null,
+      note,
+      picked.list.length,
+    );
+    if (!r.ok) {
+      setBusy(false);
+      return setError(r.error ?? "Something went wrong. Try again.");
+    }
+    const ok = await uploadImages(c.id, picked.list, setProg, true);
+    setBusy(false);
+    router.refresh();
+    if (ok < picked.list.length)
+      return setError("Sent, but some images didn’t upload. Send them on WhatsApp.");
+    onDone();
+  }
+  return (
+    <div className="pt-form" data-testid="revision-form">
+      {error && (
+        <p className="pt-form-banner" role="alert">
+          {error}
+        </p>
+      )}
+      {c.status === "approved" && (
+        <p className="pt-meta" style={{ margin: 0 }}>
+          Your character stays approved and usable in videos while we look at it.
+        </p>
+      )}
+      {round.length > 0 && c.status !== "approved" && (
+        <Field name="about" label="Which one?" group>
+          <div className="pt-seg" role="group" aria-label="Which one?">
+            <button type="button" aria-pressed={file === null} onClick={() => setFile(null)}>
+              All
+            </button>
+            {round.map((f, i) => (
+              <button
+                key={f.id}
+                type="button"
+                aria-pressed={file === f.id}
+                onClick={() => setFile(f.id)}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        </Field>
+      )}
+      <Field name="note" label="What should change?" required>
+        <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+      </Field>
+      <Field name="images" label="Images" group hint="Optional: show us what you mean.">
+        <Dropzone
+          items={pickedItems(picked.list, prog)}
+          onAdd={(f) => picked.add(f)}
+          onRemove={picked.remove}
+          accept={IMG_TYPES}
+          types="JPG, PNG, WebP or HEIC"
+          maxMb={MAX_MB}
+          max={6}
+          disabled={busy}
+        />
+      </Field>
+      <div className="pt-btns">
+        <button type="button" className="btn btn-g btn-s" onClick={onCancel}>
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="btn btn-p btn-s"
+          disabled={busy || note.trim().length < 3}
+          onClick={() => void send()}
+        >
+          {busy ? "Sending…" : "Send revision request"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const eventText = (c: Character, e: Character["events"][number]) =>
+  e.kind === "brief"
+    ? "Brief sent"
+    : e.kind === "edited"
+      ? "Brief edited"
+      : e.kind === "variations"
+        ? `Round ${e.round}: three variations ready`
+        : e.kind === "picked"
+          ? `Picked ${variationName(c, e.file_id) ?? "a variation"}`
+          : e.kind === "changes" || e.kind === "revision"
+            ? `Revision requested${e.file_id ? ` (${variationName(c, e.file_id)})` : ""}: “${e.note}”`
+            : e.kind === "approved"
+              ? `Approved as ${e.note}`
+              : `Renamed ${e.note}`;
+
+function CharacterModal({
+  c,
+  onClose,
+  onEdit,
+}: {
+  c: Character;
+  onClose: () => void;
+  onEdit: () => void;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [changes, setChanges] = useState<{ file: string | null; note: string } | null>(null);
+  const [revising, setRevising] = useState(false);
   const round = c.files.filter((f) => f.kind === "variation" && f.round === c.round);
   const approved = c.files.find((f) => f.id === c.approved_file_id);
+  const refs = c.files.filter((f) => f.kind === "reference");
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>) =>
     start(async () => {
       setError(null);
       const r = await fn();
       if (!r.ok) return setError(r.error ?? "Something went wrong. Try again.");
-      setChanges(null);
       router.refresh();
     });
   const download = (id: string) =>
@@ -360,6 +594,13 @@ function CharacterModal({ c, onClose }: { c: Character; onClose: () => void }) {
       if (!r.ok || !r.url) return setError(r.error ?? "Couldn’t get the file.");
       window.location.assign(r.url);
     });
+  const reviseBtn = canRevise(c) && !revising && (
+    <div className="pt-btns">
+      <button type="button" className="btn btn-g btn-s" onClick={() => setRevising(true)}>
+        Request a revision
+      </button>
+    </div>
+  );
 
   return (
     <Modal title={characterTitle(c)} onClose={onClose} testId="character-view">
@@ -391,17 +632,26 @@ function CharacterModal({ c, onClose }: { c: Character; onClose: () => void }) {
             </button>
           </div>
         ) : c.status === "brief_received" || c.status === "revision_requested" ? (
-          <p style={{ margin: 0 }}>
-            {c.status === "brief_received"
-              ? "We’re designing three variations. You’ll get an email when they’re ready."
-              : `We’re working on round ${c.round + 1} from your notes. You’ll get an email.`}
-          </p>
+          <>
+            <p style={{ margin: 0 }}>
+              {c.status === "brief_received"
+                ? "We’re designing three variations. You’ll get an email when they’re ready."
+                : `We’re working on round ${c.round + 1} from your notes. You’ll get an email.`}
+            </p>
+            {canEdit(c) && (
+              <div className="pt-btns">
+                <button type="button" className="btn btn-g btn-s" onClick={onEdit}>
+                  Edit request
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <>
             <p style={{ margin: 0 }}>
               {c.status === "picked"
                 ? "You picked one. We’re finalising your character."
-                : "Pick the one you like, or ask for changes."}
+                : "Pick the one you like, or ask for a revision."}
             </p>
             <div className="pt-char-grid" data-testid="variations">
               {round.map((f, i) => (
@@ -429,75 +679,16 @@ function CharacterModal({ c, onClose }: { c: Character; onClose: () => void }) {
                 </figure>
               ))}
             </div>
-            {changes ? (
-              <div className="pt-form">
-                <Field name="about" label="Which one?" group>
-                  <div className="pt-seg" role="group" aria-label="Which one?">
-                    <button
-                      type="button"
-                      aria-pressed={changes.file === null}
-                      onClick={() => setChanges({ ...changes, file: null })}
-                    >
-                      All
-                    </button>
-                    {round.map((f, i) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        aria-pressed={changes.file === f.id}
-                        onClick={() => setChanges({ ...changes, file: f.id })}
-                      >
-                        {i + 1}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-                <Field name="note" label="What should change?" required>
-                  <textarea
-                    rows={3}
-                    value={changes.note}
-                    onChange={(e) => setChanges({ ...changes, note: e.target.value })}
-                  />
-                </Field>
-                <div className="pt-btns">
-                  <button
-                    type="button"
-                    className="btn btn-g btn-s"
-                    onClick={() => setChanges(null)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-p btn-s"
-                    disabled={pending || changes.note.trim().length < 3}
-                    onClick={() =>
-                      run(() =>
-                        requestCharacterChanges(
-                          c.id,
-                          changes.file,
-                          changes.file ? round.findIndex((f) => f.id === changes.file) + 1 : null,
-                          changes.note,
-                        ),
-                      )
-                    }
-                  >
-                    Send changes
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="pt-btns">
-                <button
-                  type="button"
-                  className="btn btn-g btn-s"
-                  onClick={() => setChanges({ file: null, note: "" })}
-                >
-                  Request changes
-                </button>
-              </div>
-            )}
           </>
+        )}
+        {revising ? (
+          <RevisionForm
+            c={c}
+            onDone={() => setRevising(false)}
+            onCancel={() => setRevising(false)}
+          />
+        ) : (
+          reviseBtn
         )}
 
         <details>
@@ -505,18 +696,7 @@ function CharacterModal({ c, onClose }: { c: Character; onClose: () => void }) {
           <ul className="pt-char-log">
             {c.events.map((e) => (
               <li key={e.id}>
-                <span className="pt-meta">{when(e.created_at)}</span>{" "}
-                {e.kind === "brief"
-                  ? "Brief sent"
-                  : e.kind === "variations"
-                    ? `Round ${e.round}: three variations ready`
-                    : e.kind === "picked"
-                      ? `Picked ${variationName(c, e.file_id) ?? "a variation"}`
-                      : e.kind === "changes"
-                        ? `Changes asked${e.file_id ? ` (${variationName(c, e.file_id)})` : ""}: “${e.note}”`
-                        : e.kind === "approved"
-                          ? `Approved as ${e.note}`
-                          : `Renamed ${e.note}`}
+                <span className="pt-meta">{when(e.created_at)}</span> {eventText(c, e)}
               </li>
             ))}
           </ul>
@@ -532,6 +712,16 @@ function CharacterModal({ c, onClose }: { c: Character; onClose: () => void }) {
               .filter(Boolean)
               .join("\n")}
           </p>
+          {refs.some((f) => f.src) && (
+            <div className="pt-dz-grid" aria-label="Reference images">
+              {refs
+                .filter((f) => f.src)
+                .map((f) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={f.id} src={f.src!} alt={f.label} className="pt-ref-thumb" />
+                ))}
+            </div>
+          )}
         </details>
       </div>
     </Modal>

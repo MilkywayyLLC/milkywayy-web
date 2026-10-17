@@ -954,7 +954,8 @@ function EditDelivered() {
 /* ---------------- AI avatars ---------------- */
 
 function AvatarRequest() {
-  const stops = AVATAR_FORMATS.short.stops;
+  // Long form, priced per minute (short form is up to 30 seconds).
+  const stops = AVATAR_FORMATS.long.stops;
   return (
     <Portal
       tab="Avatars"
@@ -963,21 +964,21 @@ function AvatarRequest() {
           <div className="pt-form">
             <Field label="Format">
               <div className="pt-seg pt-seg-stack">
-                <button type="button" aria-pressed>
+                <button type="button" aria-pressed={false}>
                   {AVATAR_FORMATS.short.label}
                 </button>
-                <button type="button" aria-pressed={false}>
+                <button type="button" aria-pressed>
                   {AVATAR_FORMATS.long.label}
                 </button>
               </div>
             </Field>
-            <Field label="Length: 60s" optional>
+            <Field label="Length: 2 min" optional>
               <span className="dsh-slider" style={{ ["--v" as string]: 1 / (stops.length - 1) }}>
                 <i />
               </span>
               <span className="pt-slider-ticks">
                 {stops.map((s) => (
-                  <span key={s}>{s}s</span>
+                  <span key={s}>{s} min</span>
                 ))}
               </span>
             </Field>

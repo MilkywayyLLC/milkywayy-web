@@ -176,7 +176,7 @@ export default async function ShootPage({
               address: [p.meta.building, p.meta.area].filter(Boolean).join(", "),
               unit: p.meta.unit,
             },
-            service: booking?.services?.[0] ?? null,
+            services: booking?.services ?? [],
             note: booking?.note ?? "",
           }}
         />

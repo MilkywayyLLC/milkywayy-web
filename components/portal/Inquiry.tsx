@@ -10,6 +10,7 @@ import {
   startAttachment,
   type Attachment,
 } from "@/lib/portal/inquiry-actions";
+import { SingleFile } from "./Dropzone";
 
 async function upload(file: File): Promise<Attachment | string> {
   const s = await startAttachment(file.name, file.size);
@@ -24,13 +25,8 @@ async function upload(file: File): Promise<Attachment | string> {
   };
 }
 
-function AttachInput({ onFile }: { onFile: (f: File | null) => void }) {
-  return (
-    <label className="pt-field">
-      Attachment (optional, up to 25 MB)
-      <input type="file" onChange={(e) => onFile(e.target.files?.[0] ?? null)} />
-    </label>
-  );
+function AttachInput({ file, onFile }: { file: File | null; onFile: (f: File | null) => void }) {
+  return <SingleFile label="Attachment (optional)" file={file} onFile={onFile} maxMb={25} />;
 }
 
 /** A new inquiry: subject, an optional related shoot, the message and an optional file. */
@@ -94,7 +90,7 @@ export function NewInquiryForm({
         Message
         <textarea name="body" rows={6} maxLength={4000} required />
       </label>
-      {canAttach && <AttachInput onFile={setFile} />}
+      {canAttach && <AttachInput file={file} onFile={setFile} />}
       {err && (
         <p className="pt-error" role="alert">
           {err}
@@ -148,7 +144,7 @@ export function ReplyForm({ id, canAttach }: { id: string; canAttach: boolean })
           onChange={(e) => setBody(e.target.value)}
         />
       </label>
-      {canAttach && <AttachInput onFile={setFile} />}
+      {canAttach && <AttachInput file={file} onFile={setFile} />}
       {err && (
         <p className="pt-error" role="alert">
           {err}

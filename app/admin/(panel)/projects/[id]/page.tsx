@@ -50,6 +50,7 @@ const EVENT_TEXT: Record<string, string> = {
   script_changes: "Script changes asked",
   logged: "Logged what was shot",
   deliverable: "Deliverable",
+  brief_edited: "Brief edited by the client",
 };
 
 /** One project (§7.2): status, deliveries, revisions, messages, notes, notifications, activity. */

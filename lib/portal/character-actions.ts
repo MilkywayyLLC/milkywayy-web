@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { completeMultipart, downloadUrl } from "@/lib/r2";
+import { completeMultipart, deleteObject, downloadUrl } from "@/lib/r2";
 import { can } from "./access";
 import { requireAccount } from "./auth";
 import type { CharacterBrief } from "./characters";
@@ -25,24 +25,24 @@ const why = (m: string) =>
         ? "Describe the look and personality."
         : /https:\/\/ link/.test(m)
           ? "Links must start with https://"
-          : /say what should change/.test(m)
-            ? "Tell us what should change."
-            : /isn't waiting for you|round's variations/.test(m)
-              ? "That’s already been answered. Refresh the page."
-              : /too many/.test(m)
-                ? "That’s a lot at once. WhatsApp us and we’ll sort it out."
-                : /not your|access/.test(m)
-                  ? "Your access doesn’t include avatars. Ask the account owner."
-                  : "Something went wrong. Try again.";
+          : /work has started/.test(m)
+            ? "We’ve started on it: ask for a revision instead. Refresh the page."
+            : /say what should change/.test(m)
+              ? "Tell us what should change."
+              : /isn't waiting for you|round's variations/.test(m)
+                ? "That’s already been answered. Refresh the page."
+                : /too many/.test(m)
+                  ? "That’s a lot at once. WhatsApp us and we’ll sort it out."
+                  : /not your|access/.test(m)
+                    ? "Your access doesn’t include avatars. Ask the account owner."
+                    : "Something went wrong. Try again.";
 
 const clip = (s: string | undefined, n: number) => (s ?? "").trim().slice(0, n);
 const admin = (origin: string, accountId: string) =>
   `${origin}/admin/accounts/${accountId}/characters`;
 
-export async function createCharacter(brief: CharacterBrief): Promise<CharacterResult> {
-  const { db, user, current } = await requireAccount("/portal/avatars");
-  if (!can(current, "avatars")) return { ok: false, error: why("access") };
-  const b: CharacterBrief = {
+function cleanBrief(brief: CharacterBrief): CharacterBrief {
+  return {
     brand: clip(brief.brand, 1500),
     purpose: brief.purpose,
     purpose_other: clip(brief.purpose_other, 200) || undefined,
@@ -56,6 +56,26 @@ export async function createCharacter(brief: CharacterBrief): Promise<CharacterR
       .slice(0, 10),
     similar_note: clip(brief.similar_note, 1000) || undefined,
   };
+}
+const briefLines = (b: CharacterBrief) =>
+  [
+    `Brand: ${b.brand}`,
+    `Purpose: ${b.purpose === "other" ? `Other (${b.purpose_other ?? ""})` : b.purpose}`,
+    `Look and personality: ${b.look}`,
+    b.setting ? `Setting: ${b.setting}` : "",
+    b.voice || b.language
+      ? `Voice / language: ${[b.voice, b.language].filter(Boolean).join(" · ")}`
+      : "",
+    b.similar_note ? `Similar to, not the same as: ${b.similar_note}` : "",
+    b.links?.length ? `${b.links.length} reference link(s)` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+export async function createCharacter(brief: CharacterBrief): Promise<CharacterResult> {
+  const { db, user, current } = await requireAccount("/portal/avatars");
+  if (!can(current, "avatars")) return { ok: false, error: why("access") };
+  const b = cleanBrief(brief);
   const { data, error } = await db.rpc("create_ai_character", {
     p_account: current.account.id,
     p_brief: b,
@@ -69,19 +89,7 @@ export async function createCharacter(brief: CharacterBrief): Promise<CharacterR
     `New AI character brief: ${current.account.name}`,
     [
       `${user.email ?? "A client"} (${current.account.name}) sent an AI character brief:`,
-      [
-        `Brand: ${b.brand}`,
-        `Purpose: ${b.purpose === "other" ? `Other (${b.purpose_other ?? ""})` : b.purpose}`,
-        `Look and personality: ${b.look}`,
-        b.setting ? `Setting: ${b.setting}` : "",
-        b.voice || b.language
-          ? `Voice / language: ${[b.voice, b.language].filter(Boolean).join(" · ")}`
-          : "",
-        b.similar_note ? `Similar to, not the same as: ${b.similar_note}` : "",
-        b.links?.length ? `${b.links.length} reference link(s)` : "",
-      ]
-        .filter(Boolean)
-        .join("\n"),
+      briefLines(b),
     ],
     admin(origin, current.account.id),
   );
@@ -134,6 +142,8 @@ export async function finishCharacterUpload(
     size: number;
     type: string;
   },
+  /** A revision's image (tagged with the current round, beyond the brief's 12). */
+  revision = false,
 ): Promise<CharacterResult> {
   const { db } = await requireAccount("/portal/avatars");
   if (!file.key.startsWith(`${refFolder(id)}/`) || file.key.includes(".."))
@@ -143,14 +153,22 @@ export async function finishCharacterUpload(
   } catch {
     return { ok: false, error: "The upload didn’t finish. Choose the file again to resume." };
   }
-  const { error } = await db.rpc("add_ai_character_reference", {
-    p_character: id,
-    p_label: file.name.slice(0, 160),
-    p_r2_key: file.key,
-    p_url: null,
-    p_bytes: file.size,
-    p_content_type: file.type.slice(0, 120) || null,
-  });
+  const { error } = revision
+    ? await db.rpc("add_ai_character_revision_image", {
+        p_character: id,
+        p_label: file.name.slice(0, 160),
+        p_r2_key: file.key,
+        p_bytes: file.size,
+        p_content_type: file.type.slice(0, 120) || null,
+      })
+    : await db.rpc("add_ai_character_reference", {
+        p_character: id,
+        p_label: file.name.slice(0, 160),
+        p_r2_key: file.key,
+        p_url: null,
+        p_bytes: file.size,
+        p_content_type: file.type.slice(0, 120) || null,
+      });
   if (error) return { ok: false, error: why(error.message) };
   return { ok: true };
 }
@@ -207,6 +225,75 @@ export async function requestCharacterChanges(
     n ? `About variation ${n}:` : "About this round:",
     `“${note.trim().slice(0, 1500)}”`,
   ]);
+  revalidatePath("/portal/avatars");
+  return { ok: true };
+}
+
+/**
+ * Edit a brief before work starts (owner, 17 Oct 2026): the same form, prefilled. Logged as
+ * "Brief edited"; Milkywayy is emailed "[Client] edited their AI avatar request".
+ */
+export async function editCharacter(id: string, brief: CharacterBrief): Promise<CharacterResult> {
+  const { db, user, current } = await requireAccount("/portal/avatars");
+  if (!can(current, "avatars")) return { ok: false, error: why("access") };
+  const b = cleanBrief(brief);
+  const { error } = await db.rpc("edit_ai_character", { p_character: id, p_brief: b });
+  if (error) {
+    console.error("[portal] edit_ai_character:", error.message);
+    return { ok: false, error: why(error.message) };
+  }
+  const origin = originFrom(await headers());
+  await alertMilkywayy(
+    `${current.account.name} edited their AI avatar request`,
+    [
+      `${user.email ?? "A client"} (${current.account.name}) edited their AI character brief before you started:`,
+      briefLines(b),
+    ],
+    admin(origin, current.account.id),
+  );
+  revalidatePath("/portal/avatars");
+  return { ok: true, id };
+}
+
+/** Remove a reference image while the brief can still be edited (the R2 file goes too). */
+export async function removeCharacterReference(fileId: string): Promise<CharacterResult> {
+  const { db } = await requireAccount("/portal/avatars");
+  const { data, error } = await db.rpc("remove_ai_character_reference", { p_file: fileId });
+  if (error) return { ok: false, error: why(error.message) };
+  if (data) await deleteObject(data as string).catch(() => undefined);
+  revalidatePath("/portal/avatars");
+  return { ok: true };
+}
+
+/**
+ * "Request a revision" once work has started (owner, 17 Oct 2026): a note, optional images
+ * (uploaded after, tagged with the round), a new round in the history; Milkywayy is emailed.
+ */
+export async function requestCharacterRevision(
+  id: string,
+  fileId: string | null,
+  n: number | null,
+  note: string,
+  images: number,
+): Promise<CharacterResult> {
+  const { db } = await requireAccount("/portal/avatars");
+  const { error } = await db.rpc("request_ai_character_revision", {
+    p_character: id,
+    p_file: fileId,
+    p_note: note,
+  });
+  if (error) return { ok: false, error: why(error.message) };
+  await tellMilkywayy(
+    id,
+    (a, name) => `${a} asked for a revision on their AI avatar request (${name})`,
+    [
+      n ? `About variation ${n}:` : "About this round:",
+      `“${note.trim().slice(0, 1500)}”`,
+      ...(images
+        ? [`${images} image${images === 1 ? "" : "s"} attached (in the character’s references).`]
+        : []),
+    ],
+  );
   revalidatePath("/portal/avatars");
   return { ok: true };
 }

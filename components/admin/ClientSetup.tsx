@@ -123,6 +123,14 @@ const GROUPS = [
   ["avatars", "AI avatars"],
 ] as const;
 
+/** Retired rows (owner, 17 Oct 2026): hidden, never dropped. Property shoots are always shot &
+ *  edited, so "Property shoot, shoot only" is gone; anything already logged keeps its price. */
+const RETIRED = new Set(["prop_raw"]);
+/** A price group whose service is off collapses to one muted line (stored prices stay). */
+const GROUP_SERVICE: Partial<
+  Record<(typeof GROUPS)[number][0], keyof ClientSetupData["services"]>
+> = { post: "post", avatars: "avatars" };
+
 /** The website price list's value for a property part ("by size" for flat parts). */
 function siteDefault(
   key: string,
@@ -151,7 +159,8 @@ export function PriceList({
   const router = useRouter();
   // Rows for property sizes the price list doesn't have are left out.
   const rows = data.prices.filter(
-    (p) => !/^prop_photo_/.test(p.key) || siteDefault(p.key, pricing) !== null,
+    (p) =>
+      !RETIRED.has(p.key) && (!/^prop_photo_/.test(p.key) || siteDefault(p.key, pricing) !== null),
   );
   const [vals, setVals] = useState<Record<string, string>>(
     Object.fromEntries(rows.map((p) => [p.key, p.client == null ? "" : String(Number(p.client))])),
@@ -196,6 +205,21 @@ export function PriceList({
           {GROUPS.map(([g, title]) => {
             const list = rows.filter((p) => p.grp === g);
             if (!list.length) return null;
+            const svc = GROUP_SERVICE[g];
+            if (svc && !data.services[svc])
+              return (
+                <tbody key={g} data-testid={`prices-off-${g}`}>
+                  <tr>
+                    <th colSpan={4}>
+                      {title}
+                      <span className="ad-small ad-muted" style={{ fontWeight: 400 }}>
+                        {" "}
+                        · Not enabled for this client
+                      </span>
+                    </th>
+                  </tr>
+                </tbody>
+              );
             return (
               <tbody key={g}>
                 <tr>
@@ -283,7 +307,9 @@ export function PlanBlock({
   // What an inclusion can count: a whole property shoot, or any listed service but property parts.
   const options = [
     { key: "shoot", label: "Property shoot (shot & edited)" },
-    ...data.prices.filter((x) => x.grp !== "property").map((x) => ({ key: x.key, label: x.label })),
+    ...data.prices
+      .filter((x) => x.grp !== "property" && !RETIRED.has(x.key))
+      .map((x) => ({ key: x.key, label: x.label })),
   ];
   const labelOf = (k: string) => options.find((o) => o.key === k)?.label ?? k;
   const fromTemplate = (id: string) => {

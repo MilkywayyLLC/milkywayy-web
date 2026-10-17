@@ -1,9 +1,9 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- signed, short-lived R2 preview */
 import { useState, useTransition } from "react";
 import { brandLogoUrl, saveBrand } from "@/lib/portal/listing-actions";
 import { putBlob } from "@/lib/upload-browser";
+import { Dropzone } from "./Dropzone";
 
 /** Company name and logo on share pages (§6.2: optional agent branding). Owner/Admins. */
 export function BrandForm({
@@ -56,36 +56,26 @@ export function BrandForm({
         />
       </label>
       <div className="pt-field">
-        <label htmlFor="brand-logo">Logo (PNG, JPG or WebP, under 1 MB)</label>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          {preview && (
-            <img src={preview} alt="Logo" style={{ height: 36, width: "auto", maxWidth: 140 }} />
-          )}
-          <input
-            id="brand-logo"
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = "";
-              if (f) void upload(f);
-            }}
-          />
-        </div>
-        {key && (
-          <button
-            type="button"
-            className="lnk pt-small"
-            style={{ justifySelf: "start" }}
-            onClick={() => {
-              setKey(null);
-              setPreview(null);
-              setMsg("Logo removed. Save to confirm.");
-            }}
-          >
-            Remove logo
-          </button>
-        )}
+        <span className="pt-field-label">Logo</span>
+        <Dropzone
+          items={
+            preview || key
+              ? [{ id: "logo", name: "Logo", src: preview ?? undefined, saved: true }]
+              : []
+          }
+          onAdd={(f) => f[0] && void upload(f[0])}
+          onRemove={() => {
+            setKey(null);
+            setPreview(null);
+            setMsg("Logo removed. Save to confirm.");
+          }}
+          accept="image/png,image/jpeg,image/webp"
+          types="PNG, JPG or WebP"
+          maxMb={1}
+          multiple={false}
+          noun="your logo"
+          testId="brand-logo"
+        />
       </div>
       <span className="pt-meta" role="status">
         {msg}

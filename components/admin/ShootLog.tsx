@@ -64,8 +64,12 @@ export function ShootLog({
     setLines((ls) => ls.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const preview = hasDeliverables ? [] : deliverablesFrom(lines);
   // Property parts are priced through the property line (the client's price list), not alone.
+  // "Property shoot, shoot only" is retired (17 Oct 2026): only an older line still shows it.
   const options = rates.filter(
-    (x) => x.key !== "shoot" && !/^prop_(photo_|short|long|tour|twilight)/.test(x.key),
+    (x) =>
+      x.key !== "shoot" &&
+      !/^prop_(photo_|short|long|tour|twilight)/.test(x.key) &&
+      (x.key !== "prop_raw" || lines.some((l) => l.key === "prop_raw")),
   );
 
   return (

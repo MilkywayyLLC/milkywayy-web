@@ -19,6 +19,14 @@ export const SLOTS = [
   ["full_day", "Full day"],
 ] as const;
 export type Slot = (typeof SLOTS)[number][0];
+/** The preferred start times each slot allows (owner, 17 Oct 2026): quarter hours, inclusive. */
+export const SLOT_HOURS: Record<Slot, [string, string]> = {
+  morning: ["08:00", "12:45"],
+  afternoon: ["13:00", "17:45"],
+  full_day: ["08:00", "17:45"],
+};
+export const slotHours = (s: Slot | "" | undefined): [string, string] =>
+  s ? SLOT_HOURS[s] : ["08:00", "17:45"];
 
 export type PropertyConfig = Pick<
   BookingProperty,
@@ -83,12 +91,26 @@ export { SERVICE_HINT, SERVICE_LABEL } from "./booking-labels";
 export const DAY_LABEL = { half: "Half day", full: "Full day" } as const;
 export const isRaw = (s: Pick<BookingService, "mode">) => s.mode === "raw";
 
-/** The rate card key a booked service counts against (package inclusions, the price list). */
+/** The rate card key a booked service counts against (package inclusions, the price list).
+ *  Property shoots are always shot & edited; an older shoot-only property counts as a slot. */
 export function serviceKey(s: BookingService): string {
-  if (s.service === "property") return isRaw(s) ? "prop_raw" : "shoot";
+  if (s.service === "property" && !isRaw(s)) return "shoot";
   if (isRaw(s)) return s.day === "full" ? "full_day" : "half_day";
   return s.service === "reels" ? "reel_shoot" : "long_form_shoot";
 }
+
+/** Shoot only is one slot per booking (owner, 17 Oct 2026): a full day if any service asks for
+ *  one, else a half day; null when nothing in the booking is shoot only. */
+export function rawDay(services: BookingService[]): "half" | "full" | null {
+  const raw = services.filter(isRaw);
+  if (!raw.length) return null;
+  return raw.some((s) => s.day === "full") ? "full" : "half";
+}
+const rawWhat = (services: BookingService[]) =>
+  services
+    .filter((s) => isRaw(s) && s.service !== "property")
+    .map((s) => (s.service === "reels" ? "reels" : "long-form"))
+    .join(" + ");
 
 /**
  * The website price list with this client's own prices in it (owner, 17 Oct 2026): photos by
@@ -145,7 +167,10 @@ export function serviceSummary(s: BookingService, pricing: PropertyPricing) {
       ? `Shoot only (raw files) · ${propertyLabel(s.property, pricing)}`
       : "Shoot only (raw files)";
   if (s.service === "property" && s.property) return propertyLabel(s.property, pricing);
-  if (isRaw(s)) return `Shoot only (raw files) · ${DAY_LABEL[s.day ?? "half"].toLowerCase()}`;
+  if (isRaw(s)) {
+    const approx = s.qty ? ` · about ${s.qty}` : "";
+    return `Shoot only (raw files) · ${DAY_LABEL[s.day ?? "half"].toLowerCase()}${approx}`;
+  }
   const n = s.qty ?? 1;
   const day = s.day ? ` · ${DAY_LABEL[s.day].toLowerCase()}` : "";
   return s.service === "reels"
@@ -186,11 +211,23 @@ export function estimateLines(
       amount: u == null ? null : Math.round(u * qty * 100) / 100,
     });
   };
+  // Shoot only: one slot rate for the whole booking, whatever it covers.
+  const day = rawDay(services);
+  if (day) {
+    const key = day === "full" ? "full_day" : "half_day";
+    const what = rawWhat(services);
+    line(
+      key,
+      `Shoot only (raw files) · ${DAY_LABEL[day].toLowerCase()}${what ? ` · ${what}` : ""}`,
+      1,
+      rates[key],
+    );
+  }
   for (const s of services) {
+    if (isRaw(s)) continue;
     const key = serviceKey(s);
     if (s.service === "property") {
-      if (isRaw(s)) line(key, "Property shoot, shoot only (raw files)", 1, rates.prop_raw);
-      else if (s.property) {
+      if (s.property) {
         const amount = subtotal(asProperty(s.property, pricing), pricing);
         out.push({
           key,
@@ -202,15 +239,12 @@ export function estimateLines(
       }
       continue;
     }
-    if (isRaw(s))
-      line(key, `Shoot only · ${DAY_LABEL[s.day ?? "half"].toLowerCase()}`, 1, rates[key]);
-    else
-      line(
-        key,
-        s.service === "reels" ? "Reel, shot & edited" : "Long-form, shot & edited",
-        s.qty ?? 1,
-        rates[key],
-      );
+    line(
+      key,
+      s.service === "reels" ? "Reel, shot & edited" : "Long-form, shot & edited",
+      s.qty ?? 1,
+      rates[key],
+    );
   }
   return out;
 }
@@ -264,10 +298,11 @@ export function estimate(services: BookingService[], rates: Rates, pricing: Prop
 
 export { AVATAR_FORMATS };
 export type AvatarFormat = keyof typeof AVATAR_FORMATS;
-export const avatarLength = (f: AvatarFormat, n: number) => (f === "short" ? `${n}s` : `${n} min`);
-/** The brief's kind in the database: 30s / 60s / 90s, else "longer". */
+export const avatarLength = (f: AvatarFormat, n: number) =>
+  f === "short" ? `up to ${n} seconds` : `${n} min`;
+/** The brief's kind in the database: "30s" for short form, "longer" (per minute) for long form. */
 export const avatarKind = (f: AvatarFormat, n: number) =>
-  f === "short" && n <= 90 ? `${n}s` : "longer";
+  f === "short" && n <= 30 ? "30s" : "longer";
 /** Short form is priced per 30 seconds, long form per minute. */
 export function avatarEstimate(f: AvatarFormat, n: number, rates: Rates | null) {
   const r = f === "short" ? rates?.avatar_short : rates?.avatar_long;
@@ -293,24 +328,26 @@ export type LogLine = {
 
 /** Prefilled from what the client asked for. */
 export function logPrefill(services: BookingService[], pricing: PropertyPricing): LogLine[] {
+  // Shoot only is one slot for the booking (an older shoot-only property counts as one too).
+  const day = rawDay(services);
+  const what = rawWhat(services);
+  const slot: LogLine[] = day
+    ? [
+        {
+          key: day === "half" ? "half_day" : "full_day",
+          description: `Shoot only · ${DAY_LABEL[day].toLowerCase()}${what ? ` (${what})` : ""}`,
+          qty: 1,
+          basis: "client_rate",
+        },
+      ]
+    : [];
+  const edited = services.filter((s) => !isRaw(s));
+  return [...slot, ...prefillEdited(edited, pricing)];
+}
+
+function prefillEdited(services: BookingService[], pricing: PropertyPricing): LogLine[] {
   return services
     .map((s): LogLine => {
-      if (s.service === "property" && isRaw(s))
-        return {
-          key: "prop_raw",
-          description: "Property shoot, shoot only (raw files)",
-          qty: 1,
-          basis: "client_rate",
-        };
-      if (isRaw(s)) {
-        const d = s.day ?? "half";
-        return {
-          key: d === "half" ? "half_day" : "full_day",
-          description: `Shoot only · ${DAY_LABEL[d].toLowerCase()} (${s.service === "reels" ? "reels" : "long-form"})`,
-          qty: 1,
-          basis: "client_rate",
-        };
-      }
       if (s.service === "property" && s.property) {
         const p = asProperty(s.property, pricing);
         return {
@@ -338,8 +375,8 @@ export function logPrefill(services: BookingService[], pricing: PropertyPricing)
           };
     })
     .flatMap((l, i): LogLine[] => {
-      // Older shot & edited bookings had a day fee too; shoot-only lines are the day itself.
-      const d = isRaw(services[i]) ? undefined : services[i].day;
+      // Older shot & edited bookings had a day fee too.
+      const d = services[i].day;
       return d
         ? [
             l,

@@ -1,6 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- signed, short-lived R2 previews */
 import { useCallback, useState, useTransition } from "react";
 import { qrUploadUrl, saveListing } from "@/lib/portal/listing-actions";
 import {
@@ -11,6 +10,7 @@ import {
   type PurposeKey,
 } from "@/lib/portal/listings";
 import { putBlob } from "@/lib/upload-browser";
+import { Dropzone } from "./Dropzone";
 import { DraftOffer, Field, FormBanner, useDraft, useFormCheck, useLeaveGuard } from "./forms";
 import { Icon } from "./Icon";
 import { ShareDone } from "./ListingParts";
@@ -326,33 +326,25 @@ export function ListingForm({
           />
         </label>
         <div className="pt-field">
-          <label htmlFor="permit-qr">Permit QR code (image)</label>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            {qr.preview && <img src={qr.preview} alt="Permit QR code" width={64} height={64} />}
-            <input
-              id="permit-qr"
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (f) void uploadQr(f);
-              }}
-            />
-          </div>
-          {v.permit_qr_key && (
-            <button
-              type="button"
-              className="lnk pt-small"
-              style={{ justifySelf: "start" }}
-              onClick={() => {
-                set("permit_qr_key", "");
-                setQr({ state: "QR removed.", preview: null });
-              }}
-            >
-              Remove the QR
-            </button>
-          )}
+          <span className="pt-field-label">Permit QR code (image)</span>
+          <Dropzone
+            items={
+              qr.preview || v.permit_qr_key
+                ? [{ id: "qr", name: "Permit QR code", src: qr.preview ?? undefined, saved: true }]
+                : []
+            }
+            onAdd={(f) => f[0] && void uploadQr(f[0])}
+            onRemove={() => {
+              set("permit_qr_key", "");
+              setQr({ state: "QR removed.", preview: null });
+            }}
+            accept="image/png,image/jpeg,image/webp"
+            types="PNG, JPG or WebP"
+            maxMb={5}
+            multiple={false}
+            noun="the QR image"
+            testId="permit-qr"
+          />
           <span className="pt-meta" role="status">
             {qr.state}
           </span>

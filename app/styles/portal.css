@@ -3152,3 +3152,536 @@
     background: var(--line);
   }
 }
+
+/*
+ * Book media refinements (owner, 17 Oct 2026): a full-width delivery switch with a one-line
+ * description, multi-select shoot types with a details block each, the date / slot / start time
+ * row, and the calendar and time wheel popovers. Same tokens: 1px lines, mono labels, --pt-r.
+ */
+@layer components {
+  /* Segmented control that fills its row, equal parts, input height. */
+  .pt-seg-full {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    width: 100%;
+    border-radius: var(--pt-r);
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .pt-seg-full button {
+    min-height: 46px;
+    padding: 0 10px;
+    transition:
+      background-color 0.18s ease,
+      color 0.18s ease;
+  }
+  .pt-seg-full button + button {
+    border-left: 1px solid var(--fg);
+  }
+  .pt-seg-full button:not([aria-pressed="true"]):hover {
+    background: var(--bg);
+  }
+  .pt-modeseg {
+    display: grid;
+    gap: 8px;
+  }
+  .pt-modeseg-desc {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* Multi-select type cards: a tick square on the right. */
+  .pt-choice-multi {
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 640px) {
+    .pt-choice-multi {
+      grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+      grid-auto-flow: column;
+    }
+  }
+  .pt-choice-multi button {
+    position: relative;
+    align-content: start;
+    padding-right: 44px;
+    border-radius: var(--pt-r);
+  }
+  .pt-choice-tick {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: var(--pt-r);
+    color: transparent;
+    background: var(--surface);
+  }
+  .pt-choice-multi [aria-pressed="true"] .pt-choice-tick {
+    background: var(--fg);
+    border-color: var(--fg);
+    color: var(--bg);
+  }
+
+  /* One details block per selected type. */
+  .pt-btype {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--pt-r);
+    background: var(--surface);
+    color: var(--fg);
+  }
+  .pt-btype.is-bad {
+    border-color: #b42318;
+  }
+  .pt-btype-h {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 4px 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .pt-btype-qty {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px 12px;
+  }
+  .pt-btype-qty .pt-btype-note {
+    grid-column: 1 / -1;
+  }
+  .pt-btype-note {
+    display: block;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--fg);
+  }
+
+  /* Date | Slot | Preferred start time: one row on desktop, stacked on phones. */
+  .pt-when {
+    position: relative;
+    /* Above the location map that follows, so the pickers' popovers aren't covered. */
+    z-index: 3;
+    display: grid;
+    gap: 16px;
+  }
+  @media (min-width: 760px) {
+    .pt-when {
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.5fr) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+  .pt-when .pt-seg-line button {
+    font-size: 13px;
+    padding: 0 6px;
+  }
+
+  /* Picker triggers look like inputs. */
+  .pt-dp-wrap {
+    position: relative;
+  }
+  .pt-dp {
+    width: 100%;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 12px 0 13px;
+    font: 400 15px/1.2 var(--font-sans);
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--pt-r);
+    cursor: pointer;
+    text-align: left;
+  }
+  .pt-dp:hover,
+  .pt-dp[aria-expanded="true"] {
+    border-color: var(--fg);
+  }
+  .pt-dp[data-empty] .pt-dp-v {
+    color: var(--muted);
+  }
+  .pt-dp[data-invalid] {
+    border-color: #b42318;
+  }
+  .pt-dp-v {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pt-dp svg {
+    flex: none;
+    color: var(--muted);
+  }
+
+  .pt-pop-panel {
+    position: absolute;
+    z-index: 5;
+    top: calc(100% + 6px);
+    left: 0;
+    background: var(--surface);
+    border: 1px solid var(--fg);
+    border-radius: var(--pt-r);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.12);
+    animation: pt-pop-in 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+    transform-origin: top left;
+  }
+  @keyframes pt-pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pt-pop-panel {
+      animation: none;
+    }
+  }
+
+  /* Month calendar. */
+  .pt-cal {
+    width: 296px;
+    max-width: calc(100vw - 32px);
+    padding: 12px;
+  }
+  .pt-cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .pt-cal-head b {
+    font-size: 14px;
+  }
+  .pt-cal-nav {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: var(--pt-r);
+    background: none;
+    color: var(--fg);
+    cursor: pointer;
+  }
+  .pt-cal-nav:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  .pt-cal-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+  .pt-cal-wd {
+    text-align: center;
+    padding: 4px 0;
+    font: 500 10px/1.4 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .pt-cal-day {
+    width: 100%;
+    aspect-ratio: 1;
+    max-height: 38px;
+    display: grid;
+    place-items: center;
+    border: 1px solid transparent;
+    border-radius: var(--pt-r);
+    background: none;
+    font: 500 13px/1 var(--font-mono);
+    color: var(--fg);
+    cursor: pointer;
+  }
+  .pt-cal-day:hover:not(:disabled) {
+    border-color: var(--line);
+  }
+  .pt-cal-day[data-today] {
+    border-color: var(--line);
+  }
+  .pt-cal-day[aria-pressed="true"] {
+    background: var(--fg);
+    border-color: var(--fg);
+    color: var(--bg);
+  }
+  .pt-cal-day:disabled {
+    color: var(--line);
+    cursor: default;
+  }
+
+  /* iOS-style time wheel: scroll-snap columns under a highlight band. */
+  .pt-wheel {
+    width: 220px;
+    padding: 10px;
+  }
+  @media (min-width: 760px) {
+    .pt-when .pt-wheel {
+      left: auto;
+      right: 0;
+      transform-origin: top right;
+    }
+  }
+  .pt-wheel-cols {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    height: 180px;
+  }
+  .pt-wheel-band {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 72px;
+    height: 36px;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    pointer-events: none;
+  }
+  .pt-wheel-sep {
+    position: relative;
+    font: 600 18px/1 var(--font-mono);
+  }
+  .pt-wheel-col {
+    position: relative;
+    height: 180px;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    overscroll-behavior: contain;
+    padding: 72px 0;
+    scrollbar-width: none;
+    mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);
+    outline-offset: -2px;
+  }
+  .pt-wheel-col::-webkit-scrollbar {
+    display: none;
+  }
+  .pt-wheel-item {
+    height: 36px;
+    display: grid;
+    place-items: center;
+    scroll-snap-align: center;
+    font: 500 18px/1 var(--font-mono);
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .pt-wheel-item[aria-selected="true"] {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .pt-wheel-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .pt-wheel-foot .btn {
+    flex: 1;
+  }
+}
+
+/* The dropzone (owner, 17 Oct 2026): dashed box, drag-over state, thumbnail grid with ×. */
+@layer components {
+  .pt-dz {
+    display: grid;
+    gap: 10px;
+  }
+  .pt-dz-box {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    padding: 22px 16px;
+    text-align: center;
+    border: 1px dashed var(--line);
+    border-radius: var(--pt-r);
+    background: var(--bg);
+    color: var(--fg);
+    cursor: pointer;
+    transition:
+      border-color 0.18s ease,
+      background-color 0.18s ease;
+  }
+  .pt-dz-box:hover,
+  .pt-dz-box[data-over] {
+    border-color: var(--fg);
+  }
+  .pt-dz-box[data-over] {
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--fg);
+  }
+  .pt-dz-box[data-invalid] {
+    border-color: #b42318;
+  }
+  .pt-dz-box[data-disabled] {
+    cursor: default;
+    opacity: 0.6;
+  }
+  .pt-dz-box:has(.pt-dz-input:focus-visible) {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+  }
+  .pt-dz-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .pt-dz-ic {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: var(--pt-r);
+    background: var(--surface);
+  }
+  .pt-dz-h {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .pt-dz-link {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .pt-dz-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .pt-dz-item {
+    position: relative;
+    display: grid;
+    gap: 4px;
+    align-content: start;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: var(--pt-r);
+    background: var(--surface);
+    min-width: 0;
+  }
+  .pt-dz-item[data-error] {
+    border-color: #b42318;
+  }
+  .pt-dz-item img,
+  .pt-dz-file {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: grid;
+    place-items: center;
+    background: var(--bg);
+    color: var(--muted);
+  }
+  .pt-dz-name {
+    font-size: 12px;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pt-dz-name small {
+    color: var(--muted);
+  }
+  .pt-dz-bar {
+    display: block;
+    height: 3px;
+    background: var(--line);
+  }
+  .pt-dz-bar i {
+    display: block;
+    height: 100%;
+    background: var(--fg);
+    transition: width 0.2s ease;
+  }
+  .pt-dz-ok,
+  .pt-dz-err {
+    font: 500 10px/1.3 var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .pt-dz-err {
+    color: #b42318;
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: var(--font-sans);
+    font-size: 12px;
+  }
+  .pt-dz-x {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--fg);
+    cursor: pointer;
+  }
+  .pt-dz-x:hover {
+    border-color: var(--fg);
+  }
+}
+
+/* Cards with a secondary action (owner, 17 Oct 2026): the whole card opens it (a stretched
+   button or link), the action sits above that layer. */
+@layer components {
+  .pt-stretch {
+    position: relative;
+    display: grid;
+  }
+  .pt-char-card.pt-stretch {
+    justify-items: start;
+  }
+  .pt-stretch-link {
+    all: unset;
+    cursor: pointer;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  .pt-stretch-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+  .pt-stretch-link:focus-visible {
+    outline: none;
+  }
+  .pt-stretch:has(.pt-stretch-link:focus-visible) {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+  }
+  .pt-stretch-act {
+    position: relative;
+    z-index: 1;
+    justify-self: start;
+  }
+  .pt-ref-thumb {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    border-radius: var(--pt-r);
+  }
+}

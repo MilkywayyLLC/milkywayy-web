@@ -54,7 +54,8 @@ export type CharacterFile = {
 
 export type CharacterEvent = {
   id: string;
-  kind: "brief" | "variations" | "picked" | "changes" | "approved" | "renamed";
+  kind:
+    "brief" | "variations" | "picked" | "changes" | "approved" | "renamed" | "edited" | "revision";
   round: number;
   file_id: string | null;
   note: string | null;

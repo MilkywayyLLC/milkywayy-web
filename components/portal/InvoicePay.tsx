@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { payInvoice, startProofUpload, submitProof } from "@/lib/portal/billing-actions";
 import { putBlob } from "@/lib/upload-browser";
+import { SingleFile } from "./Dropzone";
 import { Sheet } from "./ui";
 
 /** "Pay now": off to Stripe Checkout (card) for accounts that pay online. */
@@ -79,14 +80,15 @@ export function PaidByTransfer({ id, number }: { id: string; number: string }) {
               Upload the bank’s transfer receipt (PDF or a screenshot). We’ll check it and confirm
               by email.
             </p>
-            <label className="pt-field">
-              Transfer receipt (PDF or image, up to 10 MB)
-              <input
-                type="file"
-                accept="application/pdf,image/jpeg,image/png,image/webp,image/heic"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
-            </label>
+            <SingleFile
+              label="Transfer receipt"
+              file={file}
+              onFile={setFile}
+              accept="application/pdf,image/jpeg,image/png,image/webp,image/heic"
+              types="PDF, JPG, PNG or HEIC"
+              maxMb={10}
+              noun="the receipt"
+            />
             <label className="pt-field">
               Note (optional)
               <input

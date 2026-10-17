@@ -15,6 +15,7 @@ import {
   DeliveryList,
   FilesInList,
 } from "@/components/portal/ProjectParts";
+import { AvatarRequestActions } from "@/components/portal/AvatarRequest";
 import { AskAbout, ScriptReview } from "@/components/portal/ScriptReview";
 import { DraftsRow, StartRequests } from "@/components/portal/StartRequests";
 import { Back, Badge, Stepper } from "@/components/portal/ui";
@@ -24,6 +25,7 @@ import { characterTitle, coverOf, myCharacters } from "@/lib/portal/characters";
 import { myDrafts } from "@/lib/portal/draft-actions";
 import { requestConfig } from "@/lib/portal/requests";
 import {
+  avatarAction,
   briefKindLabel,
   clientStatus,
   day,
@@ -38,7 +40,32 @@ import {
   type ProjectMessage,
   type ProjectScript,
 } from "@/lib/portal/projects";
+import { AVATAR_FORMATS, type AvatarFormat } from "@/lib/portal/booking";
 import { maxUploadGb } from "@/lib/r2";
+
+/** An avatar video's brief as the edit form's starting point (format and length from it). */
+function avatarEditOf(p: Project, files: ProjectFile[], presenters: string[]) {
+  const notes = p.meta.notes ?? "";
+  const format: AvatarFormat = p.meta.kind === "longer" ? "long" : "short";
+  const min = Number(/· (\d+) min/.exec(notes)?.[1] ?? 0);
+  const stop = Math.max(0, (AVATAR_FORMATS.long.stops as readonly number[]).indexOf(min));
+  return {
+    projectId: p.id,
+    ref: p.ref,
+    title: p.title,
+    format,
+    stop: format === "long" ? stop : 0,
+    notes: notes
+      .split("\n")
+      .filter((l) => !l.startsWith("Format: "))
+      .join("\n")
+      .trim(),
+    reference: p.meta.references?.[0] ?? "",
+    scriptBy: p.meta.script_by ?? "milkywayy",
+    presenters,
+    files: files.filter((f) => f.direction === "in").map((f) => ({ id: f.id, label: f.label })),
+  };
+}
 
 /**
  * Editing (§5.3) and Avatars (§5.4) share one list and one project page; avatar videos add the
@@ -62,6 +89,8 @@ const COPY = {
   },
 } as const;
 
+const busyRev = (p: Project) =>
+  p.revision_state === "requested" || p.revision_state === "in_progress";
 const tone = (p: Project) =>
   p.status === "on_hold"
     ? "warn"
@@ -149,18 +178,19 @@ export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; 
         active.length ? (
           <div className="pt-grid2" data-testid="projects">
             {active.map((p) => (
-              <Link
-                key={p.id}
-                href={`${base}/${encodeURIComponent(p.ref)}`}
-                className="pt-card pt-card-link"
-              >
+              <div key={p.id} className="pt-card pt-card-link pt-stretch" style={{ gap: 10 }}>
                 <div className="pt-row">
                   <span className="pt-eb">
                     {p.ref} · {briefKindLabel(type, p.meta.kind)}
                   </span>
                   <Badge tone={tone(p)}>{clientStatus(p)}</Badge>
                 </div>
-                <b className="pt-title">{p.title}</b>
+                <Link
+                  href={`${base}/${encodeURIComponent(p.ref)}`}
+                  className="pt-title pt-stretch-link"
+                >
+                  {p.title}
+                </Link>
                 {p.status === "on_hold" ? (
                   <div className="pt-hold">
                     <b style={{ color: "#b42318" }}>On hold: waiting on you</b>
@@ -180,7 +210,20 @@ export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; 
                     .filter(Boolean)
                     .join(" · ")}
                 </span>
-              </Link>
+                {type === "avatar" &&
+                  (() => {
+                    const act = avatarAction(p.status, busyRev(p));
+                    return act ? (
+                      <Link
+                        href={`${base}/${encodeURIComponent(p.ref)}?${act}=1`}
+                        className="lnk pt-small pt-stretch-act"
+                        prefetch={false}
+                      >
+                        {act === "edit" ? "Edit request" : "Request a revision"}
+                      </Link>
+                    ) : null;
+                  })()}
+              </div>
             ))}
           </div>
         ) : (
@@ -246,10 +289,19 @@ export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; 
   );
 }
 
-export async function ProjectDetail({ type, projectRef }: { type: Kind; projectRef: string }) {
+export async function ProjectDetail({
+  type,
+  projectRef,
+  open: openAction,
+}: {
+  type: Kind;
+  projectRef: string;
+  /** Avatar videos: ?edit=1 or ?revise=1 from a card opens that modal. */
+  open?: "edit" | "revise";
+}) {
   const base = TYPE_PATH[type];
   const c = COPY[type];
-  const { db } = await requireAccount(`${base}/${projectRef}`);
+  const { db, current } = await requireAccount(`${base}/${projectRef}`);
   const { data } = await db
     .from("projects")
     .select("*")
@@ -280,6 +332,18 @@ export async function ProjectDetail({ type, projectRef }: { type: Kind; projectR
         : Promise.resolve({ data: [] }),
     ]);
   const all = (files ?? []) as ProjectFile[];
+  // Avatar videos: what Edit request / Request a revision need.
+  const [cfg, characters, { data: pc }] =
+    type === "avatar"
+      ? await Promise.all([
+          requestConfig(db, current),
+          myCharacters(db, current.account.id),
+          db.from("project_characters").select("character_id").eq("project_id", p.id),
+        ])
+      : [null, [], { data: [] }];
+  const presenters = characters
+    .filter((ch) => ch.status === "approved")
+    .map((ch) => ({ id: ch.id, name: characterTitle(ch), src: coverOf(ch)?.src ?? null }));
   const groups = deliveries(all);
   const latest = groups[0];
   const zip = latest?.files.find((f) => f.kind === "zip");
@@ -321,6 +385,21 @@ export async function ProjectDetail({ type, projectRef }: { type: Kind; projectR
         <Stepper steps={stepsFor(type)} now={statusLabel(p.status)} />
       )}
 
+      {type === "avatar" && cfg && (
+        <AvatarRequestActions
+          projectId={p.id}
+          status={p.status}
+          revisionBusy={busyRev(p)}
+          cfg={cfg}
+          presenters={presenters}
+          edit={avatarEditOf(
+            p,
+            all,
+            ((pc ?? []) as { character_id: string }[]).map((x) => x.character_id),
+          )}
+          autoOpen={openAction}
+        />
+      )}
       {type === "avatar" && !script && p.status === "brief_received" && (
         <p className="pt-meta" style={{ margin: 0 }}>
           {p.meta.script_by === "client"
@@ -342,6 +421,8 @@ export async function ProjectDetail({ type, projectRef }: { type: Kind; projectR
         projectId={p.id}
         zipId={zip?.id ?? null}
         {...actionsFor(p)}
+        // Avatar videos ask for revisions (with images) from Request a revision above.
+        {...(type === "avatar" ? { canRevise: false } : {})}
         hasDelivery={!!latest}
         noun={c.noun}
       />

@@ -9,7 +9,7 @@ import {
   avatarLength,
   type AvatarFormat,
 } from "@/lib/portal/booking";
-import { createProject } from "@/lib/portal/project-actions";
+import { createProject, updateAvatarBrief } from "@/lib/portal/project-actions";
 import { EDIT_KINDS, TYPE_PATH } from "@/lib/portal/projects";
 import type { RequestConfig } from "@/lib/portal/requests";
 import { PriceBlock } from "./BookingModal";
@@ -47,6 +47,20 @@ type Snap = {
   /** Avatar videos: the approved character(s) presenting it. */
   presenters?: string[];
 };
+/** "Edit request" on an avatar video we haven't started (owner, 17 Oct 2026): its brief. */
+export type AvatarEdit = {
+  projectId: string;
+  ref: string;
+  title: string;
+  format: AvatarFormat;
+  stop: number;
+  notes: string;
+  reference: string;
+  scriptBy: "milkywayy" | "client";
+  presenters: string[];
+  /** Files already on it (links and uploads), listed above the picker. */
+  files: { id: string; label: string }[];
+};
 /** An approved character, as the video form's presenter picker shows it. */
 export type Presenter = { id: string; name: string; src: string | null };
 const isHttps = (u: string) => /^https:\/\/\S+$/.test(u.trim());
@@ -71,8 +85,11 @@ export function ProjectRequestModal({
   onClose,
   onBack,
   characters = [],
+  edit,
 }: {
   type: "edit" | "avatar";
+  /** Avatar videos: edit this brief instead of starting one (no draft). */
+  edit?: AvatarEdit;
   cfg: RequestConfig;
   /** Avatar videos: the account's approved characters (one or more present the video). */
   characters?: Presenter[];
@@ -85,18 +102,18 @@ export function ProjectRequestModal({
   const [s, setS] = useState<Snap>({
     kind: "",
     kindOther: "",
-    title: "",
+    title: edit?.title ?? "",
     quantity: "",
-    notes: "",
-    reference: "",
+    notes: edit?.notes ?? "",
+    reference: edit?.reference ?? "",
     links: [{ label: avatar ? "Logo and assets" : "Raw files", url: "" }],
     mode: "links",
     // Short form is the usual one: chosen when the modal opens (owner, 10 Oct 2026).
-    format: avatar ? "short" : "",
-    stop: 0,
-    scriptBy: "milkywayy",
+    format: edit?.format ?? (avatar ? "short" : ""),
+    stop: edit?.stop ?? 0,
+    scriptBy: edit?.scriptBy ?? "milkywayy",
     // One approved character: chosen already.
-    presenters: avatar && characters.length === 1 ? [characters[0].id] : [],
+    presenters: edit?.presenters ?? (avatar && characters.length === 1 ? [characters[0].id] : []),
   });
   const [touched, setTouched] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -115,6 +132,7 @@ export function ProjectRequestModal({
     touched: touched && !made,
     resume,
     onRestore: restore as unknown as (d: Record<string, unknown>) => void,
+    enabled: !edit,
   });
   const guard = useCloseGuard({
     dirty: touched && !made,
@@ -124,14 +142,16 @@ export function ProjectRequestModal({
   });
 
   const fmt = s.format ? AVATAR_FORMATS[s.format] : null;
-  const length = fmt ? fmt.stops[s.stop] : 0;
+  const length = fmt ? fmt.stops[Math.min(s.stop, fmt.stops.length - 1)] : 0;
   const est = s.format ? avatarEstimate(s.format, length, cfg.price.rates) : null;
 
   const form = useFormCheck(() => ({
     kind: !avatar && !s.kind && "Choose the type of edit.",
     kindOther: !avatar && s.kind === "other" && !s.kindOther.trim() && "Say what type of edit.",
+    // An older video edited with no approved character to pick keeps going without one.
     presenters:
       avatar &&
+      !(edit && !characters.length) &&
       !(s.presenters ?? []).some((id) => characters.some((c) => c.id === id)) &&
       "Choose your AI avatar.",
     format: avatar && !s.format && "Choose short form or long form.",
@@ -157,6 +177,27 @@ export function ProjectRequestModal({
   async function submit() {
     if (!form.check()) return;
     setSaving(true);
+    if (edit) {
+      const r = await updateAvatarBrief(edit.projectId, {
+        title: s.title,
+        ...(s.format ? { avatar: { format: s.format, length } } : {}),
+        notes: s.notes,
+        references: [s.reference],
+        scriptBy: s.scriptBy,
+        links: s.mode === "links" ? s.links : [],
+        characters: (s.presenters ?? []).filter((id) => characters.some((c) => c.id === id)),
+      });
+      if (!r.ok) {
+        setSaving(false);
+        return form.fail(r.error ?? "Couldn’t save it. Try again.");
+      }
+      let failed = false;
+      if (s.mode === "upload" && files.length)
+        failed = (await upload(edit.projectId, files)) < files.length;
+      setMade({ ref: edit.ref, failed });
+      setSaving(false);
+      return;
+    }
     const r = await createProject({
       type,
       title: s.title,
@@ -182,7 +223,7 @@ export function ProjectRequestModal({
     setSaving(false);
   }
 
-  const title = avatar ? "AI avatar video" : "Edit my files";
+  const title = edit ? "Edit request" : avatar ? "AI avatar video" : "Edit my files";
   const ta = avatar
     ? s.format
       ? cfg.turnaround[s.format === "short" ? "avatar_short" : "avatar_long"]
@@ -194,13 +235,17 @@ export function ProjectRequestModal({
       <Modal title={title} onClose={onClose} testId={`${type}-modal`}>
         <div className="pt-form" role="status">
           <span className="pt-eb">
-            {made.ref} · {avatar ? "Brief received" : "Submitted"}
+            {made.ref} · {edit ? "Brief edited" : avatar ? "Brief received" : "Submitted"}
           </span>
-          <b style={{ fontSize: 20 }}>{avatar ? "Brief received" : "Files received"}</b>
+          <b style={{ fontSize: 20 }}>
+            {edit ? "Brief updated" : avatar ? "Brief received" : "Files received"}
+          </b>
           <p style={{ margin: 0 }}>
-            {avatar
-              ? "We’ll write the script and post it for your approval. You’ll get an email."
-              : "We’ll check the files and start, usually within a few hours. You’ll get an email."}
+            {edit
+              ? "We’ll work from the updated brief and post the script for your approval."
+              : avatar
+                ? "We’ll write the script and post it for your approval. You’ll get an email."
+                : "We’ll check the files and start, usually within a few hours. You’ll get an email."}
           </p>
           {made.failed && (
             <p className="pt-error" role="alert">
@@ -250,7 +295,15 @@ export function ProjectRequestModal({
             disabled={saving || busy}
             onClick={() => void submit()}
           >
-            {busy ? "Uploading…" : saving ? "Sending…" : avatar ? "Send brief" : "Send files"}
+            {busy
+              ? "Uploading…"
+              : saving
+                ? "Sending…"
+                : edit
+                  ? "Save changes"
+                  : avatar
+                    ? "Send brief"
+                    : "Send files"}
           </button>
         </>
       }
@@ -316,7 +369,13 @@ export function ProjectRequestModal({
                 ))}
               </div>
             </Field>
-            {fmt && s.format && (
+            {fmt && s.format && fmt.stops.length === 1 && (
+              <p className="pt-meta" style={{ margin: 0 }}>
+                Length: {avatarLength(s.format, length)}. Longer videos are long form, priced per
+                minute.
+              </p>
+            )}
+            {fmt && s.format && fmt.stops.length > 1 && (
               <Field name="length" label={`Length: ${avatarLength(s.format, length)}`} group>
                 <input
                   type="range"
@@ -477,6 +536,11 @@ export function ProjectRequestModal({
           group
           error={form.errors.files ?? form.errors.links}
         >
+          {edit && edit.files.length > 0 && (
+            <span className="pt-meta" data-testid="files-attached">
+              Already attached: {edit.files.map((f) => f.label).join(", ")}. Add more below.
+            </span>
+          )}
           <div className="pt-seg" role="group" aria-label="How to send files">
             <button
               type="button"

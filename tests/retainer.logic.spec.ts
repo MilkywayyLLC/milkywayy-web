@@ -26,7 +26,7 @@ test("what a shoot produced, in a line", () => {
 });
 
 test("the estimate: the client's own rates, the property price list", () => {
-  const rates = { reel: 400, long_form: 1200 };
+  const rates = { reel_shoot: 400, long_form_shoot: 1200, half_day: 1200, full_day: 1800 };
   expect(
     estimate(
       [
@@ -46,6 +46,18 @@ test("the estimate: the client's own rates, the property price list", () => {
     propertyPricing,
   );
   expect(withProperty).toBe(400 + propertyPricing.apartment.sizes[0].photo);
+  // Shoot only (17 Oct 2026): one slot rate per booking, whatever it covers.
+  const raw = (day: "half" | "full") =>
+    estimate(
+      [
+        { service: "reels", mode: "raw", day: "half" },
+        { service: "long_form", mode: "raw", day },
+      ],
+      rates,
+      propertyPricing,
+    );
+  expect(raw("half")).toBe(1200);
+  expect(raw("full")).toBe(1800);
 });
 
 test("log prefill and the first deliverables come from the booking", () => {

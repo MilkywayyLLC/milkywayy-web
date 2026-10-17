@@ -31,6 +31,7 @@ const EVENT_TEXT: Record<string, (e: ProjectEvent) => string> = {
   script_posted: (e) => e.note ?? "Script ready for approval",
   script_approved: (e) => `${e.note ?? "Script approved"} by ${e.actor_name ?? "you"}`,
   script_changes: (e) => `Changes asked: ${e.note ?? ""}`,
+  brief_edited: (e) => `Brief edited by ${e.actor_name ?? "you"}`,
 };
 
 const when = (iso: string) =>

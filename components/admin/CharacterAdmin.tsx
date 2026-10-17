@@ -363,17 +363,19 @@ function CharacterAdminCard({ c, showClient }: { c: Character; showClient?: bool
           {c.events.map((e) => (
             <li key={e.id}>
               {when(e.created_at)} · {e.actor_name ?? ""} ·{" "}
-              {e.kind === "changes"
-                ? `changes${e.file_id ? ` (${variationName(c, e.file_id)})` : ""}: “${e.note}”`
-                : e.kind === "picked"
-                  ? `picked ${variationName(c, e.file_id)}`
-                  : e.kind === "variations"
-                    ? `round ${e.round} sent`
-                    : e.kind === "approved"
-                      ? `approved as ${e.note}`
-                      : e.kind === "renamed"
-                        ? `renamed ${e.note}`
-                        : "brief received"}
+              {e.kind === "changes" || e.kind === "revision"
+                ? `revision requested${e.kind === "revision" ? " (after approval)" : ""}${e.file_id ? ` (${variationName(c, e.file_id)})` : ""}: “${e.note}”`
+                : e.kind === "edited"
+                  ? "brief edited by the client"
+                  : e.kind === "picked"
+                    ? `picked ${variationName(c, e.file_id)}`
+                    : e.kind === "variations"
+                      ? `round ${e.round} sent`
+                      : e.kind === "approved"
+                        ? `approved as ${e.note}`
+                        : e.kind === "renamed"
+                          ? `renamed ${e.note}`
+                          : "brief received"}
             </li>
           ))}
         </ul>

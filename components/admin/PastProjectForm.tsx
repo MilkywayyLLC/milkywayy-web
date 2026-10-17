@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { createPastProject, type PastProjectInput } from "@/lib/portal/admin-project-actions";
-import { AVATAR_LENGTHS, EDIT_KINDS } from "@/lib/portal/projects";
+import { AVATAR_LENGTHS_NEW, EDIT_KINDS } from "@/lib/portal/projects";
 
 const TYPES = [
   ["shoot", "Property shoot"],
@@ -115,7 +115,7 @@ export function PastProjectForm({ account }: { account: string }) {
           <label htmlFor="pp-kind">{type === "edit" ? "What it was" : "Length"}</label>
           <select id="pp-kind" name="kind" defaultValue="">
             <option value="">Not stated</option>
-            {(type === "edit" ? EDIT_KINDS : AVATAR_LENGTHS).map(([k, l]) => (
+            {(type === "edit" ? EDIT_KINDS : AVATAR_LENGTHS_NEW).map(([k, l]) => (
               <option key={k} value={k}>
                 {l}
               </option>

@@ -51,13 +51,17 @@ export const EDIT_KINDS = [
   ["long_form", "Long form (horizontal YouTube videos)"],
   ["other", "Other"],
 ] as const;
-/** How long an avatar video is (stored kind; the form picks a format and a length). */
+/** How long an avatar video is (stored kind; the form picks a format and a length). The price
+ *  list's lengths (17 Oct 2026): up to 30 seconds, or long form priced per minute. 60s and 90s
+ *  are older briefs, shown in 30-second blocks. */
 export const AVATAR_LENGTHS = [
   ["30s", "Up to 30 seconds"],
-  ["60s", "Up to 60 seconds"],
-  ["90s", "Up to 90 seconds"],
-  ["longer", "Longer"],
+  ["longer", "Long form · per minute"],
+  ["60s", "60 seconds (2 × 30 seconds)"],
+  ["90s", "90 seconds (3 × 30 seconds)"],
 ] as const;
+/** The lengths a new brief can have. */
+export const AVATAR_LENGTHS_NEW = AVATAR_LENGTHS.slice(0, 2);
 const OLD_KINDS = [["avatar_edit", "Avatar edit"]] as const;
 export const briefKindLabel = (type: ProjectType, k?: string) =>
   (
@@ -66,6 +70,15 @@ export const briefKindLabel = (type: ProjectType, k?: string) =>
       string,
     ])[]
   ).find((x) => x[0] === k)?.[1] ?? "";
+
+/** An avatar video's client action by status (owner, 17 Oct 2026): edit the brief before we
+ *  start, else a revision (none while a delivered video's revision is under way). */
+export function avatarAction(status: string, revisionBusy: boolean): "edit" | "revise" | null {
+  if (status === "brief_received") return "edit";
+  if (["script_ready", "in_production", "on_hold"].includes(status)) return "revise";
+  if (status === "delivered" && !revisionBusy) return "revise";
+  return null;
+}
 
 export const REVISION_LABEL: Record<string, string> = {
   requested: "Revision requested",
