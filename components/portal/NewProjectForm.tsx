@@ -12,7 +12,7 @@ import {
 import { createProject, updateAvatarBrief } from "@/lib/portal/project-actions";
 import { EDIT_KINDS, TYPE_PATH } from "@/lib/portal/projects";
 import type { RequestConfig } from "@/lib/portal/requests";
-import { PriceBlock } from "./BookingModal";
+import { PriceBlock } from "./booking/pricing-ui";
 import {
   DraftOffer,
   Field,

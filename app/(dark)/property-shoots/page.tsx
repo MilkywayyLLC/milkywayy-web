@@ -54,7 +54,7 @@ const steps = (d: PropertyPricing["delivery"]): Step[] => [
   {
     n: "03",
     title: "Fast delivery",
-    text: `Photos in ${d.photo}, videos in ${d.short === d.long ? d.short : `${d.short} (short-form) or ${d.long} (long-form)`}, in your dashboard with Download all.`,
+    text: `Photos ${d.photo}, short-form reels ${d.short} and walkthroughs ${d.long}, in your dashboard with Download all.`,
   },
   {
     n: "04",
@@ -94,22 +94,22 @@ export default async function PropertyShootsPage() {
   const d = pricing.delivery;
   const services: Included[] = [
     {
-      kicker: `Delivered in ${d.photo}`,
+      kicker: `Delivery: ${d.photo}`,
       title: "HDR photography",
       text: "Bracketed, blended and colour-true, with straight verticals. Twilight edits from your daylight shots.",
     },
     {
-      kicker: `Delivered in ${d.long}`,
+      kicker: `Delivery: ${d.long}`,
       title: "Walkthrough video",
       text: "A smooth horizontal 16:9 tour of the whole home, made for the portals and YouTube.",
     },
     {
-      kicker: `Delivered in ${d.short}`,
+      kicker: `Delivery: ${d.short}`,
       title: "Social reels",
       text: "Vertical 9:16 walkthroughs and agent-presented videos, ready for Instagram and TikTok.",
     },
     {
-      kicker: `Delivered in ${d.tour}`,
+      kicker: `Delivery: ${d.tour}`,
       title: "360° tours",
       text: "A virtual tour buyers can walk through from anywhere, with a link you can share anywhere.",
     },
@@ -132,8 +132,8 @@ export default async function PropertyShootsPage() {
             <Eyebrow rec>Production · Property shoots</Eyebrow>
             <HeroTitle id="property-title" line1="Don't just list." line2={<Hl>Dominate.</Hl>} />
             <p className="lede">
-              A real estate photographer in Dubai for photos, video and 360 tours. Photos back in 24
-              hours.
+              A real estate photographer in Dubai for photos, video and 360 tours. Photos back within
+              24 hours, often same day.
             </p>
             <Ctas>{actions}</Ctas>
             <div className="anchor">
@@ -141,7 +141,7 @@ export default async function PropertyShootsPage() {
                 Photos from <b>AED {formatNumber(lowestShootPrice(pricing))}</b>
               </span>
               <span>
-                Delivered in <b>{d.photo}</b>
+                Delivery <b>{d.photo}</b>
               </span>
               <span>
                 <b>Dubai-wide</b>

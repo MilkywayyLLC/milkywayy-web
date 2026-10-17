@@ -191,7 +191,7 @@ export default async function ProductionPage() {
               {
                 kicker: "Single shoot",
                 title: "For one property",
-                text: "Pick the property and services, see the price, request a slot. Photos back in 24 hours.",
+                text: "Pick the property and services, see the price, request a slot. Photos back within 24 hours, often same day.",
                 cta: "Book a property shoot →",
                 href: "/property-shoots",
               },

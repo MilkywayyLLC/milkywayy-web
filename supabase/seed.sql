@@ -94,7 +94,7 @@ on conflict do nothing;
 
 insert into public.faqs (id, page, question, answer, draft, published, sort_order) values
   ('home-1', 'home', 'Where do you work?', 'We shoot across the UAE, based in Dubai. Editing and AI avatars are fully remote, so we work with clients anywhere.', true, true, 1),
-  ('home-2', 'home', 'How fast is delivery?', 'Property photos in 24 hours. Reels in 24–48 hours. Monthly packages follow an agreed content calendar.', true, true, 2),
+  ('home-2', 'home', 'How fast is delivery?', 'Property photos within 24 hours, often same day. Short-form reels up to 48 hours. Walkthroughs 48–72 hours. Monthly packages follow an agreed content calendar.', true, true, 2),
   ('home-3', 'home', 'How does pricing work?', 'Every service page shows starting prices. The final quote is confirmed in chat or on a short call, before you pay anything.', true, true, 3),
   ('home-4', 'home', 'How do I start?', 'Send a request or WhatsApp us. We reply within 15 minutes during working hours.', true, true, 4),
   ('production-5', 'production', 'How many revisions do I get?', 'Two rounds of revisions per edit are included. Changes to the brief after shooting are quoted separately.', true, true, 5),
@@ -231,7 +231,7 @@ insert into public.pricing_twilight (grp, qty, price) values
 on conflict do nothing;
 
 insert into public.pricing_other (key, value) values
-  ('property_meta', '{"currency":"AED","apartment":{"label":"Apartment","defaultSize":1},"villa":{"label":"Villa / townhouse","defaultSize":0},"commercial":{"label":"Commercial","defaultTier":1},"delivery":{"photo":"24h","short":"24–48h","long":"24–48h","tour":"48–72h"}}'::jsonb),
+  ('property_meta', '{"currency":"AED","apartment":{"label":"Apartment","defaultSize":1},"villa":{"label":"Villa / townhouse","defaultSize":0},"commercial":{"label":"Commercial","defaultTier":1},"delivery":{"photo":"within 24 hours, often same day","short":"up to 48 hours","long":"48–72 hours","tour":"48–72h"}}'::jsonb),
   ('production', '{"fromMonthly":4000,"chips":["Shoot days","Edited reels","Long-form video","Photography","360 tours"]}'::jsonb),
   ('post_production', '{"currency":"USD","rates":[{"key":"photo","name":"Photo edits","amount":0.8,"unit":"HDR photo","bullets":["Bracket blending and window pulls","Sky replacement and declutter","Twilight on request"]},{"key":"short","name":"Short-form","amount":50,"unit":"reel","bullets":["Reels up to 60 seconds","Music, captions and branding","Formatted for every platform"]},{"key":"long","name":"Long-form","amount":150,"unit":"video","bullets":["YouTube videos up to 10 minutes","B-roll, graphics and titles","Thumbnail on request"]}],"note":"Rates in USD. Your final quote depends on volume, style and turnaround, and we can quote in your currency on the call."}'::jsonb),
   ('ai_avatars', '{"launchLine":"Launch pricing · set on your demo call","extraAvatarNote":"Each extra avatar is added with its own setup fee.","tiers":[{"name":"Avatar setup","cadence":"One-off","bullets":["Custom face and look","Voice selection","3 test videos","Yours to keep"]},{"name":"Videos","cadence":"Monthly","bullets":["Everything in setup","Monthly video bundle","Captions and branding","You send scripts or topics"]},{"name":"Videos + strategy","cadence":"Monthly","bullets":["Everything in Videos","Content strategy","We write every script","Monthly performance review"]}]}'::jsonb)

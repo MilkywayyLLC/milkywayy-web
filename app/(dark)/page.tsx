@@ -77,7 +77,7 @@ const STEPS: Step[] = [
     title: "Produce",
     text: "On location in Dubai, from your raw files, or with your AI avatar.",
   },
-  { n: "03", title: "Edit", text: "In-house editors. Photos in 24 hours, reels in 24–48." },
+  { n: "03", title: "Edit", text: "In-house editors. Photos within 24 hours, often same day; reels up to 48 hours." },
   {
     n: "04",
     title: "Deliver",

@@ -9,7 +9,13 @@ import {
   ApprovalNote,
   DeliveryList,
 } from "@/components/portal/ProjectParts";
-import { Back, Badge, Stepper } from "@/components/portal/ui";
+import { Back, Badge } from "@/components/portal/ui";
+import { ProgressTracker } from "@/components/portal/detail/ProgressTracker";
+import { Icon } from "@/components/portal/Icon";
+import { projectCovers } from "@/lib/portal/covers";
+import { getPropertyPricing } from "@/lib/data";
+import { asProperty, type PropertyConfig } from "@/lib/portal/booking";
+import { title as propertyTitle } from "@/lib/booking";
 import { requireAccount } from "@/lib/portal/auth";
 import {
   clientStatus,
@@ -18,6 +24,7 @@ import {
   shootDay,
   statusLabel,
   stepsFor,
+  REVISION_LABEL,
   type Project,
   type ProjectEvent,
   type ProjectFile,
@@ -27,7 +34,6 @@ import { seesMoney } from "@/lib/portal/shell";
 import { Deliverables } from "@/components/portal/Deliverables";
 import { ShootChanges } from "@/components/portal/ShootChanges";
 import { can } from "@/lib/portal/access";
-import { requestConfig } from "@/lib/portal/requests";
 import type { Slot } from "@/lib/portal/booking";
 import { ShootDeliveries, type DFile } from "@/components/portal/ShootDeliveries";
 import { downloadUrl, presign, r2Ready } from "@/lib/r2";
@@ -91,7 +97,8 @@ export default async function ShootPage({
   // Before it's shot, the client can change or cancel it (owner, 10 Oct 2026).
   const changeable =
     (p.status === "requested" || p.status === "confirmed") && can(current, "shoots");
-  const cfg = changeable ? await requestConfig(db, current).catch(() => null) : null;
+  const pricing = await getPropertyPricing().catch(() => null);
+  const cover = (await projectCovers(db, [p.id])).get(p.id) ?? null;
   const slotKey = (p.slot ?? "").toLowerCase().replace(" ", "_") as Slot | "";
   // Deliveries grouped by kind (owner, 10 Oct 2026), with short-lived signed links.
   const GROUPED = ["photos", "reel", "long_form", "tour"];
@@ -135,28 +142,65 @@ export default async function ShootPage({
     contactName(db, p.agent_contact_id),
     admin ? teammates(db, current.account.id) : Promise.resolve([]),
   ]);
-  const when = [
-    shootDay(p.shoot_date),
-    p.slot,
-    booking?.start_time ? `preferred start ${booking.start_time}` : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
   const total = (items ?? []).reduce((t, i) => t + Number(i.qty) * Number(i.unit_price), 0);
 
+  const services = booking ? normalizeServices(booking.services) : [];
+  const serviceLine = booking
+    ? services
+        .map((x) => [SERVICE_LABEL[x.service], serviceShort(x)].filter(Boolean).join(": "))
+        .join(" + ")
+    : (p.meta.services ?? []).map((x) => SHOOT_SERVICE_LABEL[x] ?? x).join(" + ");
+  const propertyCfg = services.find((x) => x.service === "property")?.property as
+    PropertyConfig | undefined;
+  const propertyText =
+    propertyCfg && pricing ? propertyTitle(asProperty(propertyCfg, pricing), pricing) : "";
+  const slotText = [p.slot, booking?.start_time ? `from ${booking.start_time}` : ""]
+    .filter(Boolean)
+    .join(" · ");
+  const address = booking
+    ? [
+        booking.location.unit,
+        booking.location.building,
+        booking.location.community,
+        booking.location.address,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : [p.meta.unit && `Unit ${p.meta.unit}`, p.meta.building, p.meta.area]
+        .filter(Boolean)
+        .join(", ");
+  const showTotal = seesMoney(current) && total > 0;
+  const details: [string, string][] = [
+    ["Property", propertyText],
+    ["Address", address],
+    ["Date", shootDay(p.shoot_date) || "To be confirmed"],
+    ["Time", slotText],
+    ["Agent", agentName ?? ""],
+    ...(showTotal
+      ? [
+          [
+            "Total",
+            `${current.account.currency} ${total.toLocaleString("en-US")} (${(items ?? []).some((i) => /estimate/.test(i.description)) ? "estimate at booking" : "agreed price"})`,
+          ] as [string, string],
+        ]
+      : []),
+  ];
+  const hasFiles = delivList.length > 0 || dfiles.length > 0 || !!latest;
+
   return (
-    <>
+    <div className="pt-detail">
       <LiveRefresh />
-      <Back href="/portal/shoots" label="Shoots" />
+      <Back href="/portal/shoots" label="All bookings" />
       <div className="pt-head">
         <div>
-          <span className="pt-eb">
-            {p.ref}
-            {when ? ` · ${when}` : ""}
-          </span>
-          <h1 className="pt-h1" style={{ fontSize: 26 }}>
+          <h1 className="pt-h1" style={{ fontSize: 30 }}>
             {p.title}
+            {p.meta.unit ? ` · ${p.meta.unit}` : ""}
           </h1>
+          <span className="pt-meta pt-dt-sub">
+            <span className="pt-mono">{p.ref}</span>
+            {serviceLine ? ` · ${serviceLine}` : ""}
+          </span>
         </div>
         <Badge tone={p.status === "delivered" ? "gold" : undefined}>{clientStatus(p)}</Badge>
       </div>
@@ -165,11 +209,14 @@ export default async function ShootPage({
           Cancelled. Book again any time with Book media.
         </p>
       ) : (
-        <Stepper steps={stepsFor("shoot")} now={statusLabel(p.status)} />
+        <ProgressTracker
+          steps={stepsFor("shoot")}
+          now={statusLabel(p.status)}
+          note={p.revision_state ? REVISION_LABEL[p.revision_state] : undefined}
+        />
       )}
-      {changeable && cfg && (
+      {changeable && (
         <ShootChanges
-          cfg={cfg}
           edit={{
             projectId: p.id,
             ref: p.ref,
@@ -202,112 +249,106 @@ export default async function ShootPage({
       {admin && team.length > 1 && (
         <ShareWith kind="p" id={p.id} team={team} chosen={p.shared_with ?? []} />
       )}
-      <Deliverables items={delivList} />
-
-      <ApprovalNote p={p} />
-      <ProjectActions
-        projectId={p.id}
-        zipId={zip?.id ?? null}
-        {...actionsFor(p)}
-        hasDelivery={!!latest}
-      />
-      {(p.status === "delivered" || p.status === "completed") &&
-        (files ?? []).some((f) => f.kind === "photos" && f.source === "r2") && (
-          <section className="pt-card pt-row" style={{ flexWrap: "wrap" }}>
-            <div>
-              <b>Share this property</b>
-              <div className="pt-meta">
-                One link with the photos, video, price and your contact. Looks right in WhatsApp.
-              </div>
-            </div>
-            <a
-              className="btn btn-p btn-s"
-              href={`/portal/listings/new?shoot=${encodeURIComponent(p.ref)}`}
-            >
-              Create share link
-            </a>
-          </section>
-        )}
-      <ShootDeliveries files={dfiles} title={p.title} photosDeliverable={photosDeliverable} />
-      <DeliveryList files={outFiles.filter((f) => !grouped(f))} />
-
-      <div className="pt-grid2">
-        <section className="pt-card">
-          <h2 className="pt-h2">Details</h2>
-          <dl style={{ display: "grid", gap: 8, margin: 0 }}>
-            {(
-              [
-                [
-                  "Address",
-                  booking
-                    ? [
-                        booking.location.unit,
-                        booking.location.building,
-                        booking.location.community,
-                        booking.location.address,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")
-                    : [p.meta.unit && `Unit ${p.meta.unit}`, p.meta.building, p.meta.area]
-                        .filter(Boolean)
-                        .join(", "),
-                ],
-                [
-                  "Services",
-                  booking
-                    ? normalizeServices(booking.services)
-                        .map((s) =>
-                          [SERVICE_LABEL[s.service], serviceShort(s)].filter(Boolean).join(": "),
-                        )
-                        .join(" · ")
-                    : (p.meta.services ?? []).map((s) => SHOOT_SERVICE_LABEL[s] ?? s).join(", "),
-                ],
-                ["When", when || "To be confirmed"],
-                ...(seesMoney(current) && total > 0
-                  ? [
-                      [
-                        "Price",
-                        `${current.account.currency} ${total.toLocaleString("en-US")} (${(items ?? []).some((i) => /estimate/.test(i.description)) ? "estimate at booking" : "agreed price"})`,
-                      ],
-                    ]
-                  : []),
-              ] as [string, string][]
+      <div className="pt-dt-grid">
+        <div className="pt-dt-main">
+          {delivList.length > 0 ? (
+            <Deliverables items={delivList} />
+          ) : (
+            !hasFiles && (
+              <section className="pt-card" aria-labelledby="deliv-empty-h">
+                <h2 id="deliv-empty-h" className="pt-h2">
+                  Deliverables
+                </h2>
+                <p className="pt-meta pt-dt-empty">
+                  Your files will appear here once they’re delivered.
+                </p>
+              </section>
             )
-              .filter(([, v]) => v)
-              .map(([k, v]) => (
-                <div key={k} style={{ display: "grid", gap: 2 }}>
-                  <dt className="pt-eb">{k}</dt>
-                  <dd style={{ margin: 0 }}>{v}</dd>
-                </div>
-              ))}
-          </dl>
-          {booking?.location.lat != null && booking.location.lng != null && MAPS_KEY && (
-            <a
-              className="pt-staticmap"
-              href={`https://www.google.com/maps/search/?api=1&query=${booking.location.lat},${booking.location.lng}`}
-              target="_blank"
-              rel="noopener"
-              aria-label="Open the shoot location in Google Maps"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                alt=""
-                loading="lazy"
-                src={`https://maps.googleapis.com/maps/api/staticmap?center=${booking.location.lat},${booking.location.lng}&zoom=16&size=600x240&scale=2&markers=color:0x111110%7C${booking.location.lat},${booking.location.lng}&key=${encodeURIComponent(MAPS_KEY)}`}
-              />
-            </a>
           )}
-        </section>
-        <ActivityList events={(events ?? []) as ProjectEvent[]} />
-      </div>
 
-      <div id="messages">
-        <ProjectMessages
-          projectId={p.id}
-          messages={(messages ?? []) as ProjectMessage[]}
-          hint="Questions about access, parking or the brief go here."
-        />
+          <ApprovalNote p={p} />
+          <ProjectActions
+            projectId={p.id}
+            zipId={zip?.id ?? null}
+            {...actionsFor(p)}
+            hasDelivery={!!latest}
+          />
+          {(p.status === "delivered" || p.status === "completed") &&
+            (files ?? []).some((f) => f.kind === "photos" && f.source === "r2") && (
+              <section className="pt-card pt-row" style={{ flexWrap: "wrap" }}>
+                <div>
+                  <b>Share this property</b>
+                  <div className="pt-meta">
+                    One link with the photos, video, price and your contact. Looks right in
+                    WhatsApp.
+                  </div>
+                </div>
+                <a
+                  className="btn btn-p btn-s"
+                  href={`/portal/listings/new?shoot=${encodeURIComponent(p.ref)}`}
+                >
+                  Create share link
+                </a>
+              </section>
+            )}
+          <ShootDeliveries files={dfiles} title={p.title} photosDeliverable={photosDeliverable} />
+          <DeliveryList files={outFiles.filter((f) => !grouped(f))} />
+          <ActivityList events={(events ?? []) as ProjectEvent[]} />
+          <div id="messages">
+            <ProjectMessages
+              projectId={p.id}
+              messages={(messages ?? []) as ProjectMessage[]}
+              hint="Questions about access, parking or the brief go here."
+            />
+          </div>
+        </div>
+
+        <aside className="pt-dt-aside" aria-label="Booking details">
+          <section className="pt-card pt-dt-details" data-testid="booking-details">
+            <div className="pt-dt-cover">
+              {cover ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={cover} alt="" loading="lazy" />
+              ) : (
+                <Icon
+                  name={
+                    services.length && services.every((x) => x.service === "videos")
+                      ? "video"
+                      : "photo"
+                  }
+                  size={32}
+                />
+              )}
+            </div>
+            <dl className="pt-dt-dl">
+              {details
+                .filter(([, v]) => v)
+                .map(([k, v]) => (
+                  <div key={k}>
+                    <dt>{k}</dt>
+                    <dd>{v}</dd>
+                  </div>
+                ))}
+            </dl>
+            {booking?.location.lat != null && booking.location.lng != null && MAPS_KEY && (
+              <a
+                className="pt-staticmap"
+                href={`https://www.google.com/maps/search/?api=1&query=${booking.location.lat},${booking.location.lng}`}
+                target="_blank"
+                rel="noopener"
+                aria-label="Open the shoot location in Google Maps"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  alt=""
+                  loading="lazy"
+                  src={`https://maps.googleapis.com/maps/api/staticmap?center=${booking.location.lat},${booking.location.lng}&zoom=16&size=600x240&scale=2&markers=color:0x111110%7C${booking.location.lat},${booking.location.lng}&key=${encodeURIComponent(MAPS_KEY)}`}
+                />
+              </a>
+            )}
+          </section>
+        </aside>
       </div>
-    </>
+    </div>
   );
 }

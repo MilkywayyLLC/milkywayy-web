@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Booking is a modal now (owner, 10 Oct 2026): Home opens it. */
+/** Booking is a page now (UI rebuild, 17 Oct 2026): /portal/book. */
 export default function BookShootPage() {
-  redirect("/portal?new=booking");
+  redirect("/portal/book");
 }

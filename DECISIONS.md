@@ -445,3 +445,34 @@ Replaces the volume-tier idea and Phase 12's threshold rules (`suggestion_rules`
 - **"Photos from" (23)**: the portal's booking card uses the website's `lowestShootPrice` (now including commercial tiers, like the site) on the client's own prices, so the two can't drift.
 - **Walkthrough (24)**: Dubai's long-form counter, estimate, summaries and rate card label are "Walkthrough (up to 5 min)", with the sub-line "Long-form, up to 5 min · 16:9, property or agent", because agents' long videos count too. Post-production keeps "Long-form" (up to 10 min, USD). Deliverables keep "Long-form 1…n" (their kind). Rate card labels: `20261101090000_walkthrough_labels.sql`, dev only. Dev package labels were updated to match.
 - Items 21 and 22: no change (see the booking redesign section).
+
+## Booking / Home / Booking-detail UI rebuild: behaviours that must not change (site-refine, 17 Oct 2026)
+
+Presentation only. Read from the code before any UI change; each line is checked again at the end.
+
+1. **Statuses** (`PIPELINES.shoot`): Requested → Confirmed → Shot → Editing → Delivered → Completed (+ Cancelled, On hold); revision states override the label (`clientStatus`). Refs are `MW-…` from the database; the UI only displays them.
+2. **Services per client**: `can()` / `cfg.shoots|editing|avatars`; exactly one allowed service makes Book media open its flow with no choice screen (`StartRequests.single`). Editing and avatar flows (`ProjectRequestModal`) are untouched.
+3. **Booking shape**: `services[]` = `{service:"property", property}` (photos-only config) and/or `{service:"videos", videos: VideoPlan}`; `bookShoot` / `updateBooking` signatures, `book_shoot` RPC and `normalizeServices` unchanged.
+4. **Fixed / Half / Full day** map to `VideoPlan.by = count | time` + `day`. The plan is one object for both video cards, so the two cards share the mode. Raw files = `raw` and only exists by time. Extra minutes only with at least one walkthrough (`extra_min`, max 600).
+5. **Pricing**: `estimateLines`, `packageLines`, `packageLineText`, `minimum` top-up and `summarize` are reused as they are. No new price maths in the UI.
+6. **Price visibility**: no `cfg.price.rates` → no amounts anywhere (size chips, add-ons, summary, confirmation, home, detail). Package clients see Included / N extra; a property shoot is always an extra at its price; `showAmount` gates package amounts.
+7. **Drafts**: `useDraft("booking")` autosave to the database; "Continue your draft" offer; `?draft=1` restores straight away; Leave dialog (Keep as draft / Discard / Keep editing). Old draft snapshots (steps 1–3) still restore.
+8. **Edit details / Request a change** (`BookingEdit`, only Requested or Confirmed, `updateBooking`); cancel stays in `ShootChanges`. Copy per status: "Change requested" / "Details saved".
+9. **Agent** picker (booker's own contact preselected, new bookings only) and **Share with** (shoot page, `ShareWith`) unchanged.
+10. **Location**: Google Places search + draggable pin + reverse geocode into building / community / address (`PlacesField`); plain address field when there's no Maps key or the script fails. Unit and Access notes (`location.access`) already exist. Address is required (3+ characters).
+11. **Schedule**: date from today (`cfg.today`), slot Morning / Afternoon / Full day, optional preferred start time stored in `start_time` and limited to the slot (`SLOT_HOURS`); a Full day (by time) forces the Full day slot, and a Half day can't keep it.
+12. **Deliverables**: `Deliverables`, `ShootDeliveries` (player, lightbox, downloads, zip), revisions, approve, `ProjectActions`, messages, activity: components unchanged and still rendered.
+13. **Home**: Needs-your-attention, the AI avatars group (`cfg.avatars`) inside Your work, Recent activity, WhatsApp link stay; money only for those who `seesMoney`.
+14. **Confirmation wording** is email-only ("We’ll confirm your slot shortly by email."), no "2 hours", no WhatsApp; no payment taken.
+15. **Not touched**: server actions, RPCs, migrations, statuses, permissions, emails, admin, rate card, billing, other flows.
+
+### Outcome and calls made (same rebuild)
+
+- **New page `/portal/book`** (Services → Property if Photos → Schedule → Location → Summary). "Book media", `?new=booking|shoot`, `/portal/shoots/book`, the Shoots Drafts row and "Edit details" all go there; the old modal is gone. Editing and avatar flows still open as before.
+- **Half / Full day are shared**: the plan is one object, so choosing Half or Full day on either video card sets both; Raw files and the rough count sit in the first card. "Includes" chips are written into the booking's existing note as leading lines and read back on edit and drafts.
+- **Edit details** opens at the first step that still needs something, else Summary; old drafts (steps 1–3) restore. Arrival times are hourly chips limited to the slot, in `start_time`; an older quarter-hour time still shows as a chip.
+- **No street / city fields**: the booking only has `address`, `building`, `community`, `unit`, `access`, so Location shows those (no data change).
+- **Prices now respect visibility** in the property cards too (the old builder showed the price list to everyone).
+- **Home**: banner, tiles (Upcoming, In editing, Ready to download; Package used or Spent this month from the same `my_billing` the Billing page reads, owners and admins only), Bookings with status chips and thumbnails (first delivered photo, else a video poster, else a service icon). Editing and AI avatars groups stay below. Detail: progress tracker, existing deliverables, details card.
+- **Turnaround**: photos within 24 hours, often same day; short-form reels up to 48 hours; walkthroughs 48–72 hours. Code defaults, website copy, seed and the portal dev texts (`20261102090000_turnaround_times.sql`, dev project only, only rows still on the seeded text) updated. Live content DB untouched; fields to change in admin are in the report.
+- Existing portal e2e specs that drive the old modal were already out of date after the 18 Oct redesign and are not changed here.

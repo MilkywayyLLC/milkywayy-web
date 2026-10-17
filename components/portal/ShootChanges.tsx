@@ -1,10 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { cancelBooking } from "@/lib/portal/book-actions";
-import type { RequestConfig } from "@/lib/portal/requests";
-import { BookingModal, type BookingEdit } from "./BookingModal";
+import type { BookingEdit } from "./booking/BookingFlow";
 import { ChoiceDialog } from "./forms";
 
 /**
@@ -12,17 +12,21 @@ import { ChoiceDialog } from "./forms";
  * request". Confirmed: "Request a change" (back to Requested; Milkywayy confirms it again) and
  * "Cancel shoot". Nothing once it's shot. Every change is in Activity and emailed to Milkywayy.
  */
-export function ShootChanges({ cfg, edit }: { cfg: RequestConfig; edit: BookingEdit }) {
+export function ShootChanges({ edit }: { edit: BookingEdit }) {
   const router = useRouter();
-  const [open, setOpen] = useState<"edit" | "cancel" | null>(null);
+  const [open, setOpen] = useState<"cancel" | null>(null);
   const [err, setErr] = useState("");
   const [pending, start] = useTransition();
   const confirmed = edit.status === "confirmed";
   return (
     <div className="pt-btns" data-testid="shoot-changes">
-      <button type="button" className="btn btn-g btn-s" onClick={() => setOpen("edit")}>
+      <Link
+        href={`/portal/book?edit=${encodeURIComponent(edit.ref)}`}
+        className="btn btn-g btn-s"
+        prefetch={false}
+      >
         {confirmed ? "Request a change" : "Edit details"}
-      </button>
+      </Link>
       <button type="button" className="btn btn-g btn-s" onClick={() => setOpen("cancel")}>
         {confirmed ? "Cancel shoot" : "Cancel request"}
       </button>
@@ -30,16 +34,6 @@ export function ShootChanges({ cfg, edit }: { cfg: RequestConfig; edit: BookingE
         <p className="pt-error" role="alert" style={{ width: "100%" }}>
           {err}
         </p>
-      )}
-      {open === "edit" && (
-        <BookingModal
-          cfg={cfg}
-          edit={edit}
-          onClose={() => {
-            setOpen(null);
-            router.refresh();
-          }}
-        />
       )}
       {open === "cancel" && (
         <ChoiceDialog

@@ -103,7 +103,12 @@ export const propertyPricing: PropertyPricing = {
     standard: { 5: 120, 10: 220, 20: 400 },
     villa: { 5: 150, 10: 275, 20: 500 },
   },
-  delivery: { photo: "24h", short: "24–48h", long: "24–48h", tour: "48–72h" },
+  delivery: {
+    photo: "within 24 hours, often same day",
+    short: "up to 48 hours",
+    long: "48–72 hours",
+    tour: "48–72h",
+  },
 };
 
 export const otherPricing: OtherPricing = {

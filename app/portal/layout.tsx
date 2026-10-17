@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "@/app/styles/portal.css";
+import "@/app/styles/portal-book.css";
 
 /** Client portal (CLIENT_PORTAL_GUIDE.md). Light tone, never indexed. */
 export const metadata: Metadata = {
