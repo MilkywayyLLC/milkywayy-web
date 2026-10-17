@@ -1,29 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useReducer, useState, useTransition } from "react";
+import { useReducer, useState, useTransition } from "react";
 import { PropertyOptions } from "@/components/booking/PropertyOptions";
 import { blankProperty, reducer, type Action, type BookingProperty } from "@/lib/booking";
 import { bookShoot, updateBooking } from "@/lib/portal/book-actions";
 import { dateLabel, money } from "@/lib/portal/billing";
 import {
+  cleanVideos,
   DAY_LABEL,
   estimateLines,
-  isRaw,
-  MODE_LABEL,
+  KEY,
+  normalizeServices,
   packageLines,
   packageLineText,
-  rawDay,
+  photosOnly,
   SERVICE_HINT,
   SERVICE_LABEL,
   serviceSummary,
   slotHours,
   SLOTS,
+  VIDEO_LABEL,
   type BookingLocation,
   type BookingService,
   type PropertyConfig,
-  type ShootMode,
   type Slot,
+  type VideoPlan,
 } from "@/lib/portal/booking";
 import type { RequestConfig } from "@/lib/portal/requests";
 import {
@@ -39,7 +41,7 @@ import { Icon } from "./Icon";
 import { DatePicker, TimeWheel } from "./Pickers";
 import { PlacesField } from "./PlacesField";
 
-type Kind = BookingService["service"];
+type Kind = "property" | "videos";
 const toConfig = (p: BookingProperty): PropertyConfig => ({
   type: p.type,
   size: p.size,
@@ -60,7 +62,13 @@ export function PriceBlock({
   total,
 }: {
   cfg: RequestConfig;
-  lines?: { key?: string; label: string; qty: number; amount: number | null }[];
+  lines?: {
+    key?: string;
+    label: string;
+    qty: number;
+    amount: number | null;
+    minimum?: boolean;
+  }[];
   total: number | null;
 }) {
   const p = cfg.price;
@@ -118,15 +126,18 @@ export function PriceBlock({
                 {l.qty > 1 ? ` × ${l.qty}` : ""}
               </span>
               <span className="pt-mono">
-                {l.amount == null ? "Priced on confirmation" : money(p.currency, l.amount)}
+                {l.amount == null
+                  ? "Priced on confirmation"
+                  : `${l.minimum ? "at least " : ""}${money(p.currency, l.amount)}`}
               </span>
             </li>
           ))}
         </ul>
       )}
       <b>
-        Estimated {total ? money(p.currency, total) : "on confirmation"}. The final amount is set
-        after the shoot.
+        {lines?.some((l) => l.minimum)
+          ? `Estimated from ${total ? money(p.currency, total) : "on confirmation"}. Videos are billed per finished video at your rates, or the minimum if that’s higher.`
+          : `Estimated ${total ? money(p.currency, total) : "on confirmation"}. The final amount is set after the shoot.`}
       </b>
     </div>
   );
@@ -160,7 +171,7 @@ function summarize(
             : "Counts toward your package"
           : l.amount == null
             ? "Priced on confirmation"
-            : m(l.amount),
+            : `${l.minimum ? "at least " : ""}${m(l.amount)}`,
   }));
   const total = lines.reduce((n, l) => n + (l.amount ?? 0), 0);
   const extras = (pl ?? []).reduce((n, l) => n + (l.amount ?? 0), 0);
@@ -173,7 +184,7 @@ function summarize(
           : "Included"
         : p.mode === "payg"
           ? total
-            ? m(total)
+            ? `${lines.some((l) => l.minimum) ? "from " : ""}${m(total)}`
             : "On confirmation"
           : p.showAmount && total
             ? `~${m(total)}`
@@ -181,7 +192,7 @@ function summarize(
   return { items, totalText };
 }
 
-/** A property shoot is billed as an extra even on a package (owner, 17 Oct 2026). */
+/** A photo shoot is billed as an extra even on a package (owner, 17 Oct 2026). */
 const asExtraIfProperty = <L extends { key?: string }>(l: L): L =>
   l.key === "shoot" ? { ...l, key: undefined } : l;
 
@@ -242,9 +253,6 @@ function SummaryBar({ items, totalText }: { items: SumItem[]; totalText: string 
   );
 }
 
-const RATE_KEY = { reels: "reel_shoot", long_form: "long_form_shoot" } as const;
-type VideoKind = keyof typeof RATE_KEY;
-
 /** A package inclusion with something left this month (package clients with price access). */
 function inclusion(cfg: RequestConfig, key: string) {
   if (cfg.price.mode !== "package" || !cfg.price.rates) return null;
@@ -254,54 +262,54 @@ function inclusion(cfg: RequestConfig, key: string) {
 const includedText = (i: { qty: number; remaining: number }) =>
   `Included in your package · ${i.remaining} of ${i.qty} left this month`;
 
-/** A shoot type's price on its card, from this client's price list (price access only). */
-function cardPrice(k: Kind, mode: ShootMode, cfg: RequestConfig): string | null {
-  const r = cfg.price.rates;
-  if (!r || mode === "raw") return null;
-  const m = (n: number | null | undefined) =>
-    n == null ? null : money(cfg.price.currency, Number(n));
+const rateText = (cfg: RequestConfig, key: string, per: string) => {
+  const r = cfg.price.rates?.[key];
+  return r == null ? null : `${money(cfg.price.currency, Number(r))} ${per}`;
+};
+
+/** A card's price line, from this client's price list (price access only). */
+function cardPrice(k: Kind, cfg: RequestConfig): string | null {
+  if (!cfg.price.rates) return null;
   if (k === "property") {
     const from = Math.min(
       ...cfg.pricing.apartment.sizes.map((z) => z.photo),
       ...cfg.pricing.villa.sizes.map((z) => z.photo),
     );
-    return Number.isFinite(from) ? `Photos from ${m(from)} · priced by size` : null;
+    return Number.isFinite(from)
+      ? `Photos from ${money(cfg.price.currency, from)} · priced by size`
+      : null;
   }
-  const inc = inclusion(cfg, RATE_KEY[k]);
+  const inc = inclusion(cfg, KEY.short);
   if (inc) return includedText(inc);
-  const per = m(r[RATE_KEY[k]]);
-  return per ? `${per} per ${k === "reels" ? "reel" : "video"}` : null;
+  return rateText(cfg, KEY.short, "per short-form video");
 }
 
-/** Package clients, under the quantity: what's left, and any extras at their own rate. */
-function qtyNote(k: VideoKind, qty: number, cfg: RequestConfig): string | null {
-  const inc = inclusion(cfg, RATE_KEY[k]);
-  if (!inc) return null;
+/** Under a counter: the price, or what's left on a package and any extras at their own rate. */
+function qtyNote(key: string, qty: number, cfg: RequestConfig, per: string): string | null {
+  const inc = inclusion(cfg, key);
+  if (!inc) return rateText(cfg, key, per);
   const extra = Math.max(0, qty - inc.remaining);
   if (!extra) return includedText(inc);
-  const unit = cfg.price.rates?.[RATE_KEY[k]];
+  const unit = cfg.price.rates?.[key];
   const amount = unit == null ? "" : ` (${money(cfg.price.currency, Number(unit) * extra)})`;
   return `${includedText(inc)} · ${extra} extra at your rate${amount}`;
 }
 
-/** Shoot only: the slot rate (half day / full day), or what's left of it on a package. */
-function slotRateText(cfg: RequestConfig): string | null {
+/** By time: what the day costs, by who's looking. */
+function dayNote(v: VideoPlan, cfg: RequestConfig): string | null {
   const r = cfg.price.rates;
   if (!r) return null;
-  const one = (key: "half_day" | "full_day") => {
-    const inc = inclusion(cfg, key);
-    if (inc?.remaining) return `included (${inc.remaining} of ${inc.qty} left)`;
-    return r[key] == null ? "on request" : money(cfg.price.currency, Number(r[key]));
-  };
-  return `One slot rate per booking: half day ${one("half_day")} · full day ${one("full_day")}`;
+  const day = v.day === "full" ? "full" : "half";
+  const m = (key: string) =>
+    r[key] == null ? "on request" : money(cfg.price.currency, Number(r[key]));
+  if (v.raw) return `Raw files only: ${m(KEY.raw[day])} for the ${DAY_LABEL[day].toLowerCase()}.`;
+  if (cfg.price.mode === "package")
+    return "Each finished video draws from your package; anything beyond it is an extra at your rate.";
+  return `Billed per finished video at your rates, at least ${m(KEY.min[day])} for the ${DAY_LABEL[day].toLowerCase()}.`;
 }
 
-const MODE_HINT: Record<ShootMode, string> = {
-  edited: "We film and edit. You get finished photos and videos, ready to post.",
-  raw: "We film, you edit. You get the raw files, for one slot rate per booking.",
-};
-const ORDER: Kind[] = ["property", "reels", "long_form"];
-const QTY0 = { reels: 4, long_form: 2 } as const;
+const ORDER: Kind[] = ["property", "videos"];
+const VIDEO0: VideoPlan = { by: "count", short: 4, long: 0, extra_min: 0, day: "half" };
 
 /** Wizard steps joined by a rail: done = filled with a check, current = outlined, next = muted. */
 function WizardSteps({ steps, at }: { steps: string[]; at: number }) {
@@ -327,18 +335,61 @@ function WizardSteps({ steps, at }: { steps: string[]; at: number }) {
   );
 }
 
+function Stepper({
+  id,
+  label,
+  sub,
+  value,
+  min = 0,
+  max = 100,
+  note,
+  testId,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  sub?: string;
+  value: number;
+  min?: number;
+  max?: number;
+  note?: string | null;
+  testId?: string;
+  onChange: (n: number) => void;
+}) {
+  return (
+    <div className="pt-btype-qty" data-testid={testId}>
+      <span className="pt-field-label" id={id}>
+        {label}
+        {sub && <small className="pt-meta"> · {sub}</small>}
+      </span>
+      <div className="pt-stepper" role="group" aria-labelledby={id}>
+        <button
+          type="button"
+          aria-label={`Fewer: ${label}`}
+          onClick={() => onChange(Math.max(min, value - 1))}
+        >
+          −
+        </button>
+        <output aria-live="polite">{value}</output>
+        <button
+          type="button"
+          aria-label={`More: ${label}`}
+          onClick={() => onChange(Math.min(max, value + 1))}
+        >
+          +
+        </button>
+      </div>
+      {note && <span className="pt-btype-note pt-mono">{note}</span>}
+    </div>
+  );
+}
+
 type Snap = {
   step: 1 | 2 | 3;
-  mode?: ShootMode;
   startTime?: string;
-  kinds?: Kind[];
-  reelsQty?: number;
-  longQty?: number;
-  /** Older drafts: one type and one shared quantity. */
-  kind?: Kind | "";
-  qty?: number;
+  kinds?: string[];
+  video?: VideoPlan;
   prop: PropertyConfig | null;
-  day: "half" | "full" | "";
   date: string;
   slot: Slot | "";
   loc: BookingLocation;
@@ -346,11 +397,12 @@ type Snap = {
 };
 
 /**
- * Book a shoot (owner, 10 Oct 2026), a modal on the current page. 1: the shoot types (any of
- * property, reels and long-form; owner, 17 Oct 2026), each with its own details. 2: date, slot,
- * preferred start time and the Google Maps location. 3: a summary with the estimate from this
- * client's own rates (shown by who's looking), then Confirm: a Requested shoot in Shoots,
- * Milkywayy is emailed and confirms it. Autosaves as a draft.
+ * Book a shoot (owner, 10 Oct 2026; redesigned 18 Oct 2026), a modal on the current page.
+ * 1: "What do you need?": Photos (type, size, Twilight and 360 add-ons) and/or Videos (short-form
+ * and long-form counters; "Not sure how many?" books a half or full day instead, optionally raw
+ * files only). 2: date, slot, preferred start time and the Google Maps location. 3: a summary
+ * with the estimate from this client's own rates (shown by who's looking), then Confirm: a
+ * Requested shoot in Shoots, Milkywayy is emailed and confirms it. Autosaves as a draft.
  */
 export type BookingEdit = {
   projectId: string;
@@ -363,9 +415,6 @@ export type BookingEdit = {
   services: BookingService[];
   note: string;
 };
-
-const qtyOf = (list: BookingService[] | undefined, k: VideoKind) =>
-  list?.find((x) => x.service === k && !isRaw(x))?.qty ?? QTY0[k];
 
 export function BookingModal({
   cfg,
@@ -383,17 +432,12 @@ export function BookingModal({
   edit?: BookingEdit;
 }) {
   const { pricing } = cfg;
-  const s0 = edit?.services ?? [];
-  const raw0 = s0.some(isRaw);
+  // An older booking is read in today's shape (lib/portal/booking normalizeServices).
+  const s0 = normalizeServices(edit?.services ?? []);
+  const v0 = s0.find((x) => x.service === "videos")?.videos;
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [mode, setMode] = useState<ShootMode>(raw0 ? "raw" : "edited");
-  // Property shoots are always shot & edited: an older shoot-only property isn't carried over.
-  const [kinds, setKinds] = useState<Kind[]>(
-    ORDER.filter((k) => s0.some((x) => x.service === k && !(raw0 && k === "property"))),
-  );
-  const [reelsQty, setReelsQty] = useState(qtyOf(s0, "reels"));
-  const [longQty, setLongQty] = useState(qtyOf(s0, "long_form"));
-  const [day, setDay] = useState<"half" | "full" | "">(rawDay(s0) ?? "");
+  const [kinds, setKinds] = useState<Kind[]>(ORDER.filter((k) => s0.some((x) => x.service === k)));
+  const [video, setVideo] = useState<VideoPlan>({ ...VIDEO0, ...v0 });
   const [date, setDate] = useState(edit?.date ?? "");
   const [slot, setSlot] = useState<Slot | "">(edit?.slot ?? "");
   const [startTime, setStartTime] = useState(edit?.startTime ?? "");
@@ -416,47 +460,43 @@ export function BookingModal({
       setTouched(true);
       f(...a);
     };
+  const setV = touch((patch: Partial<VideoPlan>) => setVideo((v) => ({ ...v, ...patch })));
 
   const has = (k: Kind) => kinds.includes(k);
-  const services: BookingService[] = ORDER.filter(has).flatMap((k): BookingService[] => {
-    if (k === "property")
-      return mode === "raw" ? [] : [{ service: "property", mode, property: toConfig(prop) }];
-    return mode === "raw"
-      ? [{ service: k, mode, day: day || "half" }]
-      : [{ service: k, mode, qty: k === "reels" ? reelsQty : longQty }];
-  });
+  const videos = cleanVideos(video);
+  const noVideos = videos.by === "count" && !videos.short && !videos.long;
+  const services: BookingService[] = [
+    ...(has("property")
+      ? [{ service: "property" as const, property: photosOnly(toConfig(prop)) }]
+      : []),
+    ...(has("videos") && !noVideos ? [{ service: "videos" as const, videos }] : []),
+  ];
 
   const snap: Snap = {
     step,
-    mode,
     startTime,
     kinds,
-    reelsQty,
-    longQty,
-    prop: has("property") && mode === "edited" ? toConfig(prop) : null,
-    day,
+    video,
+    prop: has("property") ? toConfig(prop) : null,
     date,
     slot,
     loc,
     note,
   };
-  const restore = useCallback((d: Snap) => {
-    const m = d.mode === "raw" ? "raw" : "edited";
-    const ks = d.kinds ?? (d.kind ? [d.kind] : []);
+  // useDraft keeps it in a ref: no memoization needed.
+  const restore = (d: Snap) => {
     setStep(d.step ?? 1);
-    setMode(m);
     setStartTime(d.startTime ?? "");
-    setKinds(ORDER.filter((k) => ks.includes(k) && !(m === "raw" && k === "property")));
-    setReelsQty(d.reelsQty ?? (d.kind === "reels" && d.qty ? d.qty : QTY0.reels));
-    setLongQty(d.longQty ?? (d.kind === "long_form" && d.qty ? d.qty : QTY0.long_form));
-    setDay(d.day ?? "");
+    // Drafts from before the redesign: only the property carries over.
+    setKinds(ORDER.filter((k) => (d.kinds ?? []).includes(k)));
+    setVideo({ ...VIDEO0, ...(d.video ?? {}) });
     setDate(d.date ?? "");
     setSlot(d.slot ?? "");
     setLoc(d.loc ?? { address: "" });
     setNote(d.note ?? "");
     if (d.prop) dispatchProp({ type: "update", id: 1, patch: { ...d.prop } });
     setTouched(true);
-  }, []);
+  };
   const draft = useDraft("booking", snap as unknown as Record<string, unknown>, {
     touched: touched && !done,
     resume,
@@ -474,15 +514,9 @@ export function BookingModal({
   const form = useFormCheck(() =>
     step === 1
       ? {
-          kind: !services.length && "Choose at least one type of shoot.",
-          property:
-            has("property") &&
-            mode === "edited" &&
-            !prop.photo &&
-            !prop.video &&
-            !prop.tour &&
-            "Choose at least one: photos, videography or 360 tour.",
-          day: mode === "raw" && services.length > 0 && !day && "Choose half day or full day.",
+          kind: !kinds.length && "Choose Photos, Videos or both.",
+          videos:
+            has("videos") && noVideos && "Add at least one video, or choose Not sure how many.",
         }
       : step === 2
         ? {
@@ -506,21 +540,19 @@ export function BookingModal({
     setKinds((ks) =>
       ks.includes(k) ? ks.filter((x) => x !== k) : ORDER.filter((x) => x === k || ks.includes(x)),
     );
-    if (mode === "raw" && !day) setDay(slot === "full_day" ? "full" : "half");
   }
-  function chooseMode(m: ShootMode) {
-    setMode(m);
-    if (m === "raw") {
-      setKinds((ks) => ks.filter((k) => k !== "property"));
-      if (!day) setDay(slot === "full_day" ? "full" : "half");
-    }
+  /** By time, the day is the slot length: a full day books the Full day slot. */
+  function chooseDay(d: "half" | "full") {
+    setV({ day: d });
+    if (d === "full") setSlot("full_day");
+    else if (slot === "full_day") setSlot("");
   }
   function chooseSlot(k: Slot) {
     setSlot(k);
     const [a, b] = slotHours(k);
     if (startTime && (startTime < a || startTime > b)) setStartTime("");
-    // Shoot only: the slot is the shoot length.
-    if (mode === "raw" && services.length) setDay(k === "full_day" ? "full" : "half");
+    if (has("videos") && video.by === "time")
+      setVideo((v) => ({ ...v, day: k === "full_day" ? "full" : "half" }));
   }
   function next() {
     if (!form.check()) return;
@@ -544,12 +576,6 @@ export function BookingModal({
     });
   }
 
-  const taOf = (k: Kind) =>
-    k === "property"
-      ? cfg.turnaround.property_shoot
-      : k === "reels"
-        ? cfg.turnaround.reels
-        : cfg.turnaround.long_form;
   const whatRows = services.map((x) => ({
     key: x.service,
     label: SERVICE_LABEL[x.service],
@@ -599,10 +625,6 @@ export function BookingModal({
               <span>Booking ID</span>
               <b className="pt-mono">{done}</b>
             </li>
-            <li>
-              <span>Delivery</span>
-              <b>{MODE_LABEL[mode]}</b>
-            </li>
             {whatRows.map((w) => (
               <li key={w.key}>
                 <span>{w.label}</span>
@@ -628,76 +650,138 @@ export function BookingModal({
       </Modal>
     );
 
-  const typeBlock = (k: Kind) => {
-    // Turnarounds are for edited work; shoot only is the raw files after the slot.
-    const ta = mode === "edited" ? taOf(k) : "";
-    const head = (
-      <div className="pt-btype-h">
-        <span className="pt-eb">{SERVICE_LABEL[k]}</span>
-        {ta && <span className="pt-meta">Turnaround: {ta}</span>}
-      </div>
-    );
-    if (k === "property")
-      return (
-        <section
-          key={k}
-          className={`pt-btype ${form.errors.property ? "is-bad" : ""}`}
-          data-field="property"
-          aria-label={SERVICE_LABEL[k]}
-          onClickCapture={() => setTouched(true)}
-        >
-          {head}
-          <PropertyOptions
-            p={prop}
-            pricing={pricing}
-            dispatch={dispatchProp}
-            errors={form.errors.property ? { services: form.errors.property } : undefined}
+  const head = (k: Kind, ta: string) => (
+    <div className="pt-btype-h">
+      <span className="pt-eb">{SERVICE_LABEL[k]}</span>
+      {ta && <span className="pt-meta">Turnaround: {ta}</span>}
+    </div>
+  );
+  const photosBlock = (
+    <section
+      key="property"
+      className="pt-btype"
+      data-field="property"
+      aria-label={SERVICE_LABEL.property}
+      onClickCapture={() => setTouched(true)}
+    >
+      {/* Delivery shows on the photography line and each add-on. */}
+      {head("property", "")}
+      <PropertyOptions p={prop} pricing={pricing} dispatch={dispatchProp} />
+    </section>
+  );
+  const day = video.day === "full" ? "full" : "half";
+  const videosBlock = (
+    <section
+      key="videos"
+      className={`pt-btype ${form.errors.videos ? "is-bad" : ""}`}
+      data-field="videos"
+      aria-label={SERVICE_LABEL.videos}
+      data-testid="videos-card"
+    >
+      {head(
+        "videos",
+        video.by === "time" && video.raw
+          ? ""
+          : [
+              cfg.turnaround.reels && `short-form ${cfg.turnaround.reels}`,
+              cfg.turnaround.long_form && `long-form ${cfg.turnaround.long_form}`,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+      )}
+      {video.by === "count" ? (
+        <>
+          <Stepper
+            id="qty-short"
+            label={VIDEO_LABEL.short.title}
+            sub={VIDEO_LABEL.short.sub}
+            value={video.short ?? 0}
+            testId="qty-short"
+            note={qtyNote(KEY.short, video.short ?? 0, cfg, "each")}
+            onChange={(n) => setV({ short: n })}
           />
-        </section>
-      );
-    const qty = k === "reels" ? reelsQty : longQty;
-    const setQty = k === "reels" ? setReelsQty : setLongQty;
-    const note = qtyNote(k, qty, cfg);
-    return (
-      <section key={k} className="pt-btype" aria-label={SERVICE_LABEL[k]}>
-        {head}
-        {mode === "edited" ? (
-          <div className="pt-btype-qty">
-            <span className="pt-field-label" id={`qty-${k}`}>
-              {k === "reels" ? "Number of reels" : "Number of videos"}
+          <Stepper
+            id="qty-long"
+            label={VIDEO_LABEL.long.title}
+            sub={VIDEO_LABEL.long.sub}
+            value={video.long ?? 0}
+            testId="qty-long"
+            note={qtyNote(KEY.long, video.long ?? 0, cfg, "each")}
+            onChange={(n) => setV({ long: n })}
+          />
+          {(video.long ?? 0) > 0 && (
+            <Stepper
+              id="qty-extra"
+              label="Extra minutes"
+              sub="Longer than 5 min? All long-form together"
+              value={video.extra_min ?? 0}
+              max={600}
+              testId="qty-extra"
+              note={rateText(cfg, KEY.extra, "per extra minute")}
+              onChange={(n) => setV({ extra_min: n })}
+            />
+          )}
+          {form.errors.videos && (
+            <span className="pt-field-msg" role="alert">
+              {form.errors.videos}
             </span>
-            <div className="pt-stepper" role="group" aria-labelledby={`qty-${k}`}>
-              <button
-                type="button"
-                aria-label="Fewer"
-                onClick={touch(() => setQty((n) => Math.max(1, n - 1)))}
-              >
-                −
-              </button>
-              <output aria-live="polite">{qty}</output>
-              <button
-                type="button"
-                aria-label="More"
-                onClick={touch(() => setQty((n) => Math.min(100, n + 1)))}
-              >
-                +
-              </button>
+          )}
+          <button
+            type="button"
+            className="pt-link-btn pt-meta"
+            data-testid="by-time"
+            onClick={() => {
+              setV({ by: "time", day: slot === "full_day" ? "full" : "half" });
+            }}
+          >
+            Not sure how many? Book a half or full day instead
+          </button>
+        </>
+      ) : (
+        <>
+          <Field name="day" label="How long" required group>
+            <div className="pt-seg pt-seg-full" role="group" aria-label="How long">
+              {(["half", "full"] as const).map((d) => (
+                <button key={d} type="button" aria-pressed={day === d} onClick={() => chooseDay(d)}>
+                  {DAY_LABEL[d]}
+                </button>
+              ))}
             </div>
-            {note && (
-              <span className="pt-btype-note pt-mono" data-testid={`pkg-${k}`}>
-                {note}
-              </span>
-            )}
-          </div>
-        ) : (
-          <p className="pt-meta" style={{ margin: 0 }}>
-            {SERVICE_HINT[k]}. We film it in your slot and send the raw files; say how many in the
-            notes on the next step.
-          </p>
-        )}
-      </section>
-    );
-  };
+          </Field>
+          <label className="pt-field">
+            Roughly how many? (optional)
+            <input
+              value={video.approx ?? ""}
+              maxLength={300}
+              placeholder="About 4 reels and a walkthrough"
+              onChange={(e) => setV({ approx: e.target.value })}
+            />
+          </label>
+          <label className="pt-check">
+            <input
+              type="checkbox"
+              checked={!!video.raw}
+              data-testid="raw-only"
+              onChange={(e) => setV({ raw: e.target.checked })}
+            />
+            Raw files only (no editing)
+          </label>
+          {dayNote(video, cfg) && (
+            <span className="pt-btype-note pt-mono" data-testid="day-note">
+              {dayNote(video, cfg)}
+            </span>
+          )}
+          <button
+            type="button"
+            className="pt-link-btn pt-meta"
+            onClick={() => setV({ by: "count", raw: false })}
+          >
+            Know how many? Count the videos instead
+          </button>
+        </>
+      )}
+    </section>
+  );
 
   return (
     <Modal
@@ -764,40 +848,27 @@ export function BookingModal({
           onContinue={draft.continueOffer}
           onFresh={draft.startFresh}
         />
-        <WizardSteps steps={["Shoot type", "When and where", "Summary"]} at={step} />
+        <WizardSteps steps={["What you need", "When and where", "Summary"]} at={step} />
         <FormBanner text={form.banner} />
 
         {step === 1 && (
           <div className="pt-book1">
             <div className="pt-book1-main">
-              <div className="pt-modeseg">
-                <div className="pt-seg pt-seg-full" role="group" aria-label="What we deliver">
-                  {(["edited", "raw"] as const).map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      aria-pressed={mode === m}
-                      onClick={touch(() => chooseMode(m))}
-                    >
-                      {MODE_LABEL[m]}
-                    </button>
-                  ))}
-                </div>
-                <p className="pt-modeseg-desc" aria-live="polite">
-                  {MODE_HINT[mode]}
-                </p>
-              </div>
               <Field
                 name="kind"
-                label="Type of shoot"
+                label="What do you need?"
                 required
                 group
-                hint="Choose one or more."
+                hint="Choose one or both."
                 error={form.errors.kind}
               >
-                <div className="pt-choice pt-choice-multi" role="group" aria-label="Type of shoot">
-                  {ORDER.filter((k) => mode === "edited" || k !== "property").map((k) => {
-                    const price = cardPrice(k, mode, cfg);
+                <div
+                  className="pt-choice pt-choice-multi"
+                  role="group"
+                  aria-label="What do you need?"
+                >
+                  {ORDER.map((k) => {
+                    const price = cardPrice(k, cfg);
                     return (
                       <button
                         key={k}
@@ -816,36 +887,8 @@ export function BookingModal({
                   })}
                 </div>
               </Field>
-              {mode === "raw" && (
-                <p className="pt-meta" style={{ margin: 0 }}>
-                  Property shoots are always shot and edited: switch to {MODE_LABEL.edited} to add
-                  one.
-                </p>
-              )}
-              {ORDER.filter(has).map(typeBlock)}
-              {mode === "raw" && services.length > 0 && (
-                <Field name="day" label="Shoot length" required group error={form.errors.day}>
-                  <div className="pt-seg pt-seg-full" role="group" aria-label="Shoot length">
-                    {(["half", "full"] as const).map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        aria-pressed={day === d}
-                        onClick={touch(() => {
-                          setDay(d);
-                          if (d === "full") setSlot("full_day");
-                          else if (slot === "full_day") setSlot("");
-                        })}
-                      >
-                        {DAY_LABEL[d]}
-                      </button>
-                    ))}
-                  </div>
-                  {slotRateText(cfg) && (
-                    <span className="pt-btype-note pt-mono">{slotRateText(cfg)}</span>
-                  )}
-                </Field>
-              )}
+              {has("property") && photosBlock}
+              {has("videos") && videosBlock}
             </div>
           </div>
         )}
@@ -920,11 +963,7 @@ export function BookingModal({
                 rows={2}
                 maxLength={2000}
                 value={note}
-                placeholder={
-                  mode === "raw"
-                    ? "Roughly how many reels or videos, style, people on camera…"
-                    : "Style, people on camera, rooms to focus on…"
-                }
+                placeholder="Style, people on camera, rooms to focus on…"
                 onChange={touch((e: React.ChangeEvent<HTMLTextAreaElement>) =>
                   setNote(e.target.value),
                 )}
@@ -936,10 +975,6 @@ export function BookingModal({
         {step === 3 && services.length > 0 && (
           <>
             <ul className="pt-summary" aria-label="Summary">
-              <li>
-                <span>Delivery</span>
-                <b>{MODE_LABEL[mode]}</b>
-              </li>
               {whatRows.map((w) => (
                 <li key={w.key}>
                   <span>{w.label}</span>

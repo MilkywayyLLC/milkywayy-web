@@ -59,7 +59,7 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
     {
       icon: "shoots",
       title: "Pick your shoot",
-      text: "Sign in, press Book media, choose property type, size and services.",
+      text: "Sign in, press Book media, then pick Photos (by property size), Videos (one price each) or both.",
       screen: "book-property",
     },
     {

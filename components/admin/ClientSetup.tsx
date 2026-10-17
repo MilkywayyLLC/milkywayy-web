@@ -117,15 +117,17 @@ export function ServicesBlock({ account, s }: { account: string; s: ClientSetupD
 /* ---------------- price list ---------------- */
 
 const GROUPS = [
-  ["property", "Property shoot · shot & edited"],
-  ["production", "Shoots"],
+  ["property", "Photos · by property size"],
+  ["production", "Videos"],
   ["post", "Editing"],
   ["avatars", "AI avatars"],
 ] as const;
 
-/** Retired rows (owner, 17 Oct 2026): hidden, never dropped. Property shoots are always shot &
- *  edited, so "Property shoot, shoot only" is gone; anything already logged keeps its price. */
-const RETIRED = new Set(["prop_raw"]);
+/** Retired rows: hidden, never dropped; anything already logged keeps its price. The shoot-only
+ *  property (17 Oct 2026), and videography by size, the old shoot day and avatar video items
+ *  (booking redesign, 18 Oct 2026: videos are one price per video). The database hides them too
+ *  (rate_card.grp null); this keeps them off if an environment hasn't migrated yet. */
+const RETIRED = new Set(["prop_raw", "prop_short", "prop_long", "shoot_day", "avatar_video"]);
 /** A price group whose service is off collapses to one muted line (stored prices stay). */
 const GROUP_SERVICE: Partial<
   Record<(typeof GROUPS)[number][0], keyof ClientSetupData["services"]>
@@ -142,8 +144,7 @@ function siteDefault(
     const z = t.sizes[Number(m[2])];
     return z ? { label: `Photos · ${t.label} ${z.label}`, text: `AED ${z.photo}` } : null;
   }
-  if (["prop_short", "prop_long", "prop_tour", "prop_twilight"].includes(key))
-    return { text: "Website list (by size)" };
+  if (["prop_tour", "prop_twilight"].includes(key)) return { text: "Website list (by size)" };
   return null;
 }
 

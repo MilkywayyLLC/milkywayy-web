@@ -6,6 +6,8 @@ import { money } from "@/lib/portal/billing";
 import {
   DELIVERABLE_STATUS,
   deliverablesFrom,
+  isMinimumKey,
+  minimumTopUp,
   type Deliverable,
   type DeliverableDraft,
   type LogLine,
@@ -33,7 +35,9 @@ export type RateOption = { key: string; label: string; unit: string; amount: num
  * "Log what we shot" (owner, 10 Oct 2026): prefilled from what the client asked for; change
  * quantities, add items that weren't requested, remove items. Prices fill in from the client's
  * rates (property shoots from the price list); a manual price needs a reason. Saving creates the
- * items behind the client's activity, statements and invoice drafts. No email.
+ * items behind the client's activity, statements and invoice drafts. No email. A flexible booking
+ * ("Not sure how many?") carries a day minimum: the finished videos at the client's rates, or the
+ * minimum if that's higher (a top-up item makes up the difference; none on a monthly package).
  */
 export function ShootLog({
   project,
@@ -43,6 +47,7 @@ export function ShootLog({
   logged,
   hasDeliverables,
   locked,
+  onPackage = false,
 }: {
   project: string;
   currency: string;
@@ -51,6 +56,8 @@ export function ShootLog({
   logged: boolean;
   hasDeliverables: boolean;
   locked: boolean;
+  /** Monthly package: inclusions apply, never a day minimum. */
+  onPackage?: boolean;
 }) {
   const router = useRouter();
   const [lines, setLines] = useState<LogLine[]>(initial);
@@ -59,17 +66,42 @@ export function ShootLog({
   const rateOf = (key: string) => rates.find((x) => x.key === key)?.amount ?? null;
   const priceOf = (l: LogLine) =>
     l.basis === "client_rate" ? rateOf(l.key) : l.unit_price != null ? Number(l.unit_price) : null;
-  const total = lines.reduce((t, l) => t + (priceOf(l) ?? 0) * l.qty, 0);
+  const items = lines.filter((l) => !l.minimum);
+  const min = lines.find((l) => l.minimum);
+  const topUp = min
+    ? minimumTopUp(
+        items.map((l) => ({ key: l.key, qty: l.qty, unit: priceOf(l) })),
+        rateOf(min.key),
+        onPackage,
+      )
+    : 0;
+  const total = items.reduce((t, l) => t + (priceOf(l) ?? 0) * l.qty, 0) + topUp;
   const set = (i: number, patch: Partial<LogLine>) =>
-    setLines((ls) => ls.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+    setLines((ls) =>
+      ls.map((x, j) =>
+        j === i
+          ? {
+              ...x,
+              ...patch,
+              // Choosing a minimum makes the line one (and a service makes it an item again).
+              ...(patch.key ? { minimum: isMinimumKey(patch.key) || undefined } : {}),
+              ...(patch.key && isMinimumKey(patch.key)
+                ? { qty: 1, basis: "client_rate" as const }
+                : {}),
+            }
+          : x,
+      ),
+    );
   const preview = hasDeliverables ? [] : deliverablesFrom(lines);
   // Property parts are priced through the property line (the client's price list), not alone.
   // "Property shoot, shoot only" is retired (17 Oct 2026): only an older line still shows it.
+  // Retired items (videography by size, shoot only, the old day) show only on an older line.
+  const RETIRED = ["prop_raw", "prop_short", "prop_long", "shoot_day", "avatar_video"];
   const options = rates.filter(
     (x) =>
       x.key !== "shoot" &&
-      !/^prop_(photo_|short|long|tour|twilight)/.test(x.key) &&
-      (x.key !== "prop_raw" || lines.some((l) => l.key === "prop_raw")),
+      !/^prop_(photo_|tour|twilight)/.test(x.key) &&
+      (!RETIRED.includes(x.key) || lines.some((l) => l.key === x.key)),
   );
 
   return (
@@ -82,7 +114,9 @@ export function ShootLog({
       </div>
       <p className="ad-small ad-muted" style={{ margin: 0 }}>
         On a monthly package, items within what’s left of this month’s inclusions are saved as
-        Included (AED 0); the rest are Extras at the client’s price.
+        Included (AED 0); the rest are Extras at the client’s price. For a flexible booking add a
+        day minimum: the videos at the client’s rates, or the minimum if that’s higher (never on a
+        package).
       </p>
       {locked && (
         <p className="ad-note" style={{ margin: 0 }}>
@@ -96,7 +130,7 @@ export function ShootLog({
             <div className="ad-log-row" role="row" key={i} data-testid="log-line">
               {l.key === "property" ? (
                 <span className="ad-small" role="cell">
-                  Property shoot (price list)
+                  Photo shoot (price list)
                 </span>
               ) : (
                 <select
@@ -119,15 +153,31 @@ export function ShootLog({
                 disabled={locked}
                 onChange={(e) => set(i, { description: e.target.value })}
               />
-              <input
-                aria-label={`Item ${i + 1}: quantity`}
-                type="number"
-                min={1}
-                value={l.qty}
-                disabled={locked}
-                onChange={(e) => set(i, { qty: Number(e.target.value) })}
-              />
-              {l.basis === "override" ? (
+              {l.minimum ? (
+                <span className="ad-small" role="cell">
+                  1
+                </span>
+              ) : (
+                <input
+                  aria-label={`Item ${i + 1}: quantity`}
+                  type="number"
+                  min={1}
+                  value={l.qty}
+                  disabled={locked}
+                  onChange={(e) => set(i, { qty: Number(e.target.value) })}
+                />
+              )}
+              {l.minimum ? (
+                <span className="ad-mono ad-small" role="cell" data-testid="log-minimum">
+                  {onPackage
+                    ? "No minimum on a package"
+                    : price == null
+                      ? "no rate yet"
+                      : topUp > 0
+                        ? `at least ${money(currency, price)} · top-up ${money(currency, topUp)}`
+                        : `at least ${money(currency, price)} · covered`}
+                </span>
+              ) : l.basis === "override" ? (
                 <input
                   aria-label={`Item ${i + 1}: price`}
                   inputMode="decimal"
@@ -144,7 +194,7 @@ export function ShootLog({
                   {price != null ? money(currency, price) : "no rate yet"}
                 </span>
               )}
-              <label className="ad-check ad-small">
+              <label className="ad-check ad-small" hidden={l.minimum}>
                 <input
                   type="checkbox"
                   checked={l.basis === "override"}

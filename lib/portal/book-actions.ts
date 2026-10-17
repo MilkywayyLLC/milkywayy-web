@@ -6,10 +6,11 @@ import { getPropertyPricing } from "@/lib/data";
 import { can } from "./access";
 import { requireAccount } from "./auth";
 import {
+  cleanVideos,
   clientPricing,
-  DAY_LABEL,
   estimate,
-  isRaw,
+  normalizeServices,
+  photosOnly,
   SERVICE_LABEL,
   serviceSummary,
   SLOTS,
@@ -50,15 +51,31 @@ const why = (m: string) =>
                     ? "That’s a lot at once. WhatsApp us and we’ll sort it out."
                     : "Couldn’t send the booking. Try again.";
 
-/** What the database stores for a service: shot & edited by quantity, shoot only by day. */
-function cleanService(s: BookingService): BookingService {
-  const mode = s.mode === "raw" ? "raw" : "edited";
+/** What the database stores: Photos (photos-only config) and Videos (counts, or a day). */
+function cleanService(s: BookingService): BookingService | null {
   if (s.service === "property")
-    return { service: "property", mode, ...(s.property ? { property: s.property } : {}) };
-  return mode === "raw"
-    ? { service: s.service, mode, day: s.day === "full" ? "full" : "half" }
-    : { service: s.service, mode, qty: Math.round(s.qty ?? 1) };
+    return s.property ? { service: "property", property: photosOnly(s.property) } : null;
+  if (s.service === "videos" && s.videos) {
+    const videos = cleanVideos(s.videos);
+    if (videos.by === "count" && !videos.short && !videos.long) return null;
+    return { service: "videos", videos };
+  }
+  return null;
 }
+/** Today's shape only (an older booking is converted before it's edited), notes and links kept. */
+const cleanServices = (list: BookingService[]) =>
+  normalizeServices(list).flatMap((s) => {
+    const c = cleanService(s);
+    return c
+      ? [
+          {
+            ...c,
+            ...(s.notes?.trim() ? { notes: s.notes.trim() } : {}),
+            ...(s.links?.length ? { links: s.links.map((l) => l.trim()).filter(Boolean) } : {}),
+          },
+        ]
+      : [];
+  });
 const startTime = (t?: string) => (t && /^([01]\d|2[0-3]):[0-5]\d$/.test(t) ? t : null);
 
 export async function bookShoot(b: {
@@ -81,16 +98,12 @@ export async function bookShoot(b: {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return { ok: false, error: "Choose a date." };
   if (!SLOTS.some(([k]) => k === b.slot)) return { ok: false, error: "Choose a time slot." };
   if (!b.location.address?.trim()) return { ok: false, error: "Add the location." };
-  if (!b.services.length) return { ok: false, error: "Add at least one service." };
+  const services = cleanServices(b.services);
+  if (!services.length) return { ok: false, error: "Add at least one service." };
   const pricing = await getPropertyPricing();
   const { data: opts } = await db.rpc("my_booking_options", { p_account: current.account.id });
   const rates = (opts as { rates: Rates | null } | null)?.rates ?? null;
-  const est = rates ? estimate(b.services, rates, clientPricing(pricing, rates)) : null;
-  const services = b.services.map((s) => ({
-    ...cleanService(s),
-    ...(s.notes?.trim() ? { notes: s.notes.trim() } : {}),
-    ...(s.links?.length ? { links: s.links.map((l) => l.trim()).filter(Boolean) } : {}),
-  }));
+  const est = rates ? estimate(services, rates, clientPricing(pricing, rates)) : null;
   const loc: BookingLocation = {
     address: b.location.address.trim(),
     ...(b.location.lat != null && b.location.lng != null
@@ -134,10 +147,7 @@ export async function bookShoot(b: {
     [
       `${current.account.name} asked for a shoot on ${b.date} (${slot}).`,
       `Where: ${loc.address}${loc.unit ? ` · ${loc.unit}` : ""}`,
-      ...b.services.map(
-        (s) =>
-          `${SERVICE_LABEL[s.service]}: ${serviceSummary(s, pricing)}${s.day && !isRaw(s) ? ` (${DAY_LABEL[s.day]})` : ""}`,
-      ),
+      ...services.map((s) => `${SERVICE_LABEL[s.service]}: ${serviceSummary(s, pricing)}`),
       ...(est != null
         ? [`Estimate at their rates: ${current.account.currency} ${est.toLocaleString("en-US")}`]
         : []),
@@ -167,7 +177,8 @@ export async function updateBooking(projectId: string, b: BookingInput): Promise
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return { ok: false, error: "Choose a date." };
   if (!SLOTS.some(([k]) => k === b.slot)) return { ok: false, error: "Choose a time slot." };
   if (!b.location.address?.trim()) return { ok: false, error: "Add the location." };
-  if (!b.services.length) return { ok: false, error: "Add at least one service." };
+  const services = cleanServices(b.services);
+  if (!services.length) return { ok: false, error: "Add at least one service." };
   const { data: before } = await db
     .from("projects")
     .select("ref, title, shoot_date, slot, meta")
@@ -177,8 +188,7 @@ export async function updateBooking(projectId: string, b: BookingInput): Promise
   const pricing = await getPropertyPricing();
   const { data: opts } = await db.rpc("my_booking_options", { p_account: current.account.id });
   const rates = (opts as { rates: Rates | null } | null)?.rates ?? null;
-  const est = rates ? estimate(b.services, rates, clientPricing(pricing, rates)) : null;
-  const services = b.services.map(cleanService);
+  const est = rates ? estimate(services, rates, clientPricing(pricing, rates)) : null;
   const loc: BookingLocation = {
     address: b.location.address.trim(),
     ...(b.location.lat != null && b.location.lng != null
@@ -217,7 +227,7 @@ export async function updateBooking(projectId: string, b: BookingInput): Promise
     }
   ).booking;
   const svc = (list: BookingService[] | undefined) =>
-    (list ?? [])
+    normalizeServices(list ?? [])
       .map((s) => `${SERVICE_LABEL[s.service]}: ${serviceSummary(s, pricing)}`)
       .join("; ");
   const changes = [
@@ -232,8 +242,8 @@ export async function updateBooking(projectId: string, b: BookingInput): Promise
     (old?.location?.access ?? "") !== (loc.access ?? "")
       ? `Access notes: ${loc.access ?? "—"}`
       : "",
-    svc(old?.services) !== svc(services as BookingService[])
-      ? `Services: ${svc(old?.services) || "—"} → ${svc(services as BookingService[])}`
+    svc(old?.services) !== svc(services)
+      ? `Services: ${svc(old?.services) || "—"} → ${svc(services)}`
       : "",
     (old?.note ?? "") !== (b.note?.trim() ?? "") ? `Notes: ${b.note?.trim() || "—"}` : "",
   ].filter(Boolean);

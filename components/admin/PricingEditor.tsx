@@ -10,7 +10,7 @@ import {
   type Result,
 } from "@/lib/admin/actions";
 import { getPath, setPath, type Change } from "@/lib/admin/fields";
-import { COM_COLUMNS, QTYS, RES_COLUMNS } from "@/lib/admin/pricing";
+import { COM_SHOWN, QTYS, RES_SHOWN } from "@/lib/admin/pricing";
 import { Confirm } from "./Confirm";
 
 type Tab = "apartment" | "villa" | "commercial" | "twilight";
@@ -222,7 +222,7 @@ export function PricingEditor({
             <thead>
               <tr>
                 <th>Size</th>
-                {RES_COLUMNS.map((c) => (
+                {RES_SHOWN.map((c) => (
                   <th key={c.key}>{c.label}</th>
                 ))}
                 <th>First</th>
@@ -239,7 +239,7 @@ export function PricingEditor({
                     width={96}
                     onChange={(v) => set(`${type}.sizes.${i}.label`, v)}
                   />
-                  {RES_COLUMNS.map((c) => (
+                  {RES_SHOWN.map((c) => (
                     <Price
                       key={c.key}
                       value={getPath(s, c.key) as number}
@@ -303,7 +303,8 @@ export function PricingEditor({
       short: 0,
       long: null,
       tour: null,
-      includes: { photos: "", reel: "", walkthrough: null, tourHotspots: null },
+      // Reels aren't part of a tier any more; the stored field just needs a value.
+      includes: { photos: "", reel: "—", walkthrough: null, tourHotspots: null },
     };
     return (
       <>
@@ -312,13 +313,11 @@ export function PricingEditor({
             <thead>
               <tr>
                 <th>Tier</th>
-                {COM_COLUMNS.map((c) => (
+                {COM_SHOWN.map((c) => (
                   <th key={c.key}>{c.label}</th>
                 ))}
                 <th>Description</th>
                 <th>Photos</th>
-                <th>Reel</th>
-                <th>Walkthrough</th>
                 <th>360 hotspots</th>
                 <th>Popular</th>
                 <th>First</th>
@@ -335,13 +334,13 @@ export function PricingEditor({
                     width={100}
                     onChange={(v) => t(i, "label", v)}
                   />
-                  {COM_COLUMNS.map((c) => (
+                  {COM_SHOWN.map((c) => (
                     <Price
                       key={c.key}
                       value={tier[c.key]}
                       base={base[i]?.[c.key]}
                       label={`Commercial ${tier.label} ${c.label}`}
-                      nullable={c.key === "long" || c.key === "tour"}
+                      nullable={c.key === "tour"}
                       onChange={(v) => t(i, c.key, v)}
                     />
                   ))}
@@ -358,21 +357,6 @@ export function PricingEditor({
                     label={`${tier.label} photos`}
                     width={100}
                     onChange={(v) => t(i, "includes.photos", v)}
-                  />
-                  <Text
-                    value={tier.includes.reel}
-                    base={base[i]?.includes.reel}
-                    label={`${tier.label} reel`}
-                    width={100}
-                    onChange={(v) => t(i, "includes.reel", v)}
-                  />
-                  <Text
-                    value={tier.includes.walkthrough}
-                    base={base[i]?.includes.walkthrough}
-                    label={`${tier.label} walkthrough`}
-                    nullable
-                    width={110}
-                    onChange={(v) => t(i, "includes.walkthrough", v)}
                   />
                   <Text
                     value={tier.includes.tourHotspots}

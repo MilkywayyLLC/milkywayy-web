@@ -22,6 +22,14 @@ export const COM_COLUMNS = [
   { key: "tour", label: "360 tour" },
 ] as const;
 export const QTYS: TwilightQty[] = [5, 10, 20];
+/**
+ * What the editor shows (site-refine, 18 Oct 2026): photos and 360 tour only. Videos are one
+ * price per video on the rate card, so videography by size and the long-form lighting prices
+ * are no longer edited here. They're still stored (and saved unchanged), so nothing is lost and
+ * older bookings still price.
+ */
+export const RES_SHOWN = RES_COLUMNS.filter((c) => c.key === "photo" || c.key === "tour");
+export const COM_SHOWN = COM_COLUMNS.filter((c) => c.key === "photo" || c.key === "tour");
 
 const resPrice = (s: ResidentialSize, key: string): number =>
   key.startsWith("long.")

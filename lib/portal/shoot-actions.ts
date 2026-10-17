@@ -35,6 +35,8 @@ export async function logShoot(
   deliverables: DeliverableDraft[],
 ): Promise<ShootResult> {
   if (!lines.length) return { ok: false, error: "Add at least one item." };
+  if (lines.filter((l) => l.minimum).length > 1)
+    return { ok: false, error: "One day minimum per shoot." };
   for (const l of lines) {
     if (!l.description.trim()) return { ok: false, error: "Every item needs a description." };
     if (!(l.qty > 0)) return { ok: false, error: "Quantities must be above 0." };
@@ -55,7 +57,7 @@ export async function logShoot(
             : undefined;
         return {
           key: l.key,
-          kind: l.kind ?? (l.key === "property" ? "shoot" : l.key),
+          kind: l.minimum ? "day_minimum" : (l.kind ?? (l.key === "property" ? "shoot" : l.key)),
           description: l.description.trim(),
           qty: l.qty,
           basis: l.basis,
@@ -63,6 +65,8 @@ export async function logShoot(
           unit_price: l.basis === "price_list" ? (listed ?? l.unit_price) : l.unit_price,
           list_price: l.basis === "override" ? (listed ?? l.list_price) : undefined,
           reason: l.basis === "override" ? l.reason?.trim() : undefined,
+          // Flexible bookings: the database adds the top-up (none on a package).
+          minimum: l.minimum || undefined,
         };
       }),
       p_deliverables: deliverables,

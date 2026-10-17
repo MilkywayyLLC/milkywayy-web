@@ -31,7 +31,12 @@ import { requestConfig } from "@/lib/portal/requests";
 import type { Slot } from "@/lib/portal/booking";
 import { ShootDeliveries, type DFile } from "@/components/portal/ShootDeliveries";
 import { downloadUrl, presign, r2Ready } from "@/lib/r2";
-import { SERVICE_LABEL, type Deliverable } from "@/lib/portal/booking";
+import {
+  normalizeServices,
+  SERVICE_LABEL,
+  serviceShort,
+  type Deliverable,
+} from "@/lib/portal/booking";
 
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
 export const metadata = { title: "Shoot" };
@@ -187,7 +192,7 @@ export default async function ShootPage({
           confirmed.
         </p>
       )}
-      {(agentName || p.shared_with?.length) && (
+      {!!(agentName || p.shared_with?.length) && (
         <p className="pt-meta" data-testid="shoot-people" style={{ margin: 0 }}>
           {[agentName && `Agent: ${agentName}`, sharedLabel(p.shared_with?.length)]
             .filter(Boolean)
@@ -250,13 +255,11 @@ export default async function ShootPage({
                 [
                   "Services",
                   booking
-                    ? booking.services
+                    ? normalizeServices(booking.services)
                         .map((s) =>
-                          s.service === "property"
-                            ? SERVICE_LABEL.property
-                            : `${SERVICE_LABEL[s.service]} (${s.qty ?? 1})`,
+                          [SERVICE_LABEL[s.service], serviceShort(s)].filter(Boolean).join(": "),
                         )
-                        .join(", ")
+                        .join(" · ")
                     : (p.meta.services ?? []).map((s) => SHOOT_SERVICE_LABEL[s] ?? s).join(", "),
                 ],
                 ["When", when || "To be confirmed"],

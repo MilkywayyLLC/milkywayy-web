@@ -17,7 +17,12 @@ import { BrandLogo } from "@/components/layout/Logo";
 import { Icon } from "@/components/portal/Icon";
 import type { PropertyPricing } from "@/content/types";
 import { blankProperty, reducer, type Action, type BookingProperty } from "@/lib/booking";
-import { AVATAR_FORMATS, SERVICE_HINT, SERVICE_LABEL } from "@/lib/portal/booking-labels";
+import {
+  AVATAR_FORMATS,
+  SERVICE_HINT,
+  SERVICE_LABEL,
+  VIDEO_LABEL,
+} from "@/lib/portal/booking-labels";
 import { EDIT_KINDS } from "@/lib/portal/projects";
 
 /**
@@ -509,7 +514,7 @@ function BookMedia() {
 function BookSteps({ step }: { step: 1 | 2 | 3 }) {
   return (
     <ol className="pt-wiz" aria-label="Steps">
-      {["Shoot type", "When and where", "Summary"].map((label, i) => {
+      {["What you need", "When and where", "Summary"].map((label, i) => {
         const n = i + 1;
         const state = n < step ? "done" : n === step ? "current" : "next";
         return (
@@ -550,12 +555,16 @@ function BookFoot({ next = "Next", summary }: { next?: string; summary?: string 
   );
 }
 
-function ShootType() {
+/** "What do you need?": Photos and Videos, both picked (the portal's step 1). */
+function WhatYouNeed() {
   return (
-    <Field label="Type of shoot">
-      <div className="pt-choice">
-        {(["property", "reels", "long_form"] as const).map((k) => (
-          <button key={k} type="button" aria-pressed={k === "property"}>
+    <Field label="What do you need?">
+      <div className="pt-choice pt-choice-multi">
+        {(["property", "videos"] as const).map((k) => (
+          <button key={k} type="button" aria-pressed>
+            <span className="pt-choice-tick" aria-hidden="true">
+              <Icon name="check" size={14} />
+            </span>
             {SERVICE_LABEL[k]}
             <small>{SERVICE_HINT[k]}</small>
           </button>
@@ -565,15 +574,44 @@ function ShootType() {
   );
 }
 
-/** Step 1: the portal's own property builder (type, size, services). */
+/** The Videos card: short-form and long-form counters, one price per video. */
+function VideosCard() {
+  const row = (k: keyof typeof VIDEO_LABEL, n: number) => (
+    <div className="pt-btype-qty">
+      <span className="pt-field-label">
+        {VIDEO_LABEL[k].title}
+        <small className="pt-meta"> · {VIDEO_LABEL[k].sub}</small>
+      </span>
+      <div className="pt-stepper">
+        <span aria-hidden="true">−</span>
+        <output>{n}</output>
+        <span aria-hidden="true">+</span>
+      </div>
+    </div>
+  );
+  return (
+    <section className="pt-btype" aria-label={SERVICE_LABEL.videos}>
+      <div className="pt-btype-h">
+        <span className="pt-eb">{SERVICE_LABEL.videos}</span>
+      </div>
+      {row("short", 2)}
+      {row("long", 1)}
+      <span className="pt-meta">Not sure how many? Book a half or full day instead</span>
+    </section>
+  );
+}
+
+/** Step 1: "What do you need?", the portal's own Photos card and the Videos counters. */
 function BookProperty({ pricing }: { pricing?: PropertyPricing }) {
   return (
     <Portal
       modal={
-        <Modal title="Book a shoot" footer={<BookFoot summary="2 items" />}>
+        <Modal title="Book a shoot" footer={<BookFoot summary="3 items" />}>
           <div className="pt-form">
             <BookSteps step={1} />
-            {pricing ? <RealOptions pricing={pricing} /> : <ShootType />}
+            <WhatYouNeed />
+            {pricing && <RealOptions pricing={pricing} />}
+            <VideosCard />
           </div>
         </Modal>
       }
@@ -583,13 +621,13 @@ function BookProperty({ pricing }: { pricing?: PropertyPricing }) {
   );
 }
 
-/** Photography and a short-form video picked. */
+/** The Photos card as the portal shows it (photos priced by size; videos are booked per video). */
 function RealOptions({ pricing }: { pricing: PropertyPricing }) {
   const [p, dispatch] = useReducer(
     (s: BookingProperty, a: Action) =>
       reducer(pricing)({ properties: [s], nextId: 2 }, a).properties[0],
     blankProperty(1, pricing, "", ""),
-    (s) => ({ ...s, video: true, short: true }),
+    (s) => s,
   );
   return (
     <div className="pt-book-prop">
@@ -602,7 +640,7 @@ function BookWhere() {
   return (
     <Portal
       modal={
-        <Modal title="Book a shoot" footer={<BookFoot summary="2 items" />}>
+        <Modal title="Book a shoot" footer={<BookFoot summary="3 items" />}>
           <div className="pt-form">
             <BookSteps step={2} />
             <div className="pt-grid2">
@@ -693,12 +731,12 @@ function Confirmed() {
                 <b className="pt-mono">MW-1424</b>
               </li>
               <li>
-                <span>Shoot type</span>
-                <b>Property</b>
+                <span>Photos</span>
+                <b>2 Bed apartment: Photography + 360° tour</b>
               </li>
               <li>
-                <span>Property and services</span>
-                <b>2 Bed apartment · Photography, short-form video</b>
+                <span>Videos</span>
+                <b>2 short-form · 1 long-form</b>
               </li>
               <li>
                 <span>Date and slot</span>

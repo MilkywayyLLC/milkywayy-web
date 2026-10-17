@@ -14,6 +14,7 @@ import { getPropertyPricing } from "@/lib/data";
 import {
   clientPricing,
   logPrefill,
+  normalizeServices,
   SERVICE_LABEL,
   serviceSummary,
   type Deliverable,
@@ -130,6 +131,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           })[];
           logged: Logged[];
           rates: RateOption[];
+          plan_mode?: string;
         }>("portal_admin_deliverables", { p_project: p.id })
       : null;
   // The property price list with this client's own prices in it (owner, 17 Oct 2026).
@@ -141,25 +143,56 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     : null;
   const booking = p.meta.booking;
   const logLines: LogLine[] = work?.logged.length
-    ? work.logged.map((l) => ({
-        key: l.rate_key ?? (l.kind === "shoot" ? "property" : (l.kind ?? "reel")),
-        kind: l.kind ?? undefined,
-        description: l.description,
-        qty: Number(l.qty),
-        basis:
-          l.price_basis === "override"
-            ? "override"
-            : l.price_basis === "price_list"
-              ? "price_list"
-              : "client_rate",
-        // An Included item is stored at 0: re-logging prices it again (the database re-decides).
-        unit_price: Number(l.included && l.list_price != null ? l.list_price : l.unit_price),
-        list_price: l.list_price != null ? Number(l.list_price) : undefined,
-        reason: l.override_reason ?? undefined,
-      }))
+    ? work.logged.map((l): LogLine =>
+        // A day minimum's top-up is worked out again when the log is saved.
+        l.kind === "day_minimum"
+          ? {
+              key: l.rate_key ?? "min_half_day",
+              description:
+                l.rate_key === "min_full_day"
+                  ? "Minimum · full day, edited"
+                  : "Minimum · half day, edited",
+              qty: 1,
+              basis: "client_rate",
+              minimum: true,
+            }
+          : {
+              key: l.rate_key ?? (l.kind === "shoot" ? "property" : (l.kind ?? "reel")),
+              kind: l.kind ?? undefined,
+              description: l.description,
+              qty: Number(l.qty),
+              basis:
+                l.price_basis === "override"
+                  ? "override"
+                  : l.price_basis === "price_list"
+                    ? "price_list"
+                    : "client_rate",
+              // An Included item is stored at 0: re-logging prices it again (the database re-decides).
+              unit_price: Number(l.included && l.list_price != null ? l.list_price : l.unit_price),
+              list_price: l.list_price != null ? Number(l.list_price) : undefined,
+              reason: l.override_reason ?? undefined,
+            },
+      )
     : booking && pricing
       ? logPrefill(booking.services, pricing)
       : [];
+  // A flexible booking whose videos covered the minimum has no top-up item: keep the minimum.
+  const flexible = booking
+    ? normalizeServices(booking.services).find((s) => s.service === "videos")?.videos
+    : undefined;
+  if (
+    work?.logged.length &&
+    flexible?.by === "time" &&
+    !flexible.raw &&
+    !logLines.some((l) => l.minimum)
+  )
+    logLines.push({
+      key: flexible.day === "full" ? "min_full_day" : "min_half_day",
+      description: `Minimum · ${flexible.day === "full" ? "full" : "half"} day, edited`,
+      qty: 1,
+      basis: "client_rate",
+      minimum: true,
+    });
 
   return (
     <div className="ad-page">
@@ -281,7 +314,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                 <dt>Services</dt>
                 <dd>
                   {booking && pricing
-                    ? booking.services.map((s, n) => (
+                    ? normalizeServices(booking.services).map((s, n) => (
                         <span key={n} style={{ display: "block" }}>
                           {SERVICE_LABEL[s.service]}: {serviceSummary(s, pricing)}
                           {s.notes ? ` · “${s.notes}”` : ""}
@@ -421,6 +454,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             initial={logLines}
             logged={work.logged.length > 0}
             hasDeliverables={work.deliverables.length > 0}
+            onPackage={work.plan_mode === "package"}
             locked={work.logged.some((l) => l.billed_invoice_id)}
           />
           <DeliverablesAdmin

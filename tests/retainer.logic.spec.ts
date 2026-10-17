@@ -79,19 +79,21 @@ test("log prefill and the first deliverables come from the booking", () => {
       } as never,
     },
   ];
+  // An older booking (site-refine, 18 Oct 2026): photos first, its videography joins the reels as
+  // short-form videos at the client's rate.
   const lines = logPrefill(services, propertyPricing);
   expect(lines.map((l) => [l.key, l.basis, l.qty])).toEqual([
-    ["reel", "client_rate", 2],
     ["property", "price_list", 1],
+    ["reel_shoot", "client_rate", 3],
   ]);
-  expect(lines[1].unit_price).toBeGreaterThan(0);
+  expect(lines[0].unit_price).toBeGreaterThan(0);
   expect(serviceSummary(services[0], propertyPricing)).toBe("2 reels");
   expect(deliverablesFrom(lines).map((d) => d.label)).toEqual([
+    "Photos",
+    "360 tour",
     "Reel 1",
     "Reel 2",
-    "Photos",
     "Reel 3",
-    "360 tour",
   ]);
 });
 

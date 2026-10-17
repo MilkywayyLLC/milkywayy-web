@@ -1,14 +1,23 @@
 /** Booking labels shared by the portal and the website's dashboard previews (no logic). */
-export const SERVICE_LABEL: Record<"reels" | "long_form" | "property", string> = {
+type ServiceKey = "property" | "videos" | "reels" | "long_form";
+export const SERVICE_LABEL: Record<ServiceKey, string> = {
+  property: "Photos",
+  videos: "Videos",
+  // Older bookings.
   reels: "Agent / social reels",
   long_form: "Long-form walkthrough",
-  property: "Property shoot",
 };
-export const SERVICE_HINT: Record<"reels" | "long_form" | "property", string> = {
-  property: "Photos, videography and 360 tour for a listing, priced like the website",
+export const SERVICE_HINT: Record<ServiceKey, string> = {
+  property: "Priced by property type and size. Twilight and 360 tour as add-ons",
+  videos: "Agent reels and property walkthroughs, one price per video",
   reels: "Vertical 9:16 walkthroughs and agent-presented videos",
   long_form: "Horizontal 16:9 walkthrough for YouTube",
 };
+/** The two video counters. */
+export const VIDEO_LABEL = {
+  short: { title: "Short-form", sub: "Up to 60s · 9:16 reels, agent or property" },
+  long: { title: "Long-form", sub: "Up to 5 min · 16:9 walkthrough or agent video" },
+} as const;
 
 /* AI avatar videos (owner, 10 Oct 2026). Lengths follow the price list (17 Oct 2026): short
    form is up to 30 seconds (priced per 30 seconds), long form is priced per minute. */
