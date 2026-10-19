@@ -106,3 +106,29 @@ test("older bookings read in today's shape", () => {
     { by: "time", raw: true, day: "full" },
   );
 });
+
+test("a 360° tour on its own: priced as the tour, no photography", () => {
+  const tourOnly: BookingService = {
+    service: "property",
+    property: { type: "apartment", size: 1, photo: false, tour: true, twilight: false } as never,
+  };
+  const [s] = normalizeServices([tourOnly]);
+  expect(s.property?.photo).toBe(false);
+  expect(estimate([tourOnly], rates, propertyPricing)).toBe(
+    propertyPricing.apartment.sizes[1].tour,
+  );
+  // Neither chosen: photography stays on, as before.
+  const neither: BookingService = {
+    service: "property",
+    property: { type: "apartment", size: 1, photo: false, tour: false, twilight: false } as never,
+  };
+  expect(estimate([neither], rates, propertyPricing)).toBe(0);
+});
+
+test("flexible edited (content shoot) is the half-day minimum", () => {
+  const flex: BookingService = { service: "videos", videos: { by: "time", day: "half" } };
+  const [line] = estimateLines([flex], rates, propertyPricing);
+  expect(line.key).toBe("min_half_day");
+  expect(line.minimum).toBe(true);
+  expect(estimate([flex], rates, propertyPricing)).toBe(rates.min_half_day);
+});

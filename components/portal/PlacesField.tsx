@@ -263,7 +263,7 @@ export function PlacesField({
   return (
     <div className={`pt-places pt-field ${error && !mapsOk ? "is-bad" : ""}`} data-field="location">
       <label className="pt-field-label" htmlFor={`${id}-q`}>
-        {mapsOk ? "Search the location" : "Location"}
+        Location
         {!mapsOk && (
           <span className="pt-req" aria-hidden="true">
             {" "}
@@ -336,8 +336,7 @@ export function PlacesField({
             className="pt-map"
             aria-label="Map: tap or drag the pin to the exact spot"
           />
-          <span className="pt-meta">Tap the map or drag the pin to the exact entrance.</span>
-          <div className="pt-grid2">
+          <div className="pt-places-grid">
             <label className="pt-field" htmlFor={`${id}-bld`}>
               Building
               <input
@@ -346,6 +345,16 @@ export function PlacesField({
                 maxLength={200}
                 placeholder="e.g. Marina Heights"
                 onChange={(e) => onChange({ ...value, building: e.target.value })}
+              />
+            </label>
+            <label className="pt-field" htmlFor={`${id}-unit`}>
+              Unit
+              <input
+                id={`${id}-unit`}
+                value={value.unit ?? ""}
+                maxLength={200}
+                placeholder="e.g. Apt 2304"
+                onChange={(e) => onChange({ ...value, unit: e.target.value })}
               />
             </label>
             <label className="pt-field" htmlFor={`${id}-com`}>
@@ -358,41 +367,43 @@ export function PlacesField({
                 onChange={(e) => onChange({ ...value, community: e.target.value })}
               />
             </label>
-          </div>
-          <label className={`pt-field ${error ? "is-bad" : ""}`} htmlFor={`${id}-addr`}>
-            <span>
-              Address
-              <span className="pt-req" aria-hidden="true">
-                {" "}
-                *
+            <label className={`pt-field ${error ? "is-bad" : ""}`} htmlFor={`${id}-addr`}>
+              <span>
+                Address
+                <span className="pt-req" aria-hidden="true">
+                  {" "}
+                  *
+                </span>
               </span>
-            </span>
-            <input
-              id={`${id}-addr`}
-              value={value.address}
-              maxLength={300}
-              aria-invalid={!!error || undefined}
-              placeholder="Filled from the pin; edit if needed"
-              onChange={(e) => onChange({ ...value, address: e.target.value })}
-            />
-            {error && <span className="pt-field-msg">{error}</span>}
-          </label>
+              <input
+                id={`${id}-addr`}
+                value={value.address}
+                maxLength={300}
+                aria-invalid={!!error || undefined}
+                placeholder="Address"
+                onChange={(e) => onChange({ ...value, address: e.target.value })}
+              />
+              {error && <span className="pt-field-msg">{error}</span>}
+            </label>
+          </div>
         </>
       )}
-      <div className="pt-grid2">
-        <label className="pt-field" htmlFor={`${id}-unit`}>
-          {mapsOk ? "Unit (optional)" : "Unit / building (optional)"}
-          <input
-            id={`${id}-unit`}
+      <div className={mapsOk ? "pt-places-access" : "pt-grid2"}>
+        {!mapsOk && (
+          <label className="pt-field" htmlFor={`${id}-unit`}>
+            Unit
+            <input
+              id={`${id}-unit`}
 
-            value={value.unit ?? ""}
-            maxLength={200}
-            placeholder="e.g. Apt 2304, Marina Heights"
-            onChange={(e) => onChange({ ...value, unit: e.target.value })}
-          />
-        </label>
+              value={value.unit ?? ""}
+              maxLength={200}
+              placeholder="e.g. Apt 2304, Marina Heights"
+              onChange={(e) => onChange({ ...value, unit: e.target.value })}
+            />
+          </label>
+        )}
         <label className="pt-field" htmlFor={`${id}-access`}>
-          Access notes (optional)
+          Access
           <input
             id={`${id}-access`}
 

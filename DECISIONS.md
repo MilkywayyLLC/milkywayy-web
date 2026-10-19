@@ -445,3 +445,77 @@ Replaces the volume-tier idea and Phase 12's threshold rules (`suggestion_rules`
 - **"Photos from" (23)**: the portal's booking card uses the website's `lowestShootPrice` (now including commercial tiers, like the site) on the client's own prices, so the two can't drift.
 - **Walkthrough (24)**: Dubai's long-form counter, estimate, summaries and rate card label are "Walkthrough (up to 5 min)", with the sub-line "Long-form, up to 5 min · 16:9, property or agent", because agents' long videos count too. Post-production keeps "Long-form" (up to 10 min, USD). Deliverables keep "Long-form 1…n" (their kind). Rate card labels: `20261101090000_walkthrough_labels.sql`, dev only. Dev package labels were updated to match.
 - Items 21 and 22: no change (see the booking redesign section).
+
+## Book a shoot, final layout (site-refine, 18 Oct 2026)
+
+UI only. Kept exactly as they were (no change to pricing, billing, server actions, statuses, permissions, emails or the admin):
+- **Package / budget / raw / extra-minute logic**: the same `VideoPlan` (`by` count or time, `short`, `long`, `extra_min`, `day`, `raw`, `approx`), `cleanVideos`, `estimateLines`, `packageLines`, the day minimum and raw flat rate, and "a photo shoot is an extra on a package".
+- **Price visibility per member**: amounts only when `cfg.price.rates` is set; members without it see no AED anywhere (rows, chips, add-ons, summary, review).
+- **Drafts + Edit details**: autosave and the resume offer, the close guard, Edit details / Request a change for Requested and Confirmed shoots. Older drafts (numbered steps) restore onto the new steps.
+- **Services enabled per client**: Book media still only offers what the account may book (`StartRequests`, unchanged).
+- **Agent / Share with**: the Agent picker (defaults to the booker's own card) moves to Review; Share with stays on the shoot page, untouched.
+- **Map picker**: Places search, draggable pin, reverse-geocoded building / community / address (same component, tighter layout, helper line removed).
+- **Email-only wording**: the thank-you screen still says we confirm by email.
+
+Layout choices:
+- **Steps**: Services → Property (only with Photos) → When & where → Review. Modal 1080px, two columns; "Your booking" (line items + total) sticky on the right; footer is Back / Next only. Phones: one column, the footer's "AED X ˄" opens the line items.
+- **Videos as two rows**: Reels and Walkthrough. A selected row swaps its price for a counter (Reels starts at 4, Walkthrough at 1); unselecting sets the count to 0. "Set number | Not sure" maps to `by: count | time`. In Not sure mode the half/full day comes from the slot through the existing `chooseSlot` rule (Full day → full, otherwise half); the separate How long switch is gone.
+- **Arrival** replaces the time wheel: hourly chips inside the slot's existing start-time window (`SLOT_HOURS`), optional, same `start_time` field and validation.
+- **Twilight** keeps its 5 / 10 / 20 image choice as small chips beside the checked row; the row's "+AED" follows the choice.
+- **Review total**: phones show it on Review (the side panel is hidden there); desktop shows it once, in "Your booking", so it isn't printed twice side by side.
+- **Modal position**: the wide modal is top-aligned on desktop so the header doesn't jump as steps change height. The map step is the only one that scrolls at 1440×900.
+
+## Book media modes (site-refine, 18 Oct 2026; supersedes the step layout above where they differ)
+
+Owner answers before building:
+- **360° tour on its own is allowed.** `photosOnly` keeps photography off when only the tour is chosen (with neither, photography stays on as before). New logic test; no existing expectation changed. The admin log, deliverables and summaries already handle photo off.
+- **No slot picker.** The slot follows the required start time: before 13:00 → Morning, otherwise Afternoon; a raw Full day → Full day. Client side only; `book_shoot` / `update_booking` unchanged. The wheel offers 08:00–17:45 in 15-minute steps (the slots' start-time windows together).
+- **Shoot only formats** (Short-form / Long-form) are written into the raw booking's existing rough-count text (`videos.approx`, e.g. "Short-form + Long-form"), which the admin and emails already show. No schema change.
+- **Edit only stays single-select**: the post-production request (`createProject`, its emails) is reused exactly; only its type tiles became cards.
+
+Layout:
+- **One modal, three modes**: Shoot + Edit | Shoot only | Edit only, only the modes the account's enabled services allow (`cfg.shoots` → the two shoot modes, `cfg.editing` → Edit only); one mode = no toggle. The Shoots page's New button offers the shoot modes; the Editing page's opens Edit only. AI avatar videos keep their own form. The old "What do you need?" choice screen is gone.
+- **Switching Shoot ⇄ Edit** swaps the form in place (`swapDialog()` skips the exit and enter animation) and saves the form's draft; switching back restores it silently.
+- **Shoot + Edit**: Property shoot / Social media reels / YouTube cards, 3 across. Property shoot opens a panel in place (Photos / 360° tour, type, size with price, Twilight). Twilight is the 5-image option here (the 10 / 20 choice is gone from booking; a draft or booking with 10 or 20 keeps its count and price). Extra YouTube minutes left booking: they're billed after delivery through the admin shoot log's extra-minute line (logic unchanged; an existing booking's extra minutes are kept).
+- **"Not sure" / flexible edited is hidden everywhere.** Its logic is untouched; an older booking by time keeps its plan when edited (cards show it, no counters).
+- **Steps**: What do you need? → When & where (date, start time wheel, Places + map + fields, notes) → Summary → Thank you (MW- ID, the email wording, Track booking / Book another).
+- **Card copy** (title, line, delivery) is presentation in the booking UI. The admin-stored copy that should match is listed for the owner, not saved.
+- **Reels label** "Short-form video (30–90 sec)" in code (rate card kind labels, estimate and log line labels). Prices unchanged.
+
+## Book media: property and content shoots (site-refine, 18 Oct 2026; supersedes the mode toggle above)
+
+- **"What are you booking?"** Property shoot / Content shoot / Edit only, filtered by the account's enabled services (`cfg.shoots` → the two shoots, `cfg.editing` → Edit only), skipped with one. The Shoots page's New button offers the two shoots; the Editing page's opens Edit only. Back from a flow's first step returns here (its draft is saved and restored silently if picked again); "Book another" opens it fresh. Views swap in the same frame (`swapDialog()`). The Shoot + Edit / Shoot only / Edit only toggle is gone.
+- **Property shoot** (always shot & edited): type and size with prices, then Photography / 360° tour (one or both; 360-only as agreed), Twilight (+5 images, with Photography), Short-form reel and Long-form walkthrough counters (default 1 each; the same `videos` service by count at the client's reel / long-form rates). "Agent on camera" (with any video) is saved as "Agent on camera." at the start of the booking's notes and read back from there when editing.
+- **Content shoot**: Short-form and/or Long-form cards; Edited | Raw files; Edited → Fixed (counters, reels 4, long-form 1) or Flexible (Half / Full day: the existing flexible minimum by time, `min_half_day` / `min_full_day`, final total set in the admin's shoot log). Raw → Half / Full day at the raw day rates. In Flexible and Raw the short/long choice goes into the rough-count text (`videos.approx`), as agreed for raw. Package clients see "Each finished video draws from your package" instead of the minimum (packages have no minimum, unchanged).
+- **Extra minutes** still aren't booked; an existing booking's extra minutes are kept.
+- **Older bookings by time on a property shoot** keep their plan unchanged when edited (no counters).
+
+## Book media page (site-refine, 18 Oct 2026; supersedes the modal versions above)
+
+- **A page, not a modal**: `/portal/book` inside the dashboard (sidebar and top bar stay). Header "Book media" with "← Back to dashboard". Where you are is in the URL (`kind`, `step`, via `history.pushState`), so the browser's back button steps back. `?only=shoot` (the Shoots tab's New button) offers the two shoots; `?kind=edit` (the Editing tab's) opens Edit only; `?draft=1` restores a draft at its step; `?edit=REF` (Edit details / Request a change on the shoot page) opens at the Summary. The website's `/portal?new=…` links are passed on to the page. The modal (`BookingModal`), its "What are you booking?" modal and the dialog-swap helper are removed. AI avatar videos keep their modal. Leaving with unsaved input asks first (keep as draft / discard).
+- **Members on a monthly package** now get what's left of each inclusion as counts only (`my_booking_options.left`, `20261103090000_booking_left_for_members.sql`, dev project only; owner's answer). Rates and amounts stay owner/admin/billing only. They see "Included in your package" / "Extra charges apply", no AED.
+- **Package display** (presentation of the existing `packageLines`): an included line shows its normal price struck through and "Included in your package"; over the allowance it splits ("8 included · 2 extra × AED 400"); a property shoot is always an extra. "Your booking": "Included in your package" (no amounts), "Extra charges" (amounts), a total of extras only, then "After this booking: N of M reels · N of M long-form left this month". Confirm shows what's due ("Confirm booking · AED 0"); the phone bar shows the same amount. Pay as you go and budget clients are unchanged.
+- **Property shoot**: type and size, then three group cards: Photography (with Twilight images nested, 5 / 10 / 20 at the existing twilight prices), 360° virtual tour (price by size), Video (short-form and long-form counters, "Agent on camera" saved into the notes). Each group shows its subtotal. 360 on its own is allowed (as agreed).
+- **Content shoot**: unchanged logic; Edited / Raw files and Fixed / Flexible are the same segmented control; Half / Full day are cards with prices; the flexible rule is one body-size line.
+- **Summary**: grouped rows (Property / Video / Date & time / Location) each with "Edit" back to its step, then the same price split. **Thank you**: compact and centred, the MW- ID, "We'll confirm your slot by email", Track booking / Book another (back to "What are you booking?").
+- **Wheel**: 48px rows (was 36px), hours step 1, minutes 00 / 15 / 30 / 45, keyboard as before.
+- **Website dashboard preview** (`DashboardShowcase`) still draws the old booking modal with the portal's older classes, so those styles stay; only styles nothing uses were removed.
+
+Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
+- Page title: `.pt-h1` (Archivo 700, condensed, uppercase, as the website and the shoot page).
+- Section heading: `.bkp-sec`: Archivo 700 18px/1.15, wdth 85, uppercase (step heading, card titles, "Your booking", the total; amounts keep their case).
+- Body: 400 15px/1.5 sans (labels of choices, rows, notes, buttons' text in controls).
+- Small muted: `.bkp-muted`: 400 13px/1.45 sans, `--muted` (field labels, delivery, sub-lines, "Included in your package").
+- Price: `.bkp-price`: 500 15px/1.3 sans, tabular figures.
+- Mono: only the step label (`.pt-eb`, "STEP 1 OF 3").
+- Spacing: `--bk-1…6` = 4 / 8 / 12 / 16 / 24 / 32px.
+- Border: 1px `--line`. Selected: border `--fg` (inset 1px on segmented controls and chips) + the small filled check on cards, checkboxes and the "Agent on camera" chip.
+- One exception: inputs keep the portal's 16px so iOS doesn't zoom on focus.
+
+## Book media page, final tweaks (owner, 19 Oct 2026)
+
+- **"What are you booking?"**: three full-width cards with icon, title, line, an "includes" list and "from" (price access only: property = the lowest photo price on the client's list, content = their reel rate, edit = their reel-edit rate).
+- **Property shoot**: size buttons have no prices; Photography and Twilight each show their own price, the group shows "Photography total" when Twilight is on. "Agent on camera" is gone (Notes covers it; an older booking's note text is kept as it is). Commercial uses the portal's commercial tiers (Basic / Essential / Premium / Executive, their own photo and 360 prices; Basic has no 360) and offers no Video group (photos + 360 only); Twilight stays, as a photo add-on at the standard twilight prices.
+- **Content shoot**: Editing first, Quantity (Fixed | Flexible) only when Edited, then the Short-form / Long-form cards (counters only when Fixed; "AED 400 each" when Flexible; no prices for Raw), then a brief: "What do you need?" and reference links, saved at the start of the booking's notes ("Brief: …", "References: …"; read back when editing). Flexible edited is always the half-day minimum (`videos.day = "half"`, set on the client; an older full-day flexible booking keeps its day when edited). Raw files pick Half / Full day on When & where.
+- **Panel** lines up with the step's first box or field (the step heading spans both columns). The Summary's own price box shows on phones only (the side panel is hidden there). Confirm always shows the amount ("Confirm booking · AED 2,720"; AED 0 when a package covers everything; "from" for flexible).
+- **Phones**: "Back to dashboard" only on "What are you booking?"; later steps show "Back".

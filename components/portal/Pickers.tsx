@@ -228,7 +228,7 @@ export function DatePicker({
 
 /* ---------- the time wheel ---------- */
 
-const ROW = 36;
+const ROW = 48;
 export const MINUTES = ["00", "15", "30", "45"] as const;
 
 /** One scroll-snap column: the centred item is the value; arrows and a tap move it. */
@@ -332,6 +332,9 @@ export function TimeWheel({
   onChange,
   describedBy,
   labelledBy,
+  placeholder = "Any time",
+  clearable = true,
+  invalid,
 }: {
   value: string;
   from: string;
@@ -339,6 +342,11 @@ export function TimeWheel({
   onChange: (v: string) => void;
   describedBy?: string;
   labelledBy?: string;
+  /** Shown while empty. */
+  placeholder?: string;
+  /** A Clear button (off when a time is required). */
+  clearable?: boolean;
+  invalid?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
@@ -377,6 +385,7 @@ export function TimeWheel({
         aria-controls={open ? id : undefined}
         aria-describedby={describedBy}
         aria-labelledby={labelledBy}
+        data-invalid={invalid ? "" : undefined}
         data-empty={value ? undefined : ""}
         onClick={() => {
           if (!open && !value) set(hours[0], "00");
@@ -390,7 +399,7 @@ export function TimeWheel({
           }
         }}
       >
-        <span className="pt-dp-v pt-mono">{value || "Any time"}</span>
+        <span className="pt-dp-v">{value || placeholder}</span>
         <Icon name="clock" size={18} />
       </button>
       {open && (
@@ -398,7 +407,7 @@ export function TimeWheel({
           className="pt-pop-panel pt-wheel"
           id={id}
           role="dialog"
-          aria-label="Preferred start time"
+          aria-label="Start time"
           ref={first}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
@@ -429,16 +438,18 @@ export function TimeWheel({
             />
           </div>
           <div className="pt-wheel-foot">
-            <button
-              type="button"
-              className="btn btn-g btn-s"
-              onClick={() => {
-                onChange("");
-                close(true);
-              }}
-            >
-              Clear
-            </button>
+            {clearable && (
+              <button
+                type="button"
+                className="btn btn-g btn-s"
+                onClick={() => {
+                  onChange("");
+                  close(true);
+                }}
+              >
+                Clear
+              </button>
+            )}
             <button type="button" className="btn btn-p btn-s" onClick={() => close(true)}>
               Done
             </button>

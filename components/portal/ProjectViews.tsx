@@ -162,7 +162,10 @@ export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; 
       {type === "avatar" && <CharactersRow characters={characters} />}
       <DraftsRow
         drafts={drafts.filter((d) => d.kind === type)}
-        hrefs={{ [type]: `${base}?new=${type}&draft=1` }}
+        hrefs={{
+          [type]:
+            type === "edit" ? "/portal/book?kind=edit&draft=1" : `${base}?new=${type}&draft=1`,
+        }}
       />
 
       <div className="pt-tabs" role="tablist">

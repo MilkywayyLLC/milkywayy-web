@@ -51,7 +51,7 @@ export type ShootMode = "edited" | "raw";
 /** The Videos card. By count (the default) or by time ("Not sure how many?"). */
 export type VideoPlan = {
   by: "count" | "time";
-  /** Short-form (up to 60s) and long-form (up to 5 min): how many. By time: the finished count,
+  /** Short-form (30–90 sec) and long-form (up to 5 min): how many. By time: the finished count,
    *  once logged. */
   short?: number;
   long?: number;
@@ -122,10 +122,11 @@ export const isMinimumKey = (k: string) => k === KEY.min.half || k === KEY.min.f
 /** Short-form is up to 60 seconds, long-form up to 5 minutes (then per extra minute). */
 export const LONG_FORM_MINUTES = 5;
 
-/** A property config with only the Photos parts (photos, twilight, 360 tour). */
+/** A property config with only the Photos parts (photos, twilight, 360 tour). A 360° tour can be
+ *  booked on its own (owner, 18 Oct 2026); with neither, photography is on. */
 export const photosOnly = (c: PropertyConfig): PropertyConfig => ({
   ...c,
-  photo: true,
+  photo: !!c.photo || !c.tour,
   video: false,
   short: false,
   long: false,
@@ -347,7 +348,7 @@ export function videoLines(v: VideoPlan, rates: Rates): EstimateLine[] {
     else line(KEY.min[day], `${DAY_LABEL[day]}, edited · minimum`, 1, true);
     return out;
   }
-  if (v.short) line(KEY.short, "Short-form video (up to 60s)", v.short);
+  if (v.short) line(KEY.short, "Short-form video (30–90 sec)", v.short);
   if (v.long) line(KEY.long, `Walkthrough (up to ${LONG_FORM_MINUTES} min)`, v.long);
   if (v.long && v.extra_min) line(KEY.extra, "Walkthrough, extra minutes", v.extra_min);
   return out;
@@ -517,12 +518,12 @@ export function logPrefill(services: BookingService[], pricing: PropertyPricing)
     }
     if (v.by === "time") {
       // Billed per finished video: set the counts once they're delivered.
-      out.push(rate(KEY.short, "Short-form video (up to 60s)", Math.max(1, v.short ?? 1)));
+      out.push(rate(KEY.short, "Short-form video (30–90 sec)", Math.max(1, v.short ?? 1)));
       if (v.long) out.push(rate(KEY.long, "Walkthrough (up to 5 min)", v.long));
       out.push(rate(KEY.min[day], `Minimum · ${DAY_LABEL[day].toLowerCase()}, edited`, 1, true));
       continue;
     }
-    if (v.short) out.push(rate(KEY.short, "Short-form video (up to 60s)", v.short));
+    if (v.short) out.push(rate(KEY.short, "Short-form video (30–90 sec)", v.short));
     if (v.long) out.push(rate(KEY.long, "Walkthrough (up to 5 min)", v.long));
     if (v.long && v.extra_min) out.push(rate(KEY.extra, "Walkthrough, extra minutes", v.extra_min));
   }

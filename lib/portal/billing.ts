@@ -289,7 +289,7 @@ export const dateLabel = (d: string | null | undefined, opts: Intl.DateTimeForma
  *  of those kinds still shows its key. */
 export const KINDS = [
   ["shoot", "Photo shoot"],
-  ["reel_shoot", "Short-form video (up to 60s)"],
+  ["reel_shoot", "Short-form video (30–90 sec)"],
   ["long_form_shoot", "Walkthrough (up to 5 min)"],
   ["long_form_extra_min", "Walkthrough, extra minute"],
   ["half_day", "Raw files only · half day"],

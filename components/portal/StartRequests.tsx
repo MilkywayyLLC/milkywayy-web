@@ -1,57 +1,35 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/portal/Icon";
 import { discardDraft, type DraftKind } from "@/lib/portal/draft-actions";
 import type { RequestConfig } from "@/lib/portal/requests";
-import { BookingModal } from "./BookingModal";
-import { draftDate, Modal } from "./forms";
+
+import { draftDate } from "./forms";
 import { ProjectRequestModal, type Presenter } from "./NewProjectForm";
 
 type Kind = "booking" | "edit" | "avatar";
-const TILES: {
-  kind: Kind;
-  label: string;
-  hint: string;
-  icon: string;
-  perm: keyof RequestConfig;
-}[] = [
-  {
-    kind: "booking",
-    label: "Shoot in Dubai",
-    hint: "We film and edit for you",
-    icon: "shoots",
-    perm: "shoots",
-  },
-  {
-    kind: "edit",
-    label: "Edit your footage",
-    hint: "You send the files, we edit",
-    icon: "scissors",
-    perm: "editing",
-  },
-  {
-    kind: "avatar",
-    label: "AI avatar video",
-    hint: "A video with an AI presenter",
-    icon: "avatars",
-    perm: "avatars",
-  },
-];
 const ONLY_LABEL: Record<Kind, string> = {
   booking: "Book a shoot",
   edit: "Edit my files",
   avatar: "AI avatar video",
 };
+/** Where each launcher goes on the Book media page (owner, 18 Oct 2026). */
+const BOOK = "/portal/book";
+const HREF: Record<"all" | "booking" | "edit", string> = {
+  all: BOOK,
+  booking: `${BOOK}?only=shoot`,
+  edit: `${BOOK}?kind=edit`,
+};
 
 /**
- * "Book media" (owner, 10 Oct 2026): one button opens "What do you need?" (Shoot or Editing,
- * 14 Oct 2026: AI avatar videos are booked from the Avatars tab's New button only); each
- * continues into its own flow, with Back returning to the choice. With
- * `only`, the button opens that flow directly (the New buttons on Shoots, Editing and Avatars).
- * `?new=booking|edit|avatar|shoot|choose` opens a flow (or the choice) on arrival (one launcher per page answers it, the
- * header's); `&draft=1` restores the saved draft straight away.
+ * "Book media" (owner, 10 Oct 2026; a page since 18 Oct 2026): the button goes to /portal/book
+ * ("What are you booking?"). With `only`, it offers that service (the New buttons on Shoots and
+ * Editing); AI avatar videos keep their modal (the Avatars tab's New button). The website's links
+ * (`?new=booking|edit|shoot|choose`, `&draft=1`) arrive at the launcher that answers them (the
+ * header's) and go on to the page.
  */
 export function StartRequests({
   cfg,
@@ -62,7 +40,7 @@ export function StartRequests({
   characters,
 }: {
   cfg: RequestConfig;
-  /** Open this flow directly instead of the "What do you need?" choice. */
+  /** That service only: its choices on the page (or the avatar form). */
   only?: Kind;
   label?: string;
   /** This launcher answers ?new= (one per page). */
@@ -74,91 +52,59 @@ export function StartRequests({
   const router = useRouter();
   const path = usePathname();
   const params = useSearchParams();
-  const [picked, setOpen] = useState<{ kind: Kind | "choose"; resume: boolean } | null>(null);
-  const [urlDone, setUrlDone] = useState(false);
-  const [run, setRun] = useState(0); // each opening gets fresh modal state
-  const allowed = TILES.filter(
-    (t) => cfg[t.perm] && (only ? t.kind === only : t.kind !== "avatar"),
-  );
-  // One service enabled (owner, 17 Oct 2026): Book media opens its flow, no choice screen.
-  const single = !only && allowed.length === 1 ? allowed[0].kind : undefined;
-  const direct = only ?? single;
-  // The website links here: ?new=shoot (Property shoots) and ?new=choose (Home's "Book media").
+  const [open, setOpen] = useState<{ resume: boolean } | null>(null);
+  const [run, setRun] = useState(0);
   const asked = params.get("new");
-  const fromUrl = (asked === "shoot" ? "booking" : asked) as Kind | "choose" | null;
-  const open =
-    picked ??
-    (autoOpen &&
-    !urlDone &&
-    fromUrl &&
-    (fromUrl === "choose" ? !only : allowed.some((t) => t.kind === fromUrl))
-      ? {
-          kind: fromUrl === "choose" && single ? single : fromUrl,
-          resume: params.get("draft") === "1",
-        }
-      : null);
-  // Back to the choice: only when this launcher offers the choice.
-  const back = direct ? undefined : () => setOpen({ kind: "choose", resume: false });
-
-  // Closing resets everything, so Book media opens again every time.
+  const draft = params.get("draft") === "1";
+  const avatarOnly = only === "avatar" && cfg.avatars;
+  const books =
+    only === "edit" ? cfg.editing : only === "booking" ? cfg.shoots : cfg.shoots || cfg.editing;
+  // The website's links: on to the page (or the avatar form).
+  useEffect(() => {
+    if (!autoOpen || !asked) return;
+    // Avatar videos are booked from the Avatars tab (as before).
+    if (asked === "avatar") return;
+    const to =
+      asked === "shoot"
+        ? `${BOOK}?kind=property`
+        : asked === "edit"
+          ? HREF.edit
+          : asked === "booking"
+            ? HREF.booking
+            : BOOK;
+    router.replace(draft ? `${to}${to.includes("?") ? "&" : "?"}draft=1` : to);
+  }, [autoOpen, asked, draft, router]);
   const close = () => {
     setOpen(null);
     setRun((r) => r + 1);
-    setUrlDone(true);
-    if (params.get("new")) router.replace(path, { scroll: false });
+    if (asked) router.replace(path, { scroll: false });
     router.refresh();
   };
-  if (!allowed.length) return null;
-
+  const text = label ?? (only ? ONLY_LABEL[only] : "Book media");
+  const cls = `btn ${primary ? "btn-p" : "btn-g"} btn-s`;
+  if (avatarOnly)
+    return (
+      <>
+        <button type="button" className={cls} onClick={() => setOpen({ resume: false })}>
+          <Icon name="plus" size={16} /> {text}
+        </button>
+        {open && (
+          <ProjectRequestModal
+            key={run}
+            type="avatar"
+            cfg={cfg}
+            characters={characters}
+            resume={open.resume}
+            onClose={close}
+          />
+        )}
+      </>
+    );
+  if (!books || only === "avatar") return null;
   return (
-    <>
-      <button
-        type="button"
-        className={`btn ${primary ? "btn-p" : "btn-g"} btn-s`}
-        onClick={() => setOpen({ kind: direct ?? "choose", resume: false })}
-      >
-        <Icon name="plus" size={16} /> {label ?? (only ? ONLY_LABEL[only] : "Book media")}
-      </button>
-      {open?.kind === "choose" && (
-        <Modal key={run} title="Book media" onClose={close} testId="book-media">
-          <div className="pt-form">
-            <b style={{ fontSize: 18 }}>What do you need?</b>
-            <div className="pt-pick" role="group" aria-label="What do you need?">
-              {allowed.map((t) => (
-                <button
-                  key={t.kind}
-                  type="button"
-                  className="pt-pick-tile"
-                  onClick={() => setOpen({ kind: t.kind, resume: false })}
-                >
-                  <span className="pt-pick-ic" aria-hidden="true">
-                    <Icon name={t.icon} size={22} />
-                  </span>
-                  <span className="pt-pick-txt">
-                    <b>{t.label}</b>
-                    <small>{t.hint}</small>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </Modal>
-      )}
-      {open?.kind === "booking" && (
-        <BookingModal key={run} cfg={cfg} resume={open.resume} onClose={close} onBack={back} />
-      )}
-      {(open?.kind === "edit" || open?.kind === "avatar") && (
-        <ProjectRequestModal
-          key={run}
-          type={open.kind}
-          cfg={cfg}
-          characters={characters}
-          resume={open.resume}
-          onClose={close}
-          onBack={back}
-        />
-      )}
-    </>
+    <Link href={HREF[only === "booking" || only === "edit" ? only : "all"]} className={cls}>
+      <Icon name="plus" size={16} /> {text}
+    </Link>
   );
 }
 

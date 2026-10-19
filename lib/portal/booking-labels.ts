@@ -15,7 +15,7 @@ export const SERVICE_HINT: Record<ServiceKey, string> = {
 };
 /** The two video counters. */
 export const VIDEO_LABEL = {
-  short: { title: "Short-form", sub: "Up to 60s · 9:16 reels, agent or property" },
+  short: { title: "Short-form", sub: "30–90 sec · 9:16 reels, agent or property" },
   // Dubai's long-form is "Walkthrough" (AUDIT item 24): post-production sells its own long-form.
   long: { title: "Walkthrough", sub: "Long-form, up to 5 min · 16:9, property or agent" },
 } as const;
