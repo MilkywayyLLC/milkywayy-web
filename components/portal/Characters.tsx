@@ -220,7 +220,7 @@ export function CreateCharacterModal({
       <Modal title={title} onClose={onClose} testId="character-modal">
         <div className="pt-form" role="status">
           <span className="pt-eb">{edit ? "Brief edited" : "Brief received"}</span>
-          <b style={{ fontSize: 20 }}>{edit ? "Saved" : "We’re on it"}</b>
+          <b className="pt-h2">{edit ? "Saved" : "We’re on it"}</b>
           <p style={{ margin: 0 }}>
             {edit
               ? "We’ll work from the updated brief. You’ll get an email when the variations are ready."
@@ -621,7 +621,7 @@ function CharacterModal({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={approved.src} alt={characterTitle(c)} />
             )}
-            <b style={{ fontSize: 20 }}>{characterTitle(c)}</b>
+            <b className="pt-h2">{characterTitle(c)}</b>
             <button
               type="button"
               className="btn btn-g btn-s"

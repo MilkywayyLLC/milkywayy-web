@@ -154,7 +154,7 @@ export default async function ShootPage({
             {p.ref}
             {when ? ` · ${when}` : ""}
           </span>
-          <h1 className="pt-h1" style={{ fontSize: 26 }}>
+          <h1 className="pt-h1">
             {p.title}
           </h1>
         </div>

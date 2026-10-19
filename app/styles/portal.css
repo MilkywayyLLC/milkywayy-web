@@ -4246,3 +4246,332 @@
     padding: var(--bk-1) 0;
   }
 }
+
+/*
+ * Portal type system (owner, 19 Oct 2026): the whole client dashboard on the booking page's
+ * tokens (DECISIONS.md "Portal type system"). Restyling only: same classes, same markup.
+ *   page title     .pt-h1           Archivo 700, condensed, uppercase, 30px / 40px desktop
+ *   section heading .pt-h2          Archivo 700 18px/1.15, wdth 85, uppercase
+ *   body           (default)        400 15px/1.5 sans; row titles 500
+ *   small muted    .pt-meta …       400 13px/1.45 sans, --muted
+ *   price / number .pt-mono-num …   500 15px tabular; headline figures Archivo 700 28px
+ *   mono           .pt-eb …         500 11px/1.4 mono, 0.08em, uppercase: tiny labels and IDs only
+ */
+@layer components {
+  .pt {
+    --t-title: 700 30px/1 var(--font-display);
+    --t-sec: 700 18px/1.15 var(--font-display);
+    --t-body: 400 15px/1.5 var(--font-sans);
+    --t-strong: 500 15px/1.5 var(--font-sans);
+    --t-small: 400 13px/1.45 var(--font-sans);
+    --t-num: 500 15px/1.3 var(--font-sans);
+    --t-fig: 700 28px/1 var(--font-display);
+    --t-mono: 500 11px/1.4 var(--font-mono);
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 24px;
+    --sp-6: 32px;
+  }
+
+  /* Page title (the same on every page, detail pages included). */
+  .pt-h1 {
+    font: var(--t-title);
+    font-variation-settings: "wdth" 78;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+  @media (min-width: 900px) {
+    .pt-h1 {
+      font-size: 40px;
+    }
+  }
+
+  /* Section heading. */
+  .pt-h2,
+  .pt-done-h,
+  .pt-dz-h,
+  .pt-pick-txt b,
+  .pt-tiles-lg .pt-tile b,
+  .pt-char-card .pt-title {
+    font: var(--t-sec);
+    font-variation-settings: "wdth" 85;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  /* Body. */
+  .pt-table,
+  .pt-lines li,
+  .pt-note,
+  .pt-error,
+  .pt-form-banner,
+  .pt-draft-offer,
+  .pt-toast,
+  .pt-script,
+  .pt-check,
+  .pt-char-log,
+  .pt-places-list li,
+  .pt-pop button,
+  .pt-pop a,
+  .pt-photo-tools button,
+  .pt-avatar-lg,
+  .pt-hello,
+  .pt-budget-now,
+  .pt-facts > div,
+  .pt-sumbar-v,
+  .pt-link-box,
+  .pt-cal-day,
+  .pt-stepper output {
+    font: var(--t-body);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .pt-title,
+  .pt-tile b,
+  .pt-ticket b,
+  .pt-more-row,
+  .pt-wstatus,
+  .pt-choice button,
+  .pt-choice label,
+  .pt-pill,
+  .pt-pop-who b,
+  .pt-pop button.on,
+  .pt-rail-nav a,
+  .pt-rail-nav a[aria-current="page"],
+  .pt-offer dd,
+  .pt-stretch-link,
+  .pt-cal-head b {
+    font: var(--t-strong);
+    letter-spacing: 0;
+  }
+  .pt-rail-nav a {
+    color: var(--muted);
+  }
+  .pt-rail-nav a[aria-current="page"] {
+    color: var(--fg);
+  }
+
+  /* Small muted. */
+  .pt-meta,
+  .pt-small,
+  .pt-muted,
+  .pt-field,
+  .pt-field-label,
+  .pt-field-hint,
+  .pt-choice small,
+  .pt-choice .pt-choice-price,
+  .pt-pop small,
+  .pt-pill small,
+  .pt-chip,
+  .pt-ticket,
+  .pt-toggles,
+  .pt-breakdown summary,
+  .pt-turnaround,
+  .pt-tile small,
+  .pt-pick-txt small,
+  .pt-char-grid figcaption,
+  .pt-switch-name,
+  .pt-lstats,
+  .pt-dz-name,
+  .pt-btype-note,
+  .pt-photo-none,
+  .pt-back,
+  .pt-done-p {
+    font: var(--t-small);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .pt-meta,
+  .pt-field,
+  .pt-field-label,
+  .pt-field-hint,
+  .pt-choice small,
+  .pt-pop small,
+  .pt-pill small,
+  .pt-tile small,
+  .pt-pick-txt small,
+  .pt-turnaround,
+  .pt-back,
+  .pt-done-p,
+  .pt-switch-name {
+    color: var(--muted);
+  }
+  .pt-field-msg,
+  .pt-field-error,
+  .pt-dz-err {
+    font: var(--t-small);
+    letter-spacing: 0;
+    text-transform: none;
+    color: #b42318;
+  }
+  .pt-field-label .pt-req {
+    color: #b42318;
+  }
+
+  /* Price / number. */
+  .pt-act-amt,
+  .pt-lstats b,
+  .pt-total b,
+  .pt-sumbar-v b {
+    font: var(--t-num);
+    font-variant-numeric: tabular-nums;
+  }
+  .pt-price,
+  .pt-big,
+  .pt-stat b,
+  .pt-budget-now b {
+    font: var(--t-fig);
+    font-variation-settings: "wdth" 85;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Mono: tiny labels and IDs only. */
+  .pt-eb,
+  .pt-mono,
+  .pt-badge,
+  .pt-plan,
+  .pt-steps li,
+  .pt-steps-cap,
+  .pt-table th,
+  .pt-bottom a,
+  .pt-bottom button,
+  .pt-byline,
+  .pt-status-btns button,
+  .pt-offer dt,
+  .pt-act-date,
+  .pt-activity time,
+  .pt-sumbar-k,
+  .pt-wiz-label,
+  .pt-cal-wd,
+  .pt-dz-ok,
+  .pt-sphoto-cover,
+  .pt-wsteps,
+  .pt-photo b,
+  .pt-pill-face,
+  .pt-slider-ticks {
+    font: var(--t-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .pt-steps li.pt-st-now,
+  .pt-wsteps li.is-now {
+    font-weight: 500;
+    color: var(--fg);
+  }
+
+  /* Tabs: body text, the selected tab underlined (the selected style). */
+  .pt-tabs button,
+  .pt-tabs a {
+    font: var(--t-body);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  /* One button per type: primary / secondary (.btn-p / .btn-g) and text links. */
+  .pt .btn,
+  .pt .pt-btn-sm,
+  .pt-top-right .btn {
+    font: var(--t-strong) !important;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .pt .lnk,
+  .pt button.lnk,
+  .pt-link-btn {
+    font: var(--t-body);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* One status pill. */
+  .pt-badge {
+    height: 24px;
+    padding: 0 var(--sp-2);
+    border: 1px solid var(--line);
+    color: var(--fg);
+  }
+
+  /* Segmented controls: the selected style (dark border), not a fill. */
+  .pt-seg {
+    border-color: var(--line);
+    background: var(--surface);
+  }
+  .pt-seg button {
+    font: var(--t-body);
+  }
+  .pt-seg button + button {
+    border-left: 1px solid var(--line);
+  }
+  .pt-seg button[aria-pressed="true"] {
+    background: none;
+    color: var(--fg);
+    box-shadow: inset 0 0 0 1px var(--fg);
+  }
+
+  /* Spacing: one card padding, one table row height, page headers aligned the same. */
+  .pt-card {
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+  }
+  @media (min-width: 720px) {
+    .pt-card {
+      padding: var(--sp-5);
+    }
+  }
+  .pt-table th {
+    padding: var(--sp-2) 0;
+  }
+  .pt-table td {
+    height: 52px;
+    padding: var(--sp-3) 0;
+    vertical-align: middle;
+  }
+  .pt-head {
+    align-items: flex-end;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-2);
+  }
+  .pt-head > div:not(.pt-btns) {
+    gap: var(--sp-2);
+  }
+
+  /* Booking: commercial tier inclusions strip. */
+  .bkp-includes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-5);
+    margin: 0;
+    padding: var(--sp-3) var(--sp-4);
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .bkp-includes > div {
+    display: flex;
+    gap: var(--sp-2);
+    align-items: baseline;
+  }
+  .bkp-includes dt {
+    font: var(--t-small);
+    color: var(--muted);
+  }
+  .bkp-includes dd {
+    margin: 0;
+    font: var(--t-body);
+  }
+  .bkp-cards-tiers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @media (min-width: 900px) {
+    .bkp-cards-tiers {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+}
+@layer components {
+  /* Bold body text is the 500 weight (headings and figures set their own font). */
+  .pt :where(b, strong) {
+    font-weight: 500;
+  }
+}

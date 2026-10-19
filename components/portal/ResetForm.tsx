@@ -17,7 +17,7 @@ export function ResetForm() {
           required
           aria-invalid={!!state?.error || undefined}
         />
-        <small className="pt-muted" style={{ fontWeight: 400 }}>
+        <small className="pt-muted">
           At least 8 characters.
         </small>
       </label>

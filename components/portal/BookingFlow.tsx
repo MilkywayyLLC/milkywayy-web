@@ -171,7 +171,7 @@ const fmtFrom = (t: string | undefined): Formats => {
 /**
  * Book a shoot on the Book media page (owner, 10 Oct 2026; page, 18 Oct 2026). Property shoot:
  * type and size, then Photography (+ Twilight images), a 360° virtual tour and Video (short-form
- * and long-form counters; not for commercial), any combination. Content shoot: Edited (a fixed
+ * and long-form counters), any combination. Content shoot: Edited (a fixed
  * count, or flexible: the half-day minimum) or Raw files (half or full day, chosen on When &
  * where), short-form and/or long-form, and a brief.
  * Then When & where and the Summary; Confirm makes a Requested shoot, Milkywayy is emailed and
@@ -487,6 +487,8 @@ export function BookingFlow({
       ? pricing.commercial.tiers.map((t) => t.label)
       : pricing[prop.type].sizes.map((z) => z.label);
   const commercial = prop.type === "commercial";
+  /** The commercial tier's own data (description, what it includes). */
+  const tier = commercial ? pricing.commercial.tiers[prop.size] : null;
   const tourLocked = isLocked(prop, "tour", pricing);
   const twi = twilightTable(prop, pricing);
   const setP = touch((patch: Partial<Counts>) => setPv((x) => ({ ...x, ...patch })));
@@ -513,28 +515,59 @@ export function BookingFlow({
             t,
             t === "villa" ? "Villa" : pricing[t].label,
           ])}
-          onChange={(t) => {
-            propAct({ type: "setType", id: 1, value: t });
-            // Commercial is photos and the 360° tour only.
-            if (t === "commercial") setPv({ short: 0, long: 0 });
-          }}
+          onChange={(t) => propAct({ type: "setType", id: 1, value: t })}
         />
       </div>
-      <div className="bkp-group">
-        <span className="bkp-muted">{prop.type === "commercial" ? "Scale" : "Size"}</span>
-        <div className="bkp-chips" role="group" aria-label="Size" data-testid="photo-price">
-          {sizes.map((z, i) => (
-            <button
-              key={z}
-              type="button"
-              aria-pressed={prop.size === i}
-              onClick={() => propAct({ type: "update", id: 1, patch: { size: i } })}
-            >
-              <span>{z}</span>
-            </button>
-          ))}
+      {commercial ? (
+        <div className="bkp-group">
+          <span className="bkp-muted">Scale</span>
+          <div
+            className="bkp-cards bkp-cards-tiers"
+            role="group"
+            aria-label="Scale"
+            data-testid="photo-price"
+          >
+            {pricing.commercial.tiers.map((t, i) => (
+              <ServiceCard
+                key={t.label}
+                title={t.label}
+                line={t.description}
+                meta={t.popular ? <span className="pt-badge">Most popular</span> : null}
+                on={prop.size === i}
+                onToggle={() => propAct({ type: "update", id: 1, patch: { size: i } })}
+              />
+            ))}
+          </div>
+          {tier && (
+            <dl className="bkp-includes" aria-label={`${tier.label} includes`}>
+              <div>
+                <dt>Photos</dt>
+                <dd>{tier.includes.photos}</dd>
+              </div>
+              <div>
+                <dt>360 tour</dt>
+                <dd>{tier.includes.tourHotspots ?? "not available"}</dd>
+              </div>
+            </dl>
+          )}
         </div>
-      </div>
+      ) : (
+        <div className="bkp-group">
+          <span className="bkp-muted">Size</span>
+          <div className="bkp-chips" role="group" aria-label="Size" data-testid="photo-price">
+            {sizes.map((z, i) => (
+              <button
+                key={z}
+                type="button"
+                aria-pressed={prop.size === i}
+                onClick={() => propAct({ type: "update", id: 1, patch: { size: i } })}
+              >
+                <span>{z}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="bkp-groups" data-field="property">
         <div className="bkp-box-card" data-on={prop.photo ? "" : undefined}>
           <Check
@@ -580,14 +613,14 @@ export function BookingFlow({
         <div className="bkp-box-card" data-on={prop.tour ? "" : undefined}>
           <Check
             label="360° virtual tour"
-            sub={tourLocked ? "Not available for this scale" : DELIVERY.tour}
+            sub={tourLocked ? "360 tour: not available" : DELIVERY.tour}
             checked={prop.tour}
             disabled={tourLocked}
             right={tourLocked ? null : plain(prices.tour)}
             onChange={() => propAct({ type: "toggle", id: 1, key: "tour" })}
           />
         </div>
-        {!commercial && (
+        {
           <div className="bkp-box-card" data-on={pVideo ? "" : undefined}>
             <div className="bkp-row">
               <span className="bkp-body">Video</span>
@@ -622,7 +655,7 @@ export function BookingFlow({
               )}
             </div>
           </div>
-        )}
+        }
         {form.errors.property && (
           <span className="pt-field-msg" role="alert">
             {form.errors.property}
@@ -801,16 +834,19 @@ export function BookingFlow({
         onChange={touch((x: BookingLocation) => setLoc(x))}
         error={form.errors.location}
       />
-      <label className="pt-field">
-        Notes
-        <textarea
-          rows={3}
-          maxLength={2000}
-          value={note}
-          placeholder="Style, people on camera, rooms to focus on"
-          onChange={touch((e: React.ChangeEvent<HTMLTextAreaElement>) => setNote(e.target.value))}
-        />
-      </label>
+      {/* Content shoots: the brief covers it (owner, 19 Oct 2026); Access stays. */}
+      {isProp && (
+        <label className="pt-field">
+          Notes
+          <textarea
+            rows={3}
+            maxLength={2000}
+            value={note}
+            placeholder="Style, people on camera, rooms to focus on"
+            onChange={touch((e: React.ChangeEvent<HTMLTextAreaElement>) => setNote(e.target.value))}
+          />
+        </label>
+      )}
     </>
   );
 

@@ -519,3 +519,33 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 - **Content shoot**: Editing first, Quantity (Fixed | Flexible) only when Edited, then the Short-form / Long-form cards (counters only when Fixed; "AED 400 each" when Flexible; no prices for Raw), then a brief: "What do you need?" and reference links, saved at the start of the booking's notes ("Brief: …", "References: …"; read back when editing). Flexible edited is always the half-day minimum (`videos.day = "half"`, set on the client; an older full-day flexible booking keeps its day when edited). Raw files pick Half / Full day on When & where.
 - **Panel** lines up with the step's first box or field (the step heading spans both columns). The Summary's own price box shows on phones only (the side panel is hidden there). Confirm always shows the amount ("Confirm booking · AED 2,720"; AED 0 when a package covers everything; "from" for flexible).
 - **Phones**: "Back to dashboard" only on "What are you booking?"; later steps show "Back".
+
+## Portal type system (owner, 19 Oct 2026; restyling only)
+
+**Audit before (client portal CSS + inline styles; counts of distinct values):**
+- Font sizes: 22 (9px, 9.5px, 10px, 10.5px, 11px, 11.5px, 12px, 13px, 13.5px, 14px, 15px, 16px, 17px, 18px, 20px, 22px, 26px, 28px, 30px, 34px, 40px, clamp 26–34px).
+- Weights: 4 (400, 500, 600, 700), with 600/700 on body text (row titles, nav, choices, toasts, field labels).
+- Families: 3 (Archivo display, sans, DM Mono); mono on 30+ selectors, incl. tabs, back links, calendar days, the time wheel, stepper numbers and links.
+- Letter-spacing: 7 values (−0.01em, 0, 0.03em, 0.04em, 0.06em, 0.08em, 0.5em for the sign-in code).
+- Text colours: --fg, --muted, --ink, inherit, plus hard-coded #111, #b5b2aa, #fff, #1f7a3d (and the error reds).
+- Inline overrides: 11 (page titles at 26px on shoot / inquiry / project detail, 20px bolds, 15px section headings, weight 400 on small text).
+- Main offenders: `.pt-tabs` / `.pt-back` / `.pt-cal-day` / `.pt-link-box` in mono; three different status-label sizes (`.pt-badge` 10px, `.pt-steps` 9.5px, `.pt-wsteps` 10px); field labels 600; `.pt-h1` 26 / 30 / 40px by page; buttons 13 / 14px; segmented controls filled black when selected; card padding 16 / 20×22 / 14 / 10px.
+
+**After (one layer at the end of portal.css, same classes and markup):**
+- Page title `.pt-h1`: Archivo 700, wdth 78, uppercase, 30px (40px from 900px). Every page, detail pages included.
+- Section heading `.pt-h2` (and card titles, thank-you headings): Archivo 700 18px/1.15, wdth 85, uppercase.
+- Body: 400 15px/1.5 sans; row titles, nav, buttons and `<b>` at 500.
+- Small muted: 400 13px/1.45 sans, --muted (field labels, meta, hints, back links); errors the same size in red.
+- Price / number: 500 15px tabular; headline figures (stats, budget, price) Archivo 700 28px.
+- Mono: 500 11px/1.4, 0.08em, uppercase, only for tiny labels and IDs (eyebrows, MW- refs, status pills, steps, table heads, dates in lists, the phone tab bar).
+- Spacing --sp-1…6 = 4 / 8 / 12 / 16 / 24 / 32. Cards 16px (24px from 720px), table rows 52px, page headers end-aligned with the same gap.
+- One border (1px --line), one selected style (dark border; segmented controls no longer fill black), one status pill (1px line, mono label; the gold / green tones keep their fill), buttons primary / secondary / text link at 500 15px.
+- Exceptions: inputs stay 16px (iOS zoom); the sign-in code boxes keep their large mono digits.
+
+**Suggestions (need more than restyling, not done):**
+- Home "Needs your attention": a card inside a card; flatten to one list.
+- Shoot detail: Request revision / Approve sit outside any card while the rest of the page is cards; group them with the status.
+- Billing with no invoices: the Questions card is half width next to nothing; full width or move under Invoices.
+- Recent activity: dotted bullets and row rules together; one or the other.
+
+**Booking fixes:** commercial tiers back as cards with their descriptions (Basic "Small spaces", Essential "Most offices" + Most popular, Premium "Large commercial spaces", Executive "HQ / warehouses"; no size range exists in the tier data) and a strip of what the tier includes (photos, 360 hotspots; Basic "360 tour: not available", the 360 option disabled). Video is offered on commercial too (videos are a separate service; nothing blocks it). Content shoots hide the When & where Notes field (the brief covers it); Access stays.

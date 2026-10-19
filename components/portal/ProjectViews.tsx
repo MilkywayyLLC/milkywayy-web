@@ -369,7 +369,7 @@ export async function ProjectDetail({
               .filter(Boolean)
               .join(" · ")}
           </span>
-          <h1 className="pt-h1" style={{ fontSize: 26 }}>
+          <h1 className="pt-h1">
             {p.title}
           </h1>
         </div>

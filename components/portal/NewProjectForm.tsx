@@ -302,7 +302,7 @@ export function ProjectRequestModal({
           <span className="pt-eb">
             {made.ref} · {edit ? "Brief edited" : avatar ? "Brief received" : "Submitted"}
           </span>
-          <b style={{ fontSize: 20 }}>
+          <b className="pt-h2">
             {edit ? "Brief updated" : avatar ? "Brief received" : "Files received"}
           </b>
           <p style={{ margin: 0 }}>

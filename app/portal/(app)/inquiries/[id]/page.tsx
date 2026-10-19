@@ -56,7 +56,7 @@ export default async function InquiryPage({
               "Inquiry"
             )}
           </span>
-          <h1 className="pt-h1" style={{ fontSize: 26 }}>
+          <h1 className="pt-h1">
             {q.subject}
           </h1>
         </div>

@@ -110,7 +110,7 @@ export function RecipientsForm({ cc }: { cc: NotifyCc }) {
             autoCapitalize="none"
             inputMode="email"
           />
-          <small className="pt-muted" style={{ fontWeight: 400 }}>
+          <small className="pt-muted">
             {sub}. Separate addresses with commas, up to 5.
           </small>
         </label>
@@ -141,7 +141,7 @@ export function PasswordForm() {
           minLength={8}
           aria-invalid={state?.field === "password" || undefined}
         />
-        <small className="pt-muted" style={{ fontWeight: 400 }}>
+        <small className="pt-muted">
           Set or change it here. At least 8 characters. You can always sign in with an email code
           instead.
         </small>

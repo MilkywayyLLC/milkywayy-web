@@ -112,7 +112,7 @@ export default async function Settings() {
         />
         {isManager(current) && (
           <>
-            <h3 className="pt-h2" style={{ fontSize: 15, marginTop: 8 }}>
+            <h3 className="pt-h2" style={{ marginTop: 8 }}>
               Extra recipients for {a.name}
             </h3>
             <RecipientsForm cc={a.notify_cc ?? {}} />

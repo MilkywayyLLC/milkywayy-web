@@ -309,7 +309,7 @@ export function ListingForm({
       </div>
 
       <fieldset className="pt-card pt-permit-field">
-        <legend className="pt-h2" style={{ fontSize: 15 }}>
+        <legend className="pt-h2">
           DLD advertising permit (optional)
         </legend>
         <p className="pt-meta" style={{ margin: 0 }}>
@@ -386,7 +386,7 @@ export function ListingForm({
       <div className="pt-field">
         Video and tour
         {videos.length > 0 ? (
-          <label className="pt-field" style={{ fontWeight: 400 }}>
+          <label className="pt-field">
             Reel on the page
             <select value={v.reel_id} onChange={(e) => set("reel_id", e.target.value)}>
               <option value="">No reel</option>
