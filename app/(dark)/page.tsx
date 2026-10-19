@@ -35,7 +35,7 @@ import { lowestShootPrice } from "@/lib/pricing";
 import { withPlayback } from "@/lib/playable";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { pageMetadata } from "@/lib/seo/meta";
-import { placedShowcase, SHOWCASE } from "@/lib/showcase";
+import { placedShowcase, SHOWCASE, showcaseRates } from "@/lib/showcase";
 import { PageLd } from "@/components/seo/JsonLd";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -278,6 +278,7 @@ export default async function HomePage() {
             <DashboardShowcase
               features={SHOWCASE.home}
               photos={placedShowcase(showcase, portfolio)}
+              rates={showcaseRates(property, other)}
             />
           </div>
         </section>

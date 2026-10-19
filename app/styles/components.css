@@ -3479,7 +3479,7 @@
   .dsh {
     --dsh-gap: clamp(32px, 5vw, 72px);
     display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
     gap: var(--dsh-gap);
     align-items: center;
   }
@@ -3602,25 +3602,31 @@
     color: var(--muted);
     letter-spacing: 0.04em;
   }
-  /* The mock portal. Everything for it is scoped under .dsh-mock so website classes never leak
-     in or out. Drawn on a fixed 880×560 desktop canvas scaled to the window; the overrides force
-     the portal's desktop layout whatever the viewport (its breakpoints read the viewport). Each
-     frame is paint-contained, so nothing positioned inside it (e.g. the placeholder skyline's
-     ::before) can draw outside its own box. */
+  /* The preview frames (components/blocks/showcase): a fixed canvas per layout (desktop portal
+     800×700, phone portal 390×780) scaled to the window by --k and centred when it's narrower
+     than the window. Each frame is paint-contained and they only crossfade. Before the frames
+     load, the window keeps their shape so nothing jumps. */
   .dsh-mock {
     position: relative;
     overflow: hidden;
     background: #f5f4f0;
     isolation: isolate;
   }
+  .dsh-mock:not([data-l]) {
+    aspect-ratio: 800 / 700;
+  }
+  @media (max-width: 600px) {
+    .dsh-mock:not([data-l]) {
+      aspect-ratio: 390 / 780;
+    }
+  }
   .dsh-mock .dsh-canvas {
     position: absolute;
-    left: 0;
+    left: calc((100% - var(--cw, 100%)) / 2);
     top: 0;
     transform: scale(var(--k));
     transform-origin: 0 0;
   }
-  /* Frames crossfade: the outgoing and incoming frame fade together over 200ms. */
   .dsh-mock .dsh-frame {
     position: absolute;
     inset: 0;
@@ -3637,285 +3643,12 @@
     visibility: visible;
     transition: opacity 0.2s ease;
   }
-  /* Fit: a frame whose content is taller than the canvas is laid out larger and scaled down. */
   .dsh-mock .dsh-fit {
     transform-origin: 0 0;
   }
-  .dsh-mock .dsh-pt {
-    position: relative;
-    height: 100%;
-    min-height: 0;
-    font-size: 15px;
-  }
-  .dsh-mock .pt-shell {
-    grid-template-columns: 196px minmax(0, 1fr);
-    height: 100%;
-    min-height: 0;
-  }
-  .dsh-mock .pt-rail {
-    display: grid;
-    align-content: start;
-    gap: 24px;
-    position: static;
-    height: 100%;
-    padding: 20px 12px;
-    border-right: 1px solid var(--line);
-    background: var(--surface);
-  }
-  .dsh-mock .pt-rail-nav {
-    display: grid;
-    gap: 2px;
-  }
-  .dsh-mock .pt-rail-nav a {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    font-size: 14px;
-    color: var(--muted);
-  }
-  .dsh-mock .pt-rail-nav a[aria-current="page"] {
-    color: var(--fg);
-    background: var(--surface-2);
-  }
-  .dsh-mock .pt-rail-sep {
-    height: 1px;
-    margin: 8px 0;
-    background: var(--line);
-  }
-  .dsh-mock .pt-logo .brand-logo {
-    height: 22px;
-    width: auto;
-  }
-  .dsh-mock .pt-main {
-    overflow: hidden;
-  }
-  .dsh-mock .pt-top {
-    position: static;
-    justify-content: flex-end;
-  }
-  .dsh-mock .pt-logo-sm {
-    display: none;
-  }
-  .dsh-mock .pt-hello {
-    display: inline;
-  }
-  .dsh-mock .pt-content {
-    display: grid;
-    align-content: start;
-    gap: 16px;
-    padding: 20px 22px;
-  }
-  .dsh-mock .pt-wrow {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .dsh-mock .pt-wside {
-    grid-column: auto;
-    display: grid;
-    justify-items: end;
-  }
-  /* The portal's steps line hides labels on narrow viewports; the canvas is always desktop. */
-  .dsh-mock .dsh-pt .pt-wsteps li {
-    visibility: inherit;
-  }
-  /* Modals: centred over the dimmed portal, inside the frame. */
-  .dsh-mock .pt-modal-bg {
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px 80px;
-    background: rgb(17 17 16 / 0.45);
-  }
-  /* Never cropped: the modal shows all of its content (Fit scales the frame instead). */
-  .dsh-mock .pt-modal {
-    width: 100%;
-    max-height: none;
-  }
-  .dsh-mock .pt-modal-body {
-    overflow: visible;
-  }
-  .dsh-mock .pt-thumbs.dsh-thumbs {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-  .dsh-mock .dsh-ph {
-    position: relative;
-    display: block;
-    overflow: hidden;
-    aspect-ratio: 3/2;
-    background-size: cover;
-    background-position: center;
-  }
-  .dsh-mock .dsh-169 {
-    aspect-ratio: 16/9;
-  }
-  .dsh-mock .dsh-2 {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-  }
-  .dsh-mock .dsh-2 .pt-card {
-    align-content: start;
-  }
-  .dsh-mock .dsh-reels {
-    display: grid;
-    grid-template-columns: repeat(2, 72px);
-    gap: 8px;
-  }
-  .dsh-mock .dsh-reels .dsh-ph {
-    aspect-ratio: 9/16;
-  }
-  .dsh-mock .dsh-video {
-    display: grid;
-    grid-template-columns: 150px minmax(0, 1fr);
-    gap: 20px;
-    align-items: start;
-  }
-  .dsh-mock .dsh-video .dsh-ph {
-    aspect-ratio: 9/16;
-  }
-  /* A filled-in input (the mock types nothing). */
-  .dsh-mock .dsh-in {
-    display: block;
-    padding: 10px 12px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    font-size: 14.5px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .dsh-mock .dsh-in + .dsh-in {
-    margin-top: 6px;
-  }
-  .dsh-mock .dsh-in-tall {
-    min-height: 64px;
-    white-space: normal;
-  }
-  /* A still range slider (track, filled part, thumb). */
-  .dsh-mock .dsh-slider {
-    position: relative;
-    display: block;
-    height: 4px;
-    margin: 10px 0 6px;
-    background:
-      linear-gradient(var(--fg), var(--fg)) 0 0 / calc(var(--v) * 100%) 100% no-repeat,
-      var(--line);
-  }
-  .dsh-mock .dsh-slider i {
-    position: absolute;
-    top: 50%;
-    left: calc(var(--v) * 100%);
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--fg);
-    transform: translate(-50%, -50%);
-  }
-  /* A styled street map with the pin on the entrance. */
-  .dsh-mock .dsh-map {
-    position: relative;
-    height: 150px;
-    border: 1px solid var(--line);
-    background: #eeece6 url("/images/showcase-map.svg") center / cover no-repeat;
-  }
-  .dsh-mock .dsh-pin {
-    position: absolute;
-    left: 37%;
-    top: 22%;
-    color: var(--rec);
-    filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.3));
-  }
-  /* the public listing page (share.css look: light, gallery mosaic, agent card) */
-  .dsh-mock .dsh-lp {
-    height: 100%;
-    background: #fff;
-    color: var(--fg);
-  }
-  .dsh-mock .dsh-lp-in {
-    display: grid;
-    grid-template-rows: 280px auto;
-    gap: 18px;
-    padding: 18px 28px 24px;
-  }
-  .dsh-mock .dsh-lp-desc {
-    margin: 6px 0 0;
-    max-width: 58ch;
-    color: var(--muted);
-    font-size: 14px;
-    line-height: 1.5;
-  }
-  .dsh-mock .dsh-lp-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 4px;
-  }
-  .dsh-mock .dsh-lp-chips span {
-    padding: 5px 10px;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    font-size: 12.5px;
-  }
-  .dsh-mock .dsh-lp-mosaic {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    gap: 6px;
-  }
-  .dsh-mock .dsh-lp-mosaic .dsh-ph {
-    aspect-ratio: auto;
-    height: 100%;
-    border-radius: 2px;
-  }
-  .dsh-mock .dsh-lp-mosaic .dsh-ph:first-child {
-    grid-row: span 2;
-  }
-  .dsh-mock .dsh-lp-cols {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 260px;
-    gap: 24px;
-    align-items: start;
-  }
-  .dsh-mock .dsh-lp-main {
-    display: grid;
-    gap: 8px;
-  }
-  .dsh-mock .dsh-lp-price {
-    font: 800 30px/1 var(--font-display);
-    font-variation-settings: "wdth" 75;
-  }
-  .dsh-mock .dsh-lp-h1 {
-    font-size: 19px;
-    font-weight: 600;
-  }
-  .dsh-mock .dsh-lp-facts {
-    display: flex;
-    gap: 18px;
-    color: var(--muted);
-    font-size: 14px;
-  }
-  .dsh-mock .dsh-lp-facts span {
-    display: inline-flex;
-    gap: 6px;
-    align-items: center;
-  }
-  .dsh-mock .dsh-lp-agent {
-    display: grid;
-    gap: 8px;
-    padding: 16px;
-    border: 1px solid var(--line);
-    box-shadow:
-      0 1px 2px rgb(0 0 0 / 0.04),
-      0 4px 16px rgb(0 0 0 / 0.04);
-  }
-  .dsh-mock .dsh-lp-agent .btn {
-    justify-content: center;
-  }
-  /* phones and tablets: features as a sideways row of tabs above the window */
-  @media (max-width: 900px) {
+  /* phones and tablets: features as a sideways row of tabs above the window, so the window gets
+     the full width (a readable frame up to 1100px) */
+  @media (max-width: 1100px) {
     .dsh {
       grid-template-columns: minmax(0, 1fr);
       gap: 16px;

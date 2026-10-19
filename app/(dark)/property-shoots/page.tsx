@@ -15,7 +15,7 @@ import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Hl, SectionHead } from "@/components/ui/Section";
-import { placedShowcase, SHOWCASE } from "@/lib/showcase";
+import { placedShowcase, SHOWCASE, showcaseRates } from "@/lib/showcase";
 import {
   getBeforeAfter,
   getFaqs,
@@ -209,7 +209,7 @@ export default async function PropertyShootsPage() {
           />
           <DashboardShowcase
             features={SHOWCASE.property}
-            pricing={pricing}
+            rates={showcaseRates(pricing)}
             photos={placedShowcase(showcase, photos)}
           />
         </div>

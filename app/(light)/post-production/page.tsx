@@ -11,7 +11,7 @@ import { Steps, type Step } from "@/components/blocks/Steps";
 import { FreeTestSection } from "@/components/forms/FreeTestSection";
 import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
 import { FormatGallery } from "@/components/blocks/FormatGallery";
-import { placedShowcase, SHOWCASE } from "@/lib/showcase";
+import { placedShowcase, SHOWCASE, showcaseRates } from "@/lib/showcase";
 import { HeroMedia } from "@/components/blocks/HeroMedia";
 import { postHeroReels } from "@/lib/post-hero";
 import { HERO_TEMPLATES } from "@/lib/placements";
@@ -350,7 +350,11 @@ export default async function PostProductionPage() {
               </p>
             }
           />
-          <DashboardShowcase features={SHOWCASE.post} photos={placedShowcase(showcase, allMedia)} />
+          <DashboardShowcase
+            features={SHOWCASE.post}
+            photos={placedShowcase(showcase, allMedia)}
+            rates={showcaseRates(undefined, other)}
+          />
         </div>
       </section>
 

@@ -153,3 +153,29 @@ test("no page mixes ratios in a row of media @mobile", async ({ page }) => {
     expect(rows, path).toEqual([]);
   }
 });
+
+test("dashboard previews fit the screen: phone portal on phones, desktop portal otherwise", async ({
+  browser,
+}) => {
+  // Owner, 20 Oct 2026: phones see the phone portal (bottom tabs, total bar), not a shrunken
+  // desktop; nothing scrolls sideways; the frames load only near the section.
+  for (const [width, layout] of [
+    [390, "phone"],
+    [768, "desk"],
+    [1440, "desk"],
+  ] as const) {
+    const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+    const page = await ctx.newPage();
+    await page.goto("/property-shoots");
+    await expect(page.locator(".scm")).toHaveCount(0);
+    await page.getByRole("tablist", { name: "Client dashboard features" }).scrollIntoViewIfNeeded();
+    const frame = page.locator(".dsh-frame.on .scm");
+    await expect(frame).toHaveAttribute("data-l", layout);
+    if (layout === "phone") await expect(frame.locator(".s-tabs")).toBeVisible();
+    else await expect(frame.locator(".s-rail")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
+    await ctx.close();
+  }
+});

@@ -1,5 +1,6 @@
 import type { ShowcaseFeature, ShowcasePhoto } from "@/components/blocks/DashboardShowcase";
-import type { PortfolioItem } from "@/content/types";
+import type { OtherPricing, PortfolioItem, PropertyPricing } from "@/content/types";
+import { lowestShootPrice } from "@/lib/pricing";
 
 /** Real published portfolio photos for the showcase frames (placeholders when there are none). */
 export function showcasePhotos(items: PortfolioItem[]): ShowcasePhoto[] {
@@ -7,6 +8,54 @@ export function showcasePhotos(items: PortfolioItem[]): ShowcasePhoto[] {
     .filter((p) => p.published && !p.sample && p.format === "photo" && p.media.src)
     .slice(0, 9)
     .map((p) => ({ src: p.media.src!, alt: p.media.alt }));
+}
+
+/** The rate card numbers the frames show (the page's own prices, never made up). */
+export type ShowcaseRates = {
+  /** Property and content shoots (AED), on the apartment rate card's default size. */
+  shoot?: {
+    size: string;
+    sizes: string[];
+    photo: number;
+    twilight: number;
+    tour: number;
+    reel: number;
+    long: number;
+    /** "from" on Property shoot (the lowest photo price) and Content shoot (the lowest reel). */
+    from: number;
+    contentFrom: number;
+    delivery: PropertyPricing["delivery"];
+  };
+  /** Edit only, from the post-production rate card (its own currency). */
+  edit?: { currency: string; reel: number; long: number; photo: number };
+};
+
+export function showcaseRates(property?: PropertyPricing, other?: OtherPricing): ShowcaseRates {
+  const post = other?.postProduction;
+  const rate = (k: "photo" | "short" | "long") => post?.rates.find((r) => r.key === k)?.amount;
+  const [reel, long, photo] = [rate("short"), rate("long"), rate("photo")];
+  const edit =
+    post && reel != null && long != null && photo != null
+      ? { currency: post.currency, reel, long, photo }
+      : undefined;
+  if (!property) return { edit };
+  const apt = property.apartment;
+  const z = apt.sizes[apt.defaultSize] ?? apt.sizes[0];
+  return {
+    shoot: {
+      size: z.label,
+      sizes: apt.sizes.map((s) => s.label),
+      photo: z.photo,
+      twilight: property.twilight.standard[5],
+      tour: z.tour,
+      reel: z.short,
+      long: z.long.day,
+      from: lowestShootPrice(property),
+      contentFrom: Math.min(...apt.sizes.map((s) => s.short)),
+      delivery: property.delivery,
+    },
+    edit,
+  };
 }
 
 /**
