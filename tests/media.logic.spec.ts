@@ -4,7 +4,8 @@ import { instagramShortcode, isInstagramUrl } from "@/lib/instagram-link";
 import { exportSize, kindOf, MEDIA, photosOf, sizeWarnings } from "@/lib/media-config";
 import { tourEmbed } from "@/lib/tours";
 import { usedOn, type UsageItem } from "@/lib/used-on";
-import { targetBitrate } from "@/lib/video-compress";
+import { detectOrientation } from "@/lib/placements";
+import { targetBitrate, videoMaxBytes } from "@/lib/video-compress";
 import { embedUrl } from "@/lib/video";
 
 /** Portfolio media formats (owner, 7 Oct 2026): one config, read by the site and the admin. */
@@ -198,4 +199,27 @@ test("server check keeps only what the format uses and moves stray Instagram lin
   expect(portfolioMedia({ alt: "C" }, { format: "reel", category: "brand" }).error).toBe(
     "Add the cover image.",
   );
+});
+
+test("long-form takes an uploaded file up to 200 MB and keeps its shape (owner, 19 Oct 2026)", () => {
+  expect(videoMaxBytes("long-form")).toBe(200 * 1024 * 1024);
+  expect(videoMaxBytes("reel")).toBe(150 * 1024 * 1024);
+  const file = { bytes: 41_000_000, width: 1920, height: 1080, optimised: true };
+  const long = portfolioMedia(
+    {
+      alt: "Showreel",
+      src: "/fixtures/wide.webp",
+      video: "r2:site/reels/0b6f3c1e-2d4a-4f8e-9c3b-7a1d5e9f2c40.mp4",
+      file,
+    },
+    { format: "long-form", category: "property" },
+  );
+  expect(long.error).toBeUndefined();
+  expect(long.value).toMatchObject({
+    video: "r2:site/reels/0b6f3c1e-2d4a-4f8e-9c3b-7a1d5e9f2c40.mp4",
+    file,
+  });
+  expect(detectOrientation(long.value)).toBe("16:9");
+  // A long YouTube link isn't read as a reel's 9:16 Shorts link.
+  expect(detectOrientation({ alt: "", video: "https://youtu.be/aqz-KE-bpKQ" })).toBe("16:9");
 });

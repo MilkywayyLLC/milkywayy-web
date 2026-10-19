@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- admin previews of uploaded images, not site media */
 import { useEffect, useId, useRef, useState, type DragEvent } from "react";
 import type { Media, PortfolioItem } from "@/content/types";
-import type { AdminCtx } from "@/lib/admin/fields";
+import type { AdminCtx, VideoFolder } from "@/lib/admin/fields";
 import { checkInstagramReel, importInstagramCover } from "@/lib/admin/media-actions";
 import { imageProblem, uploadImage } from "@/lib/admin/upload-image";
 import type { ReelMatch } from "@/lib/instagram";
@@ -11,7 +11,7 @@ import { instagramShortcode, isInstagramUrl, OUR_INSTAGRAM } from "@/lib/instagr
 import { isFileVideo, kindOf } from "@/lib/media-config";
 import { TOUR_HINT, tourEmbed } from "@/lib/tours";
 import { appearsOn } from "@/lib/admin/sections";
-import { youtubeShort } from "@/lib/video";
+import { embedUrl, VIDEO_HINT, VIDEO_REFUSED, youtubeShort } from "@/lib/video";
 import { mb } from "@/lib/video-compress";
 import { ImageField } from "./ImageField";
 import { FocalCrop, imageWarnings, MediaFacts, VideoUpload, Warnings } from "./MediaParts";
@@ -25,7 +25,8 @@ const MAX_PHOTOS = 60;
  *   Photo     a set of photos: multi-upload, drag to reorder, star the cover, alt text each
  *   Reel      an uploaded video (default) or a YouTube Shorts link, plus the cover image; our
  *             Instagram reel link only while INSTAGRAM_ACCESS_TOKEN is set (owner, 13 Oct 2026)
- *   Long-form a YouTube link (default) or an uploaded video, plus the cover image
+ *   Long-form a YouTube link (default) or an uploaded video (up to 200 MB, e.g. the home
+ *             hero; owner, 19 Oct 2026), plus the cover image
  *   360 tour  a Matterport, Panoee or Kuula link plus the cover image
  * Any item can also link to its Instagram post.
  */
@@ -64,15 +65,12 @@ export function PortfolioMedia({
           instagram={!!ctx.instagram}
         />
       ) : kind === "long-form" ? (
-        <ImageField
-          label="Cover image"
-          value={m}
+        <LongForm
+          m={m}
+          set={set}
           onChange={onChange}
-          kind="long-form"
           usedOn={used}
-          video
-          upload={row.category === "ai-avatar" ? "avatars" : "reels"}
-          required
+          folder={row.category === "ai-avatar" ? "avatars" : "reels"}
         />
       ) : (
         <Tour m={m} set={set} onChange={onChange} usedOn={used} />
@@ -426,6 +424,132 @@ function Reel({
         bright={kind === "ai-avatar"}
         required
         hint="Required: it shows before the video plays."
+      />
+    </>
+  );
+}
+
+/* ---------- long-form 16:9 ---------- */
+
+/**
+ * A 16:9 video: a YouTube/Vimeo link, or a file uploaded the same way as reels (optimised in the
+ * browser, then sent straight to R2 with a signed link, never through our server).
+ */
+function LongForm({
+  m,
+  set: setMedia,
+  onChange,
+  usedOn,
+  folder,
+}: {
+  m: Media;
+  set: (p: Partial<Media>) => void;
+  onChange: (m: Media) => void;
+  usedOn: string[];
+  folder: VideoFolder;
+}) {
+  const id = useId();
+  // No reel `source` here: a leftover "youtube" would read as 9:16 (detectOrientation).
+  const set = (p: Partial<Media>) => setMedia({ ...p, source: undefined });
+  const file = isFileVideo(m.video);
+  const [source, setSource] = useState<"youtube" | "upload">(file ? "upload" : "youtube");
+  const [moved, setMoved] = useState(false);
+  const link = !file ? (m.video ?? "") : "";
+  const linkOk = !link || !!embedUrl(link);
+  const pick = (next: "youtube" | "upload") => {
+    setSource(next);
+    // Switching drops the other kind of video, so what's saved matches what's chosen.
+    if (next === "youtube" && file) set({ video: undefined, file: undefined });
+    if (next === "upload" && !file && m.video) set({ video: undefined });
+  };
+  const options = [
+    { value: "youtube" as const, label: "YouTube link" },
+    { value: "upload" as const, label: "Upload video file" },
+  ];
+  return (
+    <>
+      <fieldset className="ad-field" data-testid="long-form-source">
+        <legend className="ad-label">Video</legend>
+        <div className="ad-checks">
+          {options.map((o) => (
+            <label key={o.value} className="ad-check">
+              <input
+                type="radio"
+                name={`${id}-src`}
+                checked={source === o.value}
+                onChange={() => pick(o.value)}
+              />
+              <span>{o.label}</span>
+            </label>
+          ))}
+        </div>
+        {source === "youtube" ? (
+          <div className="ad-field">
+            <label htmlFor={`${id}-yt`}>Video link</label>
+            <input
+              id={`${id}-yt`}
+              type="url"
+              inputMode="url"
+              placeholder="https://youtube.com/watch?v=…"
+              value={link}
+              aria-invalid={!linkOk}
+              onChange={(e) => {
+                const next = e.target.value.trim();
+                // An Instagram link isn't a video link: keep it as the item's Instagram link.
+                if (isInstagramUrl(next)) {
+                  setMoved(true);
+                  return set({ video: undefined, instagramUrl: next });
+                }
+                setMoved(false);
+                set({ video: next || undefined, file: undefined });
+              }}
+            />
+            <span className={linkOk ? "ad-help" : "ad-err"} role={linkOk ? undefined : "alert"}>
+              {!linkOk
+                ? VIDEO_REFUSED
+                : moved
+                  ? "That’s an Instagram link, so it went to “Instagram post link” below."
+                  : `${VIDEO_HINT}. The cover image shows first; the video loads when someone presses play.`}
+            </span>
+          </div>
+        ) : (
+          <>
+            {file && (
+              <div className="ad-btns">
+                <span className="ad-small" data-testid="video-stored">
+                  Uploaded video{m.file?.bytes ? ` (${mb(m.file.bytes)})` : ""}
+                  {m.file?.width && m.file?.height ? `, ${m.file.width}×${m.file.height}` : ""}
+                  {m.file?.optimised === false ? ", not optimised" : ""}.
+                </span>
+                <button
+                  type="button"
+                  className="ad-btn quiet small"
+                  onClick={() => set({ video: undefined, file: undefined })}
+                >
+                  Remove video
+                </button>
+              </div>
+            )}
+            <VideoUpload
+              kind="long-form"
+              folder={folder}
+              label={file ? "Replace video" : "Upload video file"}
+              onDone={(ref, meta) => set({ video: ref, file: meta })}
+            />
+            <span className="ad-help">
+              As the home hero it plays muted on a loop; a click plays it with sound.
+            </span>
+          </>
+        )}
+      </fieldset>
+      <ImageField
+        label="Cover image"
+        value={m}
+        onChange={onChange}
+        kind="long-form"
+        usedOn={usedOn}
+        required
+        hint="Required: it shows first, before the video loads."
       />
     </>
   );

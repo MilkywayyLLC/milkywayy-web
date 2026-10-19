@@ -7,7 +7,7 @@ export const LAUNCH = {
   /** Privacy and Terms reviewed (ideally by a UAE lawyer). Removes "Draft · to be reviewed". */
   legalReviewed: false,
   /** The About story confirmed by Akash. Removes "Draft · owner to confirm". */
-  aboutConfirmed: false,
+  aboutConfirmed: true,
   /** Every number in the stats band is defensible (Admin → Stats). */
   statsConfirmed: false,
 } as const;

@@ -157,6 +157,14 @@ export function portfolioMedia(
       }
       if (video && !okVideo(video)) return { error: VIDEO_REFUSED };
       if (video) out.video = video;
+      // An uploaded file keeps its size and shape (orientation is read from it).
+      if (video && isFileVideo(video) && m.file && typeof m.file === "object")
+        out.file = {
+          bytes: num(m.file.bytes),
+          width: num(m.file.width),
+          height: num(m.file.height),
+          optimised: m.file.optimised !== false,
+        };
     } else if (kind === "360") {
       let tour = typeof m.tour === "string" ? m.tour.trim() : "";
       if (isInstagramUrl(tour)) {

@@ -6,6 +6,11 @@
  * export size. The single-threaded core needs no special page headers.
  */
 export const VIDEO_MAX_BYTES = 150 * 1024 * 1024;
+/** 16:9 long-form and the showreel (e.g. the home hero) may be bigger (owner, 19 Oct 2026). */
+export const LONG_VIDEO_MAX_BYTES = 200 * 1024 * 1024;
+/** The upload limit for a format's video file. */
+export const videoMaxBytes = (kind: string) =>
+  kind === "long-form" || kind === "showreel" ? LONG_VIDEO_MAX_BYTES : VIDEO_MAX_BYTES;
 const TARGET_BYTES = 38 * 1024 * 1024;
 const VIDEO_BPS = 5_000_000;
 const AUDIO_BPS = 128_000;

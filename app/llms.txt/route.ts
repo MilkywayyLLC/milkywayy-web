@@ -25,7 +25,7 @@ export async function GET() {
     .join("; ");
   const text = `# Milkywayy
 
-> Milkywayy is a content studio in Dubai, UAE (${site.company}, ${site.licence}), creating content since 2020. Property and brand production in the UAE, remote photo and video editing worldwide, and custom AI presenter videos.
+> Milkywayy is a content studio in Dubai, UAE (${site.company}, ${site.licence}), with over 1,000 properties captured across Dubai. Property and brand production in the UAE, remote photo and video editing worldwide, and custom AI presenter videos.
 
 ## Services
 

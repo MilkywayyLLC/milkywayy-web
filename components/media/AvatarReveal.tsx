@@ -52,9 +52,6 @@ export function AvatarStage({ hero, priority }: { hero: AvatarHero; priority?: b
         priority={priority}
         sizes="(max-width: 860px) 100vw, 50vw"
       >
-        <p className="caption">
-          “{hero.captionLead} <b>{hero.captionHighlight}</b>”
-        </p>
         {hero.clip && (
           <LiteVideo
             video={hero.clip}

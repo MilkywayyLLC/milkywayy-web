@@ -101,10 +101,10 @@ export const SEO_PAGES: SeoPage[] = [
     key: "about",
     path: "/about",
     name: "About",
-    title: "About Milkywayy | Creating Content Since 2020",
+    title: "About Milkywayy | From Dubai's Landmarks to Screens Worldwide",
     description:
-      "Milkywayy is a Dubai studio creating content since 2020 for real estate, hospitality, brands and creators. Founded by Akash Praseed.",
-    og: ["Creating content", "since 2020."],
+      "Milkywayy has captured over 1,000 properties across Dubai, from Atlantis The Royal to Burj Khalifa, and brings the same detail to brand production, editing and AI video worldwide.",
+    og: ["From Dubai's landmarks", "to screens worldwide."],
     eyebrow: "About",
     sitemap: 0.6,
   },

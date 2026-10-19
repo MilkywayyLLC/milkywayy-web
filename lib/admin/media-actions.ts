@@ -4,13 +4,15 @@ import { adminOrThrow } from "@/lib/admin/auth";
 import { storeImage, type Stored } from "@/lib/admin/store-image";
 import { matchReel, reelMedia, type ReelMatch } from "@/lib/instagram";
 import { presign, r2Ready } from "@/lib/r2";
+import { LONG_VIDEO_MAX_BYTES } from "@/lib/video-compress";
 
 /**
  * Admin media actions (owner, 7 Oct 2026). Video files go straight from the browser to R2 with a
  * presigned PUT (only the optimised web version is stored, under site/…); Instagram links are
  * checked against our account; a reel's own cover can be copied into the site's image storage.
  */
-const MAX_VIDEO = 150 * 1024 * 1024;
+// The largest any format allows (16:9 long-form); each uploader checks its own limit first.
+const MAX_VIDEO = LONG_VIDEO_MAX_BYTES;
 const FOLDERS = ["reels", "avatars", "showreel"] as const;
 export type VideoFolder = (typeof FOLDERS)[number];
 
@@ -26,7 +28,7 @@ export async function startSiteVideoUpload(
   }
   if (!FOLDERS.includes(folder)) return { ok: false, error: "Unknown video kind." };
   if (!(bytes > 0) || bytes > MAX_VIDEO)
-    return { ok: false, error: "Videos can be up to 150 MB. Export a shorter or smaller file." };
+    return { ok: false, error: "Videos can be up to 200 MB. Export a shorter or smaller file." };
   const ext = type === "video/quicktime" ? "mov" : type === "video/webm" ? "webm" : "mp4";
   const key = `site/${folder}/${crypto.randomUUID()}.${ext}`;
   if (r2Ready("site")) return { ok: true, url: presign("PUT", key, 3600), ref: `r2:${key}` };

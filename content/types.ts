@@ -143,19 +143,15 @@ export interface BeforeAfterPair extends Publishable {
 
 /* ---------- AI avatars ---------- */
 
-/** AI avatars hero (admin: AI avatars → hero Adam video, caption line and reveal text). */
+/** AI avatars hero (admin: AI avatars → hero Adam video and reveal text). */
 export interface AvatarHero {
   name: string;
   poster: Media;
   /** Optional clip; click-to-play once supplied. */
   clip?: string;
   timecode: string;
-  captionLead: string;
-  captionHighlight: string;
   revealTitle: string;
   revealText: string;
-  proofLead: string;
-  proofHighlight: string;
   sample?: boolean;
 }
 

@@ -171,6 +171,7 @@ export default async function HomePage() {
                     video={showreel.video}
                     title="Milkywayy showreel"
                     poster={showreel.src}
+                    ambient
                   />
                 </MediaFrame>
                 {showreelIsSample && <SampleLabel>Placeholder · showreel coming</SampleLabel>}

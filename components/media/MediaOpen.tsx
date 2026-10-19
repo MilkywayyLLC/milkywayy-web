@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Playable } from "@/lib/playable";
 import { useSound } from "./sound";
 import { VideoControls } from "./VideoControls";
@@ -21,6 +21,13 @@ const LABEL: Record<Playable["type"], string> = {
   tour: "Open 360 tour",
 };
 
+const CALM = "(prefers-reduced-motion: reduce)";
+const onCalm = (cb: () => void) => {
+  const q = matchMedia(CALM);
+  q.addEventListener("change", cb);
+  return () => q.removeEventListener("change", cb);
+};
+
 /** Only one card plays at a time: a new one pauses the last. */
 let stopLast: (() => void) | null = null;
 
@@ -32,12 +39,26 @@ let stopLast: (() => void) | null = null;
  * iframe in the card on click (modal when the card is under 480px wide) and keep their own UI.
  * 360 tours load in the card, or full screen on phones. Photo sets open the zoom viewer. Render
  * inside a MediaFrame.
+ *
+ * `ambient` (our own files only, e.g. the home hero): after the page loads the video plays muted
+ * on a loop over the poster, with no controls, unless the visitor prefers reduced motion. A
+ * click then takes over as above: from the start, with sound, and the controls appear.
  */
-export function MediaOpen({ play }: { play: Playable }) {
+export function MediaOpen({ play, ambient }: { play: Playable; ambient?: boolean }) {
   const [modal, setModal] = useState(false);
   const [inline, setInline] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [want, setWant] = useState(false);
+  /** Ambient only: the visitor has clicked, so it behaves like any other card from now on. */
+  const [engaged, setEngaged] = useState(false);
+  const background = !!ambient && play.type === "file" && !engaged;
+  // False on the server and in the first paint, so the poster always shows first.
+  const motionOk = useSyncExternalStore(
+    onCalm,
+    () => !matchMedia(CALM).matches,
+    () => false,
+  );
+  const live = mounted || (background && motionOk);
   const btn = useRef<HTMLButtonElement>(null);
   const vid = useRef<HTMLVideoElement>(null);
   const sound = useSound();
@@ -46,9 +67,17 @@ export function MediaOpen({ play }: { play: Playable }) {
     soundOn.current = sound.on;
   }, [sound.on]);
 
+  // Ambient: once hydrated, the video plays muted over the poster.
   useEffect(() => {
     const v = vid.current;
-    if (!v) return;
+    if (!v || !background) return;
+    v.muted = true;
+    v.play().catch(() => undefined);
+  }, [background, live]);
+
+  useEffect(() => {
+    const v = vid.current;
+    if (!v || background) return;
     if (!want) return void v.pause();
     stopLast?.();
     const mine = () => setWant(false);
@@ -62,9 +91,16 @@ export function MediaOpen({ play }: { play: Playable }) {
     return () => {
       if (stopLast === mine) stopLast = null;
     };
-  }, [want, mounted]);
+  }, [want, mounted, background]);
 
   const toggle = () => {
+    if (background) {
+      // First click on an ambient video: restart it, now with sound.
+      if (vid.current) vid.current.currentTime = 0;
+      setEngaged(true);
+      setMounted(true);
+      return setWant(true);
+    }
     setMounted(true);
     setWant((w) => !w);
   };
@@ -91,18 +127,19 @@ export function MediaOpen({ play }: { play: Playable }) {
 
   return (
     <>
-      {play.type === "file" && mounted && (
+      {play.type === "file" && live && (
         <video
           ref={vid}
           className="fr-preview"
           src={play.src}
           poster={play.poster}
           loop
+          muted={background}
           playsInline
           preload="metadata"
           tabIndex={-1}
-          onPlay={() => setWant(true)}
-          onPause={() => setWant(false)}
+          onPlay={() => !background && setWant(true)}
+          onPause={() => !background && setWant(false)}
         />
       )}
       <div className="fr-hit">
@@ -115,7 +152,7 @@ export function MediaOpen({ play }: { play: Playable }) {
           aria-pressed={play.type === "file" ? want : undefined}
           onClick={open}
         />
-        {play.type === "file" && mounted && <VideoControls video={vid} />}
+        {play.type === "file" && mounted && !background && <VideoControls video={vid} />}
       </div>
       {modal && (
         <MediaViewer

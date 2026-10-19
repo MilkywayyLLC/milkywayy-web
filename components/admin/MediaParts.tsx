@@ -5,7 +5,7 @@ import { useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "
 import { startSiteVideoUpload } from "@/lib/admin/media-actions";
 import type { VideoFolder } from "@/lib/admin/fields";
 import { exportSize, isFileVideo, MEDIA, sizeWarnings, type MediaKind } from "@/lib/media-config";
-import { compressVideo, mb, VIDEO_MAX_BYTES, videoInfo } from "@/lib/video-compress";
+import { compressVideo, mb, videoInfo, videoMaxBytes } from "@/lib/video-compress";
 
 /**
  * Admin media building blocks (owner, 7 Oct 2026), all reading lib/media-config so the admin
@@ -197,14 +197,18 @@ export function VideoUpload({
   const [notes, setNotes] = useState<string[]>([]);
   const box = MEDIA[kind].video ?? { width: MEDIA[kind].width, height: MEDIA[kind].height };
   const vertical = box.height > box.width;
+  const maxMb = Math.round(videoMaxBytes(kind) / 1048576);
 
   async function pick(file?: File) {
     if (!file) return;
     setNotes([]);
     if (!/^video\//.test(file.type) && !/\.(mp4|mov|m4v|webm)$/i.test(file.name))
       return setSt({ s: "error", msg: "Choose an MP4 or MOV video." });
-    if (file.size > VIDEO_MAX_BYTES)
-      return setSt({ s: "error", msg: "That video is over 150 MB. Export a smaller file." });
+    if (file.size > videoMaxBytes(kind))
+      return setSt({
+        s: "error",
+        msg: `That video is ${mb(file.size)}, over the ${maxMb} MB limit. Export a smaller file.`,
+      });
     const info = await videoInfo(file);
     const out: string[] = [];
     if (info && info.width && info.height && info.width > info.height === vertical)
@@ -261,10 +265,17 @@ export function VideoUpload({
           onChange={(e) => pick(e.target.files?.[0])}
         />
         <span className="ad-small ad-muted">
-          MP4 or MOV, up to 150 MB. Optimised in your browser before it uploads.
+          MP4 or MOV, up to {maxMb} MB. Optimised in your browser, then uploaded straight to
+          storage.
         </span>
       </div>
-      <p id={`${id}-st`} className="ad-small" role="status" aria-live="polite">
+      <p
+        id={`${id}-st`}
+        className={st.s === "error" ? "ad-err" : "ad-small"}
+        role={st.s === "error" ? "alert" : "status"}
+        aria-live="polite"
+        data-testid="video-upload-status"
+      >
         {st.s === "optimising"
           ? `Optimising video… ${Math.round(st.p * 100)}%`
           : st.s === "uploading"

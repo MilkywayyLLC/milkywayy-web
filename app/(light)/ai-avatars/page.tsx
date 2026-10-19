@@ -110,11 +110,6 @@ export default async function AiAvatarsPage() {
                 <ButtonLink href="#demo">Book a demo call</ButtonLink>
                 <RevealButton />
               </Ctas>
-              <div className="anchor">
-                <span>
-                  {hero.proofLead} <b>{hero.proofHighlight}</b>
-                </span>
-              </div>
             </div>
             <div className="hero-media-col">
               <AvatarStage hero={hero} priority />
