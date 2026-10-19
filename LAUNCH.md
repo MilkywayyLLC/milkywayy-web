@@ -178,6 +178,7 @@ adds the rest by CLI without printing them.
 - [ ] **Akash** — Cloudflare DNS for `milkywayy.com`: `A @ 76.76.21.21` and `CNAME www cname.vercel-dns.com` (exactly what Vercel shows), both **DNS only (grey cloud)** so Vercel can issue the certificate.
 - [ ] **Claude** — SSL check: both domains "Valid Configuration" with a certificate; `https://milkywayy.com` loads; `http://` → `https://`; `www` → apex; old paths redirect for good (`/booking`, `/book-now` → `/property-shoots`; `/client-login`, `/login`, `/dashboard`, `/portal-login` → `/portal/login`; `/portfolio`, `/privacy-policy`).
 - [ ] **Akash** — Supabase Site URL `https://milkywayy.com` (section 2) if not done.
+- [ ] **Akash, Claude checks** — WhatsApp webhook: Twilio → Messaging → Services → whatsapp_notifications_service → Integration → Incoming messages → Request URL `https://milkywayy.com/api/whatsapp/inbound` (POST). Then message +971 50 830 5678 from another phone: the auto-reply arrives and the message is emailed to you.
 - [ ] **Akash + Claude** — Stripe live (section 7).
 - [ ] **Akash** — Google Search Console: Domain property for `milkywayy.com` (TXT record in Cloudflare) → Sitemaps → `https://milkywayy.com/sitemap.xml` → URL inspection → request indexing for `/`. Optional: Bing Webmaster Tools import. Meta → Business settings → Domains → verify `milkywayy.com`.
 - [ ] **Claude** — post-launch smoke tests (section 8).
