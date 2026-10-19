@@ -21,7 +21,7 @@ export type ShowcaseRates = {
     tour: number;
     reel: number;
     long: number;
-    /** "from" on Property shoot (the lowest photo price) and Content shoot (the lowest reel). */
+    /** "from" on Property shoot (the lowest photo price) and Content shoot (a reel). */
     from: number;
     contentFrom: number;
     delivery: PropertyPricing["delivery"];
@@ -29,6 +29,14 @@ export type ShowcaseRates = {
   /** Edit only, from the post-production rate card (its own currency). */
   edit?: { currency: string; reel: number; long: number; photo: number };
 };
+
+/**
+ * Booked videos are priced from the portal's rate card, not by property size (owner, 20 Oct
+ * 2026): `reel_shoot` AED 400 and `long_form_shoot` AED 1,000 (the booking redesign migration),
+ * as the Book media page and the FAQs show them. The website's database doesn't hold that table
+ * yet, so the base amounts live here; change both together.
+ */
+export const VIDEO_RATES = { reel: 400, long: 1000 } as const;
 
 export function showcaseRates(property?: PropertyPricing, other?: OtherPricing): ShowcaseRates {
   const post = other?.postProduction;
@@ -48,10 +56,10 @@ export function showcaseRates(property?: PropertyPricing, other?: OtherPricing):
       photo: z.photo,
       twilight: property.twilight.standard[5],
       tour: z.tour,
-      reel: z.short,
-      long: z.long.day,
+      reel: VIDEO_RATES.reel,
+      long: VIDEO_RATES.long,
       from: lowestShootPrice(property),
-      contentFrom: Math.min(...apt.sizes.map((s) => s.short)),
+      contentFrom: VIDEO_RATES.reel,
       delivery: property.delivery,
     },
     edit,
