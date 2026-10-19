@@ -1,5 +1,36 @@
 import type { Tag } from "@/lib/data/tags";
-import { CROPS, type Field, type Option } from "./fields";
+import type { Media } from "@/content/types";
+import { MEDIA } from "@/lib/media-config";
+import {
+  ALL_PLACEMENTS,
+  detectOrientation,
+  legacyFields,
+  libFields,
+  MEDIA_TYPES,
+  ORIENTATIONS,
+  placementByKey,
+  typeLabel,
+  whereItShows,
+  type MediaType,
+  type Orientation,
+} from "@/lib/placements";
+import { VIDEO_HINT } from "@/lib/video";
+import type { AdminCtx, Field, Option } from "./fields";
+
+/** Where a portfolio item shows, worked out from the editor's current values (lib/placements). */
+export function appearsOn(row: Record<string, unknown>, ctx: AdminCtx): string[] {
+  const id = String(row.id || "new");
+  const saved = ctx.portfolio.find((p) => p.id === id);
+  const me = {
+    ...(saved ?? { sortOrder: Number(row.sort_order ?? 1e6), createdAt: new Date().toISOString() }),
+    ...libFields({ ...row, created_at: saved?.createdAt ?? new Date().toISOString() }),
+    id,
+    published: true,
+    sortOrder: saved?.sortOrder ?? Number(row.sort_order ?? 1e6),
+  };
+  const all = [...ctx.portfolio.filter((p) => p.id !== id), me];
+  return whereItShows(id, all, ctx.placements).map((w) => w.label);
+}
 
 /**
  * Every list the admin edits (guide §18.2). One config per table drives the list screen, the
@@ -32,6 +63,8 @@ export interface Section {
     /** Per-placement order (portfolio_placements / stats.placement_order); else sort_order. */
     orderPerValue?: boolean;
   };
+  /** Follow-on changes when a field changes (e.g. a new upload's shape sets the format). */
+  derive?: (name: string, next: unknown, prev: Row) => Partial<Row>;
   /** Page to open for Preview. */
   preview: (r?: Row) => string;
   help?: string;
@@ -48,33 +81,6 @@ export const PAGES: Option[] = [
   { value: "about", label: "About" },
 ];
 export const pagePath = (page: string) => (page === "home" ? "/" : `/${page}`);
-
-export const PLACEMENTS: Option[] = [
-  { value: "home-reels", label: "Home · reel strip" },
-  { value: "home-row-production", label: "Home · Production row" },
-  { value: "home-row-post", label: "Home · Post-production row" },
-  { value: "home-row-avatars", label: "Home · AI avatars row" },
-  { value: "production-hero", label: "Production · hero frames" },
-  { value: "property-hero", label: "Property shoots · hero" },
-  { value: "property-gallery-photo", label: "Property shoots · gallery: Photo" },
-  { value: "property-gallery-video", label: "Property shoots · gallery: Video" },
-  { value: "property-gallery-360", label: "Property shoots · gallery: 360" },
-  { value: "post-hero", label: "Post-production · hero frames" },
-  { value: "post-service-cards", label: "Post-production · service cards" },
-  { value: "work", label: "Work page" },
-];
-const placementPage = (p?: string) =>
-  !p
-    ? "/work"
-    : p.startsWith("home")
-      ? "/"
-      : p.startsWith("production")
-        ? "/production"
-        : p.startsWith("property")
-          ? "/property-shoots"
-          : p.startsWith("post")
-            ? "/post-production"
-            : "/work";
 
 const CATEGORIES: Option[] = [
   { value: "property", label: "Property" },
@@ -94,6 +100,12 @@ const list = (v: unknown) => (Array.isArray(v) ? (v as string[]) : []);
 const label = (opts: Option[], v: unknown) =>
   opts.find((o) => o.value === v)?.label ?? String(v ?? "");
 
+/** Portfolio format from an image's shape: wide → long-form 16:9, tall → reel 9:16, else photo 3:2. */
+export function formatFromSize(width: number, height: number) {
+  const r = width / height;
+  return r >= 1.6 ? "long-form" : r <= 0.8 ? "reel" : "photo";
+}
+
 export const SECTIONS: Section[] = [
   {
     key: "portfolio",
@@ -103,52 +115,107 @@ export const SECTIONS: Section[] = [
     tags: ["portfolio", "case-studies"],
     idPrefix: "item",
     defaults: {
+      media_type: "photo",
       category: "property",
-      format: "reel",
+      category_id: "property",
+      format: "photo",
       media: { alt: "" },
       featured: false,
       sample: false,
+      show_on_work: true,
       placements: [],
     },
     title_of: (r) => String(r.title ?? ""),
-    meta_of: (r) => `${label(CATEGORIES, r.category)} · ${r.format}`,
+    meta_of: (r) =>
+      [
+        typeLabel(String(r.media_type ?? "")),
+        r.media_type === "video" || r.media_type === "avatar" ? r.orientation : "",
+        r.category_label,
+      ]
+        .filter(Boolean)
+        .join(" · "),
     thumb: "media",
+    // "Where it shows" is worked out from lib/placements (rules + pins), set on each row by the
+    // list page as `placements`. Order lives on Admin → Placements now, so no per-value order.
     filter: {
       label: "Where it shows",
-      options: PLACEMENTS,
+      options: ALL_PLACEMENTS.map((p) => ({
+        value: p.key,
+        label: `${p.page.split(",")[0]} · ${p.title}`,
+      })),
       match: (r, v) => list(r.placements).includes(v),
-      orderPerValue: true,
     },
-    preview: (r) => placementPage(list(r?.placements)[0]),
+    preview: (r) => placementByKey(list(r?.placements)[0] ?? "work")?.path ?? "/work",
+    // Media type first (owner, 24 Oct 2026): it decides the fields. Orientation is preselected
+    // from the file or link (derive below) for the owner to confirm.
+    derive: (name, next, prev) => {
+      const type = (name === "media_type" ? next : prev.media_type) as MediaType;
+      let orientation = (name === "orientation" ? next : prev.orientation) as
+        Orientation | undefined;
+      const patch: Partial<Row> = {};
+      if (name === "media" && (type === "video" || type === "avatar")) {
+        const seen = detectOrientation(next as Media);
+        if (seen && seen !== orientation) orientation = patch.orientation = seen;
+      }
+      if (name === "media_type" && (type === "video" || type === "avatar") && !orientation)
+        orientation = patch.orientation = "9:16";
+      const legacy = legacyFields(
+        type,
+        type === "video" || type === "avatar" ? orientation : undefined,
+        String((name === "category_id" ? next : prev.category_id) ?? ""),
+      );
+      return { ...patch, ...legacy };
+    },
     fields: [
+      {
+        name: "media_type",
+        kind: "select",
+        label: "Media type",
+        required: true,
+        options: MEDIA_TYPES,
+        help: "Choose this first: it decides the fields below.",
+      },
+      {
+        name: "orientation",
+        kind: "select",
+        label: "Orientation",
+        options: ORIENTATIONS,
+        when: (r) => r.media_type === "video" || r.media_type === "avatar",
+        help: "Preselected from the file or link once it’s added. Confirm it.",
+      },
+      {
+        name: "category_id",
+        kind: "category",
+        label: "Category",
+        required: true,
+        help: "Pick one, or type a new name to save it as a category for future uploads.",
+        // Plain answer, right under Type / Orientation / Category (owner, 13 Oct 2026).
+        line: (r, ctx) => {
+          const on = appearsOn(r, ctx);
+          return on.length
+            ? `This will appear on: ${on.join(", ")}`
+            : "This won’t appear anywhere yet. Change the type or category, or turn on “Show on Work page”.";
+        },
+      },
       { name: "title", kind: "text", label: "Title", required: true, max: 80 },
       { name: "client", kind: "text", label: "Client (optional)", max: 80 },
-      { name: "category", kind: "select", label: "Category", required: true, options: CATEGORIES },
+      { name: "media", kind: "portfolio-media", label: "Media", required: true },
       {
-        name: "format",
-        kind: "select",
-        label: "Format",
-        required: true,
-        options: [
-          { value: "photo", label: "Photo" },
-          { value: "reel", label: "Reel 9:16" },
-          { value: "long-form", label: "Long-form 16:9" },
-          { value: "360", label: "360 tour" },
-        ],
+        name: "duration",
+        kind: "text",
+        label: "Duration label",
+        placeholder: "0:30",
+        max: 8,
+        when: (r) => r.media_type === "video" || r.media_type === "avatar",
       },
-      {
-        name: "media",
-        kind: "image",
-        label: "Image or video poster",
-        required: true,
-        video: true,
-        bright: true,
-        crops: [CROPS.reel, CROPS.photo, CROPS.wide],
-      },
-      { name: "duration", kind: "text", label: "Duration label", placeholder: "0:30", max: 8 },
       { name: "tag", kind: "text", label: "Tag in the frame", placeholder: "Marina 2BR", max: 28 },
       { name: "meta", kind: "text", label: "Caption", placeholder: "Property", max: 28 },
-      { name: "placements", kind: "multi", label: "Where it shows", options: PLACEMENTS },
+      {
+        name: "show_on_work",
+        kind: "toggle",
+        label: "Show on Work page",
+        help: "Off keeps it in the library to pin elsewhere (Admin → Placements).",
+      },
       { name: "featured", kind: "toggle", label: "Featured" },
       sample,
     ],
@@ -204,11 +271,18 @@ export const SECTIONS: Section[] = [
       {
         name: "cover",
         kind: "image",
-        label: "Cover",
+        label: "Cover image",
         required: true,
-        crops: [CROPS.wide, CROPS.photo],
+        media: "case-cover",
+        usedOn: (r) => ["/work → Case studies", `/work/${r.slug || "…"} → Top image`],
       },
-      { name: "gallery", kind: "gallery", label: "Gallery", crops: [CROPS.photo] },
+      {
+        name: "gallery",
+        kind: "gallery",
+        label: "Gallery",
+        media: "photo",
+        usedOn: (r) => [`/work/${r.slug || "…"} → Project media`],
+      },
       { name: "related", kind: "portfolio-picker", label: "Related portfolio items" },
       { name: "category", kind: "select", label: "Category", required: true, options: CATEGORIES },
       sample,
@@ -221,30 +295,39 @@ export const SECTIONS: Section[] = [
     singular: "before / after pair",
     tags: ["before-after"],
     idPrefix: "pair",
-    defaults: { before: { alt: "" }, after: { alt: "" }, in_hero: false, sample: false },
+    defaults: { before: { alt: "" }, after: { alt: "" }, sample: false },
     title_of: (r) => `${r.tab} · ${r.title}`,
-    meta_of: (r) => (r.in_hero ? "Shown in the hero" : ""),
     thumb: "after",
     preview: () => "/post-production",
     fields: [
       { name: "tab", kind: "text", label: "Tab", required: true, placeholder: "Sky", max: 16 },
       { name: "title", kind: "text", label: "Title", required: true, max: 60 },
       { name: "description", kind: "textarea", label: "Description", required: true, max: 300 },
-      { name: "before", kind: "image", label: "Before", required: true, crops: [CROPS.photo] },
-      { name: "after", kind: "image", label: "After", required: true, crops: [CROPS.photo] },
       {
-        name: "in_hero",
-        kind: "toggle",
-        label: "Show in the Post-production hero",
-        help: "Only one pair can be in the hero; choosing this one takes it off the others.",
+        name: "before",
+        kind: "image",
+        label: "Before",
+        required: true,
+        media: "before-after",
+        usedOn: () => ["Post-production → Before / after"],
       },
+      {
+        name: "after",
+        kind: "image",
+        label: "After",
+        required: true,
+        media: "before-after",
+        usedOn: () => ["Post-production → Before / after"],
+      },
+      // No "show in the hero" toggle: the Post-production hero takes portfolio items placed
+      // under "Post-production · hero frames" (owner, 7 Oct 2026). The in_hero column stays.
       sample,
     ],
   },
   {
     key: "avatars",
     table: "avatars",
-    title: "AI avatars",
+    title: "Website avatars",
     singular: "avatar example",
     tags: ["avatars"],
     idPrefix: "avatar",
@@ -267,12 +350,33 @@ export const SECTIONS: Section[] = [
       {
         name: "poster",
         kind: "image",
-        label: "Poster",
+        label: "Cover image",
         required: true,
         bright: true,
-        crops: [CROPS.portrait, CROPS.reel],
+        media: "ai-avatar",
+        usedOn: (r, ctx) => [
+          "AI avatars → Avatar styles",
+          ...(ctx.avatarOrder[0] === r.id || (!ctx.avatarOrder.length && r.published)
+            ? ["Post-production → Services row (AI avatars)"]
+            : []),
+        ],
       },
-      { name: "clip", kind: "video", label: "Clip (Bunny, Mux, YouTube or Vimeo link)" },
+      {
+        name: "clip",
+        kind: "video",
+        label: "Clip (optional)",
+        media: "ai-avatar",
+        upload: "avatars",
+        help: `${VIDEO_HINT}, or upload the video (vertical, ${MEDIA["ai-avatar"].width}×${MEDIA["ai-avatar"].height}). It opens in the 9:16 player.`,
+      },
+      {
+        name: "versions",
+        kind: "versions",
+        label: "Language versions (optional)",
+        media: "ai-avatar",
+        upload: "avatars",
+        help: "The same video in other languages, uploaded. With two or more, AI avatars → Multilingual plays them with a language switch.",
+      },
       sample,
     ],
   },
@@ -388,8 +492,8 @@ export const SECTIONS: Section[] = [
   {
     key: "clients",
     table: "clients",
-    title: "Clients",
-    singular: "client",
+    title: "Client logos",
+    singular: "client logo",
     tags: ["clients"],
     idPrefix: "client",
     defaults: {},

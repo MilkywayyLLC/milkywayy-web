@@ -1,12 +1,13 @@
 import type { SiteSettings } from "@/content/types";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { MediaFrame } from "@/components/media/MediaFrame";
 
 /** Founder photo in a viewfinder frame + quote in sentence case (Archivo wdth 86). */
 export function FounderBlock({ founder }: { founder: SiteSettings["founder"] }) {
   return (
     <div className="founder">
-      <ViewfinderFrame
+      <MediaFrame
         media={founder.photo}
+        kind="founder"
         corners={false}
         clean
         sizes="(max-width: 820px) 420px, 40vw"

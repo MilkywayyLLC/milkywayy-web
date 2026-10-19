@@ -25,12 +25,12 @@ export async function GET() {
     .join("; ");
   const text = `# Milkywayy
 
-> Milkywayy is a content studio in Dubai, UAE (${site.company}, ${site.licence}), creating content since 2020. Property and brand production in the UAE, remote photo and video editing worldwide, and custom AI presenter videos.
+> Milkywayy is a content studio in Dubai, UAE (${site.company}, ${site.licence}), with over 1,000 properties captured across Dubai. Property and brand production in the UAE, remote photo and video editing worldwide, and custom AI presenter videos.
 
 ## Services
 
 - [Production](${base}/production): monthly content packages for UAE agencies, developers and brands (shoot days, edited reels, long-form video, photography, 360 tours). Packages from AED ${formatNumber(other.production.fromMonthly)} a month.
-- [Property shoots](${base}/property-shoots): real estate photography, short-form and long-form video and 360 tours in Dubai. Photography from AED ${formatNumber(fromAed)}; photos delivered in 24 hours, reels in 24–48 hours. Book online and send the request on WhatsApp.
+- [Property shoots](${base}/property-shoots): real estate photography, short-form and long-form video and 360 tours in Dubai. Photography from AED ${formatNumber(fromAed)}; photos within 24 hours (often same day), short-form reels up to 48 hours, walkthroughs 48–72 hours. Book online and send the request on WhatsApp.
 - [Post-production](${base}/post-production): remote editing for agencies and creators worldwide. ${rates}. Free test edit available.
 - [AI avatars](${base}/ai-avatars): a custom AI presenter with its own face and voice, scripted and edited into videos every month. Pricing set on a demo call.
 

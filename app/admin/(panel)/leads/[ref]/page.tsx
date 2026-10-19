@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LeadEditor } from "@/components/admin/LeadEditor";
+import { EmailAttachedBadge } from "@/components/admin/EmailAttachedBadge";
 import { requireAdmin } from "@/lib/admin/auth";
 import { dubai } from "@/lib/admin/format";
 import { LEAD_TYPES, waTo, type LeadRow } from "@/lib/admin/leads";
@@ -62,6 +63,15 @@ export default async function LeadDetail({ params }: Props) {
             ← Leads
           </Link>
           <h1 className="ad-h1">{l.name || l.email || l.ref}</h1>
+          {d.attached_by_email === true && (
+            <span
+              className="ad-small"
+              style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}
+            >
+              <EmailAttachedBadge />
+              {typeof d.attached_account === "string" ? `to ${d.attached_account}’s portal` : ""}
+            </span>
+          )}
           <span className="ad-small ad-muted">
             {l.ref} · {LEAD_TYPES[l.type] ?? l.type} · {dubai(l.created_at, true)}
           </span>

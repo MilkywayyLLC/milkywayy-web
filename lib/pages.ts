@@ -30,14 +30,12 @@ export const isCurrent = (path: string, href: string) =>
 export const mobileActions: Record<string, { label: string; href: string }> = {
   "/": { label: "Get a quote", href: "/contact" },
   "/production": { label: "Get your package", href: "#get-your-package" },
+  "/property-shoots": { label: "Book a shoot", href: "/portal?new=shoot" },
   "/post-production": { label: "Book a free test", href: "#free-test" },
   "/post-production/free-test": { label: "Book a free test", href: "#free-test" },
   "/ai-avatars": { label: "Book a demo", href: "#demo" },
   "/contact": { label: "Send request", href: "#contact-form" },
 };
-
-/** /property-shoots has its own bottom bar (booking total + Review & send) instead of the action bar. */
-export const hasOwnMobileBar = (path: string) => path === "/property-shoots";
 
 export const mobileActionFor = (path: string) =>
   mobileActions[path] ?? { label: "Get a quote", href: "/contact" };

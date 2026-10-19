@@ -1,4 +1,6 @@
 import type { NextConfig } from "next";
+import { TOUR_FRAME_HOSTS } from "./lib/tours";
+import { VIDEO_FRAME_HOSTS } from "./lib/video";
 
 const indexable = process.env.NEXT_PUBLIC_SITE_ENV === "production";
 
@@ -16,9 +18,11 @@ const nextConfig: NextConfig = {
     // Property shoots and the booking builder merged into /property-shoots (owner, 1 Oct 2026).
     return [
       { source: "/production/property-shoots", destination: "/property-shoots", statusCode: 301 },
-      { source: "/book", destination: "/property-shoots", statusCode: 301 },
       // The current milkywayy.com (crawled 2 Oct 2026; its pages are noindex, so this is about
-      // bookmarks and shared links rather than rankings). See DECISIONS.md "Phase 7".
+      // bookmarks and shared links rather than rankings). See DECISIONS.md "Phase 7". Booking
+      // links land on Property shoots; booking happens in the portal (owner, 12 Oct 2026).
+      { source: "/book", destination: "/property-shoots", statusCode: 301 },
+      { source: "/book-now", destination: "/property-shoots", statusCode: 301 },
       { source: "/booking", destination: "/property-shoots", statusCode: 301 },
       { source: "/booking/:path*", destination: "/property-shoots", statusCode: 301 },
       { source: "/portfolio", destination: "/work", statusCode: 301 },
@@ -29,18 +33,32 @@ const nextConfig: NextConfig = {
       { source: "/contact-us", destination: "/contact", statusCode: 301 },
       { source: "/terms-and-conditions", destination: "/terms", statusCode: 301 },
       { source: "/services", destination: "/", statusCode: 301 },
-      // The old client portal and its share links: temporary until the portal moves to its
-      // subdomain (CLIENT_PORTAL_GUIDE §11), so browsers don't remember these.
-      { source: "/dashboard", destination: "/client-login", permanent: false },
-      { source: "/dashboard/:path*", destination: "/client-login", permanent: false },
-      { source: "/c/:path*", destination: "/client-login", permanent: false },
-      { source: "/l/:path*", destination: "/client-login", permanent: false },
+      // The old client portal is gone (owner, 4 Oct 2026: nothing imported, no redirects to it):
+      // its sign-in paths open the new portal's sign-in. Old share links (/l/, /c/) that aren't
+      // ours show "This listing isn't available".
+      { source: "/client-login", destination: "/portal/login", statusCode: 301 },
+      { source: "/login", destination: "/portal/login", statusCode: 301 },
+      { source: "/portal-login", destination: "/portal/login", statusCode: 301 },
+      { source: "/dashboard", destination: "/portal/login", statusCode: 301 },
+      { source: "/dashboard/:path*", destination: "/portal/login", statusCode: 301 },
     ];
   },
   async headers() {
+    // Which sites may be framed (owner, 7 Oct 2026): video players, the three 360 tour hosts,
+    // the Cal.com call calendar, and Vercel's preview toolbar. Only frame-src is set, so scripts,
+    // images and requests are unaffected.
+    const frames = [
+      "'self'",
+      ...VIDEO_FRAME_HOSTS,
+      ...TOUR_FRAME_HOSTS,
+      "https://cal.com",
+      "https://*.cal.com",
+      "https://vercel.live",
+    ].join(" ");
+    const headers = [{ key: "Content-Security-Policy", value: `frame-src ${frames}` }];
     // Staging lock (guide §12): belt and braces on top of the metadata robots tag.
-    if (indexable) return [];
-    return [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }];
+    if (!indexable) headers.push({ key: "X-Robots-Tag", value: "noindex, nofollow" });
+    return [{ source: "/:path*", headers }];
   },
 };
 

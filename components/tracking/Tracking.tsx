@@ -81,8 +81,16 @@ async function needsConsent(): Promise<boolean> {
   return !!r.consentRequired;
 }
 
+/**
+ * Not on listing share pages (/l/, /c/): those are the agents' pages, seen by their buyers. Our
+ * tags stay off them, and a buyer's WhatsApp tap to an agent must never count as our Contact.
+ */
 export function Tracking() {
   const path = usePathname();
+  return /^\/(l|c)\//.test(path) ? null : <SiteTracking path={path} />;
+}
+
+function SiteTracking({ path }: { path: string }) {
   const [cfg, setCfg] = useState<TrackingConfig | null>(null);
   const [banner, setBanner] = useState(false);
 

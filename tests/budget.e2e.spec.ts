@@ -17,6 +17,8 @@ const PAGES = [
   "/about",
 ];
 const FRAMEWORK_KB = 131;
+/** Raised for the dashboard previews (owner, 13 Oct 2026; DECISIONS.md): optimise post-launch. */
+const OWN_KB: Record<string, number> = { "/post-production": 42, "/ai-avatars": 42 };
 
 test("every page stays within the JS budget", async ({ page }) => {
   test.setTimeout(120_000);
@@ -38,7 +40,7 @@ test("every page stays within the JS budget", async ({ page }) => {
       [...scripts.values()].reduce((n, b) => n + gzipSync(b, { level: 9 }).length, 0) / 1024;
     report.push(`${path}: ${kb.toFixed(1)} KB total, ~${(kb - FRAMEWORK_KB).toFixed(1)} KB own`);
     expect(kb, `${path} total`).toBeLessThan(175);
-    expect(kb - FRAMEWORK_KB, `${path} own code`).toBeLessThan(35);
+    expect(kb - FRAMEWORK_KB, `${path} own code`).toBeLessThan(OWN_KB[path] ?? 35);
   }
   console.log(report.join("\n"));
 });

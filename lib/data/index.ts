@@ -10,6 +10,7 @@
  * request (tests/fallback.e2e.spec.ts proves this). The seed in content/ is only used when no
  * database is configured at all (local development without .env.local). Never on an error.
  */
+import { flags } from "@/lib/flags";
 import { unstable_cache } from "next/cache";
 import { avatarHero as seedAvatarHero, avatars as seedAvatars } from "@/content/avatars";
 import { beforeAfter as seedBeforeAfter } from "@/content/beforeAfter";
@@ -46,6 +47,20 @@ import { alert } from "@/lib/monitoring/alert";
 import { publicDb } from "@/lib/supabase/public";
 import { TAGS, type Tag } from "./tags";
 import * as map from "./rows";
+import { realFirst, REAL_REVIEWS_NEEDED } from "./sample";
+import {
+  heroTemplateFor,
+  legacyState,
+  libFields,
+  PAGE_HEROES,
+  placementByKey,
+  resolve,
+  type HeroTemplate,
+  type LibItem,
+  type Mode,
+  type Pin,
+  type PlacementState,
+} from "@/lib/placements";
 
 const HOUR = 3600;
 
@@ -213,6 +228,123 @@ const loadPortfolio = source<PortfolioItem[]>(
   () => live(seedPortfolio),
 );
 
+/** A table the migration adds isn't there yet (PostgREST "not found" / Postgres "undefined table"). */
+const notMigrated = (e: { code?: string; message?: string }) =>
+  e.code === "PGRST205" || e.code === "42P01" || /could not find the table/i.test(e.message ?? "");
+
+/** Pins and modes (lib/placements). Null before the migration: the old placements stand in. */
+const loadPlacements = source<PlacementState | null>(
+  "placements",
+  [TAGS.portfolio],
+  async (db) => {
+    const [pins, modes] = await Promise.all([
+      db.from("placement_pins").select("section, slot, item_id"),
+      db.from("placement_modes").select("section, mode"),
+    ]);
+    const error = pins.error ?? modes.error;
+    if (error) {
+      if (notMigrated(error)) return null;
+      throw new Error(`placements: ${error.message}`);
+    }
+    return {
+      pins: (pins.data ?? []) as Pin[],
+      modes: Object.fromEntries((modes.data ?? []).map((m) => [m.section, m.mode as Mode])),
+    };
+  },
+  () => null,
+);
+
+/** Chosen hero templates by hero key. Empty before the migration: every page uses its default. */
+const loadHeroTemplates = source<Record<string, string>>(
+  "hero-templates",
+  [TAGS.portfolio],
+  async (db) => {
+    const { data, error } = await db.from("placement_heroes").select("section, template");
+    if (error) {
+      if (notMigrated(error)) return {};
+      throw new Error(`placement_heroes: ${error.message}`);
+    }
+    return Object.fromEntries((data ?? []).map((r) => [r.section, r.template as string]));
+  },
+  () => ({}),
+);
+
+/** The template a page's hero is set to (Admin → Pages), or that page's default. */
+export async function getHeroTemplate(page: string): Promise<HeroTemplate> {
+  const h = PAGE_HEROES.find((p) => p.page === page);
+  return heroTemplateFor(page, h ? (await loadHeroTemplates())[h.key] : undefined);
+}
+
+/** Portfolio items with their library fields filled in (older rows and the seed lack them). */
+const toLib = (p: PortfolioItem): PortfolioItem & LibItem =>
+  p.mediaType
+    ? (p as PortfolioItem & LibItem)
+    : {
+        ...p,
+        ...libFields({
+          category: p.category,
+          format: p.format,
+          sample: p.sample,
+          portfolio_placements: p.placements.map((placement) => ({ placement })),
+        }),
+      };
+
+const placementState = cache(async () => {
+  const [items, st] = await Promise.all([loadPortfolio(), loadPlacements()]);
+  return { items: items.map(toLib), st: st ?? legacyState(items) };
+});
+
+/** What a section or hero slot shows right now (lib/placements). */
+export async function getPlaced(key: string) {
+  const def = placementByKey(key);
+  if (!def) throw new Error(`Unknown placement "${key}"`);
+  const { items, st } = await placementState();
+  return resolve(def, items, st);
+}
+
+/** Home showreel: the pinned library video, else Site settings → Showreel. */
+export async function getShowreel(): Promise<SiteSettings["showreel"]> {
+  const [site, placed] = await Promise.all([getSiteSettings(), getPlaced("home-showreel")]);
+  const it = placed.items[0];
+  if (!it) return site.showreel;
+  const { src, alt, focus, video, width, height } = it.media;
+  return { src, alt, focus, video, width, height, duration: it.duration ?? site.showreel.duration };
+}
+
+/** AI avatars hero: the pinned library video over Hero (Adam)'s poster and clip. */
+async function avatarHeroPlaced(): Promise<AvatarHero> {
+  const [hero, placed] = await Promise.all([loadAvatarHero(), getPlaced("avatars-hero")]);
+  const it = placed.items[0];
+  return it ? { ...hero, poster: it.media, clip: it.media.video, sample: it.sample } : hero;
+}
+
+/** The pinned before/after pair for the Property shoots hero, if one is pinned. */
+export async function getPinnedPair() {
+  const { st } = await placementState();
+  // Slot 0 = Before photo, slot 1 = After photo (library photos picked in Admin → Pages). An older
+  // pin of a whole before/after pair in slot 0 alone still works.
+  const at = (slot: number) =>
+    st.pins.find((p) => p.section === "property-hero-pair" && p.slot === slot)?.item_id;
+  const [b, a] = [at(0), at(1)];
+  if (!b) return undefined;
+  if (!a) return (await getBeforeAfter()).find((p) => p.id === b && p.published);
+  const all = await getPortfolio();
+  const before = all.find((p) => p.id === b);
+  const after = all.find((p) => p.id === a);
+  return before && after
+    ? {
+        id: "hero-pair",
+        published: true,
+        sortOrder: 0,
+        tab: "Hero",
+        title: "Before / after",
+        description: "",
+        before: before.media,
+        after: after.media,
+      }
+    : undefined;
+}
+
 const loadPropertyPricing = source<PropertyPricing>(
   "pricing-property",
   [TAGS.pricing],
@@ -301,26 +433,33 @@ export async function getFaqs(page: PageKey) {
 }
 
 export async function getReviews(page: PageKey) {
-  return (await loadReviews()).filter((r) => r.placements.includes(page));
+  return realFirst(
+    (await loadReviews()).filter((r) => r.placements.includes(page)),
+    REAL_REVIEWS_NEEDED,
+  );
 }
 
 export async function getPortfolio(placement?: PortfolioPlacement) {
   const rowsAll = await loadPortfolio();
-  if (!placement) return rowsAll;
+  if (!placement) return realFirst(rowsAll);
+  // Sections defined in lib/placements resolve from rules + pins; older keys keep their rows.
+  if (placementByKey(placement)) return (await getPlaced(placement)).items;
   const pos = (p: PortfolioItem) => p.placementOrder?.[placement] ?? p.sortOrder;
-  return rowsAll.filter((p) => p.placements.includes(placement)).sort((a, b) => pos(a) - pos(b));
+  return realFirst(
+    rowsAll.filter((p) => p.placements.includes(placement)).sort((a, b) => pos(a) - pos(b)),
+  );
 }
 
 export async function getBeforeAfter() {
-  return loadBeforeAfter();
+  return realFirst(await loadBeforeAfter());
 }
 
 export async function getAvatarHero() {
-  return loadAvatarHero();
+  return avatarHeroPlaced();
 }
 
 export async function getAvatars() {
-  return loadAvatars();
+  return realFirst(await loadAvatars());
 }
 
 export async function getPropertyPricing() {
@@ -332,11 +471,14 @@ export async function getOtherPricing() {
 }
 
 export async function getCaseStudies() {
-  return loadCaseStudies();
+  if (!flags.caseStudies) return [];
+  return realFirst(await loadCaseStudies());
 }
 
+/** A sample case study stops existing (404) once a real one is published. */
 export async function getCaseStudy(slug: string) {
-  return (await loadCaseStudies()).find((c) => c.slug === slug) ?? null;
+  if (!flags.caseStudies) return null;
+  return (await getCaseStudies()).find((c) => c.slug === slug) ?? null;
 }
 
 /** Admin overrides for a page's title, description and share image (seo_pages). */

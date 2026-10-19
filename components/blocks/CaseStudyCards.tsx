@@ -1,5 +1,5 @@
 import { AppLink as Link } from "@/components/ui/AppLink";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { MediaFrame } from "@/components/media/MediaFrame";
 import type { CaseStudy } from "@/content/types";
 
 /** Case study cards (Work page, related work). */
@@ -9,8 +9,9 @@ export function CaseStudyCards({ items }: { items: CaseStudy[] }) {
     <div className="cs-cards">
       {items.map((c) => (
         <article className="s3" key={c.slug}>
-          <ViewfinderFrame
+          <MediaFrame
             media={c.cover}
+            kind="case-cover"
             small
             corners={false}
             tag={c.sample ? "Sample" : undefined}

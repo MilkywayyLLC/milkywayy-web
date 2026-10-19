@@ -103,7 +103,12 @@ export const propertyPricing: PropertyPricing = {
     standard: { 5: 120, 10: 220, 20: 400 },
     villa: { 5: 150, 10: 275, 20: 500 },
   },
-  delivery: { photo: "24h", short: "24–48h", long: "24–48h", tour: "48–72h" },
+  delivery: {
+    photo: "within 24 hours, often same day",
+    short: "up to 48 hours",
+    long: "48–72 hours",
+    tour: "48–72h",
+  },
 };
 
 export const otherPricing: OtherPricing = {
@@ -153,18 +158,19 @@ export const otherPricing: OtherPricing = {
   aiAvatars: {
     // TODO(owner): real AI avatar prices. Until then the site shows the launch-pricing line.
     launchLine: "Launch pricing · set on your demo call",
-    extraAvatarNote: "Each extra avatar is added with its own setup fee.",
+    extraAvatarNote:
+      "Setup is a one-time fee. Monthly plans include it. Each extra avatar has its own setup fee.",
     tiers: [
       {
         name: "Avatar setup",
-        cadence: "One-off",
+        cadence: "One-time",
         bullets: ["Custom face and look", "Voice selection", "3 test videos", "Yours to keep"],
       },
       {
-        name: "Videos",
+        name: "Monthly videos",
         cadence: "Monthly",
         bullets: [
-          "Everything in setup",
+          "Includes your avatar setup",
           "Monthly video bundle",
           "Captions and branding",
           "You send scripts or topics",
@@ -174,7 +180,7 @@ export const otherPricing: OtherPricing = {
         name: "Videos + strategy",
         cadence: "Monthly",
         bullets: [
-          "Everything in Videos",
+          "Everything in Monthly videos",
           "Content strategy",
           "We write every script",
           "Monthly performance review",

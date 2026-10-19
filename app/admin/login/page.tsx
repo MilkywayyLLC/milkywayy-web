@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/layout/Logo";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/admin/LoginForm";
 import { getAdmin } from "@/lib/admin/auth";
@@ -12,7 +13,7 @@ export default async function Login() {
     <main className="ad-auth">
       <div className="ad-card">
         <div style={{ display: "grid", gap: 6 }}>
-          <span className="ad-eb">Milkywayy</span>
+          <BrandLogo tone="light" />
           <h1 className="ad-h1">Admin sign in</h1>
         </div>
         <LoginForm />

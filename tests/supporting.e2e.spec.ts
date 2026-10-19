@@ -25,29 +25,23 @@ test("contact: service cards, details, form defaults @mobile", async ({ page }) 
   );
 });
 
-test("work: filters narrow the grid and only offer filters with work", async ({ page }) => {
+test("work: one tab per format, each a uniform grid at that format's ratio", async ({ page }) => {
   await page.goto("/work");
-  const grid = page.locator(".work-grid figure");
-  const all = await grid.count();
-  expect(all).toBeGreaterThan(3);
-  const chips = page.getByRole("group", { name: "Filter work" });
-  await chips.getByRole("button", { name: "Photo" }).click();
-  await expect(chips.getByRole("button", { name: "Photo" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  const photos = await grid.count();
-  expect(photos).toBeGreaterThan(0);
-  expect(photos).toBeLessThan(all);
-  for (const cap of await page.locator(".work-grid figcaption span").allTextContents()) {
-    expect(cap).toMatch(/^Photo/);
+  const tabs = page.getByRole("tablist", { name: "Work by format" });
+  const panel = page.getByRole("tabpanel");
+  const expected: Record<string, number> = { Photos: 3 / 2, Reels: 9 / 16, "Long-form": 16 / 9 };
+  for (const name of await tabs.getByRole("tab").allTextContents()) {
+    await tabs.getByRole("tab", { name }).click();
+    const ratios = await panel
+      .locator("figure .fr")
+      .evaluateAll((els) => els.map((e) => e.clientWidth / e.clientHeight));
+    expect(ratios.length, name).toBeGreaterThan(0);
+    // Never mixed: every frame in the tab has the same ratio (and the format's, where it's fixed).
+    for (const r of ratios) expect(Math.abs(r - ratios[0]), name).toBeLessThan(0.02);
+    if (expected[name]) expect(Math.abs(ratios[0] - expected[name]), name).toBeLessThan(0.02);
   }
-  await chips.getByRole("button", { name: "All" }).click();
-  await expect(grid).toHaveCount(all);
-  // Case study card leads to the template.
-  await page.getByRole("link", { name: "Read the case study →" }).first().click();
-  await expect(page).toHaveURL(/\/work\/.+/);
-  await expect(page.getByText("Sample case study")).toBeVisible();
+  // Case studies are hidden for now (lib/flags, 12 Oct 2026).
+  await expect(page.getByRole("link", { name: "Read the case study →" })).toHaveCount(0);
 });
 
 test("about: story, team, company details, clients @mobile", async ({ page }) => {
@@ -66,15 +60,29 @@ test("legal pages are marked as drafts until reviewed", async ({ page }) => {
   }
 });
 
-test("Client login opens the “portal is moving” page with WhatsApp for files @mobile", async ({
+test("Client login opens the portal; old sign-in and booking paths redirect for good @mobile", async ({
   page,
+  request,
 }) => {
   await page.goto("/");
-  const login = page.locator('a[href="/client-login"]').first();
+  const login = page.locator('a[href="/portal/login"]').first();
   await expect(login).toHaveCount(1);
-  await page.goto("/client-login");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Your portal");
-  const wa = page.getByRole("link", { name: "WhatsApp us for files" });
-  await expect(wa).toHaveAttribute("href", /^https:\/\/wa\.me\/971507263306\?text=/);
-  expect(await page.locator('meta[name="robots"]').getAttribute("content")).toContain("noindex");
+  for (const old of [
+    "/client-login",
+    "/login",
+    "/dashboard",
+    "/dashboard/bookings",
+    "/portal-login",
+  ]) {
+    const r = await request.get(old, { maxRedirects: 0 });
+    expect(r.status(), old).toBe(301);
+    expect(new URL(r.headers().location, "http://x").pathname, old).toBe("/portal/login");
+  }
+  for (const old of ["/booking", "/book-now", "/book", "/booking/success"]) {
+    const r = await request.get(old, { maxRedirects: 0 });
+    expect(r.status(), old).toBe(301);
+    expect(r.headers().location, old).toMatch(/\/property-shoots$/);
+  }
+  // No more clickable mockup.
+  expect((await request.get("/portal-preview/home", { maxRedirects: 0 })).status()).toBe(404);
 });

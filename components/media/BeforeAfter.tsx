@@ -18,26 +18,26 @@ function Layer({ media, filter }: { media: Media; filter?: string }) {
 
 /**
  * Drag-to-compare slider. A full-size transparent range input drives it, so pointer, touch and
- * keyboard (arrow keys, Home/End) all work natively. "After" is revealed from the left.
+ * keyboard (arrow keys, Home/End) all work natively. "Before" is the left side, "After" the right.
  */
 export function BeforeAfter({ pair, className }: { pair: BeforeAfterPair; className?: string }) {
   const [pos, setPos] = useState(50);
   const id = useId();
   return (
     <div className={cx("ba", className)} style={{ ["--pos" as string]: `${pos}%` }}>
-      <Layer media={pair.before} filter={pair.placeholderBeforeFilter} />
+      <Layer media={pair.after} />
       <div className="clip">
-        <Layer media={pair.after} />
+        <Layer media={pair.before} filter={pair.placeholderBeforeFilter} />
       </div>
       <span className="handle" aria-hidden="true" />
       <span className="knob" aria-hidden="true">
         ↔
       </span>
       <span className="lab l" aria-hidden="true">
-        After
+        Before
       </span>
       <span className="lab r" aria-hidden="true">
-        Before
+        After
       </span>
       <label className="sr" htmlFor={id}>
         {`Compare before and after: ${pair.title}`}
@@ -48,7 +48,7 @@ export function BeforeAfter({ pair, className }: { pair: BeforeAfterPair; classN
         min={0}
         max={100}
         value={pos}
-        aria-valuetext={`${pos}% after`}
+        aria-valuetext={`${pos}% before`}
         onChange={(e) => setPos(Number(e.target.value))}
       />
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLogo } from "@/components/layout/Logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -11,20 +12,32 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "Workspace",
     items: [
       { href: "/admin", label: "Dashboard" },
-      { href: "/admin/leads", label: "Leads", owner: true },
+      { href: "/admin/leads", label: "Website leads", owner: true },
+    ],
+  },
+  {
+    title: "Portal",
+    items: [
+      { href: "/admin/projects", label: "Projects", owner: true },
+      { href: "/admin/characters", label: "AI characters", owner: true },
+      { href: "/admin/inquiries", label: "Client messages", owner: true },
+      { href: "/admin/accounts", label: "Client accounts", owner: true },
+      { href: "/admin/billing", label: "Billing", owner: true },
+      { href: "/admin/listings", label: "Listings", owner: true },
     ],
   },
   {
     title: "Content",
     items: [
-      { href: "/admin/portfolio", label: "Portfolio" },
+      { href: "/admin/library", label: "Library" },
+      { href: "/admin/pages", label: "Pages" },
       { href: "/admin/case-studies", label: "Case studies" },
       { href: "/admin/before-after", label: "Before / after" },
-      { href: "/admin/avatars", label: "AI avatars" },
+      { href: "/admin/avatars", label: "Website avatars" },
       { href: "/admin/reviews", label: "Reviews" },
       { href: "/admin/faqs", label: "FAQs" },
       { href: "/admin/stats", label: "Stats" },
-      { href: "/admin/clients", label: "Clients" },
+      { href: "/admin/clients", label: "Client logos" },
     ],
   },
   {
@@ -51,7 +64,8 @@ const current = (path: string, href: string) =>
       ? path === href
       : path === href ||
         path.startsWith(`${href}/`) ||
-        (href === "/admin/avatars" && path === "/admin/avatar-hero");
+        (href === "/admin/avatars" && path === "/admin/avatar-hero") ||
+        (href === "/admin/library" && path.startsWith("/admin/portfolio"));
 
 /** Sidebar on desktop; a full-screen menu behind the Menu button on phones. */
 export function AdminNav({ role, email }: { role: "owner" | "editor"; email: string }) {
@@ -66,8 +80,9 @@ export function AdminNav({ role, email }: { role: "owner" | "editor"; email: str
   return (
     <>
       <header className="ad-top">
-        <Link className="ad-brand" href="/admin">
-          Milkywayy<small>Admin</small>
+        <Link className="ad-brand" href="/admin" aria-label="Milkywayy admin">
+          <BrandLogo tone="light" />
+          <small>Admin</small>
         </Link>
         <button
           type="button"

@@ -48,3 +48,7 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /tests/.auth/
+/public/ffmpeg/
+
+# local data backups (never committed)
+/backups/

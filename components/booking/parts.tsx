@@ -80,6 +80,7 @@ export function ChoiceCard({
   pressed,
   disabled,
   badge,
+  icon,
   onClick,
   onRemove,
   col,
@@ -97,6 +98,8 @@ export function ChoiceCard({
   pressed: boolean;
   disabled?: boolean;
   badge?: string;
+  /** Small line icon at the top-left (service tiles). */
+  icon?: ReactNode;
   onClick: () => void;
   /**
    * Service cards: a separate ✓ corner button that deselects (shows ✕ on hover). Used from 768px,
@@ -117,6 +120,11 @@ export function ChoiceCard({
       disabled={disabled}
       onClick={onClick}
     >
+      {icon && (
+        <span className="sc-ico" aria-hidden="true">
+          {icon}
+        </span>
+      )}
       <b>{title}</b>
       {sub && <small>{sub}</small>}
       {price && <span className="p">{price}</span>}
@@ -125,11 +133,11 @@ export function ChoiceCard({
       {badge && <span className="pop">{badge}</span>}
     </button>
   );
-  if (!onRemove) return card;
+  if (!onRemove && col === undefined) return card;
   return (
     <div className="sc-wrap" data-col={col}>
       {card}
-      {pressed && (
+      {pressed && onRemove && (
         <button type="button" className="sc-x" aria-label={`Remove ${title}`} onClick={onRemove} />
       )}
     </div>

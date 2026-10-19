@@ -1,10 +1,21 @@
 "use client";
 
-import { useId } from "react";
+import { Fragment, useId, useState } from "react";
 import type { Media } from "@/content/types";
-import { getPath, type Field, type Option } from "@/lib/admin/fields";
-import { embedUrl } from "@/lib/video";
+import { getPath, type AdminCtx, type Field, type Option } from "@/lib/admin/fields";
+import { isInstagramUrl } from "@/lib/instagram-link";
+import { isFileVideo, MEDIA } from "@/lib/media-config";
+import { embedUrl, VIDEO_HINT, VIDEO_REFUSED } from "@/lib/video";
 import { ImageField } from "./ImageField";
+import { VideoUpload } from "./MediaParts";
+import { PortfolioMedia } from "./PortfolioMedia";
+
+const NO_CTX: AdminCtx = {
+  portfolio: [],
+  avatarOrder: [],
+  categories: [],
+  placements: { pins: [], modes: {} },
+};
 
 type Values = Record<string, unknown>;
 
@@ -16,6 +27,7 @@ export function FormFields({
   errors = {},
   isOwner,
   portfolio = [],
+  ctx = NO_CTX,
 }: {
   fields: Field[];
   values: Values;
@@ -24,21 +36,34 @@ export function FormFields({
   isOwner: boolean;
   /** Choices for "related portfolio items". */
   portfolio?: Option[];
+  /** The rest of the content, for "Used on". */
+  ctx?: AdminCtx;
 }) {
   return (
     <>
       {fields
-        .filter((f) => !f.ownerOnly || isOwner)
-        .map((f) => (
-          <FieldInput
-            key={f.name}
-            field={f}
-            value={getPath(values, f.name)}
-            onChange={(v) => onChange(f.name, v)}
-            error={errors[f.name]}
-            portfolio={portfolio}
-          />
-        ))}
+        .filter((f) => (!f.ownerOnly || isOwner) && (!f.when || f.when(values)))
+        .map((f) => {
+          const line = f.line?.(values, ctx);
+          return (
+            <Fragment key={f.name}>
+              <FieldInput
+                field={f}
+                value={getPath(values, f.name)}
+                onChange={(v) => onChange(f.name, v)}
+                error={errors[f.name]}
+                portfolio={portfolio}
+                row={values}
+                ctx={ctx}
+              />
+              {line && (
+                <p className="ad-appears" role="status" data-testid={`line-${f.name}`}>
+                  {line}
+                </p>
+              )}
+            </Fragment>
+          );
+        })}
     </>
   );
 }
@@ -49,12 +74,16 @@ function FieldInput({
   onChange,
   error,
   portfolio,
+  row,
+  ctx,
 }: {
   field: Field;
   value: unknown;
   onChange: (v: unknown) => void;
   error?: string;
   portfolio: Option[];
+  row: Values;
+  ctx: AdminCtx;
 }) {
   const id = useId();
   const described =
@@ -75,10 +104,25 @@ function FieldInput({
           value={value as Media}
           onChange={onChange}
           error={error}
-          crops={f.crops}
+          kind={f.media}
+          usedOn={f.usedOn?.(row, ctx)}
           video={f.video}
+          upload={f.upload}
           bright={f.bright}
           required={f.required}
+        />
+      </div>
+    );
+
+  if (f.kind === "portfolio-media")
+    return (
+      <div data-field={f.name}>
+        <PortfolioMedia
+          value={value as Media}
+          onChange={onChange}
+          row={row}
+          ctx={ctx}
+          error={error}
         />
       </div>
     );
@@ -94,7 +138,8 @@ function FieldInput({
               label={`Image ${i + 1}`}
               value={m}
               onChange={(next) => onChange(list.map((x, j) => (j === i ? next : x)))}
-              crops={f.crops}
+              kind={f.media}
+              usedOn={i === 0 ? f.usedOn?.(row, ctx) : undefined}
               required
             />
             <button
@@ -233,7 +278,77 @@ function FieldInput({
     );
   }
 
+  if (f.kind === "versions") {
+    const list = (Array.isArray(value) ? value : []) as { language: string; clip: string }[];
+    const set = (i: number, k: "language" | "clip", v: string) =>
+      onChange(list.map((p, j) => (j === i ? { ...p, [k]: v } : p)));
+    return (
+      <fieldset className="ad-field" data-field={f.name}>
+        <legend className="ad-label">{f.label}</legend>
+        {f.help && <span className="ad-help">{f.help}</span>}
+        <div className="ad-pairs">
+          {list.map((p, i) => (
+            <div className="ad-pair" key={i} style={{ flexWrap: "wrap" }}>
+              <input
+                type="text"
+                list={`${id}-langs`}
+                aria-label={`Version ${i + 1} language`}
+                placeholder="Arabic"
+                value={p.language}
+                onChange={(e) => set(i, "language", e.target.value)}
+              />
+              {isFileVideo(p.clip) ? (
+                <span className="ad-small">Uploaded video.</span>
+              ) : (
+                <input
+                  type="url"
+                  inputMode="url"
+                  aria-label={`Version ${i + 1} video link`}
+                  placeholder={VIDEO_HINT}
+                  value={p.clip}
+                  onChange={(e) => set(i, "clip", e.target.value)}
+                />
+              )}
+              {f.upload && (
+                <VideoUpload
+                  kind={f.media}
+                  folder={f.upload}
+                  label={p.clip ? "Replace video" : "Upload video"}
+                  onDone={(ref) => set(i, "clip", ref)}
+                />
+              )}
+              <button
+                type="button"
+                className="ad-icon-btn"
+                aria-label={`Remove version ${i + 1}`}
+                onClick={() => onChange(list.filter((_, j) => j !== i))}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <datalist id={`${id}-langs`}>
+          {["English", "Arabic", "French", "Spanish", "German", "Russian", "Hindi", "Chinese"].map(
+            (l) => (
+              <option key={l} value={l} />
+            ),
+          )}
+        </datalist>
+        <button
+          type="button"
+          className="ad-btn ghost small"
+          onClick={() => onChange([...list, { language: "", clip: "" }])}
+        >
+          Add a language
+        </button>
+        {error && <span className="ad-err">{error}</span>}
+      </fieldset>
+    );
+  }
+
   let control;
+  let help = f.help;
   switch (f.kind) {
     case "textarea":
       control = (
@@ -289,20 +404,55 @@ function FieldInput({
         </select>
       );
       break;
-    case "video": {
-      const ok = !value || !!embedUrl(String(value));
+    case "category":
       control = (
-        <input
-          {...common}
-          type="url"
-          inputMode="url"
-          placeholder="Bunny, Mux, YouTube or Vimeo link"
+        <CategoryInput
+          common={common}
           value={String(value ?? "")}
-          onChange={(e) => onChange(e.target.value)}
-          aria-invalid={!ok || !!error}
+          options={ctx.categories}
+          onChange={onChange}
         />
       );
-      if (!ok && !error) error = "Link not recognised. Use a Bunny, Mux, YouTube or Vimeo link.";
+      break;
+    case "video": {
+      const v = String(value ?? "");
+      const file = isFileVideo(v);
+      const ok = !v || file || !!embedUrl(v);
+      control = (
+        <>
+          {file ? (
+            <div className="ad-btns">
+              <span className="ad-small">Uploaded video.</span>
+              <button type="button" className="ad-btn quiet small" onClick={() => onChange("")}>
+                Remove video
+              </button>
+            </div>
+          ) : (
+            <input
+              {...common}
+              type="url"
+              inputMode="url"
+              placeholder={VIDEO_HINT}
+              value={v}
+              onChange={(e) => onChange(e.target.value)}
+              aria-invalid={!ok || !!error}
+            />
+          )}
+          {f.upload && f.media && (
+            <VideoUpload
+              kind={f.media}
+              folder={f.upload}
+              label={file ? "Replace video" : "Or upload a video"}
+              onDone={(ref) => onChange(ref)}
+            />
+          )}
+        </>
+      );
+      if (!ok && !error)
+        error = isInstagramUrl(v)
+          ? "That’s an Instagram link. Instagram videos can’t play here: use a YouTube or Vimeo link, or upload the video."
+          : VIDEO_REFUSED;
+      if (f.media && !f.help) help = `${VIDEO_HINT}. Shown at ${MEDIA[f.media].ratioLabel}.`;
       break;
     }
     default:
@@ -331,9 +481,9 @@ function FieldInput({
     <div className="ad-field">
       <label htmlFor={id}>{label}</label>
       {control}
-      {f.help && (
+      {help && (
         <span className="ad-help" id={`${id}-help`}>
-          {f.help}
+          {help}
         </span>
       )}
       {error && (
@@ -342,5 +492,54 @@ function FieldInput({
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * Category combobox: the saved categories as suggestions; a name that isn't one of them becomes
+ * "new:<name>" and is saved as a category with the item (lib/admin/actions).
+ */
+function CategoryInput({
+  common,
+  value,
+  options,
+  onChange,
+}: {
+  common: Record<string, unknown>;
+  value: string;
+  options: Option[];
+  onChange: (v: unknown) => void;
+}) {
+  const listId = useId();
+  const [text, setText] = useState(
+    value.startsWith("new:")
+      ? value.slice(4)
+      : (options.find((o) => o.value === value)?.label ?? value),
+  );
+  return (
+    <>
+      <input
+        {...common}
+        type="text"
+        list={listId}
+        autoComplete="off"
+        maxLength={40}
+        value={text}
+        onChange={(e) => {
+          const t = e.target.value;
+          setText(t);
+          const hit = options.find((o) => o.label.toLowerCase() === t.trim().toLowerCase());
+          onChange(hit ? hit.value : t.trim() ? `new:${t.trim()}` : "");
+        }}
+      />
+      <datalist id={listId}>
+        {options.map((o) => (
+          <option key={o.value} value={o.label} />
+        ))}
+      </datalist>
+      {value.startsWith("new:") && (
+        <span className="ad-small ad-muted">New category: saved for future uploads.</span>
+      )}
+    </>
   );
 }

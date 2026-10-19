@@ -5,6 +5,10 @@
     {
       "path": "/api/cron/weekly-leads",
       "schedule": "0 5 * * 1"
+    },
+    {
+      "path": "/api/portal/housekeeping",
+      "schedule": "0 2 * * *"
     }
   ]
 }

@@ -5,22 +5,31 @@ import { BeforeAfterGallery } from "@/components/blocks/BeforeAfterGallery";
 import { FAQ } from "@/components/blocks/FAQ";
 import { ProofStrip } from "@/components/blocks/ProofStrip";
 import { RateCards } from "@/components/blocks/RateCards";
-import { ServiceCards4, type ServiceCard } from "@/components/blocks/ServiceCards4";
+import { rowMedia, ServiceRow, type RowMedia } from "@/components/blocks/ServiceRow";
 import { StatsBand } from "@/components/blocks/StatsBand";
 import { Steps, type Step } from "@/components/blocks/Steps";
 import { FreeTestSection } from "@/components/forms/FreeTestSection";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
+import { FormatGallery } from "@/components/blocks/FormatGallery";
+import { placedShowcase, SHOWCASE, showcaseRates } from "@/lib/showcase";
+import { HeroMedia } from "@/components/blocks/HeroMedia";
+import { postHeroReels } from "@/lib/post-hero";
+import { HERO_TEMPLATES } from "@/lib/placements";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Hl, SectionHead } from "@/components/ui/Section";
-import type { Media, PortfolioFormat } from "@/content/types";
+import type { Media } from "@/content/types";
+import { kindOf } from "@/lib/media-config";
+import { videoPlayable, withPlayback } from "@/lib/playable";
 import {
   getAvatars,
   getBeforeAfter,
   getClients,
   getFaqs,
   getOtherPricing,
+  getHeroTemplate,
+  getPlaced,
   getPortfolio,
   getSiteSettings,
   getStats,
@@ -36,7 +45,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const WHY = [
   {
-    title: "We know what the edit is for",
+    title: "We know the shot",
     text: "We produce for real estate, hospitality, clinics and brands, so we understand the shot before you explain it.",
   },
   {
@@ -58,39 +67,95 @@ const STEPS: Step[] = [
   { n: "05", title: "Deliver", text: "Final files, named and sized for MLS and social." },
 ];
 
-/** Labels on the hero frames, by what each frame shows. Short: small frames take one line. */
-const HERO_LABEL: Record<PortfolioFormat, string> = {
-  photo: "HDR edit",
-  reel: "Reel",
-  "long-form": "Long-form",
-  "360": "360 tour",
+/** Until real work is placed, each row shows a placeholder at its own format's ratio. */
+const PLACEHOLDER: Record<"photo" | "reel" | "long-form", Media> = {
+  photo: { alt: "HDR real estate photo edit of an apartment interior", placeholder: "interior" },
+  reel: { alt: "Short-form social media reel edited for a brand", placeholder: "night" },
+  "long-form": {
+    alt: "Real estate walkthrough video edit of a villa at dusk",
+    placeholder: "villa-dusk",
+  },
 };
 
-const PLACEHOLDER: Media = { alt: "Placeholder edit sample", placeholder: "interior" };
+type Row = {
+  kicker: string;
+  title: string;
+  text: string;
+  price: string;
+  cta: string;
+  href: string;
+  media: RowMedia;
+};
 
 export default async function PostProductionPage() {
-  const [site, clients, proof, pairs, stats, faqs, other, cardMedia, avatars, heroMedia] =
-    await Promise.all([
-      getSiteSettings(),
-      getClients(),
-      showsProofStrip("post-production"),
-      getBeforeAfter(),
-      getStats("post-production"),
-      getFaqs("post-production"),
-      getOtherPricing(),
-      getPortfolio("post-service-cards"),
-      getAvatars(),
-      getPortfolio("post-hero"),
-    ]);
+  const [
+    site,
+    clients,
+    proof,
+    pairs,
+    stats,
+    faqs,
+    other,
+    cardSlots,
+    avatars,
+    delivered,
+    heroReelMedia,
+    allMedia,
+  ] = await Promise.all([
+    getSiteSettings(),
+    getClients(),
+    showsProofStrip("post-production"),
+    getBeforeAfter(),
+    getStats("post-production"),
+    getFaqs("post-production"),
+    getOtherPricing(),
+    // The four service blocks, each with its own slot (Admin → Pages → Post-production).
+    Promise.all(
+      (["photo", "reel", "long", "avatar"] as const).map(
+        async (k) => (await getPlaced(`post-card-${k}`)).items[0],
+      ),
+    ),
+    getAvatars(),
+    // "Work we've delivered": exactly what that section holds, in its order.
+    getPlaced("post-hero"),
+    getPortfolio("post-hero-reels"),
+    getPortfolio(),
+  ]);
+  // Always three reels side by side, like Production (13 Oct 2026): the placement first, then
+  // the latest published editing reels (lib/post-hero).
+  const [showcase, template] = await Promise.all([
+    getPlaced("showcase-photos"),
+    getHeroTemplate("Post-production"),
+  ]);
+  const [hero, work, cards] = await Promise.all([
+    // Three vertical videos keeps the fill above; the other templates show only what's picked.
+    withPlayback(
+      template === "v3"
+        ? postHeroReels(heroReelMedia, allMedia)
+        : heroReelMedia.slice(0, HERO_TEMPLATES[template].slots),
+    ),
+    withPlayback(delivered.items),
+    withPlayback(cardSlots.filter((c) => !!c)),
+  ]);
   const rate = (k: "photo" | "short" | "long") =>
     other.postProduction.rates.find((r) => r.key === k);
   const from = (k: "photo" | "short" | "long") => {
     const r = rate(k);
     return r ? `From ${formatUSD(r.amount)} / ${r.unit}` : "";
   };
-  const media = (i: number) => cardMedia[i]?.media ?? PLACEHOLDER;
+  // Each row shows its own slot; a slot nobody has filled takes the first delivered item of its
+  // format, then a placeholder.
+  const media = (k: "photo" | "reel" | "long-form", slot: number): RowMedia => {
+    const pinned = cards.find((m) => m.id === cardSlots[slot]?.id);
+    return (
+      rowMedia(pinned ?? work.find((m) => kindOf(m) === k)) ?? {
+        media: PLACEHOLDER[k],
+        kind: k,
+      }
+    );
+  };
 
-  const cards: ServiceCard[] = [
+  const rows: Row[] = [
     {
       kicker: "Photo edits",
       title: "HDR, twilight, sky, declutter",
@@ -98,8 +163,7 @@ export default async function PostProductionPage() {
       price: from("photo"),
       cta: "Free test",
       href: "#free-test",
-      media: media(0),
-      tag: cardMedia[0]?.tag,
+      media: media("photo", 0),
     },
     {
       kicker: "Short-form",
@@ -108,8 +172,7 @@ export default async function PostProductionPage() {
       price: from("short"),
       cta: "Free test",
       href: "#free-test",
-      media: media(1),
-      play: true,
+      media: media("reel", 1),
     },
     {
       kicker: "Long-form",
@@ -118,8 +181,7 @@ export default async function PostProductionPage() {
       price: from("long"),
       cta: "Free test",
       href: "#free-test",
-      media: media(2),
-      play: true,
+      media: media("long-form", 2),
     },
     {
       kicker: "AI avatars",
@@ -128,8 +190,23 @@ export default async function PostProductionPage() {
       price: "White-label",
       cta: "See AI avatars",
       href: "/ai-avatars",
-      media: avatars[0]?.poster ?? PLACEHOLDER,
-      clean: avatars[0]?.poster.bright,
+      media:
+        rowMedia(cards.find((m) => m.id === cardSlots[3]?.id)) ??
+        ({
+          media: avatars[0]?.poster ?? {
+            alt: "AI avatar video presenter edit",
+            placeholder: "adam",
+            bright: true,
+          },
+          kind: "ai-avatar",
+          title: avatars[0]?.name,
+          play: videoPlayable(
+            avatars[0]?.clip,
+            avatars[0]?.name ?? "AI avatar",
+            "ai-avatar",
+            avatars[0]?.poster.src,
+          ),
+        } satisfies RowMedia),
     },
   ];
 
@@ -137,13 +214,17 @@ export default async function PostProductionPage() {
     <>
       <PageLd page="post-production" />
       <div className="w">
-        <section className="pp-hero" aria-labelledby="post-title">
+        <section
+          className={template === "v3" ? "p-hero p-hero-wide" : "p-hero"}
+          data-hero={template}
+          aria-labelledby="post-title"
+        >
           <div className="stack">
             <Eyebrow>Post-production · Worldwide</Eyebrow>
             <HeroTitle id="post-title" line1="Your remote" line2={<Hl>edit team.</Hl>} />
             <p className="lede">
-              Photo, video and AI avatar editing for media companies, agencies and creators. We run
-              our own productions, so we edit like people who&apos;ve been on set.
+              Real estate photo editing, video editing and AI avatars for agencies, media companies
+              and creators. We run our own shoots, so we edit like we&apos;ve been on set.
             </p>
             <ul className="checks">
               <li>Photo edits, short-form, long-form and AI avatars</li>
@@ -157,21 +238,11 @@ export default async function PostProductionPage() {
               </ButtonLink>
             </Ctas>
           </div>
-          {heroMedia.length > 0 && (
-            <div className="trio">
-              {heroMedia.slice(0, 3).map((m, i) => (
-                <ViewfinderFrame
-                  key={m.id}
-                  media={m.media}
-                  small
-                  play={m.format === "reel" ? "icon" : undefined}
-                  tag={HERO_LABEL[m.format]}
-                  priority={i === 1}
-                  sizes="(max-width: 900px) 33vw, 18vw"
-                />
-              ))}
-            </div>
-          )}
+          <HeroMedia
+            items={hero}
+            trioSizes="(max-width: 900px) 33vw, 15vw"
+            template={template as Exclude<typeof template, "ba">}
+          />
         </section>
       </div>
 
@@ -208,7 +279,11 @@ export default async function PostProductionPage() {
               </p>
             }
           />
-          <ServiceCards4 cards={cards} />
+          <div className="doors">
+            {rows.map((r, i) => (
+              <ServiceRow key={r.kicker} {...r} flip={i % 2 === 1} />
+            ))}
+          </div>
         </div>
       </section>
 
@@ -229,18 +304,19 @@ export default async function PostProductionPage() {
             title="Price per edit."
             aside={<p className="lede">{other.postProduction.note}</p>}
           />
-          <RateCards rates={other.postProduction.rates} />
+          <RateCards rates={other.postProduction.rates} snap />
           <Ctas style={{ marginTop: 28 }}>
             <ButtonLink href="#free-test">Get a custom quote</ButtonLink>
           </Ctas>
         </div>
       </section>
 
-      {stats.length > 0 && (
+      {(stats.length > 0 || work.length > 0) && (
         <section className="sec alt" id="our-work" aria-labelledby="track-title">
-          <div className="w">
+          <div className="w stack" style={{ gap: 40 }}>
             <SectionHead id="track-title" eyebrow="Track record" title="Work we've delivered." />
-            <StatsBand stats={stats} />
+            {stats.length > 0 && <StatsBand stats={stats} />}
+            <FormatGallery items={work} label="Edits by format" />
           </div>
         </section>
       )}
@@ -258,17 +334,37 @@ export default async function PostProductionPage() {
               </p>
             }
           />
-          <Steps steps={STEPS} />
+          <Steps steps={STEPS} snap />
         </div>
       </section>
 
-      <section className="sec alt" aria-label="Questions">
+      <section className="sec alt" aria-labelledby="dashboard-title">
+        <div className="w">
+          <SectionHead
+            id="dashboard-title"
+            eyebrow="Your client dashboard"
+            title="Every batch in one place."
+            aside={
+              <p className="lede">
+                Upload raw files, follow each batch, download deliveries and ask for revisions.
+              </p>
+            }
+          />
+          <DashboardShowcase
+            features={SHOWCASE.post}
+            photos={placedShowcase(showcase, allMedia)}
+            rates={showcaseRates(undefined, other)}
+          />
+        </div>
+      </section>
+
+      <section className="sec" aria-label="Questions">
         <div className="w">
           <FAQ title="Editing FAQ." faqs={faqs} />
         </div>
       </section>
 
-      <FreeTestSection alt={false} />
+      <FreeTestSection alt />
 
       <CTABand
         title="Try us on one project."

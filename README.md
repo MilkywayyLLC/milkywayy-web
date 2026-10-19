@@ -20,7 +20,7 @@ After changing content directly in the database, refresh the site with `POST /ap
 - `supabase/migrations/` — schema and access rules. `npm run db:seed:sql` writes `supabase/seed.sql` from `content/`; `npm run db:parity` checks the database matches `content/`.
 - `lib/data/` — the only way pages read editable content.
 - `app/(dark)` / `app/(light)` — page tone per route (guide §3).
-- `DECISIONS.md` — choices not covered by the guide. `LAUNCH_BLOCKERS.md` — content still to supply. `LAUNCH.md` — launch runbook. `HANDOVER.md` — running the site day to day.
+- `DECISIONS.md` — choices not covered by the guide. `LAUNCH.md` — the one launch runbook: content still to supply, production setup, launch day, rollback, and running the site day to day (it replaced `LAUNCH_BLOCKERS.md`, `PORTAL_CHECKLIST.md` and `HANDOVER.md`).
 
 ## Leads
 

@@ -16,10 +16,13 @@ export function HeroTitle({
   line1,
   line2,
   id,
+  label,
 }: {
   line1: ReactNode;
   line2: ReactNode;
   id?: string;
+  /** Accessible name when the visible lines aren't the full sentence (e.g. a rotating word). */
+  label?: string;
 }) {
   const wrap = useRef<HTMLDivElement>(null);
   const h1 = useRef<HTMLHeadingElement>(null);
@@ -82,6 +85,7 @@ export function HeroTitle({
       <h1
         className="d h1 two"
         id={id}
+        aria-label={label}
         ref={h1}
         style={{ ["--em-d" as string]: d.toFixed(3), ["--em-l" as string]: l.toFixed(3) }}
       >

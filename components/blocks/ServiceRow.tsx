@@ -1,9 +1,28 @@
 import { AppLink as Link } from "@/components/ui/AppLink";
 import type { ReactNode } from "react";
-import type { PortfolioItem } from "@/content/types";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import type { Media } from "@/content/types";
+import { MediaFrame } from "@/components/media/MediaFrame";
+import { MediaOpen } from "@/components/media/MediaOpen";
+import { kindOf, type MediaKind } from "@/lib/media-config";
+import type { Shown } from "@/lib/playable";
 
-/** Home "doors": one row per service with copy, a price line and three thumbnails. */
+/** The one media item a row shows, at its format's ratio. */
+export type RowMedia = { media: Media; kind: MediaKind; title?: string; play?: Shown["play"] };
+
+export const rowMedia = (i: Shown | undefined): RowMedia | undefined =>
+  i && { media: i.media, kind: kindOf(i), title: i.title, play: i.play };
+
+const SIZES: Partial<Record<MediaKind, string>> = {
+  reel: "(max-width: 860px) 70vw, 320px",
+  "ai-avatar": "(max-width: 860px) 70vw, 320px",
+};
+
+/**
+ * Full-width service rows (Home "Three services. One studio.", Post-production "Anything on your
+ * plate."): copy, a price line and ONE media item at its own format's ratio (photo 3:2, reel and
+ * AI avatar 9:16, long-form 16:9). Rows alternate the media right, left, right (`flip` on the second); on phones
+ * the copy comes first, then the media. A row without media shows a placeholder card. The media plays in place (shared player); only the copy links to the page.
+ */
 export function ServiceRow({
   kicker,
   title,
@@ -12,6 +31,8 @@ export function ServiceRow({
   cta,
   href,
   media,
+  flip,
+  placeholder = "photo",
 }: {
   kicker: string;
   title: string;
@@ -19,31 +40,40 @@ export function ServiceRow({
   price: ReactNode;
   cta: string;
   href: string;
-  media: PortfolioItem[];
+  media?: RowMedia;
+  flip?: boolean;
+  /** Shape of the placeholder card shown while the row has no media yet. */
+  placeholder?: MediaKind;
 }) {
   return (
-    <Link className="door" href={href}>
-      <div className="door-copy">
+    <div className={flip ? "door flip" : "door"}>
+      <Link className="door-copy" href={href}>
         <span className="k">{kicker}</span>
         <h3 className="d h3">{title}</h3>
         <p>{text}</p>
         <span className="price">{price}</span>
         <span className="lnk">{cta} →</span>
-      </div>
-      <div className="door-media">
-        {media.slice(0, 3).map((m, i) => (
-          <ViewfinderFrame
-            key={m.id}
-            media={m.media}
+      </Link>
+      {!media && (
+        <div className={`door-media door-ph f-${placeholder}`} aria-hidden="true">
+          <span>Media coming soon</span>
+        </div>
+      )}
+      {media && (
+        <div className={`door-media f-${media.kind}`}>
+          <MediaFrame
+            media={media.media}
+            kind={media.kind}
             small
             corners={false}
-            clean={m.category === "ai-avatar"}
-            tag={i === 0 ? m.tag : undefined}
-            play={m.format === "reel" && i > 0 ? "icon" : undefined}
-            sizes="(max-width: 860px) 33vw, 20vw"
-          />
-        ))}
-      </div>
-    </Link>
+            clean={media.kind === "ai-avatar" ? (media.media.bright ?? true) : undefined}
+            title={media.title}
+            sizes={SIZES[media.kind] ?? "(max-width: 860px) 100vw, 50vw"}
+          >
+            {media.play && <MediaOpen play={media.play} />}
+          </MediaFrame>
+        </div>
+      )}
+    </div>
   );
 }

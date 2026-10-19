@@ -1,0 +1,220 @@
+import { createHash, createHmac } from "node:crypto";
+
+/**
+ * Cloudflare R2 (S3-compatible) for files we host (CLIENT_PORTAL_GUIDE D6), signed with AWS
+ * Signature V4 and no SDK. Server-only: the keys never reach a browser. Browsers get short-lived
+ * presigned URLs instead: PUTs for the admin's uploads (one per part, so big files go up in 16 MB
+ * pieces and can resume), GETs for clients' downloads.
+ *
+ * Two buckets on the same account: portal files (client deliveries, uploads, invoices) and the
+ * website's own media. A key under `site/` (admin video uploads, served by /media/file/…) always
+ * goes to the site bucket; every other key to the portal bucket (24 Oct 2026).
+ *
+ *   R2_ACCOUNT_ID                                                   both (one endpoint)
+ *   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET               portal
+ *   R2_SITE_ACCESS_KEY_ID, R2_SITE_SECRET_ACCESS_KEY, R2_SITE_BUCKET website
+ */
+export type Store = "portal" | "site";
+export const storeOf = (key: string): Store => (key.startsWith("site/") ? "site" : "portal");
+const cfg = (store: Store = "portal") => {
+  const site = store === "site";
+  return {
+    account: process.env.R2_ACCOUNT_ID ?? "",
+    key: (site ? process.env.R2_SITE_ACCESS_KEY_ID : process.env.R2_ACCESS_KEY_ID) ?? "",
+    secret: (site ? process.env.R2_SITE_SECRET_ACCESS_KEY : process.env.R2_SECRET_ACCESS_KEY) ?? "",
+    bucket: (site ? process.env.R2_SITE_BUCKET : process.env.R2_BUCKET) ?? "",
+  };
+};
+export const r2Ready = (store: Store = "portal") => Object.values(cfg(store)).every(Boolean);
+
+export const PART_SIZE = 16 * 1024 * 1024;
+
+const sha = (d: string | Buffer) => createHash("sha256").update(d).digest("hex");
+const hmac = (k: string | Buffer, d: string) => createHmac("sha256", k).update(d).digest();
+/** RFC 3986 encoding, as SigV4 wants it. */
+const enc = (s: string) =>
+  encodeURIComponent(s).replace(
+    /[!'()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+const path = (key: string) => `/${cfg(storeOf(key)).bucket}/${key.split("/").map(enc).join("/")}`;
+const host = () => `${cfg().account}.r2.cloudflarestorage.com`;
+
+function stamp(at = new Date()) {
+  const amz = at.toISOString().replace(/[:-]|\.\d{3}/g, "");
+  return { amz, day: amz.slice(0, 8) };
+}
+function signingKey(day: string, secret: string) {
+  return hmac(hmac(hmac(hmac(`AWS4${secret}`, day), "auto"), "s3"), "aws4_request");
+}
+const canonicalQuery = (q: Record<string, string>) =>
+  Object.keys(q)
+    .sort()
+    .map((k) => `${enc(k)}=${enc(q[k])}`)
+    .join("&");
+
+/** A presigned URL a browser can use directly (no headers needed beyond Host). */
+export function presign(
+  method: "GET" | "PUT",
+  key: string,
+  seconds: number,
+  extra: Record<string, string> = {},
+  at?: Date,
+) {
+  const c = cfg(storeOf(key));
+  const { amz, day } = stamp(at);
+  const scope = `${day}/auto/s3/aws4_request`;
+  const q: Record<string, string> = {
+    ...extra,
+    "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
+    "X-Amz-Credential": `${c.key}/${scope}`,
+    "X-Amz-Date": amz,
+    "X-Amz-Expires": String(seconds),
+    "X-Amz-SignedHeaders": "host",
+  };
+  const qs = canonicalQuery(q);
+  const canon = [method, path(key), qs, `host:${host()}\n`, "host", "UNSIGNED-PAYLOAD"].join("\n");
+  const sig = createHmac("sha256", signingKey(day, c.secret))
+    .update(["AWS4-HMAC-SHA256", amz, scope, sha(canon)].join("\n"))
+    .digest("hex");
+  return `https://${host()}${path(key)}?${qs}&X-Amz-Signature=${sig}`;
+}
+
+/** A signed server-side request (create/complete/abort multipart, list parts, delete). */
+async function call(method: string, key: string, q: Record<string, string> = {}, body = "") {
+  const c = cfg(storeOf(key));
+  const { amz, day } = stamp();
+  const scope = `${day}/auto/s3/aws4_request`;
+  const payload = sha(body);
+  const headers: Record<string, string> = {
+    host: host(),
+    "x-amz-content-sha256": payload,
+    "x-amz-date": amz,
+  };
+  const names = Object.keys(headers).sort();
+  const qs = canonicalQuery(q);
+  const canon = [
+    method,
+    path(key),
+    qs,
+    names.map((n) => `${n}:${headers[n]}\n`).join(""),
+    names.join(";"),
+    payload,
+  ].join("\n");
+  const sig = createHmac("sha256", signingKey(day, c.secret))
+    .update(["AWS4-HMAC-SHA256", amz, scope, sha(canon)].join("\n"))
+    .digest("hex");
+  const res = await fetch(`https://${host()}${path(key)}${qs ? `?${qs}` : ""}`, {
+    method,
+    headers: {
+      ...headers,
+      Authorization: `AWS4-HMAC-SHA256 Credential=${c.key}/${scope}, SignedHeaders=${names.join(";")}, Signature=${sig}`,
+    },
+    body: body || undefined,
+  });
+  const text = await res.text();
+  if (!res.ok)
+    throw new Error(
+      `R2 ${method} ${res.status}: ${/<Message>(.*?)<\/Message>/.exec(text)?.[1] ?? text.slice(0, 200)}`,
+    );
+  return text;
+}
+
+/** Download link: the browser saves it under the original name. 10 minutes by default. */
+export function downloadUrl(key: string, filename: string, seconds = 600) {
+  const safe = filename.replace(/["\\\r\n]/g, "").slice(0, 150) || "download";
+  // Plain ASCII name for old browsers; the real (UTF-8) name in filename*, which browsers prefer.
+  const ascii = safe.normalize("NFKD").replace(/[^\x20-\x7e]/g, "-");
+  return presign("GET", key, seconds, {
+    "response-content-disposition": `attachment; filename="${ascii}"; filename*=UTF-8''${enc(safe)}`,
+  });
+}
+
+export async function startMultipart(key: string) {
+  const xml = await call("POST", key, { uploads: "" });
+  const id = /<UploadId>(.*?)<\/UploadId>/.exec(xml)?.[1];
+  if (!id) throw new Error("R2 didn't return an upload id");
+  return id;
+}
+
+export const partUrl = (key: string, uploadId: string, partNumber: number, seconds = 3600) =>
+  presign("PUT", key, seconds, { partNumber: String(partNumber), uploadId });
+
+export async function listParts(key: string, uploadId: string) {
+  const xml = await call("GET", key, { uploadId, "max-parts": "1000" });
+  // R2 doesn't promise the field order inside <Part>, so read each field on its own.
+  return [...xml.matchAll(/<Part>([\s\S]*?)<\/Part>/g)].map((m) => ({
+    partNumber: Number(/<PartNumber>(\d+)<\/PartNumber>/.exec(m[1])?.[1]),
+    etag: (/<ETag>(.*?)<\/ETag>/.exec(m[1])?.[1] ?? "").replace(/&quot;/g, '"'),
+  }));
+}
+
+export async function completeMultipart(
+  key: string,
+  uploadId: string,
+  parts: { partNumber: number; etag: string }[],
+) {
+  const body = `<CompleteMultipartUpload>${parts
+    .sort((a, b) => a.partNumber - b.partNumber)
+    .map(
+      (p) =>
+        `<Part><PartNumber>${p.partNumber}</PartNumber><ETag>${p.etag.replace(/"/g, "&quot;")}</ETag></Part>`,
+    )
+    .join("")}</CompleteMultipartUpload>`;
+  await call("POST", key, { uploadId }, body);
+}
+
+export const abortMultipart = (key: string, uploadId: string) =>
+  call("DELETE", key, { uploadId }).then(() => undefined);
+export const deleteObject = (key: string) => call("DELETE", key).then(() => undefined);
+
+/** Biggest single file anyone may upload (§13: 5 GB by default; PORTAL_UPLOAD_MAX_GB changes it). */
+export const maxUploadGb = () => {
+  const n = Number(process.env.PORTAL_UPLOAD_MAX_GB);
+  return n > 0 && n <= 50 ? n : 5;
+};
+export const maxUploadBytes = () => maxUploadGb() * 1024 * 1024 * 1024;
+
+// ---------- media on public share pages (Phase 13) ----------
+
+const SIX_HOURS = 6 * 3600 * 1000;
+
+/**
+ * A GET link for an image or video shown on a public listing page. Signed from the start of the
+ * current 6-hour window and valid for 12 hours, so the same URL is served all window long:
+ * browsers, WhatsApp's preview fetcher and R2 can cache it, and a link copied from a page dies
+ * within half a day of the page going offline. Without R2 (local runs), SHARE_DEV_MEDIA_ORIGIN
+ * can point at a folder served locally; otherwise there is no URL.
+ */
+export function pageMediaUrl(key: string | null | undefined) {
+  if (!key) return null;
+  if (!r2Ready(storeOf(key))) {
+    const dev = process.env.SHARE_DEV_MEDIA_ORIGIN;
+    return dev ? `${dev.replace(/\/$/, "")}/${key.split("/").map(enc).join("/")}` : null;
+  }
+  const at = new Date(Math.floor(Date.now() / SIX_HOURS) * SIX_HOURS);
+  return presign(
+    "GET",
+    key,
+    (2 * SIX_HOURS) / 1000,
+    { "response-cache-control": "public, max-age=21600, immutable" },
+    at,
+  );
+}
+
+/** Read an object on the server (e.g. the share-preview image); null if it isn't there. */
+export async function getObject(key: string) {
+  if (!r2Ready(storeOf(key))) return null;
+  const res = await fetch(presign("GET", key, 60));
+  return res.ok ? res : null;
+}
+
+/** Write a small object from the server (web versions made with sharp). */
+export async function putObject(key: string, body: Buffer, contentType: string) {
+  const res = await fetch(presign("PUT", key, 600), {
+    method: "PUT",
+    body: new Uint8Array(body),
+    headers: { "Content-Type": contentType },
+  });
+  if (!res.ok) throw new Error(`R2 PUT ${res.status}`);
+}

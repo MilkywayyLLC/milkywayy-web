@@ -1,0 +1,731 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useState } from "react";
+import { FilePicker, UploadRows, useClientUploads } from "@/components/portal/ClientUpload";
+import {
+  AVATAR_FORMATS,
+  avatarEstimate,
+  avatarLength,
+  type AvatarFormat,
+} from "@/lib/portal/booking";
+import { createProject, updateAvatarBrief } from "@/lib/portal/project-actions";
+import { EDIT_KINDS, TYPE_PATH } from "@/lib/portal/projects";
+import type { RequestConfig } from "@/lib/portal/requests";
+import { money } from "@/lib/portal/billing";
+import { BookStep, ServiceCard, ThankYou } from "./BookFrame";
+import { PriceBlock } from "./PriceBlock";
+import {
+  DraftOffer,
+  Field,
+  FormBanner,
+  Modal,
+  useCloseGuard,
+  useDraft,
+  useFormCheck,
+  useLeaveGuard,
+} from "./forms";
+
+/** Edit type cards (owner, 18 Oct 2026): title, one line, the rate card key for the price. The
+ *  stored labels stay in EDIT_KINDS. */
+const KIND_CARD: Record<
+  (typeof EDIT_KINDS)[number][0],
+  { title: string; line: string; rate?: string; per?: string }
+> = {
+  short_form: { title: "Short-form", line: "Vertical reels · 9:16", rate: "reel" },
+  long_form: { title: "Long-form", line: "Horizontal YouTube · 16:9", rate: "long_form" },
+  hdr_photos: {
+    title: "Listing photo edits",
+    line: "HDR property photos",
+    rate: "photo",
+    per: " / photo",
+  },
+  other: { title: "Other", line: "Tell us what you need" },
+};
+const KIND_ORDER = ["short_form", "long_form", "hdr_photos", "other"] as const;
+
+type Link2 = { label: string; url: string };
+type Snap = {
+  kind: string;
+  kindOther: string;
+  title: string;
+  quantity: string;
+  notes: string;
+  reference: string;
+  links: Link2[];
+  mode: "links" | "upload";
+  format: AvatarFormat | "";
+  stop: number;
+  scriptBy: "milkywayy" | "client";
+  /** Avatar videos: the approved character(s) presenting it. */
+  presenters?: string[];
+};
+/** "Edit request" on an avatar video we haven't started (owner, 17 Oct 2026): its brief. */
+export type AvatarEdit = {
+  projectId: string;
+  ref: string;
+  title: string;
+  format: AvatarFormat;
+  stop: number;
+  notes: string;
+  reference: string;
+  scriptBy: "milkywayy" | "client";
+  presenters: string[];
+  /** Files already on it (links and uploads), listed above the picker. */
+  files: { id: string; label: string }[];
+};
+/** An approved character, as the video form's presenter picker shows it. */
+export type Presenter = { id: string; name: string; src: string | null };
+const isHttps = (u: string) => /^https:\/\/\S+$/.test(u.trim());
+const QTY_FOR: Record<string, number> = { hdr_photos: 50, short_form: 5, long_form: 2 };
+const EDIT_TURNAROUND: Record<string, string> = {
+  hdr_photos: "hdr_edit",
+  short_form: "short_edit",
+  long_form: "long_edit",
+};
+
+/**
+ * "Edit my files" (on the Book media page, 18 Oct 2026) and "AI avatar video" (a modal). Editing: the type (Other
+ * asks what type), title, quantity, notes, a reference link and the raw files (links or upload).
+ * Avatar: short or long form, a length slider with snap points and a live estimate from the
+ * client's rates (shown by who's looking), the script toggle, brief, reference and files; the
+ * title is optional. Both autosave as drafts (files themselves aren't kept in a draft).
+ */
+export function ProjectRequestModal({
+  type,
+  cfg,
+  resume,
+  onClose,
+  onBack,
+  characters = [],
+  edit,
+  onAnother,
+}: {
+  /** Editing, on the Book media page: the thank-you's "Book another". */
+  onAnother?: () => void;
+  type: "edit" | "avatar";
+  /** Avatar videos: edit this brief instead of starting one (no draft). */
+  edit?: AvatarEdit;
+  cfg: RequestConfig;
+  /** Avatar videos: the account's approved characters (one or more present the video). */
+  characters?: Presenter[];
+  resume?: boolean;
+  /** Avatar videos (a modal): close it. */
+  onClose?: () => void;
+  /** Editing: back to "What are you booking?". */
+  onBack?: () => void;
+}) {
+  const avatar = type === "avatar";
+  const [s, setS] = useState<Snap>({
+    kind: "",
+    kindOther: "",
+    title: edit?.title ?? "",
+    quantity: "",
+    notes: edit?.notes ?? "",
+    reference: edit?.reference ?? "",
+    links: [{ label: avatar ? "Logo and assets" : "Raw files", url: "" }],
+    mode: "links",
+    // Short form is the usual one: chosen when the modal opens (owner, 10 Oct 2026).
+    format: edit?.format ?? (avatar ? "short" : ""),
+    stop: edit?.stop ?? 0,
+    scriptBy: edit?.scriptBy ?? "milkywayy",
+    // One approved character: chosen already.
+    presenters: edit?.presenters ?? (avatar && characters.length === 1 ? [characters[0].id] : []),
+  });
+  const [touched, setTouched] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [made, setMade] = useState<{ ref: string; failed: boolean }>();
+  const { rows, busy, upload } = useClientUploads();
+  const set = (patch: Partial<Snap>) => {
+    setTouched(true);
+    setS((x) => ({ ...x, ...patch }));
+  };
+  const restore = useCallback((d: Snap) => {
+    setS((x) => ({ ...x, ...d }));
+    setTouched(true);
+  }, []);
+  const draft = useDraft(type, s as unknown as Record<string, unknown>, {
+    touched: touched && !made,
+    resume,
+    onRestore: restore as unknown as (d: Record<string, unknown>) => void,
+    enabled: !edit,
+  });
+  // Editing is a page (owner, 18 Oct 2026): leaving with unsaved input asks first.
+  const leave = useLeaveGuard({
+    dirty: type === "edit" && touched && !made,
+    saveNow: draft.saveNow,
+    discard: draft.discard,
+  });
+  const guard = useCloseGuard({
+    dirty: touched && !made,
+    close: () => onClose?.(),
+    saveNow: draft.saveNow,
+    discard: draft.discard,
+  });
+
+  const fmt = s.format ? AVATAR_FORMATS[s.format] : null;
+  const length = fmt ? fmt.stops[Math.min(s.stop, fmt.stops.length - 1)] : 0;
+  const est = s.format ? avatarEstimate(s.format, length, cfg.price.rates) : null;
+
+  const form = useFormCheck(() => ({
+    kind: !avatar && !s.kind && "Choose the type of edit.",
+    kindOther: !avatar && s.kind === "other" && !s.kindOther.trim() && "Say what type of edit.",
+    // An older video edited with no approved character to pick keeps going without one.
+    presenters:
+      avatar &&
+      !(edit && !characters.length) &&
+      !(s.presenters ?? []).some((id) => characters.some((c) => c.id === id)) &&
+      "Choose your AI avatar.",
+    format: avatar && !s.format && "Choose short form or long form.",
+    title: !avatar && !s.title.trim() && "Give it a title.",
+    quantity:
+      s.quantity !== "" &&
+      !(Number(s.quantity) >= 1 && Number(s.quantity) <= 10000) &&
+      "A number from 1.",
+    reference:
+      s.reference.trim() && !isHttps(s.reference) && "Paste a full link starting with https://",
+    files: !avatar
+      ? s.mode === "links"
+        ? !s.links.some((l) => l.url.trim()) &&
+          "Paste a link to the raw files, or switch to Upload."
+        : !files.length && "Choose the raw files to upload, or paste a link."
+      : false,
+    links:
+      s.mode === "links" &&
+      s.links.some((l) => l.url.trim() && !isHttps(l.url)) &&
+      "Links must start with https://",
+  }));
+
+  async function submit() {
+    if (!form.check()) return;
+    setSaving(true);
+    if (edit) {
+      const r = await updateAvatarBrief(edit.projectId, {
+        title: s.title,
+        ...(s.format ? { avatar: { format: s.format, length } } : {}),
+        notes: s.notes,
+        references: [s.reference],
+        scriptBy: s.scriptBy,
+        links: s.mode === "links" ? s.links : [],
+        characters: (s.presenters ?? []).filter((id) => characters.some((c) => c.id === id)),
+      });
+      if (!r.ok) {
+        setSaving(false);
+        return form.fail(r.error ?? "Couldn’t save it. Try again.");
+      }
+      let failed = false;
+      if (s.mode === "upload" && files.length)
+        failed = (await upload(edit.projectId, files)) < files.length;
+      setMade({ ref: edit.ref, failed });
+      setSaving(false);
+      return;
+    }
+    const r = await createProject({
+      type,
+      title: s.title,
+      kind: avatar ? "" : s.kind,
+      kindOther: s.kindOther,
+      ...(avatar && s.format ? { avatar: { format: s.format, length } } : {}),
+      quantity: Number(s.quantity) || null,
+      notes: s.notes,
+      references: [s.reference],
+      scriptBy: s.scriptBy,
+      links: s.mode === "links" ? s.links : [],
+      characters: avatar
+        ? (s.presenters ?? []).filter((id) => characters.some((c) => c.id === id))
+        : undefined,
+    });
+    if (!r.ok) {
+      setSaving(false);
+      return form.fail(r.error ?? "Couldn’t send it. Try again.");
+    }
+    let failed = false;
+    if (s.mode === "upload" && files.length) failed = (await upload(r.id!, files)) < files.length;
+    setMade({ ref: r.ref!, failed });
+    setSaving(false);
+  }
+
+  const title = edit ? "Edit request" : avatar ? "AI avatar video" : "Edit my files";
+  const ta = avatar
+    ? s.format
+      ? cfg.turnaround[s.format === "short" ? "avatar_short" : "avatar_long"]
+      : ""
+    : cfg.turnaround[EDIT_TURNAROUND[s.kind] ?? ""];
+
+  const m = (n: number) => money(cfg.price.currency, n);
+  /** A card's price: "Included in your package" while a package covers it, else the rate. */
+  const kindPrice = (k: (typeof KIND_ORDER)[number]) => {
+    const c = KIND_CARD[k];
+    if (!c.rate) return null;
+    const l = cfg.price.mode === "package" ? cfg.price.left?.[c.rate] : null;
+    if (l && Number(l.remaining) > 0)
+      return <span className="bkp-muted">Included in your package</span>;
+    const rates = cfg.price.rates;
+    if (!rates || rates[c.rate] == null) return null;
+    return <span className="bkp-price">{`${m(Number(rates[c.rate]))}${c.per ?? ""}`}</span>;
+  };
+
+  if (made && !avatar && !edit)
+    return (
+      <ThankYou
+        idLabel="Request ID"
+        id={made.ref}
+        heading="Request sent"
+        text="Our team will email you shortly."
+      >
+        <Link
+          href={`${TYPE_PATH[type]}/${encodeURIComponent(made.ref)}`}
+          className="btn btn-p btn-s"
+        >
+          Track request
+        </Link>
+        {onAnother && (
+          <button type="button" className="btn btn-g btn-s" onClick={onAnother}>
+            Book another
+          </button>
+        )}
+        {made.failed && (
+          <p className="pt-error" role="alert">
+            Some files didn’t upload. Open it and add them again: uploads pick up where they
+            stopped.
+          </p>
+        )}
+        <UploadRows rows={rows} />
+      </ThankYou>
+    );
+
+  if (made)
+    return (
+      <Modal title={title} onClose={() => onClose?.()} testId={`${type}-modal`}>
+        <div className="pt-form" role="status">
+          <span className="pt-eb">
+            {made.ref} · {edit ? "Brief edited" : avatar ? "Brief received" : "Submitted"}
+          </span>
+          <b className="pt-h2">
+            {edit ? "Brief updated" : avatar ? "Brief received" : "Files received"}
+          </b>
+          <p style={{ margin: 0 }}>
+            {edit
+              ? "We’ll work from the updated brief and post the script for your approval."
+              : avatar
+                ? "We’ll write the script and post it for your approval. You’ll get an email."
+                : "We’ll check the files and start, usually within a few hours. You’ll get an email."}
+          </p>
+          {made.failed && (
+            <p className="pt-error" role="alert">
+              Some files didn’t upload. Open it and add them again: uploads pick up where they
+              stopped.
+            </p>
+          )}
+          <UploadRows rows={rows} />
+          <div className="pt-btns">
+            <Link
+              href={`${TYPE_PATH[type]}/${encodeURIComponent(made.ref)}`}
+              className="btn btn-p btn-s"
+              onClick={() => onClose?.()}
+            >
+              Open it
+            </Link>
+            <button type="button" className="btn btn-g btn-s" onClick={() => onClose?.()}>
+              Close
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+
+  const kindLabel = s.kind ? KIND_CARD[s.kind as (typeof KIND_ORDER)[number]]?.title : "";
+  const buttons = (
+    <>
+      <button
+        type="button"
+        className="btn btn-p btn-s"
+        disabled={saving || busy}
+        onClick={() => void submit()}
+      >
+        {busy
+          ? "Uploading…"
+          : saving
+            ? "Sending…"
+            : edit
+              ? "Save changes"
+              : avatar
+                ? "Send brief"
+                : "Send request"}
+      </button>
+    </>
+  );
+  const form_ = (
+    <>
+      <DraftOffer offer={draft.offer} onContinue={draft.continueOffer} onFresh={draft.startFresh} />
+      <FormBanner text={form.banner} />
+
+      {avatar ? (
+        <>
+          <Field
+            name="presenters"
+            label="Your AI avatar"
+            required
+            group
+            error={form.errors.presenters}
+            hint="Choose more than one for a video with several presenters."
+          >
+            <div className="pt-char-pick" role="group" aria-label="Your AI avatar">
+              {characters.map((c) => {
+                const on = (s.presenters ?? []).includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="pt-char-opt"
+                    aria-pressed={on}
+                    onClick={() =>
+                      set({
+                        presenters: on
+                          ? (s.presenters ?? []).filter((x) => x !== c.id)
+                          : [...(s.presenters ?? []), c.id].slice(0, 4),
+                      })
+                    }
+                  >
+                    {c.src ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.src} alt="" />
+                    ) : (
+                      <span className="pt-char-ph" aria-hidden="true" />
+                    )}
+                    <b>{c.name}</b>
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+          <Field name="format" label="Format" required group error={form.errors.format}>
+            <div className="pt-seg pt-seg-stack" role="group" aria-label="Format">
+              {(Object.keys(AVATAR_FORMATS) as AvatarFormat[]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  aria-pressed={s.format === f}
+                  onClick={() => set({ format: f, stop: 0 })}
+                >
+                  {AVATAR_FORMATS[f].label}
+                </button>
+              ))}
+            </div>
+          </Field>
+          {fmt && s.format && fmt.stops.length === 1 && (
+            <p className="pt-meta" style={{ margin: 0 }}>
+              Length: {avatarLength(s.format, length)}. Longer videos are long form, priced per
+              minute.
+            </p>
+          )}
+          {fmt && s.format && fmt.stops.length > 1 && (
+            <Field name="length" label={`Length: ${avatarLength(s.format, length)}`} group>
+              <input
+                type="range"
+                className="pt-slider"
+                min={0}
+                max={fmt.stops.length - 1}
+                step={1}
+                value={s.stop}
+                aria-label="Length"
+                aria-valuetext={avatarLength(s.format, length)}
+                onChange={(e) => set({ stop: Number(e.target.value) })}
+              />
+              <span className="pt-slider-ticks" aria-hidden="true">
+                {fmt.stops.map((n) => (
+                  <span key={n}>{avatarLength(s.format as AvatarFormat, n)}</span>
+                ))}
+              </span>
+            </Field>
+          )}
+          {s.format && (
+            <PriceBlock
+              cfg={cfg}
+              lines={[
+                {
+                  label: `Avatar video · ${avatarLength(s.format, length)}`,
+                  qty: 1,
+                  amount: est,
+                },
+              ]}
+              total={est}
+            />
+          )}
+          <Field name="script" label="Script" group>
+            <div className="pt-seg" role="group" aria-label="Who writes the script">
+              <button
+                type="button"
+                aria-pressed={s.scriptBy === "milkywayy"}
+                onClick={() => set({ scriptBy: "milkywayy" })}
+              >
+                Milkywayy writes it
+              </button>
+              <button
+                type="button"
+                aria-pressed={s.scriptBy === "client"}
+                onClick={() => set({ scriptBy: "client" })}
+              >
+                I’ll send it
+              </button>
+            </div>
+          </Field>
+          <Field
+            name="title"
+            label="Title"
+            hint={`Leave empty for “${s.format ? `${s.format === "short" ? "Short form" : "Long form"} · ${avatarLength(s.format, length)}` : "Short form · 30s"}”`}
+          >
+            <input
+              type="text"
+              maxLength={160}
+              value={s.title}
+              onChange={(e) => set({ title: e.target.value })}
+            />
+          </Field>
+        </>
+      ) : (
+        <>
+          <div
+            className="bkp-cards bkp-cards-4"
+            data-field="kind"
+            role="group"
+            aria-label="Type of edit"
+          >
+            {KIND_ORDER.map((k) => (
+              <ServiceCard
+                key={k}
+                title={KIND_CARD[k].title}
+                line={KIND_CARD[k].line}
+                meta={k === "other" ? null : cfg.turnaround[EDIT_TURNAROUND[k] ?? ""]}
+                price={kindPrice(k)}
+                on={s.kind === k}
+                onToggle={() =>
+                  set({
+                    kind: s.kind === k ? "" : k,
+                    // A starting quantity per type; theirs to change (empty for Other).
+                    quantity: s.kind === k ? "" : String(QTY_FOR[k] ?? ""),
+                  })
+                }
+              />
+            ))}
+            {form.errors.kind && (
+              <span className="pt-field-msg bkp-wide" role="alert">
+                {form.errors.kind}
+              </span>
+            )}
+          </div>
+          {s.kind === "other" && (
+            <Field
+              name="kindOther"
+              label="What type of edit?"
+              required
+              error={form.errors.kindOther}
+            >
+              <input
+                type="text"
+                maxLength={120}
+                value={s.kindOther}
+                placeholder="e.g. Drone footage colour grade"
+                onChange={(e) => set({ kindOther: e.target.value })}
+              />
+            </Field>
+          )}
+          <div className="pt-grid2" style={{ gridTemplateColumns: "2fr 1fr" }}>
+            <Field name="title" label="Title" required error={form.errors.title}>
+              <input
+                type="text"
+                maxLength={160}
+                value={s.title}
+                placeholder="e.g. Willow Creek: October listings"
+                onChange={(e) => set({ title: e.target.value })}
+              />
+            </Field>
+            <Field name="quantity" label="Quantity" error={form.errors.quantity}>
+              <input
+                type="number"
+                min={1}
+                max={10000}
+                inputMode="numeric"
+                value={s.quantity}
+                placeholder={s.kind === "hdr_photos" ? "e.g. 120" : "e.g. 6"}
+                onChange={(e) => set({ quantity: e.target.value })}
+              />
+            </Field>
+          </div>
+        </>
+      )}
+
+      <Field name="notes" label={avatar ? "Brief" : "Notes"}>
+        <textarea
+          maxLength={4000}
+          value={s.notes}
+          placeholder={
+            avatar
+              ? s.scriptBy === "client"
+                ? "Paste your script here, plus who it’s for and the tone"
+                : "What the video is about, who it’s for, key points, the call to action"
+              : "Style, music, captions, anything we should know"
+          }
+          onChange={(e) => set({ notes: e.target.value })}
+        />
+      </Field>
+      <Field name="reference" label="Reference link" error={form.errors.reference}>
+        <input
+          type="url"
+          value={s.reference}
+          placeholder={
+            avatar ? "A video in the style you want" : "A video or photos in the style you want"
+          }
+          onChange={(e) => set({ reference: e.target.value })}
+        />
+      </Field>
+
+      <Field
+        name="files"
+        label={avatar ? "Files (logo, footage, brand assets)" : "Raw files"}
+        required={!avatar}
+        group
+        error={form.errors.files ?? form.errors.links}
+      >
+        {edit && edit.files.length > 0 && (
+          <span className="pt-meta" data-testid="files-attached">
+            Already attached: {edit.files.map((f) => f.label).join(", ")}. Add more below.
+          </span>
+        )}
+        <div className="pt-seg" role="group" aria-label="How to send files">
+          <button
+            type="button"
+            aria-pressed={s.mode === "links"}
+            onClick={() => set({ mode: "links" })}
+          >
+            Paste links
+          </button>
+          <button
+            type="button"
+            aria-pressed={s.mode === "upload"}
+            onClick={() => set({ mode: "upload" })}
+          >
+            Upload
+          </button>
+        </div>
+      </Field>
+      {s.mode === "links" ? (
+        <>
+          {s.links.map((l, i) => (
+            <div
+              key={i}
+              className="pt-grid2"
+              style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,2fr)", gap: 8 }}
+            >
+              <input
+                type="text"
+                aria-label={`Label ${i + 1}`}
+                value={l.label}
+                maxLength={160}
+                onChange={(e) =>
+                  set({
+                    links: s.links.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
+                  })
+                }
+              />
+              <input
+                type="url"
+                aria-label={`Link ${i + 1}`}
+                value={l.url}
+                placeholder="Drive, Dropbox, OneDrive, WeTransfer or Frame.io"
+                onChange={(e) =>
+                  set({
+                    links: s.links.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)),
+                  })
+                }
+              />
+            </div>
+          ))}
+          {s.links.length < 10 && (
+            <button
+              type="button"
+              className="lnk pt-small"
+              style={{ justifySelf: "start" }}
+              onClick={() => set({ links: [...s.links, { label: "More files", url: "" }] })}
+            >
+              + Add another link
+            </button>
+          )}
+          <span className="pt-meta">Set the link to “anyone with the link can view”.</span>
+        </>
+      ) : (
+        <FilePicker
+          files={files}
+          onChange={(f) => {
+            setTouched(true);
+            setFiles(f);
+          }}
+          maxGb={cfg.maxGb}
+          disabled={saving}
+        />
+      )}
+      <UploadRows rows={rows} />
+      {ta && avatar && <span className="pt-turnaround">Usual turnaround: {ta}</span>}
+    </>
+  );
+
+  if (avatar)
+    return (
+      <Modal title={title} onClose={guard.request} testId={`${type}-modal`} footer={buttons}>
+        <div className="pt-form">{form_}</div>
+        {guard.dialog}
+      </Modal>
+    );
+  // Editing (owner, 18 Oct 2026): on the Book media page, type cards, "Your request" alongside.
+  const price = s.kind ? kindPrice(s.kind as (typeof KIND_ORDER)[number]) : null;
+  return (
+    <div data-testid={`${type}-page`}>
+      <BookStep
+        heading="Edit only"
+        onBack={
+          onBack
+            ? () => {
+                if (touched) void draft.saveNow();
+                onBack();
+              }
+            : undefined
+        }
+        primary={{
+          label: busy ? "Uploading…" : saving ? "Sending…" : "Send request",
+          onClick: () => void submit(),
+          disabled: saving || busy,
+        }}
+        panelTitle="Your request"
+        barText={kindLabel || "Nothing yet"}
+        panel={
+          kindLabel ? (
+            <ul className="bkp-lines">
+              <li>
+                <span>
+                  {kindLabel}
+                  {s.kind === "other" && s.kindOther && (
+                    <small className="bkp-muted">{s.kindOther}</small>
+                  )}
+                  {s.quantity && <small className="bkp-muted">Quantity {s.quantity}</small>}
+                </span>
+                {price}
+              </li>
+              {ta && (
+                <li>
+                  <span>Delivery</span>
+                  <span className="bkp-muted">{ta}</span>
+                </li>
+              )}
+            </ul>
+          ) : (
+            <p className="bkp-muted">Nothing yet</p>
+          )
+        }
+      >
+        <div className="pt-form">{form_}</div>
+      </BookStep>
+      {leave}
+    </div>
+  );
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { cx } from "@/lib/cx";
 import { useEffect, useState, useTransition } from "react";
 import { discardDocDraft, publishDoc, saveDocDraft, type Result } from "@/lib/admin/actions";
 import { docByKey } from "@/lib/admin/docs";
@@ -167,7 +168,7 @@ export function DocEditor({
         ))}
         <div className="ad-savebar">
           <p
-            className={`ad-status${status ? (status.ok ? "ok" : "error") : ""}`}
+            className={cx("ad-status", status && (status.ok ? "ok" : "error"))}
             role="status"
             aria-live="polite"
           >

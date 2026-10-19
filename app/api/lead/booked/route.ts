@@ -1,5 +1,5 @@
 import { after, NextResponse, type NextRequest } from "next/server";
-import { publicDb } from "@/lib/supabase/public";
+import { leadDb } from "@/lib/leads/store";
 import { sendCapi } from "@/lib/tracking/capi";
 
 /**
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   const ref = body.ref;
   if (typeof ref !== "string" || !/^MW-\d{4,9}$/.test(ref))
     return NextResponse.json({}, { status: 400 });
-  const db = publicDb();
+  const db = leadDb();
   if (db && process.env.LEAD_SECRET)
     await db.rpc("mark_call_booked", { p_secret: process.env.LEAD_SECRET, p_ref: ref });
   if (body.consent === true) {

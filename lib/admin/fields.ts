@@ -3,7 +3,26 @@
  * dotted path into a JSON document (settings, other prices, the AI avatar hero), e.g.
  * "whatsapp.number" or "postProduction.rates.0.amount".
  */
+import type { MediaKind } from "@/lib/media-config";
+
 export type Option = { value: string; label: string };
+
+/** What the editor knows about the rest of the content, for "Used on" (owner, 7 Oct 2026). */
+export type AdminCtx = {
+  /** Every portfolio item, light (lib/admin/data libRow). */
+  portfolio: import("./data").LibRow[];
+  /** Published AI avatar example ids, in site order. */
+  avatarOrder: string[];
+  /** Media library categories (media_categories), for the category combobox. */
+  categories: Option[];
+  /** Pins and modes, for "Where it shows" (lib/placements). */
+  placements: import("@/lib/placements").PlacementState;
+  /** INSTAGRAM_ACCESS_TOKEN is set: only then is "Instagram reel link" offered. */
+  instagram?: boolean;
+};
+export type UsedOn = (row: Record<string, unknown>, ctx: AdminCtx) => string[];
+/** Where uploaded video files go in R2 (site/<folder>/…). */
+export type VideoFolder = "reels" | "avatars" | "showreel";
 
 type Base = {
   name: string;
@@ -12,6 +31,10 @@ type Base = {
   required?: boolean;
   /** Owner-only fields are hidden from Editors. */
   ownerOnly?: boolean;
+  /** Show the field only when this is true for the current values (e.g. one format's fields). */
+  when?: (row: Record<string, unknown>) => boolean;
+  /** A plain line under the field, worked out live from the current values. */
+  line?: (row: Record<string, unknown>, ctx: AdminCtx) => string | null;
 };
 
 export type Field = Base &
@@ -28,26 +51,35 @@ export type Field = Base &
     | { kind: "lines"; max?: number; maxLength?: number; exactly?: number }
     /** Label/value pairs → { value, label }[]. */
     | { kind: "pairs" }
-    /** Image (Media JSON: src, alt, focus). `video` also asks for a video link with it. */
-    | { kind: "image"; crops?: Crop[]; video?: boolean; bright?: boolean }
+    /**
+     * Image (Media JSON: src, alt, focus). `media` is its format (lib/media-config): the crop
+     * preview, "Shown at" and "Recommended export" come from it. `video` also asks for the
+     * video (a link, or an upload to R2 when `upload` names the folder).
+     */
+    | {
+        kind: "image";
+        media: MediaKind;
+        usedOn?: UsedOn;
+        video?: boolean;
+        upload?: VideoFolder;
+        bright?: boolean;
+      }
     /** Several images → Media[]. */
-    | { kind: "gallery"; crops?: Crop[] }
-    /** A Bunny, Mux, YouTube or Vimeo link (string). */
-    | { kind: "video" }
+    | { kind: "gallery"; media: MediaKind; usedOn?: UsedOn }
+    /** A YouTube or Vimeo link (string); with `upload`, or a video file in R2 ("r2:<key>"). */
+    | { kind: "video"; media?: MediaKind; upload?: VideoFolder }
+    /** Language versions of a video → { language, clip }[] (clip as for "video"). */
+    | { kind: "versions"; media: MediaKind; upload?: VideoFolder }
+    /** The portfolio item's media, by format: photo set, reel, long-form video or 360 tour. */
+    | { kind: "portfolio-media" }
+    /**
+     * A media library category id: pick one, or type a new name ("new:<name>"), which saving
+     * adds to media_categories for future uploads.
+     */
+    | { kind: "category" }
     /** Portfolio item ids, picked from a list. */
     | { kind: "portfolio-picker" }
   );
-
-/** Aspect ratios the site crops this image to; shown as previews under the focal-point picker. */
-export type Crop = { label: string; ratio: string };
-
-export const CROPS = {
-  reel: { label: "Reel 9:16", ratio: "9 / 16" },
-  photo: { label: "Gallery 4:3", ratio: "4 / 3" },
-  wide: { label: "Wide 16:9", ratio: "16 / 9" },
-  square: { label: "Square 1:1", ratio: "1 / 1" },
-  portrait: { label: "Portrait 4:5", ratio: "4 / 5" },
-} satisfies Record<string, Crop>;
 
 /* ---------- dotted paths ---------- */
 

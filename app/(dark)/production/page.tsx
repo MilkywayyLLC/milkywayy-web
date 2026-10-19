@@ -1,5 +1,6 @@
 import { Ctas } from "@/components/ui/Ctas";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { CTABand } from "@/components/blocks/CTABand";
 import { FAQ } from "@/components/blocks/FAQ";
 import { IncludedGrid, type Included } from "@/components/blocks/IncludedGrid";
@@ -8,7 +9,11 @@ import { PathCards } from "@/components/blocks/PathCards";
 import { ProofStrip } from "@/components/blocks/ProofStrip";
 import { Steps, type Step } from "@/components/blocks/Steps";
 import { LeadForm } from "@/components/forms/LeadForm";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { HeroMedia } from "@/components/blocks/HeroMedia";
+import { AvatarCarousel } from "@/components/media/AvatarCarousel";
+import { fileVideoUrl, isFileVideo } from "@/lib/media-ref";
+import { HERO_TEMPLATES } from "@/lib/placements";
+import { withPlayback } from "@/lib/playable";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -17,6 +22,8 @@ import {
   getClients,
   getFaqs,
   getOtherPricing,
+  getHeroTemplate,
+  getPlaced,
   getPortfolio,
   getPropertyPricing,
   getSiteSettings,
@@ -88,8 +95,15 @@ const STEPS: Step[] = [
   },
 ];
 
+const RECENT = [
+  ["Listings", "Photos, walkthroughs and reels for every property"],
+  ["Agencies", "Monthly shoot days, branded reels and long-form"],
+  ["Holiday homes", "Booking-ready photos and short-form"],
+  ["Brands", "Product, team and launch content"],
+] as const;
+
 export default async function ProductionPage() {
-  const [site, clients, proof, faqs, hero, other, property] = await Promise.all([
+  const [site, clients, proof, faqs, hero, other, property, recent, template] = await Promise.all([
     getSiteSettings(),
     getClients(),
     showsProofStrip("production"),
@@ -97,7 +111,18 @@ export default async function ProductionPage() {
     getPortfolio("production-hero"),
     getOtherPricing(),
     getPropertyPricing(),
+    getPlaced("production-recent"),
+    getHeroTemplate("Production"),
   ]);
+  // Placements → Production · Recent work: 9:16 reels, the chosen one plays.
+  const reels = recent.items.map((p) => ({
+    id: p.id,
+    name: p.title,
+    industry: p.title,
+    poster: p.media,
+    src: isFileVideo(p.media.video) ? fileVideoUrl(p.media.video!) : undefined,
+  }));
+  const heroItems = await withPlayback(hero.slice(0, HERO_TEMPLATES[template].slots));
   const whatsapp = pageWhatsappLink("Production", site.whatsapp.number);
   const from = formatNumber(other.production.fromMonthly);
 
@@ -105,7 +130,11 @@ export default async function ProductionPage() {
     <>
       <PageLd page="production" />
       <div className="w">
-        <section className="p-hero" aria-labelledby="production-title">
+        <section
+          className={template === "v3" ? "p-hero p-hero-wide" : "p-hero"}
+          data-hero={template}
+          aria-labelledby="production-title"
+        >
           <div className="stack">
             <Eyebrow rec>Production · UAE</Eyebrow>
             <HeroTitle
@@ -114,8 +143,8 @@ export default async function ProductionPage() {
               line2={<Hl>shot &amp; edited.</Hl>}
             />
             <p className="lede">
-              Shoot days, reels and long-form for agencies, developers and brands in the UAE. One
-              team films, edits and delivers, every month.
+              Photography and videography in Dubai for agencies, developers, hospitality and brands.
+              One team films, edits and delivers, every month.
             </p>
             <Ctas>
               <ButtonLink href="#get-your-package">Get your package</ButtonLink>
@@ -132,20 +161,11 @@ export default async function ProductionPage() {
               </span>
             </div>
           </div>
-          {hero.length > 0 && (
-            <div className="trio">
-              {hero.slice(0, 3).map((m, i) => (
-                <ViewfinderFrame
-                  key={m.id}
-                  media={m.media}
-                  small
-                  play="icon"
-                  priority={i === 1}
-                  sizes="(max-width: 900px) 33vw, 15vw"
-                />
-              ))}
-            </div>
-          )}
+          <HeroMedia
+            items={heroItems}
+            trioSizes="(max-width: 900px) 33vw, 15vw"
+            template={template as Exclude<typeof template, "ba">}
+          />
         </section>
       </div>
 
@@ -171,7 +191,7 @@ export default async function ProductionPage() {
               {
                 kicker: "Single shoot",
                 title: "For one property",
-                text: "Pick the property and services, see the price, request a slot. Photos back in 24 hours.",
+                text: "Pick the property and services, see the price, request a slot. Photos back within 24 hours, often same day.",
                 cta: "Book a property shoot →",
                 href: "/property-shoots",
               },
@@ -213,7 +233,36 @@ export default async function ProductionPage() {
         </div>
       </section>
 
-      <section className="sec" style={{ paddingTop: 0 }} aria-labelledby="first-month-title">
+      {reels.length > 0 && (
+        <section className="sec" aria-labelledby="recent-title">
+          <div className="w av-aud">
+            <div className="stack">
+              <span className="eb">Portfolio</span>
+              <h2 className="d h2" id="recent-title">
+                Recent work.
+              </h2>
+              <p className="lede">
+                One team plans, shoots and edits every month, so your listings and brand stay
+                consistent and on schedule.
+              </p>
+              <ul className="av-ind">
+                {RECENT.map(([k, v]) => (
+                  <li key={k}>
+                    <b>{k}</b>
+                    <span>{v}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link className="lnk" href="/work">
+                See all work →
+              </Link>
+            </div>
+            <AvatarCarousel items={reels} label="Recent reels" kind="reel" mode="pick" />
+          </div>
+        </section>
+      )}
+
+      <section className="sec" aria-labelledby="first-month-title">
         <div className="w">
           <SectionHead id="first-month-title" eyebrow="How it works" title="Your first month." />
           <Steps steps={STEPS} />

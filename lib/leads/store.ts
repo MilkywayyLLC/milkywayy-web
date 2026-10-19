@@ -1,3 +1,5 @@
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { portalKey, portalUrl } from "@/lib/portal/supabase";
 import { publicDb } from "@/lib/supabase/public";
 import type { LeadType, Reply } from "./rules";
 
@@ -25,13 +27,32 @@ export interface LeadStore {
 }
 
 /**
+ * Where leads are saved. Normally the website's project. Portal previews set LEADS_DB=portal so a
+ * booking lands in the same (dev) database the portal reads, and the whole shoot flow can be
+ * tested (owner QA, 3 Oct 2026). Once the portal moves to the website's project the two are one.
+ */
+let portalLeads: SupabaseClient | undefined;
+export function leadDb(): SupabaseClient | null {
+  if (process.env.LEADS_DB === "portal" && portalUrl && portalKey)
+    return (portalLeads ??= createClient(portalUrl, portalKey, {
+      auth: { persistSession: false },
+    }));
+  return publicDb();
+}
+/** True when a booking can join a portal account right away (both live in the same database). */
+export const leadsInPortalDb = () =>
+  process.env.LEADS_DB === "portal" ||
+  !process.env.NEXT_PUBLIC_PORTAL_SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_PORTAL_SUPABASE_URL === process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+/**
  * Saves through the database's submit_lead() with LEAD_SECRET: the function can only add a lead,
  * so the site needs no service-role key (owner decision, 1 Oct 2026). It also issues the ref,
  * rate-limits per visitor and folds double taps into one lead.
  */
 export class SupabaseLeadStore implements LeadStore {
   async save(lead: Lead, ipHash: string, limit?: number): Promise<SaveResult> {
-    const db = publicDb();
+    const db = leadDb();
     const secret = process.env.LEAD_SECRET;
     if (!db || !secret)
       throw new Error("Lead store not configured (Supabase URL/key or LEAD_SECRET).");

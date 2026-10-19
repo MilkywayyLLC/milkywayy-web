@@ -1,0 +1,907 @@
+/*
+ * Website dashboard previews (owner, 20 Oct 2026): still frames of the client portal as it is now
+ * (Book media page, client home, booking detail), on the portal's own type tokens (DECISIONS.md
+ * "Portal type system"). Everything is scoped under .scm and never reads the viewport: the frame
+ * picks its layout from the width it gets (data-l="desk" or "phone", set in ShowcaseFrames), so
+ * a phone visitor sees the phone portal (bottom tabs, stacked cards, bottom total bar), not a
+ * shrunken desktop. Loaded with the frames only, when the section is near the screen.
+ */
+@layer components {
+  .scm {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface-2: #ece9e2;
+    --line: #dad6cd;
+    --fg: #111110;
+    --muted: #5f5a52;
+    --acc: #7a5c2e;
+    --gold: #e6d3a3;
+    --t-title: 700 30px/1 var(--font-display);
+    --t-sec: 700 18px/1.15 var(--font-display);
+    --t-body: 400 15px/1.5 var(--font-sans);
+    --t-strong: 500 15px/1.5 var(--font-sans);
+    --t-small: 400 13px/1.45 var(--font-sans);
+    --t-num: 500 15px/1.3 var(--font-sans);
+    --t-mono: 500 11px/1.4 var(--font-mono);
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 24px;
+    --sp-6: 32px;
+    position: relative;
+    height: 100%;
+    background: var(--bg);
+    color: var(--fg);
+    font: var(--t-body);
+    text-align: left;
+    color-scheme: light;
+  }
+  .scm *,
+  .scm *::before,
+  .scm *::after {
+    box-sizing: border-box;
+  }
+  .scm p {
+    margin: 0;
+  }
+
+  /* ---------- type ---------- */
+  .scm .s-h1 {
+    display: block;
+    font: var(--t-title);
+    font-variation-settings: "wdth" 78;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+  .scm[data-l="desk"] .s-h1 {
+    font-size: 34px;
+  }
+  .scm .s-h2 {
+    display: block;
+    font: var(--t-sec);
+    font-variation-settings: "wdth" 85;
+    text-transform: uppercase;
+  }
+  .scm .s-eb {
+    display: block;
+    font: var(--t-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .scm .s-small {
+    font: var(--t-small);
+    color: var(--muted);
+  }
+  .scm .s-strong {
+    font: var(--t-strong);
+  }
+  .scm .s-num {
+    font: var(--t-num);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .scm .s-link {
+    font: var(--t-small);
+    color: var(--acc);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    white-space: nowrap;
+  }
+
+  /* ---------- the frame: rail + top bar (desktop); top bar + bottom tabs (phone) ---------- */
+  .scm .s-shell {
+    display: grid;
+    height: 100%;
+  }
+  .scm[data-l="desk"] .s-shell {
+    grid-template-columns: 172px minmax(0, 1fr);
+  }
+  .scm[data-l="phone"] .s-shell {
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+  }
+  .scm .s-rail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+    padding: var(--sp-4) var(--sp-3);
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+  }
+  .scm[data-l="phone"] .s-rail {
+    display: none;
+  }
+  .scm .s-logo .brand-logo {
+    height: 18px;
+    width: auto;
+  }
+  .scm .s-nav {
+    display: grid;
+    gap: 2px;
+  }
+  .scm .s-nav span {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 8px;
+    font: var(--t-strong);
+    font-size: 14px;
+    border-left: 2px solid transparent;
+  }
+  .scm .s-nav span[aria-current] {
+    background: var(--surface-2);
+    border-left-color: var(--fg);
+  }
+  .scm .s-sep {
+    height: 1px;
+    margin: 6px 0;
+    background: var(--line);
+  }
+  .scm .s-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+  .scm[data-l="phone"] .s-main {
+    display: contents;
+  }
+  .scm .s-top {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--sp-3);
+    height: 52px;
+    padding: 0 var(--sp-4);
+    border-bottom: 1px solid var(--line);
+    flex: none;
+  }
+  .scm[data-l="phone"] .s-top {
+    justify-content: space-between;
+    padding: 0 var(--sp-4);
+  }
+  .scm .s-top .s-logo {
+    display: none;
+  }
+  .scm[data-l="phone"] .s-top .s-logo {
+    display: block;
+  }
+  .scm .s-top-r {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+  .scm .s-hello {
+    font: var(--t-small);
+    color: var(--muted);
+  }
+  .scm[data-l="phone"] .s-hello {
+    display: none;
+  }
+  .scm .s-acct {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .scm .s-content {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: var(--sp-4) var(--sp-6) var(--sp-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+  .scm[data-l="phone"] .s-content {
+    padding: var(--sp-4);
+    gap: var(--sp-3);
+  }
+  .scm .s-tabs {
+    display: none;
+  }
+  .scm[data-l="phone"] .s-tabs {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    height: 60px;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+  }
+  .scm .s-tabs span {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 3px;
+    font: var(--t-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .scm .s-tabs span[aria-current] {
+    color: var(--fg);
+    box-shadow: inset 0 2px 0 var(--fg);
+  }
+
+  /* ---------- building blocks ---------- */
+  .scm .s-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 14px;
+    font: var(--t-strong);
+    font-size: 14px;
+    white-space: nowrap;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--fg);
+  }
+  .scm .s-btn.m-p {
+    background: var(--fg);
+    border-color: var(--fg);
+    color: var(--bg);
+  }
+  .scm .s-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .scm[data-l="desk"] .s-card {
+    padding: var(--sp-4) var(--sp-5);
+  }
+  .scm .s-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    min-width: 0;
+  }
+  .scm .s-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .scm .s-pill {
+    display: inline-block;
+    padding: 3px 8px;
+    font: var(--t-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .scm .s-pill.m-gold {
+    background: var(--gold);
+    border-color: var(--gold);
+  }
+  .scm .s-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font: var(--t-small);
+    color: var(--muted);
+  }
+  .scm .s-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--sp-3);
+  }
+
+  /* status stepper: segments with labels (desktop), one bar + "Step n of m" (phone) */
+  .scm .s-steps {
+    display: grid;
+    grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .scm .s-steps li {
+    display: grid;
+    gap: 6px;
+    font: var(--t-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    line-height: 1.2;
+  }
+  .scm .s-steps li::before {
+    content: "";
+    height: 3px;
+    background: var(--line);
+  }
+  .scm .s-steps li.m-done {
+    color: var(--fg);
+  }
+  .scm .s-steps li.m-done::before {
+    background: var(--fg);
+  }
+  .scm .s-steps li.m-now {
+    color: var(--fg);
+  }
+  .scm .s-steps li.m-now::before {
+    background: var(--acc);
+  }
+  .scm[data-l="phone"] .s-steps li {
+    font-size: 0;
+    gap: 0;
+  }
+  .scm .s-steps-m {
+    display: none;
+  }
+  .scm[data-l="phone"] .s-steps-m {
+    display: block;
+    margin-top: -4px;
+  }
+
+  /* Book media: what are you booking? */
+  .scm .s-choices {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-3);
+  }
+  .scm[data-l="phone"] .s-choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .scm .s-choice {
+    display: grid;
+    align-content: start;
+    gap: var(--sp-2);
+    padding: var(--sp-4);
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .scm .s-choice ul {
+    display: grid;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 14px;
+  }
+  .scm .s-choice li::before {
+    content: "·  ";
+    color: var(--muted);
+  }
+  .scm .s-choice .s-num {
+    justify-self: end;
+    font-size: 14px;
+  }
+  .scm[data-l="phone"] .s-choice {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--sp-3);
+  }
+  .scm[data-l="phone"] .s-choice ul {
+    display: none;
+  }
+  .scm[data-l="phone"] .s-choice .s-num {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
+  /* the booking page: form + "Your booking" (desktop); form + bottom total bar (phone) */
+  .scm .s-book {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: var(--sp-3) var(--sp-5);
+    align-items: start;
+  }
+  .scm[data-l="phone"] .s-book {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .scm .s-book-head {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 2px;
+  }
+  .scm .s-form {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+  }
+  .scm .s-panel {
+    display: grid;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .scm[data-l="phone"] .s-panel {
+    display: none;
+  }
+  .scm .s-lines {
+    display: grid;
+    gap: var(--sp-2);
+    margin: 0;
+    padding: 0 0 var(--sp-3);
+    list-style: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .scm .s-lines li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    font-size: 14px;
+  }
+  .scm .s-lines li small {
+    display: block;
+    font: var(--t-small);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .scm .s-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .scm .s-total b {
+    font: var(--t-sec);
+    font-variation-settings: "wdth" 85;
+  }
+  .scm .s-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--sp-2);
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+  }
+  .scm[data-l="phone"] .s-foot {
+    display: none;
+  }
+  .scm .s-totalbar {
+    display: none;
+  }
+  .scm[data-l="phone"] .s-totalbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    height: 64px;
+    padding: 0 var(--sp-4);
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+  }
+  .scm .s-bar-t {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .scm .s-totalbar b {
+    font: var(--t-sec);
+    font-variation-settings: "wdth" 85;
+  }
+
+  .scm .s-label {
+    font: var(--t-small);
+    color: var(--muted);
+    margin-bottom: -4px;
+  }
+  .scm .s-seg {
+    display: grid;
+    grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
+    gap: 6px;
+  }
+  .scm .s-seg span {
+    display: grid;
+    place-items: center;
+    height: 34px;
+    font-size: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .scm .s-seg span[aria-pressed="true"] {
+    border-color: var(--fg);
+    box-shadow: inset 0 0 0 1px var(--fg);
+  }
+  .scm .s-opts {
+    display: grid;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .scm .s-opts.m-on {
+    border-color: var(--fg);
+  }
+  .scm .s-opt {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: 6px var(--sp-4);
+  }
+  .scm .s-opt + .s-opt {
+    border-top: 1px solid var(--line);
+  }
+  .scm .s-opt.m-nest {
+    padding-left: calc(var(--sp-4) + 30px);
+  }
+  .scm .s-opt .s-stack span:first-child {
+    font-size: 14.5px;
+  }
+  .scm .s-box {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .scm .s-box.m-on {
+    background: var(--fg);
+    border-color: var(--fg);
+    color: var(--bg);
+  }
+  .scm .s-opts-h {
+    padding: 5px var(--sp-4);
+    font: var(--t-strong);
+    font-size: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .scm .s-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-2);
+  }
+  .scm .s-svc {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px var(--sp-2);
+    padding: var(--sp-3);
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .scm .s-svc.m-on {
+    border-color: var(--fg);
+    box-shadow: inset 0 0 0 1px var(--fg);
+  }
+  .scm .s-svc b {
+    font: var(--t-sec);
+    font-size: 15px;
+    font-variation-settings: "wdth" 85;
+    text-transform: uppercase;
+  }
+  .scm .s-svc .s-num {
+    grid-column: 2;
+    font-size: 13.5px;
+  }
+  .scm .s-in {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-height: 38px;
+    padding: 0 12px;
+    font-size: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .scm .s-in.m-tall {
+    align-items: flex-start;
+    min-height: 64px;
+    padding: 9px 12px;
+    white-space: normal;
+  }
+  .scm .s-in.m-ph {
+    color: var(--muted);
+  }
+  .scm .s-two {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-3);
+  }
+  .scm[data-l="phone"] .s-two.m-stack {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .scm .s-field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+  }
+  .scm .s-map {
+    position: relative;
+    height: 110px;
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(90deg, transparent 48%, #e3dfd6 48% 52%, transparent 52%) 0 0 / 120px 100%,
+      linear-gradient(0deg, transparent 46%, #e3dfd6 46% 54%, transparent 54%) 0 0 / 100% 70px,
+      linear-gradient(135deg, #dfe9ee 0 30%, #efede7 30%);
+  }
+  .scm[data-l="phone"] .s-map {
+    display: none;
+  }
+  .scm .s-map i {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -90%);
+    color: var(--fg);
+  }
+  .scm .s-cal {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 2px;
+    text-align: center;
+    font-size: 13px;
+  }
+  .scm .s-cal b {
+    font: var(--t-mono);
+    color: var(--muted);
+    padding: 2px 0;
+  }
+  .scm .s-cal span {
+    padding: 5px 0;
+    border: 1px solid transparent;
+  }
+  .scm .s-cal span.m-off {
+    color: #b5b2aa;
+  }
+  .scm .s-cal span.m-on {
+    background: var(--fg);
+    color: var(--bg);
+  }
+
+  /* home */
+  .scm .s-attn {
+    display: grid;
+    gap: 2px;
+    padding: var(--sp-2) var(--sp-3);
+    border-left: 3px solid var(--acc);
+  }
+  .scm .s-work {
+    display: grid;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+
+  /* photos and videos */
+  .scm .s-ph {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 3 / 2;
+    background-color: var(--surface-2);
+    background-size: cover;
+    background-position: center;
+  }
+  .scm .s-ph.m-v {
+    aspect-ratio: 9 / 16;
+  }
+  .scm .s-ph.m-w {
+    aspect-ratio: 16 / 9;
+  }
+  .scm .s-ph .s-play {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #fff;
+  }
+  .scm .s-ph .s-play i {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgb(0 0 0 / 0.45);
+  }
+  .scm .s-ph.m-mini {
+    flex: none;
+    width: 34px;
+  }
+  .scm[data-l="phone"] .m-desk {
+    display: none;
+  }
+  .scm .s-thumbs {
+    display: grid;
+    grid-template-columns: repeat(var(--c, 4), minmax(0, 1fr));
+    gap: var(--sp-2);
+  }
+  .scm[data-l="phone"] .s-thumbs {
+    grid-template-columns: repeat(var(--cp, 2), minmax(0, 1fr));
+  }
+  .scm .s-file {
+    display: grid;
+    gap: 4px;
+    font: var(--t-small);
+    font-size: 12px;
+    min-width: 0;
+  }
+  .scm .s-file .s-row span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scm .s-file .s-link {
+    font-size: 12px;
+  }
+  .scm .s-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+  .scm[data-l="phone"] .s-actions .s-btn {
+    flex: 1;
+  }
+
+  /* thank you */
+  .scm .s-done {
+    display: grid;
+    justify-items: center;
+    gap: var(--sp-3);
+    max-width: 380px;
+    margin: auto;
+    padding: var(--sp-6) var(--sp-5);
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .scm .s-done-ic {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--gold);
+  }
+
+  /* modal (desktop) / sheet (phone) over a dimmed page */
+  .scm .s-modal-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: grid;
+    place-items: center;
+    padding: var(--sp-4);
+    background: rgb(17 17 16 / 0.42);
+  }
+  .scm[data-l="phone"] .s-modal-bg {
+    place-items: end stretch;
+    padding: 40px 0 0;
+  }
+  .scm .s-modal {
+    display: grid;
+    gap: var(--sp-3);
+    width: 440px;
+    max-width: 100%;
+    padding: var(--sp-5);
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .scm[data-l="phone"] .s-modal {
+    width: 100%;
+    padding: var(--sp-4);
+  }
+
+  /* the listing share page (buyers) */
+  .scm .s-lp {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    padding: var(--sp-4) var(--sp-6);
+    display: grid;
+    align-content: start;
+    gap: var(--sp-4);
+  }
+  .scm[data-l="phone"] .s-lp {
+    padding: 0 0 var(--sp-4);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    height: 100%;
+    gap: var(--sp-3);
+  }
+  .scm .s-lp-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .scm[data-l="phone"] .s-lp-top {
+    padding: var(--sp-3) var(--sp-4) 0;
+  }
+  .scm .s-mosaic {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-rows: repeat(2, 92px);
+    gap: 6px;
+  }
+  .scm .s-mosaic .s-ph {
+    aspect-ratio: auto;
+    height: 100%;
+  }
+  .scm .s-mosaic .s-ph:first-child {
+    grid-row: span 2;
+  }
+  .scm[data-l="phone"] .s-mosaic {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 220px;
+  }
+  .scm[data-l="phone"] .s-mosaic .s-ph:not(:first-child) {
+    display: none;
+  }
+  .scm .s-count {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    padding: 2px 8px;
+    font: var(--t-mono);
+    color: #fff;
+    background: rgb(0 0 0 / 0.5);
+  }
+  .scm .s-lp-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 210px;
+    gap: var(--sp-5);
+    align-items: start;
+  }
+  .scm[data-l="phone"] .s-lp-cols {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0 var(--sp-4);
+    align-content: start;
+  }
+  .scm .s-price {
+    font: 700 26px/1 var(--font-display);
+  }
+  .scm .s-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-4);
+    font-size: 14px;
+  }
+  .scm .s-facts span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .scm .s-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .scm .s-chips span {
+    padding: 3px 10px;
+    font-size: 13px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .scm[data-l="phone"] .s-agent {
+    display: none;
+  }
+  .scm .s-callbar {
+    display: none;
+  }
+  .scm[data-l="phone"] .s-callbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-4) 0;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+    margin-top: auto;
+  }
+  .scm .desk-only {
+    display: contents;
+  }
+  .scm[data-l="phone"] .desk-only {
+    display: none;
+  }
+  .scm .phone-only {
+    display: none;
+  }
+  .scm[data-l="phone"] .phone-only {
+    display: revert;
+  }
+}

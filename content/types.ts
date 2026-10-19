@@ -33,8 +33,29 @@ export interface Media {
   alt: string;
   /** Placeholder swatch key while real media is missing (see components/media/placeholders). */
   placeholder?: PlaceholderKey;
-  /** Video: Bunny Stream id or YouTube/Vimeo URL. Always paired with a poster (src). */
+  /**
+   * Video, always paired with a poster (src): a YouTube/Vimeo link (Bunny/Mux still play), or a
+   * file we host as "r2:<key>" (lib/media-config). Instagram reels use `instagram` instead.
+   */
   video?: string;
+  /** Pixel size of the uploaded image (admin warnings). */
+  width?: number;
+  height?: number;
+  /** Photo sets (format photo): every image in order; `src` is the starred cover. */
+  photos?: { src: string; alt?: string; width?: number; height?: number; focus?: string }[];
+  /** Reels: where the video comes from (default Instagram). */
+  source?: "instagram" | "upload" | "youtube";
+  /**
+   * An Instagram reel. `id` is set when the reel is on our own account (@milkywayy.media) and
+   * plays in our player; without it the item is a "View on Instagram ↗" link only.
+   */
+  instagram?: { url: string; shortcode: string; id?: string };
+  /** 360 tours: a Matterport, Panoee or Kuula link (lib/tours). */
+  tour?: string;
+  /** Optional link to the same work on Instagram, shown as "View on Instagram ↗". */
+  instagramUrl?: string;
+  /** Upload notes the admin keeps: the optimised size and whether it was vertical. */
+  file?: { bytes?: number; width?: number; height?: number; optimised?: boolean };
   /** Bright image (e.g. an avatar on white): frames drop the dark gradient and use dark overlays. */
   bright?: boolean;
   /**
@@ -72,11 +93,14 @@ export type PortfolioPlacement =
   | "home-row-avatars"
   | "production-hero"
   | "property-hero"
+  | "property-hero-media"
   | "property-gallery-photo"
   | "property-gallery-video"
   | "property-gallery-360"
   | "post-hero"
+  | "post-hero-reels"
   | "post-service-cards"
+  | "avatars-multilingual"
   | "work";
 
 export interface PortfolioItem extends Publishable {
@@ -95,6 +119,12 @@ export interface PortfolioItem extends Publishable {
   /** Position within a placement (mirrors portfolio_placements.sort_order); falls back to sortOrder. */
   placementOrder?: Partial<Record<PortfolioPlacement, number>>;
   featured?: boolean;
+  /** Media library fields (lib/placements); worked out from category/format when missing. */
+  mediaType?: "photo" | "video" | "avatar" | "tour";
+  orientation?: "9:16" | "16:9";
+  categoryId?: string;
+  showOnWork?: boolean;
+  createdAt?: string;
 }
 
 /* ---------- before / after ---------- */
@@ -107,24 +137,21 @@ export interface BeforeAfterPair extends Publishable {
   after: Media;
   /** CSS filter applied to the "before" layer, only used by placeholders. */
   placeholderBeforeFilter?: string;
+  /** Unused since the Post-production hero takes portfolio items (owner, 7 Oct 2026); the column stays. */
   inHero?: boolean;
 }
 
 /* ---------- AI avatars ---------- */
 
-/** AI avatars hero (admin: AI avatars → hero Adam video, caption line and reveal text). */
+/** AI avatars hero (admin: AI avatars → hero Adam video and reveal text). */
 export interface AvatarHero {
   name: string;
   poster: Media;
   /** Optional clip; click-to-play once supplied. */
   clip?: string;
   timecode: string;
-  captionLead: string;
-  captionHighlight: string;
   revealTitle: string;
   revealText: string;
-  proofLead: string;
-  proofHighlight: string;
   sample?: boolean;
 }
 
@@ -133,6 +160,14 @@ export interface AvatarExample extends Publishable {
   niche: string;
   poster: Media;
   clip?: string;
+  /** The same video in other languages (AI avatars → Multilingual). */
+  versions?: AvatarVersion[];
+}
+
+/** One language of an avatar video: a link or an uploaded file ("r2:<key>"). */
+export interface AvatarVersion {
+  language: string;
+  clip: string;
 }
 
 /* ---------- reviews, stats, clients, faqs ---------- */

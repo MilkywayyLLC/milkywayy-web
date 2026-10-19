@@ -1,19 +1,30 @@
+import { DashboardShowcase } from "@/components/blocks/DashboardShowcase";
+import { SHOWCASE } from "@/lib/showcase";
 import { Ctas } from "@/components/ui/Ctas";
 import type { Metadata } from "next";
-import { AiTiers } from "@/components/blocks/AiTiers";
 import { CTABand } from "@/components/blocks/CTABand";
 import { FAQ } from "@/components/blocks/FAQ";
 import { Steps, type Step } from "@/components/blocks/Steps";
 import { DemoForm } from "@/components/forms/DemoForm";
 import { AvatarStage, RevealButton, RevealProvider } from "@/components/media/AvatarReveal";
-import { LiteVideo } from "@/components/media/LiteVideo";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { AvatarCarousel } from "@/components/media/AvatarCarousel";
+import { MediaFrame } from "@/components/media/MediaFrame";
+import { MediaOpen } from "@/components/media/MediaOpen";
+import { isFileVideo, fileVideoUrl } from "@/lib/media-ref";
+import { withPlayback } from "@/lib/playable";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { SampleLabel } from "@/components/ui/SampleLabel";
 import { Hl, SectionHead } from "@/components/ui/Section";
-import { getAvatarHero, getAvatars, getFaqs, getOtherPricing, getSiteSettings } from "@/lib/data";
+import {
+  getAvatarHero,
+  getAvatars,
+  getFaqs,
+  getPlaced,
+  getPortfolio,
+  getSiteSettings,
+} from "@/lib/data";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { pageMetadata } from "@/lib/seo/meta";
 import { PageLd } from "@/components/seo/JsonLd";
@@ -45,7 +56,7 @@ const STEPS: Step[] = [
   { n: "02", title: "Design", text: "We create 2–3 looks. You pick one." },
   { n: "03", title: "Voice", text: "Choose from shortlisted voices and accents." },
   { n: "04", title: "Scripts", text: "You send topics or we write them. You approve." },
-  { n: "05", title: "Monthly videos", text: "Edited, captioned and ready to post." },
+  { n: "05", title: "Videos", text: "Every month: edited, captioned and ready to post." },
 ];
 
 const USES = [
@@ -56,15 +67,27 @@ const USES = [
 ];
 
 export default async function AiAvatarsPage() {
-  const [hero, avatars, faqs, other, site] = await Promise.all([
+  const [hero, avatars, faqs, site, mlItems, carousel] = await Promise.all([
     getAvatarHero(),
     getAvatars(),
     getFaqs("ai-avatars"),
-    getOtherPricing(),
     getSiteSettings(),
+    getPortfolio("avatars-multilingual"),
+    getPlaced("avatars-carousel"),
   ]);
+  // Multilingual: one 16:9 demo from the admin placement (13 Oct 2026). The avatars' language
+  // versions stay in the admin, unused here.
+  const [ml] = await withPlayback(mlItems.slice(0, 1));
   const whatsapp = pageWhatsappLink("AI avatars", site.whatsapp.number);
-  const ai = other.aiAvatars;
+  // Placements → Avatar styles carousel: its own slots, never filled from the library.
+  const deck = carousel.items.map((p) => ({
+    id: p.id,
+    name: p.title,
+    industry: (p.meta ?? p.client ?? "").split("·")[0].trim(),
+    poster: p.media,
+    src: isFileVideo(p.media.video) ? fileVideoUrl(p.media.video!) : undefined,
+  }));
+  // The Plans section is off the page (12 Oct 2026); its data and admin entries stay.
 
   return (
     <>
@@ -80,18 +103,13 @@ export default async function AiAvatarsPage() {
                 line2={<Hl>He isn&apos;t real.</Hl>}
               />
               <p className="lede">
-                We build AI presenters that look and sound like your brand, then script and edit
-                them into videos every month. No camera, no studio, no reshoots.
+                AI avatar video with a presenter that looks and sounds like your brand, scripted and
+                edited every month. No camera, no studio, no reshoots.
               </p>
               <Ctas extraLabels={["Show me the reveal"]}>
                 <ButtonLink href="#demo">Book a demo call</ButtonLink>
                 <RevealButton />
               </Ctas>
-              <div className="anchor">
-                <span>
-                  {hero.proofLead} <b>{hero.proofHighlight}</b>
-                </span>
-              </div>
             </div>
             <div className="hero-media-col">
               <AvatarStage hero={hero} priority />
@@ -120,69 +138,94 @@ export default async function AiAvatarsPage() {
         </div>
       </section>
 
-      {avatars.length > 0 && (
+      {deck.length > 0 && (
         <section className="sec" aria-labelledby="styles-title">
-          <div className="w">
-            <SectionHead
-              id="styles-title"
-              eyebrow="Avatar styles"
-              title="Built for your audience."
-              aside={
-                avatars.some((a) => a.sample) ? (
-                  <SampleLabel>Placeholder avatars · real examples go here</SampleLabel>
-                ) : undefined
-              }
-            />
-            <div className="avs">
-              {avatars.map((a) => (
-                <figure key={a.id}>
-                  <ViewfinderFrame
-                    media={a.poster}
-                    small
-                    corners={false}
-                    sizes="(max-width: 860px) 50vw, 25vw"
-                  >
-                    <LiteVideo video={a.clip} title={`${a.name}, AI avatar example`} />
-                  </ViewfinderFrame>
-                  <figcaption>
-                    <b>{a.name}</b>
-                    <span>{a.niche}</span>
-                  </figcaption>
-                </figure>
-              ))}
+          <div className="w av-aud">
+            <div className="stack">
+              <span className="eb">Avatar styles</span>
+              <h2 className="d h2" id="styles-title">
+                Built for your audience.
+              </h2>
+              <p className="lede">
+                Each presenter is designed for one audience: the look, the voice and the way it
+                talks. A few we&apos;ve built:
+              </p>
+              <ul className="av-ind">
+                {avatars.map((a) => (
+                  <li key={a.id}>
+                    <b>{a.niche.split("·")[0].trim()}</b>
+                    <span>
+                      {a.name} · {a.niche}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {avatars.every((a) => a.sample) && (
+                <SampleLabel>Placeholder avatars · real examples go here</SampleLabel>
+              )}
             </div>
+            <AvatarCarousel items={deck} />
           </div>
         </section>
       )}
 
-      <section className="sec alt" aria-labelledby="live-title">
+      <section className="sec alt" aria-labelledby="multi-title">
+        <div className="w av-multi">
+          <div className="stack">
+            <span className="eb">Multilingual</span>
+            <h2 className="d h2" id="multi-title">
+              One presenter, many languages.
+            </h2>
+            <p className="lede">
+              Your presenter can speak multiple languages. Same face, same voice, same script and
+              edit, for every audience you sell to. No re-shoots, no new presenter.
+            </p>
+          </div>
+          <div className="av-ml">
+            <MediaFrame
+              media={
+                ml?.media ?? {
+                  alt: "Multilingual AI avatar video demo: one AI presenter in several languages",
+                  placeholder: "adam",
+                }
+              }
+              kind="long-form"
+              corners={false}
+              title={ml?.title}
+              sizes="(max-width: 760px) 100vw, 600px"
+            >
+              {ml?.play && <MediaOpen play={ml.play} />}
+            </MediaFrame>
+            {!ml && <SampleLabel>Placeholder · multilingual demo coming</SampleLabel>}
+          </div>
+        </div>
+      </section>
+
+      <section className="sec" aria-labelledby="live-title">
         <div className="w">
           <SectionHead id="live-title" eyebrow="How it works" title="Live in a week." />
           <Steps steps={STEPS} />
         </div>
       </section>
 
-      <section className="sec" aria-labelledby="plans-title">
+      <section className="sec alt" aria-labelledby="dashboard-title">
         <div className="w">
           <SectionHead
-            id="plans-title"
-            eyebrow="Plans"
-            title="Three ways in."
-            aside={<span className="launch">{ai.launchLine}</span>}
+            id="dashboard-title"
+            eyebrow="Your client dashboard"
+            title="Approve, track, download."
+            aside={
+              <p className="lede">
+                Scripts, production, finished videos and revisions in one place. Nothing goes into
+                production until you approve the script.
+              </p>
+            }
           />
-          <AiTiers
-            tiers={ai.tiers}
-            note={ai.extraAvatarNote}
-            action={(featured) => (
-              <ButtonLink href="#demo" variant={featured ? "primary" : "ghost"}>
-                Book a demo
-              </ButtonLink>
-            )}
-          />
+          <DashboardShowcase features={SHOWCASE.avatars} />
         </div>
       </section>
 
-      <section className="sec alt" aria-labelledby="uses-title">
+      <section className="sec" aria-labelledby="uses-title">
         <div className="w">
           <SectionHead id="uses-title" eyebrow="Use cases" title="What it's for." />
           <div className="uses">
@@ -196,13 +239,13 @@ export default async function AiAvatarsPage() {
         </div>
       </section>
 
-      <section className="sec" aria-label="Questions">
+      <section className="sec alt" aria-label="Questions">
         <div className="w">
           <FAQ title="The honest answers." faqs={faqs} />
         </div>
       </section>
 
-      <section className="sec alt" id="demo" aria-labelledby="demo-title">
+      <section className="sec" id="demo" aria-labelledby="demo-title">
         <div className="w formwrap">
           <div className="stack">
             <span className="eb">Demo</span>

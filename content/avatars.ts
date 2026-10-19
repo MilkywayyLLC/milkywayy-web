@@ -9,12 +9,8 @@ export const avatarHero: AvatarHero = {
     bright: true,
   },
   timecode: "REC 00:00:07:12",
-  captionLead: "Dubai rents are up again this quarter. Here's what that means",
-  captionHighlight: "for buyers.",
   revealTitle: "100% AI",
   revealText: "Face, voice and gestures generated · edited by Milkywayy",
-  proofLead: "Clients shown Adam",
-  proofHighlight: "didn't spot he was AI",
   sample: true,
 };
 

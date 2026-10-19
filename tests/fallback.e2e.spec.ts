@@ -156,7 +156,9 @@ test("a database failure keeps the last good version (never seed, never an error
     // …and the pages it re-rendered during the outage still hold v1.
     await new Promise((r) => setTimeout(r, 2000));
     const after = await fetch(`${base}/`, { cache: "no-store" });
-    expect(after.headers.get("x-nextjs-cache")).toBe("HIT");
+    // Next 16 keeps serving the last good render as STALE (retrying in the background) rather
+    // than re-caching it as HIT; either way visitors get v1, which the next line checks.
+    expect(["HIT", "STALE"]).toContain(after.headers.get("x-nextjs-cache"));
     expect(await shows("v1"), "after the failed refresh").toBe(true);
 
     // 3. The database recovers; the next refresh brings the new version (v2).

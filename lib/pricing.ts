@@ -1,6 +1,7 @@
 import type { PropertyPricing } from "@/content/types";
 
-/** The lowest photography price across every property type: the "from AED X" figure. */
+/** The lowest photography price across every property type: the "from AED X" figure. The
+ *  website and the portal's booking both use it (on the portal, with the client's own prices). */
 export function lowestShootPrice(p: PropertyPricing) {
   return Math.min(
     ...p.apartment.sizes.map((s) => s.photo),

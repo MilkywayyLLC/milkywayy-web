@@ -1,41 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { fileVideoUrl, isFileVideo } from "@/lib/media-ref";
+import type { Playable } from "@/lib/playable";
 import { embedUrl } from "@/lib/video";
+import { MediaOpen } from "./MediaOpen";
 
 /**
- * Click-to-play: renders a square play button over the poster; the player loads only on click
- * (guide §2 "Video"). Render inside a ViewfinderFrame. Without a playable video it renders
- * nothing interactive, so a placeholder never shows a dead button.
+ * A video that plays in its own frame (the showreel, the AI avatars hero): the shared player
+ * (MediaOpen) over the poster. Takes a YouTube/Vimeo link or a file we host ("r2:<key>").
+ * Renders nothing when there is no playable video. Render inside a MediaFrame. `ambient`: an
+ * uploaded file plays muted on a loop until clicked (MediaOpen); links still play on click.
  */
-export function LiteVideo({ video, title }: { video?: string; title: string }) {
-  const [playing, setPlaying] = useState(false);
-  const src = video ? embedUrl(video) : null;
-  if (!src) return <span className="play" aria-hidden="true" style={{ opacity: 0.55 }} />;
-  if (playing) {
-    return (
-      <iframe
-        src={src}
-        title={title}
-        allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-        allowFullScreen
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          border: 0,
-          zIndex: 6,
-        }}
-      />
-    );
+export function LiteVideo({
+  video,
+  title,
+  ratio = "16 / 9",
+  poster,
+  ambient,
+}: {
+  video?: string;
+  title: string;
+  ratio?: string;
+  poster?: string;
+  ambient?: boolean;
+}) {
+  if (!video) return null;
+  let play: Playable | undefined;
+  if (isFileVideo(video)) play = { type: "file", title, src: fileVideoUrl(video), ratio, poster };
+  else {
+    const src = embedUrl(video);
+    if (src) play = { type: "embed", title, src, ratio };
   }
-  return (
-    <button
-      type="button"
-      className="play"
-      aria-label={`Play ${title}`}
-      onClick={() => setPlaying(true)}
-    />
-  );
+  return play ? <MediaOpen play={play} ambient={ambient} /> : null;
 }

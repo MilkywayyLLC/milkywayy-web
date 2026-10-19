@@ -3,7 +3,7 @@
 import { createContext, useContext, useId, useState, type ReactNode } from "react";
 import type { AvatarHero } from "@/content/types";
 import { LiteVideo } from "./LiteVideo";
-import { ViewfinderFrame } from "./ViewfinderFrame";
+import { MediaFrame } from "./MediaFrame";
 
 /**
  * AI avatars hero reveal (guide §6.5): "Show me the reveal" overlays "100% AI" on the Adam frame.
@@ -46,17 +46,21 @@ export function AvatarStage({ hero, priority }: { hero: AvatarHero; priority?: b
   const { on, id } = useContext(RevealContext);
   return (
     <div className="av-stage">
-      <ViewfinderFrame
+      <MediaFrame
         media={hero.poster}
-        timecode={hero.timecode}
+        corners={false}
         priority={priority}
         sizes="(max-width: 860px) 100vw, 50vw"
       >
-        <p className="caption">
-          “{hero.captionLead} <b>{hero.captionHighlight}</b>”
-        </p>
-        {hero.clip && <LiteVideo video={hero.clip} title={`${hero.name}, AI presenter`} />}
-      </ViewfinderFrame>
+        {hero.clip && (
+          <LiteVideo
+            video={hero.clip}
+            title={`${hero.name}, AI presenter`}
+            ratio="4 / 5"
+            poster={hero.poster.src}
+          />
+        )}
+      </MediaFrame>
       <div className={on ? "reveal on" : "reveal"} id={id} aria-live="polite">
         <div aria-hidden={!on}>
           <b>{hero.revealTitle}</b>

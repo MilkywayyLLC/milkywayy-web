@@ -85,7 +85,14 @@ export function checkLead(type: LeadType, v: LeadValues): LeadErrors {
     if (link && !isUrl(link)) e.link = "Paste the full link, starting with https://";
     if (str(v.fields.now) && !EDITORS_NOW.includes(str(v.fields.now) as never))
       e.now = "Pick one of the options.";
-  } else if (type !== "property") {
+  } else if (type === "property") {
+    // Shoot bookings (owner, 3 Oct 2026): who it's for; their email (the portal is email-only:
+    // it's how the booking reaches their account and where updates go); and a number for the
+    // shoot day.
+    if (!name) e.name = "Add your name so we know who the booking is for.";
+    if (!email) e.email = "Add your email: it's where we send updates about the booking.";
+    if (!phone) e.phone = "Add a WhatsApp number for coordinating on the shoot day.";
+  } else {
     if (!name) e.name = "Add your name so we know who we're talking to.";
     if (reply && !REPLIES.includes(reply)) e.preferred_reply = "Pick how we should reply.";
     if (reply === "Email" && !email) e.email = "Add your email, or choose another way to reply.";

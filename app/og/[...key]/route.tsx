@@ -38,10 +38,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ key: strin
     lines = p.og;
     eyebrow = p.eyebrow;
   }
-  const [display, mono] = await Promise.all([
+  const [display, mono, logoPng] = await Promise.all([
     font("Archivo-Condensed-ExtraBold.woff"),
     font("DMMono-Medium.ttf"),
+    font("logo-on-dark.png"),
   ]);
+  const logoSrc = `data:image/png;base64,${logoPng.toString("base64")}`;
   const bracket = (pos: Record<string, number>, h: "left" | "right", v: "top" | "bottom") => (
     <div
       style={{
@@ -111,9 +113,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ key: strin
           color: "#8e8c87",
         }}
       >
-        <span style={{ fontFamily: "Display", fontSize: 34, color: "#ededea", letterSpacing: 1 }}>
-          MILKYWAYY
-        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element -- rendered by ImageResponse */}
+        <img src={logoSrc} width={Math.round((72 * 9988) / 1235 / 2)} height={36} alt="" />
         <span>milkywayy.com</span>
       </div>
     </div>,
@@ -128,31 +129,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ key: strin
   );
 }
 
-/** Square logo for structured data (Organization.logo): the wordmark with the REC dot. */
+/** Square logo for structured data (Organization.logo): the brand icon on #111111 (app/icon.png). */
 async function logo() {
-  const display = await font("Archivo-Condensed-ExtraBold.woff");
-  return new ImageResponse(
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 18,
-        background: "#111111",
-        color: "#ededea",
-        fontFamily: "Display",
-        fontSize: 92,
-      }}
-    >
-      <div style={{ width: 30, height: 30, borderRadius: 15, background: "#e5484d" }} />
-      MILKYWAYY
-    </div>,
-    {
-      width: 512,
-      height: 512,
-      fonts: [{ name: "Display", data: display, weight: 800, style: "normal" }],
-    },
-  );
+  const png = await readFile(path.join(process.cwd(), "app/icon.png"));
+  return new Response(new Uint8Array(png), {
+    headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" },
+  });
 }

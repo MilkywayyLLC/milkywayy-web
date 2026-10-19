@@ -1,5 +1,6 @@
 "use client";
 
+import { cx } from "@/lib/cx";
 import { useState, useTransition } from "react";
 import { saveSeo } from "@/lib/admin/actions";
 import type { SeoPage } from "@/lib/seo/pages";
@@ -55,11 +56,12 @@ function PageSeo({ page, row }: { page: SeoPage; row: Row }) {
           <span className="ad-help">Leave empty to use the text shown in grey.</span>
         </div>
         <ImageField
-          label="Share image (1200×630; leave empty for the built-in one)"
+          label="Share image (leave empty for the built-in one)"
           value={og ? { src: og, alt: page.title } : { alt: page.title }}
           onChange={(m) => setOg(m.src ?? "")}
           error={errors.og_image}
-          crops={[{ label: "Share 1.91:1", ratio: "1200 / 630" }]}
+          kind="og"
+          usedOn={[`Link previews of ${page.title} (WhatsApp, LinkedIn, X)`]}
         />
         <p className="ad-small">
           <a href={og || `/og/${page.key}`} target="_blank" rel="noopener">
@@ -90,7 +92,7 @@ function PageSeo({ page, row }: { page: SeoPage; row: Row }) {
               Use the built-in image
             </button>
           )}
-          <span className={`ad-status${msg ? (msg.ok ? "ok" : "error") : ""}`} role="status">
+          <span className={cx("ad-status", msg && (msg.ok ? "ok" : "error"))} role="status">
             {pending ? "Saving…" : msg?.text}
           </span>
         </div>

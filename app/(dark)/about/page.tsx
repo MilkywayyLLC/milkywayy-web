@@ -3,10 +3,11 @@ import type { Metadata } from "next";
 import { CTABand } from "@/components/blocks/CTABand";
 import { ProofStrip } from "@/components/blocks/ProofStrip";
 import { Steps, type Step } from "@/components/blocks/Steps";
-import { ViewfinderFrame } from "@/components/media/ViewfinderFrame";
+import { MediaFrame } from "@/components/media/MediaFrame";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
+import { LAUNCH } from "@/content/launch";
 import { SampleLabel } from "@/components/ui/SampleLabel";
 import { Hl, SectionHead } from "@/components/ui/Section";
 import { getClients, getSiteSettings } from "@/lib/data";
@@ -18,25 +19,24 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata("about");
 }
 
-// TODO(owner): confirm the story wording; add team photos/roles if wanted (CONTENT_TODO.md).
 const STORY = [
-  "Akash Praseed has been creating content since 2020: graphic design first, then content creation, then full production, for clients on site and remote.",
-  "Before Milkywayy he created content in-house for a Dubai real estate company, and saw where production slows down: quotes that take days, files chased over chat, revisions that never end.",
-  "Milkywayy is built to take those out. Prices you can see, bookings in a minute, and files, revisions and invoices in one place.",
+  "We've filmed some of Dubai's most recognisable addresses, from Atlantis The Royal and Burj Khalifa to private villas across Palm Jumeirah and its Billionaires' Row. More than 1,000 properties, with homes valued up to AED 200 million.",
+  "Different spaces, different challenges, one standard: every project should look its best.",
+  "That experience shapes everything we do, whether we're shooting in Dubai, editing for a studio abroad, or building an AI presenter for a growing brand.",
 ];
 
 const TEAM = [
   {
     title: "Production",
-    text: "Photo, video and 360 tours, shot across Dubai for agencies, developers and brands.",
+    text: "On-location photo and video for properties, brands and businesses across Dubai and the UAE.",
   },
   {
-    title: "Editing",
-    text: "A team of editors who work to your saved style, for our shoots and for studios abroad.",
+    title: "Post-production",
+    text: "Reliable editing for creative teams worldwide, from one-off projects to ongoing white-label partnerships.",
   },
   {
-    title: "One contact",
-    text: "One person from brief to invoice, on WhatsApp, email or a call.",
+    title: "AI presenters",
+    text: "Consistent, presenter-led video without organising a new shoot every time.",
   },
 ];
 
@@ -44,18 +44,22 @@ const STEPS: Step[] = [
   {
     n: "01",
     title: "Brief",
-    text: "A 15-minute call or a WhatsApp chat. We agree scope, dates and price.",
+    text: "Tell us what you're creating. We'll agree scope, timeline and budget, and recommend the right approach.",
   },
   {
     n: "02",
-    title: "Shoot or generate",
-    text: "On location in Dubai, from your raw files, or with your AI avatar.",
+    title: "Create",
+    text: "A shoot in Dubai, editing from your footage, or AI-generated content. We handle the production.",
   },
-  { n: "03", title: "Edit", text: "In-house editors. Photos in 24 hours, reels in 24–48." },
+  {
+    n: "03",
+    title: "Refine",
+    text: "Review, share feedback and request revisions, without endless back-and-forth.",
+  },
   {
     n: "04",
     title: "Deliver",
-    text: "Files, invoices and revision requests in your client dashboard.",
+    text: "Final files, project updates and invoices, all in your client dashboard.",
   },
 ];
 
@@ -71,11 +75,16 @@ export default async function AboutPage() {
         <section className="hero about-hero" aria-labelledby="about-title">
           <div className="hero-copy">
             <Eyebrow rec>About</Eyebrow>
-            <HeroTitle id="about-title" line1="Creating content" line2={<Hl>since 2020.</Hl>} />
+            <HeroTitle
+              id="about-title"
+              line1="From Dubai's landmarks"
+              line2={<Hl>to screens worldwide.</Hl>}
+            />
             <p className="lede">
-              Milkywayy is a Dubai content studio. We shoot and edit property and brand content in
-              the UAE, edit remotely for teams abroad, and build AI presenters for people who&apos;d
-              rather not be on camera.
+              We&apos;ve captured over 1,000 properties across Dubai, from residences at Atlantis
+              The Royal and Burj Khalifa to extraordinary private villas. Today we bring the same
+              attention to detail to brand production, editing and AI video for clients around the
+              world.
             </p>
             <Ctas>
               <ButtonLink href="/contact">Get a quote</ButtonLink>
@@ -85,7 +94,7 @@ export default async function AboutPage() {
             </Ctas>
           </div>
           <div className="hero-media-col">
-            <ViewfinderFrame
+            <MediaFrame
               media={site.founder.photo}
               corners={false}
               clean
@@ -101,9 +110,9 @@ export default async function AboutPage() {
           <div className="stack">
             <span className="eb">The story</span>
             <h2 className="d h2" id="story-title">
-              From one creator to a studio.
+              Remarkable places. Better stories.
             </h2>
-            <SampleLabel>Draft · owner to confirm</SampleLabel>
+            {!LAUNCH.aboutConfirmed && <SampleLabel>Draft · owner to confirm</SampleLabel>}
           </div>
           <div className="stack" style={{ gap: 18 }}>
             {STORY.map((p) => (
@@ -126,7 +135,12 @@ export default async function AboutPage() {
 
       <section className="sec" aria-labelledby="team-title">
         <div className="w">
-          <SectionHead id="team-title" eyebrow="The team" title="Shooters, editors, one contact." />
+          <SectionHead
+            id="team-title"
+            eyebrow="The team"
+            title="One studio. Three ways to create."
+            aside={<p className="lede">Different needs. One team to coordinate them.</p>}
+          />
           <div className="why">
             {TEAM.map((t) => (
               <div key={t.title}>
@@ -150,7 +164,7 @@ export default async function AboutPage() {
           <div className="stack">
             <span className="eb">The company</span>
             <h2 className="d h2" id="licence-title">
-              Licensed and based in the UAE.
+              Rooted in the UAE. Working everywhere.
             </h2>
           </div>
           <div className="direct">
@@ -159,12 +173,16 @@ export default async function AboutPage() {
               {site.company}
             </div>
             <div>
-              <span>Licence</span>
-              {site.licence} free zone
+              <span>Registered in</span>
+              {site.licence} Free Zone, UAE
             </div>
             <div>
-              <span>Studio</span>
+              <span>Production base</span>
               {site.addressLine}
+            </div>
+            <div>
+              <span>Remote services</span>
+              Worldwide
             </div>
             <div>
               <span>Contact</span>
@@ -178,7 +196,7 @@ export default async function AboutPage() {
 
       <CTABand
         title="Tell us what you're working on."
-        text="We reply within 15 minutes during working hours."
+        text="A property shoot in Dubai? An editing partner for your studio? Something entirely new? Tell us what you have in mind."
         actions={
           <>
             <ButtonLink href="/contact">Get a quote</ButtonLink>

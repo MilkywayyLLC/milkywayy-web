@@ -4,3 +4,4 @@ reference
 package-lock.json
 *.md
 .claude
+public/ffmpeg

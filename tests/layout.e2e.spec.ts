@@ -15,7 +15,6 @@ const PAGES = [
   "/ai-avatars",
   "/contact",
   "/work",
-  "/work/sample-monthly-content-for-a-brokerage",
   "/about",
   "/privacy",
   "/terms",
@@ -44,7 +43,8 @@ async function audit(page: Page) {
 
     // Overlapping siblings in normal flow.
     document.querySelectorAll("main *").forEach((parent) => {
-      if (!vis(parent)) return;
+      // Icon artwork (e.g. the Google "G") overlaps by design.
+      if (!vis(parent) || parent.closest("svg")) return;
       const kids = [...parent.children].filter(
         (k) => vis(k) && !["absolute", "fixed"].includes(getComputedStyle(k).position),
       );
@@ -81,7 +81,8 @@ async function audit(page: Page) {
           b.style.width = prev;
           return w;
         });
-        if (Math.max(...natural) * 2 + 12 <= cw) out.push(`stacked but fits: ${name(c)}`);
+        // 2px slack: the server-side width estimate rounds up, so a sub-pixel fit still stacks.
+        if (Math.max(...natural) * 2 + 12 + 2 <= cw) out.push(`stacked but fits: ${name(c)}`);
         btns.forEach((b) => {
           if (Math.abs(b.getBoundingClientRect().width - cw) > 1)
             out.push(`stacked not full: ${name(c)}`);
@@ -122,15 +123,18 @@ for (const w of [360, 390]) {
 }
 
 for (const w of [360, 390, 768]) {
-  test(`hero trios sit below the text with a clear gap at ${w}px`, async ({ page }) => {
+  test(`hero media sits below the text with a clear gap at ${w}px`, async ({ page }) => {
     await page.setViewportSize({ width: w, height: 900 });
     for (const p of ["/production", "/post-production"]) {
       await page.goto(p);
-      const gap = await page.locator(".trio").evaluate((trio) => {
-        const copy = trio.previousElementSibling!.getBoundingClientRect();
-        const top = Math.min(...[...trio.children].map((f) => f.getBoundingClientRect().top));
-        return top - copy.bottom;
-      });
+      const gap = await page
+        .locator(".trio, .hero-one")
+        .first()
+        .evaluate((trio) => {
+          const copy = trio.previousElementSibling!.getBoundingClientRect();
+          const top = Math.min(...[...trio.children].map((f) => f.getBoundingClientRect().top));
+          return top - copy.bottom;
+        });
       expect(gap, p).toBeGreaterThanOrEqual(24);
     }
   });

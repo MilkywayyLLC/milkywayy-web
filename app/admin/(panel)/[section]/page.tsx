@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { ListView } from "@/components/admin/ListView";
 import { ProofStrip } from "@/components/admin/ProofStrip";
@@ -11,14 +11,21 @@ export async function generateMetadata({ params }: { params: Promise<{ section: 
   return { title: sectionByKey((await params).section)?.title ?? "Not found" };
 }
 
-export default async function SectionList({ params }: { params: Promise<{ section: string }> }) {
+export default async function SectionList({
+  params,
+}: {
+  params: Promise<{ section: string }>;
+}) {
   const { section: key } = await params;
   const section = sectionByKey(key);
   if (!section) notFound();
+  // The portfolio list became the Library (Admin → Content → Library).
+  if (key === "portfolio") redirect("/admin/library");
   const { db } = await requireAdmin();
   const rows = await listRows(db, section);
+  const tags: Record<string, string[]> = {};
 
-  let extra = null;
+  let extra: React.ReactNode = null;
   if (key === "clients") {
     const { data } = await db.from("proof_strip_pages").select("page, enabled");
     extra = (
@@ -40,9 +47,11 @@ export default async function SectionList({ params }: { params: Promise<{ sectio
       </div>
     );
 
+  const flags: Record<string, string> = {};
+
   return (
     <Suspense>
-      <ListView sectionKey={key} rows={rows} extra={extra} />
+      <ListView sectionKey={key} rows={rows} extra={extra} flags={flags} tags={tags} />
     </Suspense>
   );
 }

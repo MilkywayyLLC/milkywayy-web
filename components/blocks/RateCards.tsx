@@ -5,12 +5,15 @@ import { formatUSD } from "@/lib/format";
 export function RateCards({
   rates,
   featured = "short",
+  snap = false,
 }: {
   rates: RateCard[];
   featured?: RateCard["key"];
+  /** Phones: a sideways snap row instead of a stacked list. */
+  snap?: boolean;
 }) {
   return (
-    <div className="price-grid">
+    <div className={snap ? "price-grid snap-m" : "price-grid"}>
       {rates.map((r) => (
         <div className={r.key === featured ? "pcard feat" : "pcard"} key={r.key}>
           <span className="nm">{r.name}</span>

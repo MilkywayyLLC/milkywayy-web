@@ -122,6 +122,8 @@
   background: var(--bg);
   color: var(--fg);
   min-height: 100dvh;
+  /* Safety net: nothing scrolls the page sideways (clip, unlike hidden, keeps sticky working). */
+  overflow-x: clip;
 }
 
 .skip-link {

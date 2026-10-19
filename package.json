@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/copy-ffmpeg.mjs && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/launch-check.mts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -15,11 +16,23 @@
     "test:staging": "BASE_URL=https://milkywayy-web.vercel.app playwright test --project=desktop --project=mobile --project=admin-setup --project=admin --project=admin-phone",
     "db:seed:sql": "node scripts/seed.mts",
     "db:parity": "node --env-file=.env.local scripts/db-parity.mts",
-    "test:ios": "playwright test --project=ios-safari"
+    "test:ios": "playwright test --project=ios-safari",
+    "test:portal": "LEADS_DB=portal playwright test --project=portal --workers=3 && playwright test --project=admin-setup --project=portal-admin --no-deps",
+    "deploy:portal-preview": "bash scripts/deploy-portal-preview.sh",
+    "predev": "node scripts/copy-ffmpeg.mjs"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
+    "client-zip": "^2.5.0",
+    "jszip": "^3.10.1",
+    "motion": "^14.1.0",
     "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",

@@ -1,57 +1,40 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import Link from "next/link";
 import type { PropertyPricing } from "@/content/types";
 import {
   EVENING,
-  TWILIGHT_QTYS,
   blankProperty,
   buildMessage,
   dateLabel,
-  isLocked,
   locationText,
   needsEvening,
   reducer,
-  servicePrices,
   servicesText,
   subtotal,
   title,
   total,
-  twilightNote,
-  twilightTable,
   validate,
   type Action,
   type BookingErrors,
   type BookingProperty,
   type BookingState,
-  type Toggle,
 } from "@/lib/booking";
 import { bookingWindow, firstBookable, type BookingWindow } from "@/lib/booking/dates";
 import { MENU_OPEN_EVENT } from "@/lib/events";
 import { formatAED } from "@/lib/format";
-import { sendLead } from "@/lib/leads/client";
+import { readForm, sendLead } from "@/lib/leads/client";
+import { isEmail } from "@/lib/leads/rules";
 import { track } from "@/lib/tracking/events";
 import { whatsappLink } from "@/lib/whatsapp";
+import { PhoneField } from "@/components/forms/PhoneField";
+import { Field } from "@/components/ui/Field";
 import { CloseIcon } from "@/components/ui/Icons";
 import { Seg } from "@/components/ui/Seg";
 import { MonthCalendar } from "./MonthCalendar";
-import {
-  BookingSummary,
-  ChoiceCard,
-  ChoiceCards,
-  Group,
-  InclusionsStrip,
-  PropertyCard,
-  SubPanel,
-} from "./parts";
+import { BookingSummary, Group, PropertyCard } from "./parts";
+import { PropertyOptions } from "./PropertyOptions";
 
 export interface BookingBuilderProps {
   pricing: PropertyPricing;
@@ -100,6 +83,29 @@ export function BookingBuilder({
   const [sent, setSent] = useState<{ ref: string; url: string; message: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+  // Who the booking is for (owner QA, 3 Oct 2026). Signed in to the portal: prefilled, and the
+  // booking joins their account.
+  const contact = useRef<HTMLFormElement>(null);
+  const [contactErrors, setContactErrors] = useState<Record<string, string>>({});
+  const [me, setMe] = useState<Me | null>(null);
+  const [inPortal, setInPortal] = useState(false);
+  useEffect(() => {
+    fetch("/api/portal/me", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m: Me | null) => {
+        if (!m?.signedIn) return;
+        setMe(m);
+        // Fill only what's still empty: never overwrite what they've started typing.
+        const fill = (name: string, value: string) => {
+          const el = contact.current?.querySelector<HTMLInputElement>(`input[name=${name}]`);
+          if (el && !el.value && value) el.value = value;
+        };
+        fill("name", m.name);
+        fill("email", m.email);
+        fill("phone", m.phone.startsWith("+971") ? m.phone.slice(4) : m.phone);
+      })
+      .catch(() => undefined);
+  }, []);
   const started = useRef(0);
   useEffect(() => {
     started.current = Date.now();
@@ -137,6 +143,9 @@ export function BookingBuilder({
     return out;
   }, [state, errors]);
 
+  // A property line with every service off can't be sent (owner, 4 Oct 2026).
+  const noService = state.properties.some((p) => !p.photo && !p.video && !p.tour);
+
   function openSheet() {
     const d = sheet.current;
     if (!d || d.open) return;
@@ -162,6 +171,22 @@ export function BookingBuilder({
           : `bk-${firstBad.id}-building`;
       return;
     }
+    const who = contact.current ? readForm(contact.current).values : { fields: {} };
+    const missing: Record<string, string> = {};
+    if (!who.name) missing.name = "Add your name so we know who the booking is for.";
+    if (!who.email) missing.email = "Add your email: it's where we send updates about the booking.";
+    else if (!isEmail(who.email))
+      missing.email = "That email looks incomplete. Check for a typo (e.g. name@company.com).";
+    if (!who.phone) missing.phone = "Add a WhatsApp number for coordinating on the shoot day.";
+    setContactErrors(missing);
+    if (Object.keys(missing).length) {
+      closeSheet();
+      const first = (["name", "email", "phone"] as const).find((k) => missing[k]);
+      const el = contact.current?.querySelector<HTMLInputElement>(`input[name=${first}]`);
+      el?.scrollIntoView({ block: "center" });
+      el?.focus({ preventScroll: true });
+      return;
+    }
     // Already sent and unchanged: just reopen WhatsApp.
     if (current) {
       window.open(current.url, "_blank", "noopener,noreferrer");
@@ -174,11 +199,19 @@ export function BookingBuilder({
     setSaveFailed(false);
     sendLead(
       "property",
-      { fields: {} },
+      { ...who, fields: {} },
       { hp: "", elapsed: Date.now() - started.current, booking: state },
     ).then((r) => {
       setSending(false);
+      if (!r.ok && r.errors && (r.errors.name || r.errors.phone || r.errors.email)) {
+        tab?.close();
+        setContactErrors(r.errors);
+        closeSheet();
+        contact.current?.scrollIntoView({ block: "center" });
+        return;
+      }
       if (r.ok) {
+        setInPortal(!!r.portal);
         track(
           "Lead",
           { content_name: "property", lead_type: "property", currency: "AED", value: grandTotal },
@@ -223,6 +256,14 @@ export function BookingBuilder({
                 WhatsApp opened with your booking. Send the message and we&apos;ll confirm your
                 slot.
               </p>
+              {inPortal && (
+                <p className="fine">
+                  It&apos;s in your client portal too.{" "}
+                  <Link className="lnk" href="/portal/shoots" prefetch={false}>
+                    Open it
+                  </Link>
+                </p>
+              )}
               <p className="fine">
                 Ref #{current.ref} ·{" "}
                 <a className="lnk" href={current.url} target="_blank" rel="noopener noreferrer">
@@ -237,7 +278,19 @@ export function BookingBuilder({
               send it.
             </p>
           )}
-          <button type="button" className="btn btn-p" onClick={send} disabled={sending}>
+          {noService && (
+            <p className="fine bk-warn" id="bk-need-service" role="status">
+              Pick at least one service
+              {state.properties.length > 1 ? " for every property" : ""}.
+            </p>
+          )}
+          <button
+            type="button"
+            className="btn btn-p"
+            onClick={send}
+            disabled={sending || noService}
+            aria-describedby={noService ? "bk-need-service" : undefined}
+          >
             {sending ? "Sending…" : "Send request on WhatsApp"}
           </button>
         </div>
@@ -283,6 +336,61 @@ export function BookingBuilder({
           + Add another property
         </button>
         <p className="multi">{multiPropertyNote}</p>
+        <form
+          ref={contact}
+          className="bk-contact"
+          aria-labelledby="bk-contact-h"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            send();
+          }}
+        >
+          <span className="eb" id="bk-contact-h">
+            Your details
+          </span>
+          {me && (
+            <p className="fine" style={{ margin: 0 }}>
+              Signed in as {me.email}.
+              {me.attaches ? ` The booking goes straight into your portal (${me.account}).` : ""}
+            </p>
+          )}
+          <div className="row2">
+            <Field label="Name" error={contactErrors.name}>
+              <input
+                name="name"
+                autoComplete="name"
+                required
+                maxLength={120}
+                aria-invalid={!!contactErrors.name || undefined}
+              />
+            </Field>
+            <Field label="Email" error={contactErrors.email}>
+              <input
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                aria-invalid={!!contactErrors.email || undefined}
+              />
+            </Field>
+          </div>
+          <PhoneField
+            label="WhatsApp number"
+            error={contactErrors.phone}
+            invalid={!!contactErrors.phone}
+          />
+          <p className="fine" style={{ margin: 0 }}>
+            For coordinating on the shoot day.
+            {me && !me.phone ? " We’ll save it to your profile." : ""}
+          </p>
+          {!me && (
+            <p className="fine" style={{ margin: 0 }}>
+              Updates go to your email, and the booking shows up in your client portal when you sign
+              in with it.
+            </p>
+          )}
+        </form>
       </div>
 
       {summary}
@@ -329,35 +437,14 @@ export function BookingBuilder({
   );
 }
 
-/** True from 768px: one options panel at a time, and clicking a selected card reopens it. */
-const WIDE = "(min-width: 768px)";
-function useWide() {
-  return useSyncExternalStore(
-    (cb) => {
-      const mq = window.matchMedia(WIDE);
-      mq.addEventListener("change", cb);
-      return () => mq.removeEventListener("change", cb);
-    },
-    () => window.matchMedia(WIDE).matches,
-    () => true,
-  );
-}
-
-type Panel = "photo" | "video";
-const LIGHTING_SHORT = { day: "day", night: "night", dayNight: "day + night" } as const;
-
-/** One-line summaries shown on selected service cards. */
-function photoSummary(p: BookingProperty) {
-  return p.twilight ? `+ ${p.twilightQty} twilight` : "No add-ons";
-}
-function videoSummary(p: BookingProperty) {
-  const parts: string[] = [];
-  if (p.short) parts.push("Short-form");
-  if (p.long) {
-    parts.push(p.type === "commercial" ? "Long-form" : `Long-form (${LIGHTING_SHORT[p.lighting]})`);
-  }
-  return parts.join(" + ");
-}
+type Me = {
+  signedIn: true;
+  name: string;
+  email: string;
+  phone: string;
+  account: string;
+  attaches: boolean;
+};
 
 function PropertyEditor({
   p,
@@ -386,49 +473,11 @@ function PropertyEditor({
   onDuplicate: () => void;
   onRemove: () => void;
 }) {
-  const prices = servicePrices(p, pricing);
   const sub = subtotal(p, pricing);
   const services = servicesText(p).join(" + ");
   const where = [p.building.trim(), p.area.trim()].filter(Boolean).join(", ");
-  const tier = p.type === "commercial" ? pricing.commercial.tiers[p.size] : null;
-  const longLocked = isLocked(p, "long", pricing);
-  const tourLocked = isLocked(p, "tour", pricing);
-  const notIn = tier ? `Not in ${tier.label}` : "";
-  const twi = twilightTable(p, pricing);
   const update = (patch: Partial<BookingProperty>) => dispatch({ type: "update", id: p.id, patch });
-  const tog = (key: Toggle) => dispatch({ type: "toggle", id: p.id, key });
   const fid = (f: string) => `bk-${p.id}-${f}`;
-  const wide = useWide();
-  const [active, setActive] = useState<Panel | null>("photo");
-  const selected = { photo: p.photo, video: p.video, tour: p.tour };
-
-  /**
-   * Service card click. From 768px: select if needed and show that card's panel (closing the other);
-   * a selected card is never deselected by a click. Phones keep the plain toggle.
-   */
-  const pick = (key: Panel | "tour") => {
-    if (!wide) {
-      tog(key);
-      if (!selected[key] && key !== "tour") setActive(key);
-      return;
-    }
-    if (!selected[key]) tog(key);
-    setActive(key === "tour" ? null : key);
-  };
-  const removeService = (key: Panel | "tour") => {
-    if (selected[key]) tog(key);
-    if (active === key) setActive(null);
-  };
-  const isOpen = (key: Panel) => selected[key] && (!wide || active === key);
-  const short = (lg: string, sm: string): ReactNode =>
-    lg === sm ? (
-      lg
-    ) : (
-      <>
-        <span className="lbl-lg">{lg}</span>
-        <span className="lbl-sm">{sm}</span>
-      </>
-    );
 
   return (
     <PropertyCard
@@ -440,210 +489,7 @@ function PropertyEditor({
       invalid={!!errors}
       onToggle={onToggleOpen}
     >
-      <Group label="Property type">
-        <Seg
-          label="Property type"
-          className="grid"
-          value={p.type}
-          onChange={(v) => dispatch({ type: "setType", id: p.id, value: v })}
-          options={[
-            {
-              value: "apartment",
-              label: pricing.apartment.label,
-              ariaLabel: pricing.apartment.label,
-            },
-            {
-              value: "villa",
-              label: short(pricing.villa.label, pricing.villa.label.split(" /")[0]),
-              ariaLabel: pricing.villa.label,
-            },
-            {
-              value: "commercial",
-              label: pricing.commercial.label,
-              ariaLabel: pricing.commercial.label,
-            },
-          ]}
-        />
-      </Group>
-
-      {p.type === "commercial" ? (
-        <Group label="Property scale">
-          <ChoiceCards cols={4}>
-            {pricing.commercial.tiers.map((t, i) => (
-              <ChoiceCard
-                key={t.label}
-                title={t.label}
-                sub={t.description}
-                badge={t.popular ? "Most popular" : undefined}
-                pressed={p.size === i}
-                onClick={() => update({ size: i })}
-              />
-            ))}
-          </ChoiceCards>
-          {tier && (
-            <InclusionsStrip
-              items={[
-                { label: "Photos", value: tier.includes.photos },
-                { label: "Reel", value: tier.includes.reel },
-                { label: "Walkthrough", value: tier.includes.walkthrough },
-                { label: "360 tour", value: tier.includes.tourHotspots },
-              ]}
-            />
-          )}
-        </Group>
-      ) : (
-        <Group label="Size">
-          <Seg
-            label="Size"
-            className="sizes grid"
-            value={p.size}
-            onChange={(v) => update({ size: v })}
-            options={pricing[p.type].sizes.map((s, i) => ({ value: i, label: s.label }))}
-          />
-        </Group>
-      )}
-
-      <Group label="Services">
-        <div className="svc-grid">
-          <ChoiceCard
-            col={0}
-            id={fid("photo")}
-            controls={p.photo ? fid("photo-opts") : undefined}
-            expanded={isOpen("photo")}
-            title="Photography"
-            sub={`Delivery ${pricing.delivery.photo}`}
-            price={formatAED(prices.photo)}
-            summary={photoSummary(p)}
-            pressed={p.photo}
-            onClick={() => pick("photo")}
-            onRemove={() => removeService("photo")}
-          />
-          {p.photo && (
-            <SubPanel
-              id={fid("photo-opts")}
-              pointTo={0}
-              label="Photography options"
-              active={active === "photo"}
-            >
-              <label className="chk">
-                <input type="checkbox" checked={p.twilight} onChange={() => tog("twilight")} />
-                <span>
-                  Add twilight images{" "}
-                  <span className="muted" style={{ fontSize: 13 }}>
-                    (edited from your daylight shots)
-                  </span>
-                </span>
-              </label>
-              {p.twilight && (
-                <>
-                  <Seg
-                    label="Twilight images"
-                    value={p.twilightQty}
-                    onChange={(v) => update({ twilightQty: v })}
-                    options={TWILIGHT_QTYS.map((q) => ({
-                      value: q,
-                      label: `${q} images · ${formatAED(twi[q])}`,
-                    }))}
-                  />
-                  <p className="note">{twilightNote(p, pricing)}</p>
-                </>
-              )}
-              <div className="sub-f">
-                <button type="button" className="txtbtn" onClick={() => removeService("photo")}>
-                  Remove photography
-                </button>
-              </div>
-            </SubPanel>
-          )}
-          <ChoiceCard
-            col={1}
-            controls={p.video ? fid("video-opts") : undefined}
-            expanded={isOpen("video")}
-            title="Videography"
-            sub="Short-form, long-form or both"
-            price={
-              p.video
-                ? formatAED(
-                    (p.short ? prices.short : 0) +
-                      (p.long && prices.long !== null ? prices.long : 0),
-                  )
-                : `From ${formatAED(prices.short)}`
-            }
-            summary={videoSummary(p)}
-            pressed={p.video}
-            onClick={() => pick("video")}
-            onRemove={() => removeService("video")}
-          />
-          {p.video && (
-            <SubPanel
-              id={fid("video-opts")}
-              pointTo={1}
-              label="Videography options"
-              active={active === "video"}
-            >
-              <span className="gl">Video format</span>
-              <ChoiceCards cols={2}>
-                <ChoiceCard
-                  title="Short-form"
-                  sub={`Social media reels · ${pricing.delivery.short}`}
-                  price={formatAED(prices.short)}
-                  pressed={p.short}
-                  onClick={() => tog("short")}
-                />
-                <ChoiceCard
-                  title="Long-form"
-                  sub={`YouTube walkthrough · ${pricing.delivery.long}`}
-                  price={longLocked ? notIn : formatAED(prices.long ?? 0)}
-                  pressed={p.long}
-                  disabled={longLocked}
-                  onClick={() => tog("long")}
-                />
-              </ChoiceCards>
-              {p.long && p.type !== "commercial" && (
-                <>
-                  <span className="gl">Lighting</span>
-                  <Seg
-                    label="Lighting"
-                    className="grid"
-                    value={p.lighting}
-                    onChange={(v) => update({ lighting: v })}
-                    options={[
-                      { value: "day", label: "Daylight" },
-                      { value: "night", label: "Night" },
-                      { value: "dayNight", label: "Day + night" },
-                    ]}
-                  />
-                  {p.lighting !== "day" && (
-                    <p className="note">
-                      Night footage needs an evening slot, so we&apos;ll book you in the evening.
-                    </p>
-                  )}
-                </>
-              )}
-              <div className="sub-f">
-                <button type="button" className="txtbtn" onClick={() => removeService("video")}>
-                  Remove videography
-                </button>
-              </div>
-            </SubPanel>
-          )}
-          <ChoiceCard
-            col={2}
-            title="360° tour"
-            sub={`Delivery ${pricing.delivery.tour}`}
-            price={tourLocked ? notIn : formatAED(prices.tour ?? 0)}
-            pressed={p.tour}
-            disabled={tourLocked}
-            onClick={() => pick("tour")}
-            onRemove={() => removeService("tour")}
-          />
-        </div>
-        {errors?.services && (
-          <p className="bk-err" role="alert">
-            {errors.services}
-          </p>
-        )}
-      </Group>
+      <PropertyOptions p={p} pricing={pricing} dispatch={dispatch} errors={errors} />
 
       <Group label="Location">
         <div className="row3">

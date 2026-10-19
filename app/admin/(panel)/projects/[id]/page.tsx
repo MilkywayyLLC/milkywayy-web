@@ -1,0 +1,535 @@
+import { headers } from "next/headers";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { EmailAttachedBadge } from "@/components/admin/EmailAttachedBadge";
+import { LineItems } from "@/components/admin/BillingTools";
+import { AttachToClient } from "@/components/admin/ClientProjectTools";
+import { FilesIn, ScriptPanel } from "@/components/admin/ProjectBrief";
+import { StatusButtons, WhatsAppButton, type StatusTarget } from "@/components/admin/ProjectStatus";
+import { Deliveries, ProjectNotes, RevisionPanel, Thread } from "@/components/admin/ProjectWork";
+import { dubai } from "@/lib/admin/format";
+import { portalAdminPage, type ClientListRow, type ProjectDetail } from "@/lib/portal/admin";
+import { DeliverablesAdmin, ShootLog, type RateOption } from "@/components/admin/ShootLog";
+import { getPropertyPricing } from "@/lib/data";
+import {
+  clientPricing,
+  logPrefill,
+  normalizeServices,
+  SERVICE_LABEL,
+  serviceSummary,
+  type Deliverable,
+  type LogLine,
+} from "@/lib/portal/booking";
+import { originFrom } from "@/lib/portal/invite";
+import {
+  adminStatuses,
+  briefKindLabel,
+  day,
+  deliveries,
+  REVISION_LABEL,
+  TYPE_LABEL,
+  SHOOT_SERVICE_LABEL,
+  shootDay,
+  statusLabel,
+} from "@/lib/portal/projects";
+
+export const metadata = { title: "Project" };
+
+const EVENT_TEXT: Record<string, string> = {
+  created: "Created",
+  status: "Status",
+  delivery: "Delivery",
+  revision_requested: "Revision requested",
+  revision_in_progress: "Revision in progress",
+  revision_delivered: "Revision delivered",
+  approved: "Approved by the client",
+  auto_completed: "Completed automatically",
+  note: "Note",
+  files_added: "Files added",
+  script_posted: "Script posted",
+  script_approved: "Script approved",
+  script_changes: "Script changes asked",
+  logged: "Logged what was shot",
+  deliverable: "Deliverable",
+  brief_edited: "Brief edited by the client",
+};
+
+/** One project (§7.2): status, deliveries, revisions, messages, notes, notifications, activity. */
+export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
+  const rpc = await portalAdminPage();
+  const d = await rpc<ProjectDetail | null>("portal_admin_project", { p_id: id });
+  // Avatar videos: the approved character(s) the client chose to present it.
+  const presenters =
+    d?.project.type === "avatar"
+      ? await rpc<{ id: string; name: string | null; account_id: string }[]>(
+          "portal_admin_project_characters",
+          { p_project: id },
+        ).catch(() => [])
+      : [];
+  if (!d) notFound();
+  const origin = originFrom(await headers());
+  const p = d.project;
+  const people = await rpc<{
+    agent: {
+      name: string;
+      email: string | null;
+      whatsapp: string | null;
+      has_login: boolean;
+    } | null;
+    shared_with: string[];
+  }>("portal_admin_project_people", { p_project: p.id });
+  const clients =
+    !p.account_id && d.lead
+      ? ((await rpc<ClientListRow[]>("portal_admin_clients", {})) ?? [])
+          .map((c) => ({ id: c.id, name: c.name }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+      : [];
+  // WhatsApp goes to whoever submitted it (batches, avatar briefs), else the booking, else the Owner.
+  const target: StatusTarget = {
+    id: p.id,
+    ref: p.ref,
+    title: p.title,
+    type: p.type,
+    status: p.status,
+    status_note: p.status_note,
+    shoot_date: p.shoot_date,
+    slot: p.slot,
+    meta: p.meta,
+    inPortal: !!p.account_id,
+    phone: d.submitter?.phone || d.lead?.phone || d.owner?.phone || null,
+    name: d.submitter?.name || d.lead?.name || d.owner?.name || d.account?.name || null,
+  };
+  const shoot = p.type === "shoot";
+  const groups = deliveries(d.files);
+  const revisionOpen = p.revision_state === "requested" || p.revision_state === "in_progress";
+  const total = d.line_items.reduce((t, i) => t + Number(i.qty) * Number(i.unit_price), 0);
+  // Booked shoots of a client: what was shot, at frozen prices, and the deliverables list.
+  type Logged = {
+    rate_key: string | null;
+    kind: string | null;
+    description: string;
+    qty: number;
+    unit_price: number;
+    price_basis: LogLine["basis"] | null;
+    list_price: number | null;
+    override_reason: string | null;
+    billed_invoice_id: string | null;
+    included?: boolean | null;
+  };
+  const work =
+    shoot && p.account_id
+      ? await rpc<{
+          deliverables: (Deliverable & {
+            revisions: {
+              round: number;
+              note: string;
+              requested_by_name: string | null;
+              at: string;
+            }[];
+          })[];
+          logged: Logged[];
+          rates: RateOption[];
+          plan_mode?: string;
+        }>("portal_admin_deliverables", { p_project: p.id })
+      : null;
+  // The property price list with this client's own prices in it (owner, 17 Oct 2026).
+  const pricing = work
+    ? clientPricing(
+        await getPropertyPricing(),
+        Object.fromEntries(work.rates.map((r) => [r.key, r.amount])),
+      )
+    : null;
+  const booking = p.meta.booking;
+  const logLines: LogLine[] = work?.logged.length
+    ? work.logged.map((l): LogLine =>
+        // A day minimum's top-up is worked out again when the log is saved.
+        l.kind === "day_minimum"
+          ? {
+              key: l.rate_key ?? "min_half_day",
+              description:
+                l.rate_key === "min_full_day"
+                  ? "Minimum · full day, edited"
+                  : "Minimum · half day, edited",
+              qty: 1,
+              basis: "client_rate",
+              minimum: true,
+            }
+          : {
+              key: l.rate_key ?? (l.kind === "shoot" ? "property" : (l.kind ?? "reel")),
+              kind: l.kind ?? undefined,
+              description: l.description,
+              qty: Number(l.qty),
+              basis:
+                l.price_basis === "override"
+                  ? "override"
+                  : l.price_basis === "price_list"
+                    ? "price_list"
+                    : "client_rate",
+              // An Included item is stored at 0: re-logging prices it again (the database re-decides).
+              unit_price: Number(l.included && l.list_price != null ? l.list_price : l.unit_price),
+              list_price: l.list_price != null ? Number(l.list_price) : undefined,
+              reason: l.override_reason ?? undefined,
+            },
+      )
+    : booking && pricing
+      ? logPrefill(booking.services, pricing)
+      : [];
+  // A flexible booking whose videos covered the minimum has no top-up item: keep the minimum.
+  const flexible = booking
+    ? normalizeServices(booking.services).find((s) => s.service === "videos")?.videos
+    : undefined;
+  if (
+    work?.logged.length &&
+    flexible?.by === "time" &&
+    !flexible.raw &&
+    !logLines.some((l) => l.minimum)
+  )
+    logLines.push({
+      key: flexible.day === "full" ? "min_full_day" : "min_half_day",
+      description: `Minimum · ${flexible.day === "full" ? "full" : "half"} day, edited`,
+      qty: 1,
+      basis: "client_rate",
+      minimum: true,
+    });
+
+  return (
+    <div className="ad-page">
+      <div className="ad-head">
+        <div>
+          <Link className="ad-eb" href="/admin/projects" prefetch={false}>
+            ← Projects
+          </Link>
+          <h1 className="ad-h1">{p.title}</h1>
+          {p.meta.attached_by_email && <EmailAttachedBadge />}
+          {p.meta.past && (
+            <p className="ad-note" data-testid="past-note" style={{ margin: "6px 0" }}>
+              Past project (before the portal), delivered{" "}
+              {p.meta.original_date
+                ? new Date(`${p.meta.original_date}T12:00:00`).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "earlier"}
+              . Add the files below and publish them: they stay Completed, the client isn’t emailed
+              unless you tick it, and each file is kept for the client’s retention period from the
+              day it’s published (dates shown on the files).
+            </p>
+          )}
+          <span className="ad-small ad-muted">
+            {TYPE_LABEL[p.type]} · {p.ref} · {statusLabel(p.status)}
+            {p.revision_state ? ` · ${REVISION_LABEL[p.revision_state]}` : ""} ·{" "}
+            {d.account ? (
+              <Link href={`/admin/accounts/${d.account.id}`} prefetch={false}>
+                {d.account.name}
+              </Link>
+            ) : (
+              `${d.lead?.name ?? "Client"} (not in the portal yet)`
+            )}
+          </span>
+        </div>
+        <div className="ad-btns">
+          <WhatsAppButton
+            project={target}
+            event="status"
+            origin={origin}
+            label="WhatsApp the client"
+            small
+          />
+          {d.lead && (
+            <Link
+              className="ad-btn ghost small"
+              href={`/admin/leads/${d.lead.ref}`}
+              prefetch={false}
+            >
+              Booking
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {!p.account_id && d.lead && <AttachToClient bookingRef={d.lead.ref} clients={clients} />}
+
+      <section className="ad-card ad-form" aria-label="Status">
+        <h2 className="ad-h2">Status</h2>
+        <StatusButtons project={target} options={adminStatuses(p.type)} origin={origin} />
+        {p.status === "on_hold" && p.status_note && (
+          <p className="ad-note warn">Waiting on the client: {p.status_note}</p>
+        )}
+        <span className="ad-small ad-muted">
+          “Delivered” happens when you publish a delivery below. Delivered projects complete on
+          their own 7 days later unless a revision is open.
+          {p.type === "avatar" ? " In production needs the client’s approved script." : ""}
+        </span>
+      </section>
+
+      <div className="ad-grid2">
+        <section className="ad-card" aria-label="Details">
+          <h2 className="ad-h2">Details</h2>
+          <dl className="ad-dl">
+            {shoot ? (
+              <>
+                <dt>When</dt>
+                <dd>
+                  {[
+                    shootDay(p.shoot_date),
+                    p.slot,
+                    booking?.start_time ? `preferred start ${booking.start_time}` : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </dd>
+                <dt>Where</dt>
+                <dd>
+                  {booking ? (
+                    <>
+                      {booking.location.address}
+                      {booking.location.unit ? ` · ${booking.location.unit}` : ""}
+                      {booking.location.lat != null && (
+                        <>
+                          {" · "}
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${booking.location.lat},${booking.location.lng}${booking.location.place_id ? `&query_place_id=${booking.location.place_id}` : ""}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Map ↗
+                          </a>
+                        </>
+                      )}
+                      {booking.location.access && (
+                        <span className="ad-small ad-muted" style={{ display: "block" }}>
+                          Access: {booking.location.access}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    [p.meta.unit && `Unit ${p.meta.unit}`, p.meta.building, p.meta.area]
+                      .filter(Boolean)
+                      .join(", ") || "—"
+                  )}
+                </dd>
+                <dt>Services</dt>
+                <dd>
+                  {booking && pricing
+                    ? normalizeServices(booking.services).map((s, n) => (
+                        <span key={n} style={{ display: "block" }}>
+                          {SERVICE_LABEL[s.service]}: {serviceSummary(s, pricing)}
+                          {s.notes ? ` · “${s.notes}”` : ""}
+                          {(s.links ?? []).map((l) => (
+                            <a
+                              key={l}
+                              href={l}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ display: "block" }}
+                            >
+                              {l}
+                            </a>
+                          ))}
+                        </span>
+                      ))
+                    : (p.meta.services ?? []).map((s) => SHOOT_SERVICE_LABEL[s] ?? s).join(", ") ||
+                      "—"}
+                  {booking?.note && (
+                    <span className="ad-small ad-muted" style={{ display: "block" }}>
+                      {booking.note}
+                    </span>
+                  )}
+                </dd>
+              </>
+            ) : (
+              <>
+                <dt>{p.type === "avatar" ? "Length" : "What"}</dt>
+                <dd>{briefKindLabel(p.type, p.meta.kind) || "—"}</dd>
+                {p.type === "edit" && (
+                  <>
+                    <dt>Quantity</dt>
+                    <dd>{p.meta.quantity ?? "—"}</dd>
+                  </>
+                )}
+                {p.type === "avatar" && (
+                  <>
+                    <dt>Script</dt>
+                    <dd>{p.meta.script_by === "client" ? "Client sends it" : "We write it"}</dd>
+                    <dt>AI avatar{presenters.length > 1 ? "s" : ""}</dt>
+                    <dd data-testid="presenters">
+                      {presenters.length
+                        ? presenters.map((c, i) => (
+                            <span key={c.id}>
+                              {i ? ", " : ""}
+                              <Link
+                                href={`/admin/accounts/${c.account_id}/characters#${c.id}`}
+                                prefetch={false}
+                              >
+                                {c.name}
+                              </Link>
+                            </span>
+                          ))
+                        : "—"}
+                    </dd>
+                  </>
+                )}
+                <dt>Wanted by</dt>
+                <dd>{p.due_at ? day(p.due_at, true) : "—"}</dd>
+                <dt>Notes</dt>
+                <dd style={{ whiteSpace: "pre-wrap" }}>{p.meta.notes ?? "—"}</dd>
+                <dt>Reference</dt>
+                <dd style={{ overflowWrap: "anywhere" }}>
+                  {(p.meta.references ?? []).length
+                    ? (p.meta.references ?? []).map((r) => (
+                        <a
+                          key={r}
+                          href={r}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ display: "block" }}
+                        >
+                          {r}
+                        </a>
+                      ))
+                    : "—"}
+                </dd>
+                <dt>Submitted by</dt>
+                <dd>
+                  {[d.submitter?.name, d.submitter?.email].filter(Boolean).join(" · ") || "—"}
+                </dd>
+              </>
+            )}
+            <dt>Agent</dt>
+            <dd data-testid="admin-agent">
+              {people?.agent
+                ? [people.agent.name, people.agent.whatsapp ?? people.agent.email]
+                    .filter(Boolean)
+                    .join(" · ")
+                : "—"}
+            </dd>
+            {!!people?.shared_with.length && (
+              <>
+                <dt>Shared with</dt>
+                <dd>{people.shared_with.join(", ")}</dd>
+              </>
+            )}
+            <dt>Client</dt>
+            <dd>
+              {[d.owner?.name ?? d.lead?.name, d.owner?.email ?? d.lead?.email, target.phone]
+                .filter(Boolean)
+                .join(" · ") || "—"}
+            </dd>
+            {shoot && (
+              <>
+                <dt>Price</dt>
+                <dd>
+                  {total
+                    ? `${d.account?.currency ?? "AED"} ${total.toLocaleString("en-US")} (${d.lead ? "estimate at booking" : "agreed price"})`
+                    : "—"}
+                </dd>
+              </>
+            )}
+            <dt>Files kept</dt>
+            <dd>
+              {d.account
+                ? `${d.account.retention_months} months after completion`
+                : "12 months after completion"}
+            </dd>
+          </dl>
+        </section>
+        <RevisionPanel
+          projectId={p.id}
+          state={p.revision_state}
+          used={p.revision_rounds_used}
+          allowed={p.revision_rounds_allowed}
+        />
+      </div>
+
+      {work && (
+        <>
+          <ShootLog
+            key={`log-${p.id}`}
+            project={p.id}
+            currency={d.account?.currency ?? "AED"}
+            rates={work.rates}
+            initial={logLines}
+            logged={work.logged.length > 0}
+            hasDeliverables={work.deliverables.length > 0}
+            onPackage={work.plan_mode === "package"}
+            locked={work.logged.some((l) => l.billed_invoice_id)}
+          />
+          <DeliverablesAdmin
+            // Remounts only when the list itself changes (new ids), not on a status change.
+            key={work.deliverables.map((x) => x.id).join()}
+            project={p.id}
+            items={work.deliverables}
+          />
+        </>
+      )}
+      {p.type === "avatar" && <ScriptPanel project={target} scripts={d.scripts} origin={origin} />}
+      {!shoot && <FilesIn projectId={p.id} files={d.files} />}
+      <Deliveries
+        project={target}
+        groups={groups}
+        revisionOpen={revisionOpen}
+        origin={origin}
+        past={!!p.meta.past}
+      />
+      {p.account_id && <LineItems project={p.id} items={d.line_items} />}
+      <Thread project={target} messages={d.messages} origin={origin} />
+      <ProjectNotes projectId={p.id} notes={d.notes ?? ""} />
+
+      <div className="ad-grid2">
+        <section className="ad-card" aria-label="Notifications">
+          <h2 className="ad-h2">Notifications</h2>
+          <div className="ad-list" data-testid="notifications">
+            {d.notifications.map((n) => (
+              <div key={n.id} className="ad-row ad-lead">
+                <span
+                  className={`ad-pill ${n.status === "sent" || n.status === "opened" ? "live" : "draft"}`}
+                >
+                  {n.channel}
+                </span>
+                <span className="ad-row-main">
+                  <span>
+                    <span className="ad-row-title">
+                      {n.template} → {n.to_address}
+                    </span>
+                    <span className="ad-row-meta" style={{ display: "block" }}>
+                      {n.status}
+                      {n.error ? ` (${n.error})` : ""} · {dubai(n.at, true)}
+                    </span>
+                  </span>
+                </span>
+              </div>
+            ))}
+            {!d.notifications.length && <p className="ad-empty">Nothing sent yet.</p>}
+          </div>
+        </section>
+        <section className="ad-card" aria-label="Activity">
+          <h2 className="ad-h2">Activity</h2>
+          <div className="ad-list">
+            {d.events.map((e) => (
+              <div key={e.id} className="ad-row ad-lead">
+                <span className="ad-row-main">
+                  <span>
+                    <span className="ad-row-title">
+                      {EVENT_TEXT[e.kind] ?? e.kind}
+                      {e.kind === "status"
+                        ? `: ${statusLabel(e.from_status ?? "")} → ${statusLabel(e.to_status ?? "")}`
+                        : ""}
+                      {/* Status notes too: "Change requested", "Cancelled by the client", reasons. */}
+                      {e.note ? (e.kind === "status" ? ` · ${e.note}` : `: ${e.note}`) : ""}
+                    </span>
+                    <span className="ad-row-meta" style={{ display: "block" }}>
+                      {e.actor_name} · {dubai(e.at, true)}
+                    </span>
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
