@@ -18,7 +18,8 @@ export function stripeKey() {
   if (/^(sk|rk)_live_/.test(k) && !production) return null;
   return k;
 }
-export const stripeReady = () => !!stripeKey();
+/** PAYMENTS_ENABLED=false switches card payments off even with keys set (launch runs without Stripe). */
+export const stripeReady = () => process.env.PAYMENTS_ENABLED !== "false" && !!stripeKey();
 
 /** Stripe's form encoding, nested keys included (line_items[0][price_data][currency]=aed). */
 function form(obj: Record<string, unknown>, prefix = ""): string[] {

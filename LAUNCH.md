@@ -91,8 +91,19 @@ Portal and billing set-up in the admin (no build check; do before inviting clien
   22. `20261023090000_avatar_language_versions.sql` *(AI avatars → Multilingual: language versions on avatar examples)*
   23. `20261024090000_media_library_placements.sql` *(admin media library: categories, media type/orientation, pinned and automatic placements; additive only)*
   24. `20261025090000_auto_deliverable_status.sql` *(publishing a delivery marks its deliverables Delivered)*
+  25. `20261026090000_library_order_and_hero_templates.sql` *(website: Library drag order, hero templates)*
+  26. `20261027090000_portal_agents.sql` *(agency teams: Agent and "Share with" on shoots and listings)*
+  27. `20261028090000_ai_characters.sql` *(AI avatar characters: brief, variations, approval, billing item)*
+  28. `20261029090000_client_services_prices.sql` *(services per client, price lists, packages)*
+  29. `20261029090100_client_billing_extra_counts.sql` *(client Billing: extras as counts only)*
+  30. `20261029090200_inclusions_keep_service_day.sql` *(Included / Extra decided by service day)*
+  31. `20261030090000_ai_request_edits.sql` *(edit or revise AI requests)*
+  32. `20261031090000_booking_redesign.sql` *(Book media redesign)*
+  33. `20261101090000_walkthrough_labels.sql` *(label only: "Walkthrough (up to 5 min)")*
+  34. `20261102090000_turnaround_times.sql` *(turnaround texts, only rows still on the seeded text)*
+  35. `20261103090000_booking_left_for_members.sql` *(what's left of each inclusion, counts only, for members)*
 
-  Note: 22 and 23 are website-content migrations and are **already applied** on `milkywayy-web` (checked 13 Oct 2026); **skip them** there (23 is not re-runnable: its policies already exist and it would reset every item's "Show on Work page"). Check with `list_migrations` first.
+  Note: 22, 23 and 25 are website-content migrations and are **already applied** on `milkywayy-web` (checked 20 Oct 2026); **skip them** there (23 is not re-runnable: its policies already exist and it would reset every item's "Show on Work page"). Check with `list_migrations` first.
 - [ ] **Claude** — a new `PORTAL_ADMIN_SECRET`: added to Vercel Production by CLI (never printed) and its SHA-256 stored in `private.app_secrets` under `portal_admin`. Then the security advisor.
 - [ ] **Claude** — data hygiene check (read-only): no `e2e-portal-%` users, no "E2E …" or "Milkywayy Demo Realty" accounts, no "Sample: …" listings, no test invoices. No script can create them in production: the sample-listing script refuses anything but the dev project, the Stripe preview script takes test keys only, the e2e helpers need functions that exist only in dev (`supabase/dev/`), and `supabase/seed.sql` only fills empty content tables ("on conflict do nothing").
 - [ ] **Akash decides, Claude applies** — the website's e2e test accounts (`e2e-owner@`, `e2e-editor@`, `e2e-stranger@example.com`). Recommendation: delete `e2e-owner` (a second Owner key on Claude's laptop), keep the other two for the public/editor tests; Owner-level admin tests then run on a temporary Supabase branch when needed.

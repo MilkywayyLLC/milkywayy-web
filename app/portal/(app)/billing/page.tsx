@@ -20,6 +20,7 @@ import {
   type StatementRow,
 } from "@/lib/portal/billing";
 import { seesMoney } from "@/lib/portal/shell";
+import { stripeReady } from "@/lib/stripe";
 
 export const metadata = { title: "Billing" };
 
@@ -58,6 +59,7 @@ export default async function Billing({
     ]);
   if (error) console.error("[portal] my_billing:", error.message);
   const b = billing as MyBilling | null;
+  const cardPay = stripeReady();
   const statements = new Map(
     ((statementRows ?? []) as StatementRow[]).map((s) => [s.month.slice(0, 10), s]),
   );
@@ -289,8 +291,11 @@ export default async function Billing({
                       {submitted ? "Payment submitted" : STATUS_LABEL[st]}
                     </Badge>
                     <span className="pt-inv-actions">
-                      {open && !submitted && b?.pay_online && (
+                      {open && !submitted && b?.pay_online && cardPay && (
                         <PayNow id={i.id} number={i.number ?? ""} />
+                      )}
+                      {open && !submitted && b?.pay_online && !cardPay && (
+                        <span className="pt-meta">Payment details will be sent by email</span>
                       )}
                       {open && !submitted && b && !b.pay_online && (
                         <PaidByTransfer id={i.id} number={i.number ?? ""} />
