@@ -87,6 +87,8 @@ export default async function AiAvatarsPage() {
     poster: p.media,
     src: isFileVideo(p.media.video) ? fileVideoUrl(p.media.video!) : undefined,
   }));
+  // Only real, published examples are listed; none = no list (owner, 20 Oct 2026).
+  const examples = avatars.filter((a) => a.published && !a.sample);
   // The Plans section is off the page (12 Oct 2026); its data and admin entries stay.
 
   return (
@@ -150,8 +152,9 @@ export default async function AiAvatarsPage() {
                 Each presenter is designed for one audience: the look, the voice and the way it
                 talks. A few we&apos;ve built:
               </p>
+              {examples.length > 0 && (
               <ul className="av-ind">
-                {avatars.map((a) => (
+                {examples.map((a) => (
                   <li key={a.id}>
                     <b>{a.niche.split("·")[0].trim()}</b>
                     <span>
@@ -160,8 +163,6 @@ export default async function AiAvatarsPage() {
                   </li>
                 ))}
               </ul>
-              {avatars.every((a) => a.sample) && (
-                <SampleLabel>Placeholder avatars · real examples go here</SampleLabel>
               )}
             </div>
             <AvatarCarousel items={deck} />
@@ -169,6 +170,7 @@ export default async function AiAvatarsPage() {
         </section>
       )}
 
+      {ml && (
       <section className="sec alt" aria-labelledby="multi-title">
         <div className="w av-multi">
           <div className="stack">
@@ -183,23 +185,18 @@ export default async function AiAvatarsPage() {
           </div>
           <div className="av-ml">
             <MediaFrame
-              media={
-                ml?.media ?? {
-                  alt: "Multilingual AI avatar video demo: one AI presenter in several languages",
-                  placeholder: "adam",
-                }
-              }
+              media={ml.media}
               kind="long-form"
               corners={false}
-              title={ml?.title}
+              title={ml.title}
               sizes="(max-width: 760px) 100vw, 600px"
             >
-              {ml?.play && <MediaOpen play={ml.play} />}
+              {ml.play && <MediaOpen play={ml.play} />}
             </MediaFrame>
-            {!ml && <SampleLabel>Placeholder · multilingual demo coming</SampleLabel>}
           </div>
         </div>
       </section>
+      )}
 
       <section className="sec" aria-labelledby="live-title">
         <div className="w">

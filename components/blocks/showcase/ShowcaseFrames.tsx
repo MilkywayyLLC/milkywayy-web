@@ -436,28 +436,11 @@ function Overview({ who }: { who: Who }) {
 
 function BookChoose({ who }: { who: Who }) {
   const r = useRates();
+  // Simplified for the preview (owner, 20 Oct 2026): icon, title, one line, "from".
   const choices = [
-    {
-      icon: "building",
-      title: "Property shoot",
-      line: "Photos, 360° tour and video for a listing",
-      list: ["Photography", "360° virtual tour", "Twilight", "Walkthrough video"],
-      from: r.from,
-    },
-    {
-      icon: "video",
-      title: "Content shoot",
-      line: "Reels and YouTube for social media",
-      list: ["Social media reels", "YouTube videos", "Edited or raw files"],
-      from: r.contentFrom,
-    },
-    {
-      icon: "editing",
-      title: "Edit only",
-      line: "You send the files, we edit",
-      list: ["Reels", "Long-form", "Listing photo edits"],
-      from: null,
-    },
+    { icon: "building", title: "Property shoot", line: "Photos, 360° tour and video", from: r.from },
+    { icon: "video", title: "Content shoot", line: "Reels and YouTube videos", from: r.contentFrom },
+    { icon: "editing", title: "Edit only", line: "You send the files, we edit", from: null },
   ];
   return (
     <Shell who={who} tab="Home">
@@ -470,24 +453,11 @@ function BookChoose({ who }: { who: Who }) {
         {choices.map((c) => (
           <div key={c.title} className="s-choice">
             <Icon name={c.icon} size={22} />
-            <span className="s-stack">
-              <span className="s-h2" style={{ fontSize: 16 }}>
-                {c.title}
-              </span>
-              <span className="s-small">{c.line}</span>
+            <span className="s-h2" style={{ fontSize: 16 }}>
+              {c.title}
             </span>
-            <ul>
-              {c.list.map((l) => (
-                <li key={l}>{l}</li>
-              ))}
-            </ul>
-            {c.from != null ? (
-              <span className="s-num">from {aed(c.from)}</span>
-            ) : (
-              <span className="phone-only">
-                <Icon name="chevron" size={16} />
-              </span>
-            )}
+            <span className="s-small">{c.line}</span>
+            <span className="s-num">{c.from != null ? `from ${aed(c.from)}` : "\u00a0"}</span>
           </div>
         ))}
       </div>

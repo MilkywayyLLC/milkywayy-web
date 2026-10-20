@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@/components/portal/Icon";
 import type { ShowcaseRates } from "@/lib/showcase";
-import { CANVAS, MAX_SCALE, PHONE_BELOW, type Layout } from "./showcase/canvas";
+import { CANVAS, MAX_SCALE, type Layout } from "./showcase/canvas";
 
 /**
  * The client dashboard, shown like a SaaS feature section: feature tabs on the left, and the
@@ -14,9 +14,8 @@ import { CANVAS, MAX_SCALE, PHONE_BELOW, type Layout } from "./showcase/canvas";
  * Auto-advances every 5s while in view and never pauses on hover; clicking a tab selects it and
  * holds it for 10s before auto-advance resumes.
  *
- * The frames (owner, 20 Oct 2026) match the portal as it is now and fit the visitor's screen: the
- * window picks the desktop portal or, when it's phone-narrow, the phone portal (bottom tabs,
- * stacked cards, bottom total bar), drawn on its canvas and scaled to the window (showcase/).
+ * The frames (owner, 20 Oct 2026) match the portal as it is now: always the desktop portal on a
+ * compact ~16:10 canvas, scaled to the window's width, so on phones it reads like a screenshot.
  * They load on their own, with their styles, only when the section is near the screen, so the
  * pages above the fold carry none of it.
  */
@@ -105,7 +104,7 @@ export function DashboardShowcase({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const layout: Layout = width && width < PHONE_BELOW ? "phone" : "desk";
+  const layout: Layout = "desk";
   const canvas = CANVAS[layout];
   const k = width ? Math.min(MAX_SCALE, width / canvas.w) : 0;
 

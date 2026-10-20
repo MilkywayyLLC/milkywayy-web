@@ -35,7 +35,6 @@ import {
   getStats,
   showsProofStrip,
 } from "@/lib/data";
-import { formatUSD } from "@/lib/format";
 import { pageMetadata } from "@/lib/seo/meta";
 import { PageLd } from "@/components/seo/JsonLd";
 
@@ -81,7 +80,7 @@ type Row = {
   kicker: string;
   title: string;
   text: string;
-  price: string;
+  price?: string;
   cta: string;
   href: string;
   media: RowMedia;
@@ -137,12 +136,6 @@ export default async function PostProductionPage() {
     withPlayback(delivered.items),
     withPlayback(cardSlots.filter((c) => !!c)),
   ]);
-  const rate = (k: "photo" | "short" | "long") =>
-    other.postProduction.rates.find((r) => r.key === k);
-  const from = (k: "photo" | "short" | "long") => {
-    const r = rate(k);
-    return r ? `From ${formatUSD(r.amount)} / ${r.unit}` : "";
-  };
   // Each row shows its own slot; a slot nobody has filled takes the first delivered item of its
   // format, then a placeholder.
   const media = (k: "photo" | "reel" | "long-form", slot: number): RowMedia => {
@@ -160,7 +153,6 @@ export default async function PostProductionPage() {
       kicker: "Photo edits",
       title: "HDR, twilight, sky, declutter",
       text: "Bracket blending, window pulls, colour correction, virtual twilight and object removal.",
-      price: from("photo"),
       cta: "Free test",
       href: "#free-test",
       media: media("photo", 0),
@@ -169,7 +161,6 @@ export default async function PostProductionPage() {
       kicker: "Short-form",
       title: "Social media reels",
       text: "Vertical edits for Instagram, TikTok and Shorts with music, captions and your branding.",
-      price: from("short"),
       cta: "Free test",
       href: "#free-test",
       media: media("reel", 1),
@@ -178,7 +169,6 @@ export default async function PostProductionPage() {
       kicker: "Long-form",
       title: "YouTube and walkthroughs",
       text: "Tours, launches, vlogs and explainers, cut to hold attention with b-roll and graphics.",
-      price: from("long"),
       cta: "Free test",
       href: "#free-test",
       media: media("long-form", 2),
@@ -304,7 +294,7 @@ export default async function PostProductionPage() {
             title="Price per edit."
             aside={<p className="lede">{other.postProduction.note}</p>}
           />
-          <RateCards rates={other.postProduction.rates} snap />
+          <RateCards rates={other.postProduction.rates} snap prices={false} />
           <Ctas style={{ marginTop: 28 }}>
             <ButtonLink href="#free-test">Get a custom quote</ButtonLink>
           </Ctas>

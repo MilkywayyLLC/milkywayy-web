@@ -3,13 +3,14 @@ import type { ReactNode } from "react";
 import { StaticChips } from "@/components/ui/ChipGroup";
 import { formatNumber } from "@/lib/format";
 
-/** "Packages from AED X a month." No tiers, no calculator, no discounts (guide §6.2). */
+/** "Packages from AED X a month." No tiers, no calculator, no discounts (guide §6.2).
+ *  Without fromMonthly there's no price heading (Production, owner 20 Oct 2026). */
 export function PackagesBand({
   fromMonthly,
   chips,
   actions,
 }: {
-  fromMonthly: number;
+  fromMonthly?: number;
   chips: string[];
   actions: ReactNode;
 }) {
@@ -17,7 +18,9 @@ export function PackagesBand({
     <div className="pk-band">
       <div className="stack" style={{ gap: 16 }}>
         <span className="eb">Packages</span>
-        <h2 className="d h2">Packages from AED {formatNumber(fromMonthly)} a month.</h2>
+        {fromMonthly != null && (
+          <h2 className="d h2">Packages from AED {formatNumber(fromMonthly)} a month.</h2>
+        )}
         <p className="lede">
           Every package is built around your listings, volume and schedule. Tell us what you need
           and we&apos;ll put your plan together on a call, over WhatsApp or in person.

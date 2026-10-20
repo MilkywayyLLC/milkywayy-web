@@ -38,6 +38,7 @@ if (process.env.NEXT_PUBLIC_SITE_ENV !== "production") {
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const problems: string[] = [];
+const warnings: string[] = [];
 if (!url || !key) {
   console.error("[launch-check] production needs NEXT_PUBLIC_SUPABASE_URL and _ANON_KEY");
   process.exit(1);
@@ -127,6 +128,10 @@ if (postHero.length) portfolioProblem("post-hero-reels", postHero.length);
 // library, so one with nothing in it would launch blank. The showreel and Adam are checked below.
 const emptyProblem = (where: string, fix: string) =>
   problems.push(`${where}: empty, nothing would show. ${fix}`);
+// These four hide themselves when empty (owner, 20 Oct 2026), so they warn instead of failing.
+const HIDES_WHEN_EMPTY = new Set(["property-hero-media", "avatars-multilingual"]);
+const emptyWarning = (where: string, fix: string) =>
+  warnings.push(`${where}: empty, the section is hidden. ${fix}`);
 for (const def of ALL_PLACEMENTS) {
   if (def.source === "before-after" || def.key === "home-showreel" || def.key === "avatars-hero")
     continue;
@@ -141,7 +146,7 @@ for (const def of ALL_PLACEMENTS) {
   }
   const r = resolve(def, items, state);
   if (r.legacy || r.items.some((x) => x.published)) continue;
-  emptyProblem(
+  (HIDES_WHEN_EMPTY.has(def.key) ? emptyWarning : emptyProblem)(
     label,
     def.hero
       ? "Choose it in Admin → Placements."
@@ -149,9 +154,9 @@ for (const def of ALL_PLACEMENTS) {
   );
 }
 if (!live(beforeAfter).length)
-  emptyProblem("Property shoots · Hero (before / after)", "Add a pair in Admin → Before / after.");
+  emptyWarning("Property shoots · Hero (before / after)", "Add a pair in Admin → Before / after.");
 if (!live(avatars).length)
-  emptyProblem("AI avatars · Examples", "Add avatar examples in Admin → AI avatars.");
+  emptyWarning("AI avatars · Examples", "Add avatar examples in Admin → AI avatars.");
 
 // Property shoots hero still reads its placement rows.
 const propHero = shownSamples(items.filter((x) => x.placements.includes("property-hero")));
@@ -223,6 +228,10 @@ if (!LAUNCH.statsConfirmed)
     "Stats not confirmed. Check every number in Admin → Stats, then set LAUNCH.statsConfirmed.",
   );
 
+if (warnings.length) {
+  console.warn(`\n[launch-check] ${warnings.length} empty section(s), hidden on the site:\n`);
+  for (const w of warnings) console.warn(`  ! ${w}`);
+}
 if (problems.length) {
   console.error(
     `\n[launch-check] ${problems.length} thing(s) would show as sample or draft on milkywayy.com:\n`,

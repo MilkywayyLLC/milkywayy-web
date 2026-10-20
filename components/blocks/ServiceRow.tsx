@@ -37,7 +37,7 @@ export function ServiceRow({
   kicker: string;
   title: string;
   text: string;
-  price: ReactNode;
+  price?: ReactNode;
   cta: string;
   href: string;
   media?: RowMedia;
@@ -51,7 +51,7 @@ export function ServiceRow({
         <span className="k">{kicker}</span>
         <h3 className="d h3">{title}</h3>
         <p>{text}</p>
-        <span className="price">{price}</span>
+        {price && <span className="price">{price}</span>}
         <span className="lnk">{cta} →</span>
       </Link>
       {!media && (

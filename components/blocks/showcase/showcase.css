@@ -357,7 +357,7 @@
   }
   .scm .s-choice {
     display: grid;
-    align-content: start;
+    grid-template-rows: auto auto 1fr auto; /* equal height; "from" lines up at the bottom */
     gap: var(--sp-2);
     padding: var(--sp-4);
     background: var(--surface);
@@ -376,7 +376,7 @@
     color: var(--muted);
   }
   .scm .s-choice .s-num {
-    justify-self: end;
+    margin-top: var(--sp-2);
     font-size: 14px;
   }
   .scm[data-l="phone"] .s-choice {

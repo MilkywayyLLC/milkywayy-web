@@ -91,6 +91,8 @@ export default async function PropertyShootsPage() {
     // Up to nine photos, so the grid ends on a full row.
     withPlayback([...photos.slice(0, 9), ...videos, ...tours]),
   ]);
+  // Nothing to show (no pair, no library media): no empty frame, the text takes the width.
+  const heroEmpty = !pair && (template === "ba" || !heroItems.length);
   const d = pricing.delivery;
   const services: Included[] = [
     {
@@ -127,7 +129,12 @@ export default async function PropertyShootsPage() {
     <>
       <PageLd page="property-shoots" />
       <div className="w">
-        <section className="p-hero" data-hero={template} aria-labelledby="property-title">
+        <section
+          className="p-hero"
+          data-hero={template}
+          data-empty={heroEmpty || undefined}
+          aria-labelledby="property-title"
+        >
           <div className="stack">
             <Eyebrow rec>Production · Property shoots</Eyebrow>
             <HeroTitle id="property-title" line1="Don't just list." line2={<Hl>Dominate.</Hl>} />
@@ -150,7 +157,7 @@ export default async function PropertyShootsPage() {
           </div>
           {pair ? (
             <BeforeAfter pair={pair} className="p-hero-ba" />
-          ) : (
+          ) : heroEmpty ? null : (
             <HeroMedia
               items={template === "ba" ? [] : heroItems}
               trioSizes="(max-width: 900px) 33vw, 15vw"
@@ -161,7 +168,7 @@ export default async function PropertyShootsPage() {
         </section>
       </div>
 
-      <section className="sec alt" aria-labelledby="services-title">
+      <section className="sec alt p-services" aria-labelledby="services-title">
         <div className="w">
           <SectionHead
             id="services-title"

@@ -14,7 +14,6 @@ import { RotatingWord } from "@/components/type/RotatingWord";
 import { MediaFrame } from "@/components/media/MediaFrame";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { ButtonLink } from "@/components/ui/Button";
-import { Eyebrow } from "@/components/ui/Eyebrow";
 import { SampleLabel } from "@/components/ui/SampleLabel";
 import { Hl, SectionHead } from "@/components/ui/Section";
 import {
@@ -30,8 +29,6 @@ import {
   getStats,
   showsProofStrip,
 } from "@/lib/data";
-import { formatNumber, formatUSD } from "@/lib/format";
-import { lowestShootPrice } from "@/lib/pricing";
 import { withPlayback } from "@/lib/playable";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { pageMetadata } from "@/lib/seo/meta";
@@ -123,8 +120,6 @@ export default async function HomePage() {
   ]);
   const rowOf = (id?: string) => rows.find((r) => r.id === id);
 
-  const shootsFrom = lowestShootPrice(property);
-  const photoRate = other.postProduction.rates.find((r) => r.key === "photo");
   const whatsapp = pageWhatsappLink("Home", site.whatsapp.number);
   const showreelIsSample = !showreel.video;
 
@@ -136,7 +131,6 @@ export default async function HomePage() {
           <div className="w">
             <section className="hero" aria-labelledby="home-title">
               <div className="hero-copy">
-                <Eyebrow rec>Dubai content studio · Clients worldwide</Eyebrow>
                 <HeroTitle
                   id="home-title"
                   label="Content that sells properties, products, services and experiences"
@@ -209,12 +203,6 @@ export default async function HomePage() {
                 kicker="01 · Production · UAE"
                 title="Shoot and edit, handled end to end."
                 text="Monthly content for agencies and brands: shoot days, reels and long-form. Or one property shoot, booked in a minute."
-                price={
-                  <>
-                    Packages from <b>AED {formatNumber(other.production.fromMonthly)} / month</b> ·
-                    Shoots from <b>AED {formatNumber(shootsFrom)}</b>
-                  </>
-                }
                 cta="Explore production"
                 href="/production"
                 media={rowMedia(rowOf(rowProd[0]?.id))}
@@ -224,12 +212,6 @@ export default async function HomePage() {
                 kicker="02 · Post-production · Worldwide"
                 title="Your remote edit team."
                 text="Photo edits, short-form and long-form video, and AI avatar generation for media companies and creators, anywhere."
-                price={
-                  <>
-                    Edits from <b>{photoRate ? formatUSD(photoRate.amount) : ""} per photo</b> ·
-                    Free test edit
-                  </>
-                }
                 cta="Explore post-production"
                 href="/post-production"
                 media={rowMedia(rowOf(rowPost[0]?.id))}
@@ -240,11 +222,6 @@ export default async function HomePage() {
                 kicker="03 · AI avatars · Everyone"
                 title="A presenter built for your brand."
                 text="A custom AI host with its own face and voice, scripted and edited into videos every month. No camera, no studio."
-                price={
-                  <>
-                    <b>Launch pricing</b> · Book a demo
-                  </>
-                }
                 cta="Explore AI avatars"
                 href="/ai-avatars"
                 media={rowMedia(rowOf(rowAv[0]?.id))}

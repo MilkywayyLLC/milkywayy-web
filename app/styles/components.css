@@ -733,6 +733,16 @@
   .p-hero[data-hero="ba"] {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
+  /* Property shoots · "Everything a listing needs.": desktop only (owner, 20 Oct 2026). */
+  @media (max-width: 760px) {
+    .p-services {
+      display: none;
+    }
+  }
+  /* Empty hero media (no pair, no library items): the text column alone. */
+  .p-hero[data-hero][data-empty] {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .p-hero[data-hero="v1"] .hero-one.f-reel {
     width: min(100%, 300px);
   }
@@ -3479,9 +3489,9 @@
   .dsh {
     --dsh-gap: clamp(32px, 5vw, 72px);
     display: grid;
-    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
     gap: var(--dsh-gap);
-    align-items: center;
+    align-items: start; /* the tabs stack tight from the window's top */
   }
   .dsh-list {
     display: grid;
@@ -3602,8 +3612,8 @@
     color: var(--muted);
     letter-spacing: 0.04em;
   }
-  /* The preview frames (components/blocks/showcase): a fixed canvas per layout (desktop portal
-     800×700, phone portal 390×780) scaled to the window by --k and centred when it's narrower
+  /* The preview frames (components/blocks/showcase): a fixed canvas (the desktop portal at
+     800×500, on phones too) scaled to the window by --k and centred when it's narrower
      than the window. Each frame is paint-contained and they only crossfade. Before the frames
      load, the window keeps their shape so nothing jumps. */
   .dsh-mock {
@@ -3613,12 +3623,7 @@
     isolation: isolate;
   }
   .dsh-mock:not([data-l]) {
-    aspect-ratio: 800 / 700;
-  }
-  @media (max-width: 600px) {
-    .dsh-mock:not([data-l]) {
-      aspect-ratio: 390 / 780;
-    }
+    aspect-ratio: 800 / 500;
   }
   .dsh-mock .dsh-canvas {
     position: absolute;
@@ -3646,9 +3651,9 @@
   .dsh-mock .dsh-fit {
     transform-origin: 0 0;
   }
-  /* phones and tablets: features as a sideways row of tabs above the window, so the window gets
-     the full width (a readable frame up to 1100px) */
-  @media (max-width: 1100px) {
+  /* phones and tablets: features as a sideways row of tabs above the window, which gets the full
+     width and scales down like a screenshot */
+  @media (max-width: 900px) {
     .dsh {
       grid-template-columns: minmax(0, 1fr);
       gap: 16px;

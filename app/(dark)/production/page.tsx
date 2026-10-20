@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CTABand } from "@/components/blocks/CTABand";
 import { FAQ } from "@/components/blocks/FAQ";
-import { IncludedGrid, type Included } from "@/components/blocks/IncludedGrid";
 import { PackagesBand } from "@/components/blocks/PackagesBand";
 import { PathCards } from "@/components/blocks/PathCards";
 import { ProofStrip } from "@/components/blocks/ProofStrip";
@@ -25,52 +24,16 @@ import {
   getHeroTemplate,
   getPlaced,
   getPortfolio,
-  getPropertyPricing,
   getSiteSettings,
   showsProofStrip,
 } from "@/lib/data";
-import { formatNumber } from "@/lib/format";
 import { pageWhatsappLink } from "@/lib/whatsapp";
-import { lowestShootPrice } from "@/lib/pricing";
 import { pageMetadata } from "@/lib/seo/meta";
 import { PageLd } from "@/components/seo/JsonLd";
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata("production");
 }
-
-const INCLUDED: Included[] = [
-  {
-    kicker: "Shoot",
-    title: "Half or full shoot days",
-    text: "4-hour half days or full days, anywhere in Dubai.",
-  },
-  {
-    kicker: "Short-form",
-    title: "Edited reels",
-    text: "Vertical reels for Instagram and TikTok, captioned and branded.",
-  },
-  {
-    kicker: "Long-form",
-    title: "Walkthroughs and YouTube",
-    text: "Horizontal videos for listings, launches and your channel.",
-  },
-  {
-    kicker: "Revisions",
-    title: "Included on every edit",
-    text: "Changes handled inside the dashboard, not over endless chats.",
-  },
-  {
-    kicker: "Delivery",
-    title: "Client dashboard",
-    text: "Files, status and invoices in one place, stored permanently.",
-  },
-  {
-    kicker: "Transparency",
-    title: "Monthly statement",
-    text: "Every shoot and edit delivered that month, with what it cost.",
-  },
-];
 
 const STEPS: Step[] = [
   {
@@ -103,14 +66,13 @@ const RECENT = [
 ] as const;
 
 export default async function ProductionPage() {
-  const [site, clients, proof, faqs, hero, other, property, recent, template] = await Promise.all([
+  const [site, clients, proof, faqs, hero, other, recent, template] = await Promise.all([
     getSiteSettings(),
     getClients(),
     showsProofStrip("production"),
     getFaqs("production"),
     getPortfolio("production-hero"),
     getOtherPricing(),
-    getPropertyPricing(),
     getPlaced("production-recent"),
     getHeroTemplate("Production"),
   ]);
@@ -124,7 +86,6 @@ export default async function ProductionPage() {
   }));
   const heroItems = await withPlayback(hero.slice(0, HERO_TEMPLATES[template].slots));
   const whatsapp = pageWhatsappLink("Production", site.whatsapp.number);
-  const from = formatNumber(other.production.fromMonthly);
 
   return (
     <>
@@ -152,14 +113,6 @@ export default async function ProductionPage() {
                 WhatsApp us
               </ButtonLink>
             </Ctas>
-            <div className="anchor">
-              <span>
-                Packages from <b>AED {from}/mo</b>
-              </span>
-              <span>
-                Single shoots from <b>AED {formatNumber(lowestShootPrice(property))}</b>
-              </span>
-            </div>
           </div>
           <HeroMedia
             items={heroItems}
@@ -200,26 +153,9 @@ export default async function ProductionPage() {
         </div>
       </section>
 
-      <section className="sec alt" aria-labelledby="included-title">
-        <div className="w">
-          <SectionHead
-            id="included-title"
-            eyebrow="What's included"
-            title="Everything, one invoice."
-            aside={
-              <p className="lede">
-                You tell us what to shoot. We handle the crew, the edit and the delivery.
-              </p>
-            }
-          />
-          <IncludedGrid items={INCLUDED} />
-        </div>
-      </section>
-
       <section className="sec" id="packages" aria-label="Packages">
         <div className="w">
           <PackagesBand
-            fromMonthly={other.production.fromMonthly}
             chips={other.production.chips}
             actions={
               <>
