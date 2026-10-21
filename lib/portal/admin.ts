@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { redirect } from "next/navigation";
 import { adminOrThrow, requireAdmin } from "@/lib/admin/auth";
 import { portalKey, portalUrl } from "./supabase";
 
@@ -24,10 +25,24 @@ async function call<T>(actor: string, fn: string, args: Record<string, unknown>)
   return data as T;
 }
 
-/** For admin pages (redirects anyone who isn't the Owner). */
+/** The database refused the key: PORTAL_ADMIN_SECRET doesn't match private.app_secrets. */
+const keyRefused = (e: unknown) =>
+  (e as { code?: string }).code === "42501" || /not allowed/.test(String((e as Error)?.message));
+
+/**
+ * For admin pages (redirects anyone who isn't the Owner). A refused portal key (wrong or unset) sends
+ * the Owner to the dashboard with a notice instead of crashing the page (owner, 20 Oct 2026).
+ */
 export async function portalAdminPage() {
   const a = await requireAdmin({ owner: true });
-  return <T>(fn: string, args: Record<string, unknown> = {}) => call<T>(a.email, fn, args);
+  return async <T>(fn: string, args: Record<string, unknown> = {}) => {
+    try {
+      return await call<T>(a.email, fn, args);
+    } catch (e) {
+      if (keyRefused(e)) redirect("/admin?portal-key=refused");
+      throw e;
+    }
+  };
 }
 
 /** For admin server actions (throws instead of redirecting). */

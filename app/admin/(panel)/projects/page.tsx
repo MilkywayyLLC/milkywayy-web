@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { EmailAttachedBadge } from "@/components/admin/EmailAttachedBadge";
@@ -80,6 +81,7 @@ export default async function Projects({ searchParams }: Props) {
         p_q: f.q || null,
       });
     } catch (e) {
+      unstable_rethrow(e); // the refused-key redirect (lib/portal/admin)
       error = e instanceof Error ? e.message : "Couldn’t load projects.";
     }
   const statuses = adminStatuses(type);

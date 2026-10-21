@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import Link from "next/link";
 import { dubai } from "@/lib/admin/format";
 import { portalAdminPage, portalAdminReady, type ClientListRow } from "@/lib/portal/admin";
@@ -22,6 +23,7 @@ export default async function Accounts({ searchParams }: Props) {
         p_type: f.type || null,
       });
     } catch (e) {
+      unstable_rethrow(e); // the refused-key redirect (lib/portal/admin)
       error = e instanceof Error ? e.message : "Couldn’t load clients.";
     }
   const filtered = !!(f.q || f.service || f.type);
