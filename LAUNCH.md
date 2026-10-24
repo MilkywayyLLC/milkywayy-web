@@ -226,6 +226,13 @@ dumps the database every night at 02:00 UTC to the private R2 bucket `milkywayy-
 2. Supabase → **New project** (never restore over production). Copy its Session pooler URI.
 3. `gunzip -c milkywayy-web-YYYY-MM-DD.sql.gz | psql "$NEW_DB_URL" --single-transaction -v ON_ERROR_STOP=1`
    (psql 17: `brew install postgresql@17`). It rebuilds `public`, `private` and the migration history, then loads every row, sign-ins included.
+   **Circular foreign keys** (e.g. `accounts` ↔ `packages`; pg_dump warns about them) are handled in the file: the data part
+   starts with `SET session_replication_role = replica;`, so foreign-key checks and triggers (`updated_at`, one-default-contact…)
+   stay off while rows load and nothing is rewritten. It's all one transaction: any error rolls everything back.
+   Connect as `postgres` (the pooler URI's user). If psql says "permission denied to set parameter session_replication_role",
+   use the project's direct connection string instead.
+   After the load, check nothing points nowhere (expect `0`):
+   `psql "$NEW_DB_URL" -c "select count(*) from public.packages p where p.account_id is not null and not exists (select 1 from public.accounts a where a.id = p.account_id);"`
 4. Check a few counts (leads, accounts, portfolio_items) against the site.
 5. In the new project, redo the dashboard-only settings: Auth URLs, Resend SMTP, email templates (section 2).
 6. Vercel Production: point `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` at the new project, redeploy.
