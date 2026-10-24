@@ -1150,7 +1150,7 @@
   }
   .ad-queue-row {
     display: grid;
-    grid-template-columns: 1.6fr 1.1fr 0.9fr 0.9fr 1.3fr;
+    grid-template-columns: 1.6fr 1.1fr 0.9fr 0.9fr 1fr 1.3fr;
     gap: 10px;
     align-items: center;
     padding: 12px 8px;
@@ -1478,168 +1478,168 @@
   }
 }
 
-  /* ---------- Library (drag to reorder) ---------- */
-  .ad-lib {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 6px;
-  }
+/* ---------- Library (drag to reorder) ---------- */
+.ad-lib {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.ad-lib-row {
+  display: grid;
+  grid-template-columns: auto 56px minmax(0, 1fr) auto auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+.ad-lib-row.is-drag {
+  position: relative;
+  z-index: 5;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+}
+.ad-handle {
+  cursor: grab;
+  touch-action: none;
+  font-size: 18px;
+  line-height: 1;
+  padding: 6px 4px;
+  background: none;
+  border: 0;
+  color: var(--muted);
+}
+.ad-lib-thumb {
+  display: block;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  background: var(--line);
+}
+.ad-lib-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ad-lib-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.ad-lib-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.ad-lib-work {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
   .ad-lib-row {
-    display: grid;
-    grid-template-columns: auto 56px minmax(0, 1fr) auto auto auto;
-    gap: 12px;
-    align-items: center;
-    padding: 8px 10px;
-    background: var(--bg);
-    border: 1px solid var(--line);
+    grid-template-columns: auto 48px minmax(0, 1fr);
   }
-  .ad-lib-row.is-drag {
-    position: relative;
-    z-index: 5;
-    box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+  .ad-lib-row > :nth-child(n + 4) {
+    grid-column: 3;
   }
-  .ad-handle {
-    cursor: grab;
-    touch-action: none;
-    font-size: 18px;
-    line-height: 1;
-    padding: 6px 4px;
-    background: none;
-    border: 0;
-    color: var(--muted);
-  }
-  .ad-lib-thumb {
-    display: block;
-    width: 56px;
-    height: 56px;
-    object-fit: cover;
-    background: var(--line);
-  }
-  .ad-lib-main {
-    display: grid;
-    gap: 2px;
-    min-width: 0;
-  }
-  .ad-lib-title {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-weight: 600;
-  }
-  .ad-lib-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  .ad-lib-work {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  @media (max-width: 760px) {
-    .ad-lib-row {
-      grid-template-columns: auto 48px minmax(0, 1fr);
-    }
-    .ad-lib-row > :nth-child(n + 4) {
-      grid-column: 3;
-    }
-  }
-  .ad-toast {
-    position: fixed;
-    right: 20px;
-    bottom: 20px;
-    z-index: 120;
-    padding: 8px 14px;
-    background: var(--fg);
-    color: var(--bg);
-    font-size: 13px;
-  }
-  .ad-toast.error {
-    background: #8a1f11;
-    color: #fff;
-  }
+}
+.ad-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 120;
+  padding: 8px 14px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 13px;
+}
+.ad-toast.error {
+  background: #8a1f11;
+  color: #fff;
+}
 
-  .ad-pl-slots {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-  .ad-pl-slots[data-ratio="9:16"] {
-    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
-  }
-  .ad-pl-slots[data-ratio="9:16"] .ad-pl-thumb {
-    aspect-ratio: 9 / 16;
-  }
-  .ad-pl-slots[data-ratio="16:9"] .ad-pl-thumb,
-  .ad-pl-slots[data-ratio="3:2"] .ad-pl-thumb {
-    aspect-ratio: 16 / 9;
-  }
-  .ad-pl-slots[data-ratio="3:2"] .ad-pl-thumb {
-    aspect-ratio: 3 / 2;
-  }
-  .ad-pl-slots.ad-pl-hero {
-    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  }
-  .ad-pl-slots.ad-pl-hero[data-ratio="3:2"] {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  }
-  /* A hero slot's buttons stack full-width under its thumbnail, so they never overlap. */
-  .ad-pl-slot > .ad-pl-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .ad-pl-slot > .ad-pl-actions > .ad-btn {
-    width: 100%;
-    justify-content: center;
-    text-align: center;
-    white-space: normal;
-  }
-  .ad-pl-field {
-    font: 500 11px/1.2 var(--font-mono);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .ad-pl-empty {
-    display: grid;
-    place-items: center;
-    font: 500 11px/1 var(--font-mono);
-    color: var(--muted);
-  }
-  .ad-pl-cardwrap {
-    position: relative;
-  }
-  .ad-pl-drag {
-    display: block;
-    width: 100%;
-    padding: 0;
-    border: 0;
-    background: none;
-    cursor: grab;
-    touch-action: none;
-  }
-  .ad-pl-x {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 22px;
-    height: 22px;
-    line-height: 1;
-    border: 0;
-    border-radius: 50%;
-    background: var(--fg);
-    color: var(--bg);
-    cursor: pointer;
-  }
-  .ad-pl-slot.is-drag {
-    position: relative;
-    z-index: 5;
-    opacity: 0.85;
-  }
+.ad-pl-slots {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.ad-pl-slots[data-ratio="9:16"] {
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+}
+.ad-pl-slots[data-ratio="9:16"] .ad-pl-thumb {
+  aspect-ratio: 9 / 16;
+}
+.ad-pl-slots[data-ratio="16:9"] .ad-pl-thumb,
+.ad-pl-slots[data-ratio="3:2"] .ad-pl-thumb {
+  aspect-ratio: 16 / 9;
+}
+.ad-pl-slots[data-ratio="3:2"] .ad-pl-thumb {
+  aspect-ratio: 3 / 2;
+}
+.ad-pl-slots.ad-pl-hero {
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+}
+.ad-pl-slots.ad-pl-hero[data-ratio="3:2"] {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+/* A hero slot's buttons stack full-width under its thumbnail, so they never overlap. */
+.ad-pl-slot > .ad-pl-actions {
+  flex-direction: column;
+  align-items: stretch;
+}
+.ad-pl-slot > .ad-pl-actions > .ad-btn {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+  white-space: normal;
+}
+.ad-pl-field {
+  font: 500 11px/1.2 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ad-pl-empty {
+  display: grid;
+  place-items: center;
+  font: 500 11px/1 var(--font-mono);
+  color: var(--muted);
+}
+.ad-pl-cardwrap {
+  position: relative;
+}
+.ad-pl-drag {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: grab;
+  touch-action: none;
+}
+.ad-pl-x {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+  border: 0;
+  border-radius: 50%;
+  background: var(--fg);
+  color: var(--bg);
+  cursor: pointer;
+}
+.ad-pl-slot.is-drag {
+  position: relative;
+  z-index: 5;
+  opacity: 0.85;
+}
 /* AI characters (17 Oct 2026) */
 .ad-char-grid {
   display: grid;

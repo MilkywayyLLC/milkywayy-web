@@ -70,6 +70,9 @@ export type PackageInput = {
   ends: string | null;
   advance: boolean;
   inclusions: { key: string; label: string; qty: number }[];
+  /** Value packages: the monthly allowance and the half-day cap (both, or neither). */
+  allowance?: number | null;
+  half_day_cap?: number | null;
 };
 
 export async function saveClientPackage(account: string, p: PackageInput): Promise<SetupResult> {
@@ -77,7 +80,14 @@ export async function saveClientPackage(account: string, p: PackageInput): Promi
   if (!/^\d{4}-\d{2}-\d{2}$/.test(p.started)) return { ok: false, error: "Choose the start date." };
   try {
     const rpc = await portalAdminAction();
-    await rpc("portal_admin_save_client_package", { p_account: account, p });
+    const id = await rpc<string>("portal_admin_save_client_package", { p_account: account, p });
+    // The value model (owner, 24 Oct 2026): a monthly allowance and a half-day cap.
+    if (p.allowance !== undefined)
+      await rpc("portal_admin_set_package_value", {
+        p_package: id,
+        p_allowance: p.allowance,
+        p_cap: p.half_day_cap ?? null,
+      });
     return done(account, "Saved.");
   } catch (e) {
     return fail(e);

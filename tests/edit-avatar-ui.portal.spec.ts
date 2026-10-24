@@ -168,6 +168,8 @@ test("avatar video: brief, then approve the script; production starts", async ({
   await m.getByLabel("Title", { exact: true }).fill("Launch presenter");
   await m.getByRole("button", { name: "I’ll send it" }).click();
   await m.getByLabel("Brief").fill("Script: Welcome to JVC Heights…");
+  // Booking Terms (24 Oct 2026): required on every new request.
+  await m.getByRole("checkbox", { name: "I agree to the Booking Terms" }).check();
   await m.getByRole("button", { name: "Send brief" }).click();
   await expect(m.getByText("Brief received", { exact: true })).toBeVisible();
 

@@ -3,6 +3,7 @@ import { LegalPage } from "@/components/layout/LegalPage";
 import { getSiteSettings } from "@/lib/data";
 import { pageMetadata } from "@/lib/seo/meta";
 import { PageLd } from "@/components/seo/JsonLd";
+import { BOOKING_TERMS, BOOKING_TERMS_VERSION } from "@/lib/portal/payments";
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata("terms");
@@ -11,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function TermsPage() {
   const site = await getSiteSettings();
   return (
-    <LegalPage title="Terms" updated="1 October 2026">
+    <LegalPage title="Terms" updated="24 October 2026">
       <PageLd page="terms" />
       <p>
         These terms cover your use of milkywayy.com, run by {site.company} ({site.addressLine},{" "}
@@ -22,20 +23,29 @@ export default async function TermsPage() {
         Prices on the site are starting prices or estimates. Your final price is confirmed with you
         in writing, in chat, by email or on a call, before any work starts.
       </p>
-      <h2>No payment on the site</h2>
+      <h2>Requests on the website</h2>
       <p>
-        Nothing is charged through this website. Sending a request doesn&apos;t commit you to
-        anything; we confirm the booking with you, and invoice after delivery.
+        Sending a request on the website doesn&apos;t commit you to anything. We confirm the booking
+        with you first.
       </p>
-      <h2>Bookings</h2>
+      {/* The Booking Terms clients accept on every portal booking (lib/portal/payments.ts). */}
+      <h2 id="booking-terms">Booking Terms</h2>
       <p>
-        Shoot dates and times are confirmed by us. Rescheduling and cancellation terms are agreed in
-        your confirmation.
+        These apply to every booking made in the Milkywayy client portal (shoots, content shoots,
+        editing and AI avatar videos). You accept them when you book (version{" "}
+        {BOOKING_TERMS_VERSION}).
       </p>
-      <h2>Your media</h2>
+      <ol>
+        {BOOKING_TERMS.map((t) => (
+          <li key={t.title}>
+            <strong>{t.title}.</strong> {t.text}
+          </li>
+        ))}
+      </ol>
+      <h2>Payments and refunds</h2>
       <p>
-        Media we deliver is licensed for your marketing use. Anything more specific (for example,
-        ownership of raw footage) is set out in your quote or contract.
+        Card payments are taken by Stripe; we never see or store your card details. Refunds go back
+        the way you paid: to your card for card payments, by bank transfer otherwise.
       </p>
       <h2>Using this website</h2>
       <p>

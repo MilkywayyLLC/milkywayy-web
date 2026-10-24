@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { deleteObject, downloadUrl, r2Ready } from "@/lib/r2";
+import { emailConfirmed } from "./payment-server";
 import { portalAdminAction } from "./admin";
 import { dateLabel, money, type Invoice } from "./billing";
 import { originFrom } from "./invite";
@@ -153,6 +154,9 @@ export async function setInvoiceStatus(
         out.recipients,
         `${originFrom(await headers())}/portal/billing`,
       );
+    // A paid booking invoice confirms the shoot (the database does it): tell the client.
+    if (status === "paid" && inv.project_id && (inv.stage === "full" || inv.stage === "deposit"))
+      await emailConfirmed(rpc, inv.project_id, originFrom(await headers())).catch(() => 0);
     refresh(`/admin/accounts/${out.account}`);
     return { ok: true, notice: `Marked ${status}${emailed ? `, emailed ${emailed}` : ""}.` };
   } catch (e) {

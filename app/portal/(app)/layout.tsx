@@ -9,7 +9,7 @@ import { portalTabs, seesMoney } from "@/lib/portal/shell";
 export default async function PortalApp({ children }: { children: React.ReactNode }) {
   const { db, user, memberships, current } = await requireAccount("/portal");
   const manager = seesMoney(current);
-  const [{ data: profile }, { data: plan }, cfg] = await Promise.all([
+  const [{ data: profile }, { data: plan }, cfg, { data: unpaid }] = await Promise.all([
     db.from("profiles").select("full_name").eq("user_id", user.id).maybeSingle(),
     // The plan badge (§5.1): Owner and Admins only (RLS hides plans from Members).
     manager
@@ -23,6 +23,10 @@ export default async function PortalApp({ children }: { children: React.ReactNod
       console.error("[portal] request config:", e);
       return null;
     }),
+    // The bell's red dot: unpaid invoices (those who see billing only).
+    manager
+      ? db.rpc("my_unpaid_count", { p_account: current.account.id })
+      : Promise.resolve({ data: null }),
   ]);
   const pkg = (plan as { mode?: string; package?: { name: string } | null } | null) ?? null;
   const planLabel = !manager
@@ -43,6 +47,7 @@ export default async function PortalApp({ children }: { children: React.ReactNod
       plan={planLabel}
       action={cfg ? <StartRequests cfg={cfg} autoOpen /> : undefined}
       me={{ name, first: (profile?.full_name ?? "").trim().split(/\s+/)[0] ?? "" }}
+      unpaid={manager ? Number(unpaid ?? 0) : null}
     >
       <Hydrated />
       {children}

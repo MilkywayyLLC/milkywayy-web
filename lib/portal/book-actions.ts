@@ -9,6 +9,7 @@ import {
   cleanVideos,
   clientPricing,
   estimate,
+  estimateLines,
   normalizeServices,
   photosOnly,
   SERVICE_LABEL,
@@ -19,16 +20,29 @@ import {
   type Rates,
   type Slot,
 } from "./booking";
+import { portalAdminAs } from "./admin";
 import { originFrom } from "./invite";
 import { notifyMilkywayy } from "./notify";
+import { applyMyChange } from "./payment-actions";
+import { afterBooking } from "./payment-server";
+import { BOOKING_TERMS_VERSION } from "./payments";
 
 /**
- * "Book a shoot" (owner, 10 Oct 2026): every client can book in the portal (no checkout, no
- * payment). The request becomes a Requested shoot; Milkywayy is emailed "New booking request" and
- * confirms it in the admin (the client is emailed then). The estimate is worked out here from the
- * client's own rates and the property price list (only for those who may see money).
+ * "Book a shoot" (owner, 10 Oct 2026): every client can book in the portal. The request becomes a
+ * Requested shoot; Milkywayy is emailed "New booking request". The estimate is worked out here from
+ * the client's own rates and the property price list (only for those who may see money).
+ * Payment terms (owner, 24 Oct 2026): the Booking Terms must be accepted (stored with the version);
+ * 100% / 50% clients get their invoice now and, with Stripe on, the payment page (paid = confirmed).
  */
-export type BookResult = { ok: boolean; error?: string; ref?: string };
+export type BookResult = {
+  ok: boolean;
+  error?: string;
+  ref?: string;
+  /** Stripe Checkout for what's due now. */
+  payUrl?: string | null;
+  /** An invoice was issued (Stripe off: pay it by bank transfer from the shoot page). */
+  invoice?: { number: string | null; amount: number; currency: string } | null;
+};
 
 const why = (m: string) =>
   /isn't enabled/.test(m)
@@ -88,6 +102,8 @@ export async function bookShoot(b: {
   startTime?: string;
   /** The Agent (a contact id); empty leaves the database default (an agent's own card). */
   agent?: string | null;
+  /** "I agree to the Booking Terms" (required). */
+  termsAccepted?: boolean;
 }): Promise<BookResult> {
   const { db, user, current } = await requireAccount("/portal/shoots");
   if (!can(current, "shoots"))
@@ -95,6 +111,7 @@ export async function bookShoot(b: {
       ok: false,
       error: "Your access doesn’t include booking shoots. Ask the account owner.",
     };
+  if (!b.termsAccepted) return { ok: false, error: "Tick “I agree to the Booking Terms” first." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return { ok: false, error: "Choose a date." };
   if (!SLOTS.some(([k]) => k === b.slot)) return { ok: false, error: "Choose a time slot." };
   if (!b.location.address?.trim()) return { ok: false, error: "Add the location." };
@@ -130,6 +147,11 @@ export async function bookShoot(b: {
     return { ok: false, error: why(error.message) };
   }
   const out = data as { id: string; ref: string };
+  const { error: te } = await db.rpc("accept_booking_terms", {
+    p_project: out.id,
+    p_version: BOOKING_TERMS_VERSION,
+  });
+  if (te) console.error("[portal] accept_booking_terms:", te.message);
   if (b.agent) {
     // The database checks the contact is this account's and that you booked it.
     const { error: ae } = await db.rpc("set_project_agent", {
@@ -155,6 +177,27 @@ export async function bookShoot(b: {
     ],
     `${origin}/admin/projects/${out.id}`,
   ).catch((e) => console.error("[portal] booking alert:", e));
+  // What's due now by the client's term (an invoice, then Stripe if it's on).
+  const pay =
+    est != null && rates
+      ? await afterBooking({
+          rpc: portalAdminAs(`client:${user.email ?? user.id}`),
+          projectId: out.id,
+          ref: out.ref,
+          type: "shoot",
+          lines: estimateLines(services, rates, clientPricing(pricing, rates))
+            .filter((l) => l.amount != null && l.amount > 0)
+            .map((l) => ({
+              description: l.label,
+              qty: l.qty,
+              unit_price: Math.round((Number(l.amount) / l.qty) * 100) / 100,
+            })),
+          estimate: est,
+          email: user.email,
+          origin,
+          actor: `client:${user.email ?? user.id}`,
+        })
+      : { invoice: null, payUrl: null };
   // Sent: the booking draft goes.
   await db
     .from("portal_drafts")
@@ -163,7 +206,14 @@ export async function bookShoot(b: {
     .eq("user_id", user.id)
     .eq("kind", "booking");
   revalidatePath("/portal", "layout");
-  return { ok: true, ref: out.ref };
+  return {
+    ok: true,
+    ref: out.ref,
+    payUrl: pay.payUrl,
+    invoice: pay.invoice
+      ? { number: pay.invoice.number, amount: pay.invoice.amount, currency: pay.invoice.currency }
+      : null,
+  };
 }
 
 type BookingInput = Parameters<typeof bookShoot>[0];
@@ -185,6 +235,20 @@ export async function updateBooking(projectId: string, b: BookingInput): Promise
     .eq("id", projectId)
     .maybeSingle();
   if (!before) return { ok: false, error: "You don’t have access to that shoot." };
+  const moved =
+    before.shoot_date !== b.date ||
+    (before.meta?.booking?.start_time ?? "") !== (b.startTime ?? "");
+  if (moved) {
+    const { data: pay } = await db.rpc("my_project_payment", { p_project: projectId });
+    const { data: t } = await db.rpc("my_payment_terms", { p_account: current.account.id });
+    const startAt = (pay as { start?: string | null } | null)?.start;
+    const free = Number((t as { cancel_free_hours?: number } | null)?.cancel_free_hours ?? 3);
+    if (startAt && new Date(startAt).getTime() - Date.now() < free * 36e5)
+      return {
+        ok: false,
+        error: `It’s less than ${free} hours before the shoot. Use “Reschedule” on the shoot page to see the fee first.`,
+      };
+  }
   const pricing = await getPropertyPricing();
   const { data: opts } = await db.rpc("my_booking_options", { p_account: current.account.id });
   const rates = (opts as { rates: Rates | null } | null)?.rates ?? null;
@@ -261,29 +325,11 @@ export async function updateBooking(projectId: string, b: BookingInput): Promise
   return { ok: true, ref: out.ref };
 }
 
-/** Cancel a Requested or Confirmed shoot. Admin is told. */
+/**
+ * Cancel a Requested or Confirmed shoot (payment terms, 24 Oct 2026): free more than 3 hours before,
+ * else the late fee; refunds follow. The dialog shows the quote first (quoteMyChange).
+ */
 export async function cancelBooking(projectId: string): Promise<BookResult> {
-  const { db, current } = await requireAccount("/portal/shoots");
-  if (!can(current, "shoots"))
-    return { ok: false, error: "Your access doesn’t include shoots. Ask the account owner." };
-  const { data, error } = await db.rpc("cancel_booking", { p_project: projectId });
-  if (error)
-    return {
-      ok: false,
-      error: /changed any more/.test(error.message)
-        ? "This shoot can’t be cancelled any more. Send us a message instead."
-        : why(error.message),
-    };
-  const out = data as { ref: string; title: string; was: string };
-  await notifyMilkywayy(
-    projectId,
-    "booking_cancelled",
-    `Booking cancelled: ${current.account.name} · ${out.ref}`,
-    [
-      `${current.account.name} cancelled ${out.ref} ${out.title} (it was ${out.was === "confirmed" ? "Confirmed" : "Requested"}).`,
-    ],
-    `${originFrom(await headers())}/admin/projects/${projectId}`,
-  ).catch((e) => console.error("[portal] booking cancel alert:", e));
-  revalidatePath("/portal", "layout");
-  return { ok: true, ref: out.ref };
+  const r = await applyMyChange(projectId, "cancel");
+  return { ok: r.ok, error: r.error };
 }

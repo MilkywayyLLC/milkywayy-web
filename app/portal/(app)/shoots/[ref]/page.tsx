@@ -31,6 +31,12 @@ import { requestConfig } from "@/lib/portal/requests";
 import type { Slot } from "@/lib/portal/booking";
 import { ShootDeliveries, type DFile } from "@/components/portal/ShootDeliveries";
 import { downloadUrl, presign, r2Ready } from "@/lib/r2";
+import { stripeReady } from "@/lib/stripe";
+import {
+  ProjectPaymentCard,
+  type BillingPayments,
+  type MyProjectPayment,
+} from "@/components/portal/PaymentParts";
 import {
   normalizeServices,
   SERVICE_LABEL,
@@ -47,10 +53,10 @@ export default async function ShootPage({
   searchParams,
 }: {
   params: Promise<{ ref: string }>;
-  searchParams: Promise<{ booked?: string }>;
+  searchParams: Promise<{ booked?: string; paid?: string; pay?: string }>;
 }) {
   const { ref } = await params;
-  const { booked } = await searchParams;
+  const { booked, paid, pay: payBack } = await searchParams;
   const { db, current } = await requireAccount(`/portal/shoots/${ref}`);
   const admin = current.role === "owner" || current.role === "admin";
   const { data } = await db
@@ -87,6 +93,15 @@ export default async function ShootPage({
         : Promise.resolve({ data: [] }),
       db.from("project_deliverables").select("*").eq("project_id", p.id).order("sort"),
     ]);
+  // Payment terms (owner, 24 Oct 2026): unpaid booking invoices lock the downloads.
+  const [{ data: payData }, { data: bp }] = await Promise.all([
+    db.rpc("my_project_payment", { p_project: p.id }),
+    seesMoney(current)
+      ? db.rpc("my_billing_payments", { p_account: current.account.id })
+      : Promise.resolve({ data: null }),
+  ]);
+  const pay = payData as MyProjectPayment | null;
+  const locked = !!pay?.locked;
   const booking = p.meta.booking;
   // Before it's shot, the client can change or cancel it (owner, 10 Oct 2026).
   const changeable =
@@ -106,11 +121,28 @@ export default async function ShootPage({
       id: f.id,
       label: f.label,
       kind: f.kind,
-      link: f.source === "link" ? f.url : null,
-      download: f.source === "r2" && r2 && f.r2_key ? downloadUrl(f.r2_key, f.label, 3600) : null,
+      link: f.source === "link" && !locked ? f.url : null,
+      download:
+        f.source === "r2" && r2 && f.r2_key && !locked
+          ? downloadUrl(f.r2_key, f.label, 3600)
+          : null,
+      // Locked: photos through the watermarked preview, videos only as their web copy.
       view:
-        f.source === "r2" && r2 && f.r2_key ? presign("GET", f.web_key ?? f.r2_key, 3600) : null,
-      thumb: r2 && f.thumb_key ? presign("GET", f.thumb_key, 3600) : null,
+        f.source !== "r2" || !r2 || !f.r2_key
+          ? null
+          : !locked
+            ? presign("GET", f.web_key ?? f.r2_key, 3600)
+            : f.kind === "photos"
+              ? `/api/portal/preview/${f.id}`
+              : f.web_key
+                ? presign("GET", f.web_key, 3600)
+                : null,
+      thumb:
+        locked && f.kind === "photos" && f.source === "r2"
+          ? `/api/portal/preview/${f.id}?s=t`
+          : r2 && f.thumb_key
+            ? presign("GET", f.thumb_key, 3600)
+            : null,
       deliverableId: f.deliverable_id ?? null,
     })),
     // Long-form and 360 delivered as links on the deliverable itself.
@@ -120,7 +152,7 @@ export default async function ShootPage({
         id: d.id,
         label: d.label,
         kind: d.kind,
-        link: d.link_url,
+        link: locked ? null : d.link_url,
         download: null,
         view: null,
         thumb: null,
@@ -154,15 +186,19 @@ export default async function ShootPage({
             {p.ref}
             {when ? ` · ${when}` : ""}
           </span>
-          <h1 className="pt-h1">
-            {p.title}
-          </h1>
+          <h1 className="pt-h1">{p.title}</h1>
         </div>
         <Badge tone={p.status === "delivered" ? "gold" : undefined}>{clientStatus(p)}</Badge>
       </div>
       {p.status === "cancelled" ? (
         <p className="pt-note" role="status">
-          Cancelled. Book again any time with Book media.
+          Cancelled
+          {pay?.fee_waived
+            ? " (fee waived)"
+            : pay?.cancel_fee
+              ? ` with a late fee of ${current.account.currency} ${Number(pay.cancel_fee).toLocaleString("en-US")}`
+              : ""}
+          . Book again any time with Book media.
         </p>
       ) : (
         <Stepper steps={stepsFor("shoot")} now={statusLabel(p.status)} />
@@ -202,12 +238,20 @@ export default async function ShootPage({
       {admin && team.length > 1 && (
         <ShareWith kind="p" id={p.id} team={team} chosen={p.shared_with ?? []} />
       )}
+      {pay && (
+        <ProjectPaymentCard
+          pay={pay}
+          card={stripeReady()}
+          billing={bp as BillingPayments | null}
+          banner={paid ? "paid" : payBack ? "pay" : null}
+        />
+      )}
       <Deliverables items={delivList} />
 
       <ApprovalNote p={p} />
       <ProjectActions
         projectId={p.id}
-        zipId={zip?.id ?? null}
+        zipId={locked ? null : (zip?.id ?? null)}
         {...actionsFor(p)}
         hasDelivery={!!latest}
       />
@@ -228,8 +272,13 @@ export default async function ShootPage({
             </a>
           </section>
         )}
-      <ShootDeliveries files={dfiles} title={p.title} photosDeliverable={photosDeliverable} />
-      <DeliveryList files={outFiles.filter((f) => !grouped(f))} />
+      <ShootDeliveries
+        files={dfiles}
+        title={p.title}
+        photosDeliverable={photosDeliverable}
+        locked={locked}
+      />
+      <DeliveryList files={outFiles.filter((f) => !grouped(f))} locked={locked} />
 
       <div className="pt-grid2">
         <section className="pt-card">

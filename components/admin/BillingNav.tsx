@@ -4,6 +4,7 @@ const TABS = [
   ["/admin/billing", "Invoice queue"],
   ["/admin/billing/rates", "Rate card"],
   ["/admin/billing/packages", "Packages"],
+  ["/admin/billing/refunds", "Refunds"],
   ["/admin/billing/settings", "Settings"],
   // Off at launch (AUDIT item 14): last, as Advanced.
   ["/admin/billing/suggestions", "Advanced: suggestions"],

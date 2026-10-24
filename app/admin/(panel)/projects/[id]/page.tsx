@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EmailAttachedBadge } from "@/components/admin/EmailAttachedBadge";
+import { ProjectPaymentAdmin, type AdminProjectPayment } from "@/components/admin/PaymentAdmin";
 import { LineItems } from "@/components/admin/BillingTools";
 import { AttachToClient } from "@/components/admin/ClientProjectTools";
 import { FilesIn, ScriptPanel } from "@/components/admin/ProjectBrief";
@@ -102,6 +103,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     name: d.submitter?.name || d.lead?.name || d.owner?.name || d.account?.name || null,
   };
   const shoot = p.type === "shoot";
+  // Payment terms (owner, 24 Oct 2026): invoices, the lock, terms acceptance, cancel with fee.
+  const payment = p.account_id
+    ? await rpc<AdminProjectPayment>("portal_admin_project_payment", { p_project: p.id })
+    : null;
+  const payCurrency = d.account?.currency ?? "AED";
   const groups = deliveries(d.files);
   const revisionOpen = p.revision_state === "requested" || p.revision_state === "in_progress";
   const total = d.line_items.reduce((t, i) => t + Number(i.qty) * Number(i.unit_price), 0);
@@ -264,6 +270,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           {p.type === "avatar" ? " In production needs the client’s approved script." : ""}
         </span>
       </section>
+
+      {payment && <ProjectPaymentAdmin projectId={p.id} pay={payment} currency={payCurrency} />}
 
       <div className="ad-grid2">
         <section className="ad-card" aria-label="Details">

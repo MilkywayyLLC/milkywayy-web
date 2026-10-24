@@ -18,6 +18,7 @@ import { dateLabel } from "@/lib/portal/billing";
 import {
   cleanVideos,
   DAY_LABEL,
+  estimate,
   estimateLines,
   KEY,
   normalizeServices,
@@ -31,7 +32,9 @@ import {
   type VideoPlan,
 } from "@/lib/portal/booking";
 import type { RequestConfig } from "@/lib/portal/requests";
+import { halfDaysOf } from "@/lib/portal/payments";
 import { BookingPanel, lineName, PriceTag, priceView, type PanelLine } from "./bookPrice";
+import { confirmText, DueNow, TermsCheck } from "./BookingTerms";
 import { BookStep, Check, Counter, Seg, ServiceCard, ThankYou } from "./BookFrame";
 import { DraftOffer, Field, FormBanner, useDraft, useFormCheck, useLeaveGuard } from "./forms";
 import { DatePicker, TimeWheel } from "./Pickers";
@@ -251,6 +254,14 @@ export function BookingFlow({
   const [agent, setAgent] = useState(cfg.myContactId ?? "");
   const [touched, setTouched] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  // Payment terms (owner, 24 Oct 2026): the Booking Terms box, and an invoice issued at booking.
+  const [agreed, setAgreed] = useState(false);
+  const [termsErr, setTermsErr] = useState("");
+  const [issued, setIssued] = useState<{
+    number: string | null;
+    amount: number;
+    currency: string;
+  } | null>(null);
   const [pending, start] = useTransition();
   const [prop, dispatchProp] = useReducer(
     (p: BookingProperty, a: Action) =>
@@ -403,6 +414,13 @@ export function BookingFlow({
 
   // Always worked out (labels for the summary); amounts are shown only with price access.
   const lines = estimateLines(services, cfg.price.rates ?? {}, pricing);
+  // What's due now by the payment term (price access only), and the half-days it uses.
+  const est = cfg.price.rates ? estimate(services, cfg.price.rates, pricing) : null;
+  const halfDays = halfDaysOf({
+    hasVideo: services.some((x) => x.service === "videos"),
+    slot,
+    fullDay: plan?.by === "time" && plan.day === "full",
+  });
   const v = priceView(cfg, lines);
   const { m } = v;
   const pText = propertyText(prop, pricing);
@@ -444,6 +462,10 @@ export function BookingFlow({
   }
   function confirm() {
     if (!services.length || !slot) return;
+    if (!edit && !agreed) {
+      setTermsErr("Tick the box to agree to the Booking Terms.");
+      return;
+    }
     const b = {
       date,
       slot,
@@ -453,8 +475,16 @@ export function BookingFlow({
       note: savedNote,
     };
     start(async () => {
-      const r = edit ? await updateBooking(edit.projectId, b) : await bookShoot({ ...b, agent });
+      const r = edit
+        ? await updateBooking(edit.projectId, b)
+        : await bookShoot({ ...b, agent, termsAccepted: agreed });
       if (!r.ok) return form.fail(r.error ?? "Couldn’t send the booking. Try again.");
+      // 50% / 100% with card payments on: straight to Stripe (paid = confirmed).
+      if (r.payUrl) {
+        window.location.assign(r.payUrl);
+        return;
+      }
+      setIssued(r.invoice ?? null);
       setDone(edit ? edit.ref : r.ref!);
       window.scrollTo({ top: 0 });
     });
@@ -475,7 +505,9 @@ export function BookingFlow({
         text={
           edit?.status === "confirmed"
             ? "We’ll look at the change and confirm the shoot again by email."
-            : "We’ll confirm your slot by email."
+            : issued
+              ? `Invoice ${issued.number ?? ""} for ${issued.currency} ${Number(issued.amount).toLocaleString("en-US")} is on the booking page: pay by bank transfer${cfg.card ? " or card" : ""} and upload the receipt. Your booking is confirmed once it’s paid.`
+              : "We’ll confirm your slot by email."
         }
       >
         <Link href={`/portal/shoots/${encodeURIComponent(done)}`} className="btn btn-p btn-s">
@@ -961,6 +993,25 @@ export function BookingFlow({
       <div className="bkp-box-card bkp-phone-only">
         <BookingPanel lines={panelLines} v={v} />
       </div>
+      {!edit && (
+        <>
+          <DueNow
+            terms={cfg.terms}
+            estimate={est}
+            currency={cfg.price.currency}
+            halfDays={halfDays}
+            flexible={plan?.by === "time" && !plan.raw}
+          />
+          <TermsCheck
+            checked={agreed}
+            onChange={(x) => {
+              setAgreed(x);
+              if (x) setTermsErr("");
+            }}
+            error={termsErr}
+          />
+        </>
+      )}
     </>
   );
 
@@ -970,11 +1021,7 @@ export function BookingFlow({
       ? "Send change request"
       : edit
         ? "Save changes"
-        : v.pkg && v.due != null
-          ? `Confirm booking · ${m(v.due)}`
-          : v.total
-            ? `Confirm booking · ${v.total.value}`
-            : "Confirm booking";
+        : confirmText(cfg.terms, est, cfg.card, cfg.price.currency);
   const barText =
     v.pkg && v.due != null
       ? m(v.due)

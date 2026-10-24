@@ -140,6 +140,7 @@ test("the approved character presents a new avatar video, and the admin sees it"
     .getByRole("group", { name: "Your AI avatar" })
     .getByRole("button", { name: "Layla" });
   await expect(pick).toHaveAttribute("aria-pressed", "true");
+  await m.getByRole("checkbox", { name: "I agree to the Booking Terms" }).check();
   await m.getByRole("button", { name: "Send brief" }).click();
   await expect(m.getByRole("status")).toContainText("Brief received");
   const ref = (await m.getByRole("status").locator(".pt-eb").textContent())!.split(" · ")[0];

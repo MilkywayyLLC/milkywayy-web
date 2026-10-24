@@ -30,6 +30,7 @@ export function Shell({
   plan,
   me,
   action,
+  unpaid = 0,
   children,
 }: {
   main: Tab[];
@@ -40,6 +41,8 @@ export function Shell({
   me: { name: string; first: string };
   /** "Book media", top right on every page (owner, 10 Oct 2026). */
   action?: ReactNode;
+  /** Unpaid invoices: a red dot on the bell (billing access only; 24 Oct 2026). */
+  unpaid?: number | null;
   children: ReactNode;
 }) {
   const path = usePathname();
@@ -96,6 +99,21 @@ export function Shell({
           </Link>
           <div className="pt-top-right">
             {me.first && <span className="pt-hello">Hello, {me.first}</span>}
+            {unpaid != null && (
+              <Link
+                href="/portal/billing"
+                className="pt-acct pt-bell"
+                aria-label={
+                  unpaid
+                    ? `${unpaid} unpaid invoice${unpaid === 1 ? "" : "s"}`
+                    : "Billing: nothing to pay"
+                }
+                data-testid="bell"
+              >
+                <Icon name="bell" size={20} />
+                {unpaid > 0 && <i className="pt-dot" aria-hidden="true" />}
+              </Link>
+            )}
             <div className="pt-pop-wrap">
               <button
                 type="button"

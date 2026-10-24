@@ -65,7 +65,13 @@ export function ActivityList({ events }: { events: ProjectEvent[] }) {
  * Published deliveries, newest first; each file opens or downloads by a short-lived link. Photos
  * with a preview show as tiles (owner QA, 3 Oct 2026); tapping one opens the preview larger.
  */
-export function DeliveryList({ files }: { files: ProjectFile[] }) {
+export function DeliveryList({
+  files,
+  locked = false,
+}: {
+  files: ProjectFile[];
+  locked?: boolean;
+}) {
   const view = (key: string) => (r2Ready() ? presign("GET", key, 3600) : null);
   return (
     <>
@@ -78,15 +84,21 @@ export function DeliveryList({ files }: { files: ProjectFile[] }) {
               <h2 className="pt-h2">{d.label}</h2>
               <span className="pt-meta pt-mono">{when(d.files[0].created_at)}</span>
             </div>
+            {locked && (
+              <p className="pt-meta" data-testid="locked-note" style={{ margin: 0 }}>
+                Preview only. Downloads unlock once the booking is paid in full.
+              </p>
+            )}
             {tiles.length > 0 && (
               <ul className="pt-thumbs" aria-label="Photos">
                 {tiles.map((f) => {
-                  const src = view(f.thumb_key!);
+                  const src = locked ? `/api/portal/preview/${f.id}?s=t` : view(f.thumb_key!);
+                  const big = locked ? `/api/portal/preview/${f.id}` : src;
                   return (
                     <li key={f.id}>
                       {src && (
                         <a
-                          href={src}
+                          href={big ?? src}
                           target="_blank"
                           rel="noopener"
                           aria-label={`Preview ${f.label}`}
@@ -97,7 +109,7 @@ export function DeliveryList({ files }: { files: ProjectFile[] }) {
                       )}
                       <div className="pt-thumb-foot">
                         <span className="pt-small">{f.label}</span>
-                        <DownloadButton fileId={f.id} name={f.label} />
+                        {!locked && <DownloadButton fileId={f.id} name={f.label} />}
                       </div>
                     </li>
                   );
@@ -115,11 +127,15 @@ export function DeliveryList({ files }: { files: ProjectFile[] }) {
                         {f.expires_at ? ` · kept until ${day(f.expires_at, true)}` : ""}
                       </div>
                     </div>
-                    <DownloadButton
-                      fileId={f.id}
-                      label={f.source === "link" || f.kind === "tour" ? "Open" : "Download"}
-                      name={f.label}
-                    />
+                    {locked ? (
+                      <span className="pt-meta">Unlocks when paid</span>
+                    ) : (
+                      <DownloadButton
+                        fileId={f.id}
+                        label={f.source === "link" || f.kind === "tour" ? "Open" : "Download"}
+                        name={f.label}
+                      />
+                    )}
                   </div>
                 ))}
               </div>

@@ -8,10 +8,11 @@ export default async function AvatarPage({
   searchParams,
 }: {
   params: Promise<{ ref: string }>;
-  searchParams: Promise<{ edit?: string; revise?: string }>;
+  searchParams: Promise<{ edit?: string; revise?: string; paid?: string; pay?: string }>;
 }) {
   const { ref } = await params;
   const q = await searchParams;
   const open = q.edit ? "edit" : q.revise ? "revise" : undefined;
-  return <ProjectDetail type="avatar" projectRef={ref} open={open} />;
+  const banner = q.paid ? "paid" : q.pay ? "pay" : null;
+  return <ProjectDetail type="avatar" projectRef={ref} open={open} banner={banner} />;
 }

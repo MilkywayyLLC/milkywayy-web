@@ -36,7 +36,28 @@ type QueueRow = {
   advance: boolean;
   changed: boolean;
   payment_state: "submitted" | "rejected" | null;
+  stage?: "full" | "deposit" | "balance" | "fee" | null;
 };
+
+const STAGE: Record<string, string> = {
+  full: "Booking 100%",
+  deposit: "Deposit 50%",
+  balance: "Balance",
+  fee: "Late fee",
+};
+/** The payment column (owner, 24 Oct 2026): what the client owes on it. */
+const paymentStatus = (r: QueueRow) =>
+  r.status === "paid"
+    ? "Paid"
+    : r.status === "void"
+      ? "Cancelled"
+      : r.status === "draft" || r.status === "approved"
+        ? "—"
+        : r.payment_state === "submitted"
+          ? "Receipt uploaded"
+          : r.shown_status === "overdue"
+            ? "Overdue"
+            : "Unpaid";
 
 const FILTERS = [
   ["", "All"],
@@ -140,6 +161,7 @@ export default async function InvoiceQueue({
             <span role="columnheader">Category</span>
             <span role="columnheader">Period</span>
             <span role="columnheader">Amount</span>
+            <span role="columnheader">Payment</span>
             <span role="columnheader">Status</span>
           </div>
           {rows.map((r) => (
@@ -165,6 +187,14 @@ export default async function InvoiceQueue({
               </span>
               <span role="cell" className="ad-mono">
                 {money(r.currency, Number(r.amount))}
+              </span>
+              <span role="cell" data-testid="payment-status">
+                <span
+                  className={`ad-pill ${r.status === "paid" ? "paid" : r.shown_status === "overdue" ? "overdue" : ""}`}
+                >
+                  {paymentStatus(r)}
+                </span>
+                {r.stage && <span className="ad-small ad-muted">{STAGE[r.stage]}</span>}
               </span>
               <span role="cell">
                 <span className={`ad-pill ${r.shown_status}`}>

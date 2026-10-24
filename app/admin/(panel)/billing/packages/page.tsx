@@ -1,5 +1,8 @@
 import { BillingNav } from "@/components/admin/BillingNav";
 import { PackageEditor, type PackageRow } from "@/components/admin/BillingTools";
+import { PackageLimits } from "@/components/admin/PaymentAdmin";
+
+type Limits = { allowance: number | null; half_day_cap: number | null; currency: string };
 import { portalAdminPage, type ClientListRow } from "@/lib/portal/admin";
 
 export const metadata = { title: "Packages" };
@@ -26,8 +29,8 @@ export default async function Packages() {
           <span className="ad-eb">Portal · Billing</span>
           <h1 className="ad-h1">Packages</h1>
           <span className="ad-small ad-muted">
-            Private to one client unless you choose “Template”. Inclusions use the same kinds as
-            line items, so usage counts itself.
+            Private to one client unless you choose “Template”. Every package has two limits: an AED
+            allowance and shoot days (full days).
           </span>
         </div>
       </div>
@@ -54,6 +57,12 @@ export default async function Packages() {
               </span>
             </h3>
             <PackageEditor pkg={p} clients={list} />
+            <PackageLimits
+              packageId={p.id}
+              currency={(p as PackageRow & Limits).currency}
+              allowance={(p as PackageRow & Limits).allowance}
+              halfDayCap={(p as PackageRow & Limits).half_day_cap}
+            />
           </section>
         ))}
       <h2 className="ad-h2" style={{ marginTop: 12 }}>
@@ -70,6 +79,13 @@ export default async function Packages() {
               </span>
             </h2>
             <PackageEditor pkg={p} clients={list} />
+            <PackageLimits
+              packageId={p.id}
+              currency={(p as PackageRow & Limits).currency}
+              allowance={(p as PackageRow & Limits).allowance}
+              halfDayCap={(p as PackageRow & Limits).half_day_cap}
+              account={p.account_id}
+            />
           </section>
         ))}
     </div>

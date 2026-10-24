@@ -1,6 +1,12 @@
 import { cx } from "@/lib/cx";
 import { InvoiceDownload } from "@/components/portal/InvoiceDownload";
-import { PaidByTransfer, PayNow } from "@/components/portal/InvoicePay";
+import {
+  BankBox,
+  PayActions,
+  ValuePackageCard,
+  type BillingPayments,
+} from "@/components/portal/PaymentParts";
+import { TERMS_LABEL } from "@/lib/portal/payments";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
 import { ActivityList, BudgetCard } from "@/components/portal/Budget";
 import { Badge } from "@/components/portal/ui";
@@ -51,12 +57,18 @@ export default async function Billing({
       </div>
     );
   const a = current.account;
-  const [{ data: billing, error }, { data: invoiceRows }, { data: statementRows }] =
-    await Promise.all([
-      db.rpc("my_billing", { p_account: a.id }),
-      db.from("invoices").select("*").eq("account_id", a.id),
-      db.from("statements").select("*").eq("account_id", a.id),
-    ]);
+  const [
+    { data: billing, error },
+    { data: invoiceRows },
+    { data: statementRows },
+    { data: payments },
+  ] = await Promise.all([
+    db.rpc("my_billing", { p_account: a.id }),
+    db.from("invoices").select("*").eq("account_id", a.id),
+    db.from("statements").select("*").eq("account_id", a.id),
+    db.rpc("my_billing_payments", { p_account: a.id }),
+  ]);
+  const bp = payments as BillingPayments | null;
   if (error) console.error("[portal] my_billing:", error.message);
   const b = billing as MyBilling | null;
   const cardPay = stripeReady();
@@ -71,7 +83,8 @@ export default async function Billing({
     return px ? y.issued_on.localeCompare(x.issued_on) : x.due_on.localeCompare(y.due_on);
   });
   const unpaid = invoices.some((i) => i.status !== "paid");
-  const plan = b?.plan;
+  // A value package (allowance + half-days) has its own card; the old inclusions card otherwise.
+  const plan = bp?.value ? null : b?.plan;
   const anyOver = !!plan?.usage.some((u) => Number(u.over) > 0);
 
   return (
@@ -81,6 +94,11 @@ export default async function Billing({
         <div>
           <span className="pt-eb">Owner and admins only · {a.currency}</span>
           <h1 className="pt-h1">Billing</h1>
+          {bp && (
+            <span className="pt-meta" data-testid="terms">
+              Payment terms: {TERMS_LABEL[bp.terms]}
+            </span>
+          )}
         </div>
       </div>
       {paid && (
@@ -93,6 +111,8 @@ export default async function Billing({
       {b?.budget && <BudgetCard b={b.budget} currency={b.currency} />}
       {b?.budget && <ActivityList rows={b.budget.activity} currency={b.currency} />}
       {!b?.budget && b?.activity && <ActivityList rows={b.activity} currency={b.currency} />}
+
+      {bp?.value && <ValuePackageCard v={bp.value} />}
 
       <div className="pt-grid2">
         {plan && (
@@ -291,14 +311,13 @@ export default async function Billing({
                       {submitted ? "Payment submitted" : STATUS_LABEL[st]}
                     </Badge>
                     <span className="pt-inv-actions">
-                      {open && !submitted && b?.pay_online && cardPay && (
-                        <PayNow id={i.id} number={i.number ?? ""} />
-                      )}
-                      {open && !submitted && b?.pay_online && !cardPay && (
-                        <span className="pt-meta">Payment details will be sent by email</span>
-                      )}
-                      {open && !submitted && b && !b.pay_online && (
-                        <PaidByTransfer id={i.id} number={i.number ?? ""} />
+                      {open && !submitted && bp && (
+                        <PayActions
+                          inv={i}
+                          card={cardPay}
+                          payOnline={bp.pay_online}
+                          wio={bp.wio_link}
+                        />
                       )}
                       {i.pdf_source === "generated" ? (
                         <a
@@ -336,40 +355,28 @@ export default async function Billing({
             No invoices yet. They appear here, with a PDF, as soon as we issue them.
           </p>
         )}
-        {unpaid && b && !b.pay_online && (
-          <div className="pt-card pt-bank" data-testid="bank">
-            <span className="pt-eb">Pay by bank transfer</span>
-            {b.bank ? (
-              <dl>
-                {b.bank.account_name && (
-                  <div>
-                    <dt>Account name</dt>
-                    <dd>{b.bank.account_name}</dd>
-                  </div>
-                )}
-                {b.bank.bank && (
-                  <div>
-                    <dt>Bank</dt>
-                    <dd>{b.bank.bank}</dd>
-                  </div>
-                )}
-                <div>
-                  <dt>IBAN</dt>
-                  <dd className="pt-mono">{b.bank.iban}</dd>
-                </div>
-                {b.bank.swift && (
-                  <div>
-                    <dt>SWIFT</dt>
-                    <dd className="pt-mono">{b.bank.swift}</dd>
-                  </div>
-                )}
-              </dl>
-            ) : (
-              <span className="pt-meta">WhatsApp us for our bank details.</span>
-            )}
-            <span className="pt-meta">
-              Put the invoice number in the reference, then tap “I’ve paid” and upload the receipt.
-            </span>
+        {unpaid && bp && <BankBox bank={bp.bank} wio={bp.wio_link} />}
+        {!!bp?.refunds.length && (
+          <div className="stack" style={{ gap: 6 }} data-testid="refunds">
+            <span className="pt-eb">Refunds</span>
+            <ul className="pt-lines" aria-label="Refunds">
+              {bp.refunds.map((r, n) => (
+                <li key={n}>
+                  <span>
+                    {r.ref ?? "Refund"} · {dateLabel(r.created_at)} ·{" "}
+                    {r.method === "stripe" ? "to your card" : "by bank transfer"}
+                  </span>
+                  <span className="pt-mono">
+                    {money(r.currency, Number(r.amount))} ·{" "}
+                    {r.status === "done"
+                      ? "sent"
+                      : r.status === "failed"
+                        ? "being checked"
+                        : "on its way"}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </section>

@@ -5,7 +5,17 @@ import { headers } from "next/headers";
 import { abortMultipart, completeMultipart, downloadUrl, r2Ready } from "@/lib/r2";
 import { AREA_OF, can } from "./access";
 import { requireAccount } from "./auth";
-import { AVATAR_FORMATS, avatarKind, avatarLength, type AvatarFormat } from "./booking";
+import { portalAdminAs } from "./admin";
+import {
+  AVATAR_FORMATS,
+  avatarEstimate,
+  avatarKind,
+  avatarLength,
+  type AvatarFormat,
+  type Rates,
+} from "./booking";
+import { afterBooking } from "./payment-server";
+import { BOOKING_TERMS_VERSION } from "./payments";
 import { originFrom } from "./invite";
 import { projectLink } from "./messages";
 import { notifyClients, notifyMilkywayy, type Recipient } from "./notify";
@@ -46,10 +56,16 @@ export async function fileLink(fileId: string): Promise<ClientResult> {
   const { db } = await requireAccount("/portal");
   const { data: f } = await db
     .from("project_files")
-    .select("source, url, r2_key, label")
+    .select("project_id, source, url, r2_key, label, direction")
     .eq("id", fileId)
     .maybeSingle();
   if (!f) return { ok: false, error: "That file isn’t available any more." };
+  // Deliveries stay locked until the booking is paid in full (payment terms, 24 Oct 2026).
+  if (f.direction === "out") {
+    const { data: pay } = await db.rpc("my_project_payment", { p_project: f.project_id });
+    if ((pay as { locked?: boolean } | null)?.locked)
+      return { ok: false, error: "Downloads unlock once the booking is paid in full." };
+  }
   if (f.source === "link") return { ok: true, url: f.url };
   if (!r2Ready())
     return { ok: false, error: "Downloads aren’t set up yet. WhatsApp us for the files." };
@@ -133,15 +149,31 @@ export type NewProject = {
   links?: { label: string; url: string }[];
   /** Avatar videos: the approved character(s) presenting it (17 Oct 2026). */
   characters?: string[];
+  /** "I agree to the Booking Terms" (required, 24 Oct 2026). */
+  termsAccepted?: boolean;
+};
+
+/** Edit types → their rate card key (per item). */
+const EDIT_RATE: Record<string, string> = {
+  short_form: "reel",
+  long_form: "long_form",
+  hdr_photos: "photo",
 };
 
 /** Start a batch or avatar brief; emails the client's "received" and tells Milkywayy. */
-export async function createProject(
-  input: NewProject,
-): Promise<ClientResult & { id?: string; ref?: string }> {
+export async function createProject(input: NewProject): Promise<
+  ClientResult & {
+    id?: string;
+    ref?: string;
+    payUrl?: string | null;
+    invoice?: { number: string | null; amount: number; currency: string } | null;
+  }
+> {
   const { db, user, current } = await requireAccount("/portal");
   if (!can(current, AREA_OF[input.type]))
     return { ok: false, error: "Your access doesn’t include this. Ask the account owner." };
+  if (!input.termsAccepted)
+    return { ok: false, error: "Tick “I agree to the Booking Terms” first." };
   const a0 = input.type === "avatar" ? input.avatar : undefined;
   // Short form is up to 30 seconds (the price list's unit); long form is whole minutes.
   const av = a0 && {
@@ -219,7 +251,41 @@ export async function createProject(
       p_label: l.label.trim() || "Raw files",
       p_url: l.url.trim(),
     });
+  const { error: te } = await db.rpc("accept_booking_terms", {
+    p_project: out.id,
+    p_version: BOOKING_TERMS_VERSION,
+  });
+  if (te) console.error("[portal] accept_booking_terms:", te.message);
   const origin = originFrom(await headers());
+  // What's due now by the client's term: the estimate from their own rates (price access only).
+  const { data: opts } = await db.rpc("my_booking_options", { p_account: current.account.id });
+  const rates = (opts as { rates: Rates | null } | null)?.rates ?? null;
+  const editRate = input.type === "edit" ? rates?.[EDIT_RATE[input.kind] ?? ""] : null;
+  const est =
+    input.type === "avatar" && av
+      ? avatarEstimate(av.format, av.length, rates)
+      : editRate != null && input.quantity
+        ? Math.round(Number(editRate) * input.quantity * 100) / 100
+        : null;
+  const pay = est
+    ? await afterBooking({
+        rpc: portalAdminAs(`client:${user.email ?? user.id}`),
+        projectId: out.id,
+        ref: out.ref,
+        type: input.type,
+        lines: [
+          {
+            description: `${title} · ${avLabel || briefKindLabel(input.type as ProjectType, kind)}`,
+            qty: input.type === "edit" ? input.quantity || 1 : 1,
+            unit_price: input.type === "edit" ? Number(editRate) : est,
+          },
+        ],
+        estimate: est,
+        email: user.email,
+        origin,
+        actor: `client:${user.email ?? user.id}`,
+      })
+    : { invoice: null, payUrl: null };
   await notifyClients(
     out.id,
     input.type === "avatar" ? "avatar_received" : "batch_received",
@@ -257,7 +323,16 @@ export async function createProject(
     .eq("user_id", user.id)
     .eq("kind", input.type);
   revalidatePath("/portal", "layout");
-  return { ok: true, id: out.id, ref: out.ref, notice: "Received." };
+  return {
+    ok: true,
+    id: out.id,
+    ref: out.ref,
+    notice: "Received.",
+    payUrl: pay.payUrl,
+    invoice: pay.invoice
+      ? { number: pay.invoice.number, amount: pay.invoice.amount, currency: pay.invoice.currency }
+      : null,
+  };
 }
 
 /**

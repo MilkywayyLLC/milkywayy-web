@@ -21,7 +21,14 @@ if (!bypass) throw new Error("VERCEL_AUTOMATION_BYPASS_SECRET is missing from .e
 if (!/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin))
   throw new Error("Pass the preview's https://…vercel.app address");
 
-const EVENTS = ["checkout.session.completed", "checkout.session.async_payment_succeeded"];
+const EVENTS = [
+  "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+  // Refunds on cancellations (payment terms, 24 Oct 2026).
+  "refund.created",
+  "refund.updated",
+  "refund.failed",
+];
 const url = `${origin}/api/stripe/webhook?x-vercel-protection-bypass=${encodeURIComponent(bypass)}`;
 const shown = `${origin}/api/stripe/webhook?x-vercel-protection-bypass=<hidden>`;
 

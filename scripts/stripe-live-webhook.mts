@@ -17,7 +17,14 @@
 import { spawnSync } from "node:child_process";
 
 const URL_ = "https://milkywayy.com/api/stripe/webhook";
-const EVENTS = ["checkout.session.completed", "checkout.session.async_payment_succeeded"];
+const EVENTS = [
+  "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+  // Refunds on cancellations (payment terms, 24 Oct 2026).
+  "refund.created",
+  "refund.updated",
+  "refund.failed",
+];
 const key = process.env.STRIPE_LIVE_SECRET_KEY ?? "";
 
 if (!process.argv.includes("--confirm")) {

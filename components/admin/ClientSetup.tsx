@@ -302,15 +302,25 @@ const nextMonth = () => {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
 };
 
+export type PackageValue = {
+  allowance: number | null;
+  half_day_cap: number | null;
+  /** Templates' allowance and cap, by template id. */
+  templates: Record<string, { allowance: number | null; half_day_cap: number | null }>;
+};
+
 export function PlanBlock({
   account,
   data,
   showBudgetSet,
+  value,
 }: {
   account: string;
   data: ClientSetupData;
   /** The "Show budget" switch as set (kept when switching to pay as you go). */
   showBudgetSet: boolean | null;
+  /** The value model (owner, 24 Oct 2026): monthly allowance + half-day cap. */
+  value?: PackageValue;
 }) {
   const router = useRouter();
   const p = data.plan;
@@ -326,6 +336,13 @@ export function PlanBlock({
     p.inclusions.map((i) => ({ key: i.key, label: i.label, qty: String(Number(i.qty)) })),
   );
   const [payg, setPaygInv] = useState(data.payg_invoicing);
+  const [allowance, setAllowance] = useState(
+    value?.allowance != null ? String(Number(value.allowance)) : "",
+  );
+  // Shoot days in full days (owner, 24 Oct 2026); stored as half-days.
+  const [cap, setCap] = useState(
+    value?.half_day_cap != null ? String(Number(value.half_day_cap) / 2) : "",
+  );
   const [r, setR] = useState<SetupResult>();
   const [pending, start] = useTransition();
 
@@ -343,6 +360,9 @@ export function PlanBlock({
     if (!t) return;
     setName(t.name);
     setAmount(String(Number(t.price)));
+    const tv = value?.templates[id];
+    setAllowance(String(Number(tv?.allowance ?? t.price)));
+    setCap(tv?.half_day_cap != null ? String(Number(tv.half_day_cap) / 2) : "");
     setInc(
       t.inclusions
         .filter((i) => options.some((o) => o.key === i.key))
@@ -373,6 +393,8 @@ export function PlanBlock({
                   inclusions: inc
                     .filter((i) => i.key)
                     .map((i) => ({ key: i.key, label: labelOf(i.key), qty: Number(i.qty) })),
+                  allowance: allowance.trim() === "" ? null : Number(allowance),
+                  half_day_cap: cap.trim() === "" ? null : Math.round(Number(cap) * 2),
                 });
           setR(res);
           if (res.ok) router.refresh();
@@ -511,86 +533,54 @@ export function PlanBlock({
             first month (price and inclusions by days).
           </span>
 
-          <div className="ad-scroll">
-            <table className="ad-table" aria-label="Inclusions per month">
-              <thead>
-                <tr>
-                  <th>Included each month</th>
-                  <th>Quantity</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {inc.map((i, n) => (
-                  <tr key={n} data-testid="inclusion">
-                    <td>
-                      <select
-                        aria-label={`Inclusion ${n + 1}: service`}
-                        value={i.key}
-                        onChange={(e) =>
-                          setInc((l) =>
-                            l.map((x, j) =>
-                              j === n
-                                ? { ...x, key: e.target.value, label: labelOf(e.target.value) }
-                                : x,
-                            ),
-                          )
-                        }
-                      >
-                        <option value="">Choose…</option>
-                        {options.map((o) => (
-                          <option
-                            key={o.key}
-                            value={o.key}
-                            disabled={inc.some((x, j) => j !== n && x.key === o.key)}
-                          >
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <input
-                        aria-label={`Inclusion ${n + 1}: quantity per month`}
-                        type="number"
-                        min={1}
-                        step={1}
-                        value={i.qty}
-                        style={{ width: 90 }}
-                        onChange={(e) =>
-                          setInc((l) =>
-                            l.map((x, j) => (j === n ? { ...x, qty: e.target.value } : x)),
-                          )
-                        }
-                      />
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="ad-btn ghost small"
-                        onClick={() => setInc((l) => l.filter((_, j) => j !== n))}
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="ad-btns">
-            <button
-              type="button"
-              className="ad-btn ghost small"
-              onClick={() => setInc((l) => [...l, { key: "", label: "", qty: "1" }])}
-            >
-              Add inclusion
-            </button>
+          <div className="ad-grid2" data-testid="package-value">
+            <div className="ad-field">
+              <label htmlFor="plan-allowance">Monthly allowance ({data.currency})</label>
+              <input
+                id="plan-allowance"
+                inputMode="decimal"
+                value={allowance}
+                placeholder={amount || "10000"}
+                onChange={(e) => setAllowance(e.target.value)}
+              />
+              <span className="ad-help">
+                Value of work included each month at this client’s prices.
+              </span>
+            </div>
+            <div className="ad-field">
+              <label htmlFor="plan-cap">Shoot days (full days)</label>
+              <input
+                id="plan-cap"
+                type="number"
+                min={0}
+                step={0.5}
+                value={cap}
+                placeholder="4"
+                onChange={(e) => setCap(e.target.value)}
+              />
+              <span className="ad-help">Content-shoot time per month. A half day is 0.5.</span>
+            </div>
           </div>
           <span className="ad-small ad-muted">
-            Each logged item is Included while this month has that service left, then an Extra at
-            this client’s price. Month-end invoice: package + extras.
+            Content shoots: fixed quantity = quantity × price; by the day = the larger of that and
+            the half/full-day rate. Property shoots count their price, not shoot days. Used up when
+            either the allowance or the shoot days run out; the rest is an extra on the month-end
+            invoice.
           </span>
+          {inc.length > 0 && (
+            <details>
+              <summary className="ad-small ad-muted">
+                Old inclusions ({inc.length}), kept for reference
+              </summary>
+              <ul className="ad-small">
+                {inc.map((i, n) => (
+                  <li key={n}>
+                    {Number(i.qty)} × {labelOf(i.key)}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </>
       )}
 

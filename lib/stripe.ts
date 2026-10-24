@@ -119,3 +119,47 @@ export function verifyWebhook(
 /** For tests: a valid signature header for a payload. */
 export const signWebhook = (payload: string, secret: string, t = Math.floor(Date.now() / 1000)) =>
   `t=${t},v1=${createHmac("sha256", secret).update(`${t}.${payload}`).digest("hex")}`;
+
+/**
+ * Refund (part of) a Checkout payment (owner, 24 Oct 2026): the session's payment intent, the amount in
+ * the minor unit, and our refund id in the metadata so the webhook can match it. One refund per id.
+ */
+export async function refundCheckout(o: {
+  sessionId: string;
+  amount: number;
+  refundId: string;
+  /** A retry after a failure needs a fresh idempotency key (Stripe replays the failure otherwise). */
+  attempt?: string;
+}) {
+  const key = stripeKey();
+  if (!key) throw new Error("Stripe isn't set up here");
+  const auth = { Authorization: `Bearer ${key}` };
+  const s = await fetch(`${API}/checkout/sessions/${encodeURIComponent(o.sessionId)}`, {
+    headers: auth,
+  });
+  const session = (await s.json()) as {
+    payment_intent?: string | null;
+    error?: { message?: string };
+  };
+  if (!s.ok || !session.payment_intent)
+    throw new Error(
+      `Stripe ${s.status}: ${session.error?.message ?? "no payment for that session"}`,
+    );
+  const r = await fetch(`${API}/refunds`, {
+    method: "POST",
+    headers: {
+      ...auth,
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Idempotency-Key": `refund-${o.refundId}${o.attempt ? `-${o.attempt}` : ""}`,
+    },
+    body: form({
+      payment_intent: session.payment_intent,
+      amount: minor(o.amount),
+      metadata: { refund_id: o.refundId },
+    }).join("&"),
+  });
+  const out = (await r.json()) as { id?: string; status?: string; error?: { message?: string } };
+  if (!r.ok || !out.id)
+    throw new Error(`Stripe ${r.status}: ${out.error?.message ?? "refund refused"}`);
+  return { id: out.id, status: out.status ?? "pending" };
+}

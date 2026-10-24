@@ -10,6 +10,7 @@ import { requireAccount } from "./auth";
 import { money } from "./billing";
 import { originFrom } from "./invite";
 import { alertMilkywayyBilling } from "./notify";
+import { pagePath } from "./payment-server";
 
 type Result = { ok: boolean; url?: string; key?: string; error?: string; notice?: string };
 
@@ -38,11 +39,18 @@ export async function payInvoice(id: string): Promise<Result> {
     currency: string;
     unpaid: boolean;
     pay_online: boolean;
+    stage: string | null;
+    project_id: string | null;
   };
   if (!inv.unpaid) return { ok: false, error: "That invoice is already paid." };
   if (!inv.pay_online) return { ok: false, error: "This invoice is paid by bank transfer." };
   if (!stripeReady()) return { ok: false, error: "Card payments aren’t set up yet. WhatsApp us." };
   const origin = originFrom(await headers());
+  // A booking invoice comes back to its project page (paid = confirmed).
+  const { data: proj } = inv.project_id
+    ? await db.from("projects").select("ref, type").eq("id", inv.project_id).maybeSingle()
+    : { data: null };
+  const back = proj ? pagePath(origin, proj.type, proj.ref) : null;
   try {
     const s = await createCheckout({
       invoiceId: inv.id,
@@ -50,8 +58,10 @@ export async function payInvoice(id: string): Promise<Result> {
       amount: inv.amount,
       currency: inv.currency,
       email: user.email,
-      successUrl: `${origin}/portal/billing?paid=${encodeURIComponent(inv.number)}`,
-      cancelUrl: `${origin}/portal/billing`,
+      successUrl: back
+        ? `${back}?paid=1`
+        : `${origin}/portal/billing?paid=${encodeURIComponent(inv.number)}`,
+      cancelUrl: back ? `${back}?pay=1` : `${origin}/portal/billing`,
     });
     await portalAdminAs(`client:${user.email ?? user.id}`)("portal_admin_set_stripe_session", {
       p_invoice: inv.id,

@@ -138,15 +138,19 @@ function PhotoRevision({ f, fallback }: { f: DFile; fallback: string | null }) {
  * (grid, lightbox, download each, "Download all" zipped in the browser, a revision on any photo),
  * Reels (inline player, download each, all), Long-form (download, or open the link) and the 360
  * tour (preview and copy the link).
+ * Locked (payment terms, 24 Oct 2026): watermarked low-res photo previews and the web copy of the videos,
+ * no downloads, no links, until the booking is paid in full.
  */
 export function ShootDeliveries({
   files,
   title,
   photosDeliverable,
+  locked = false,
 }: {
   files: DFile[];
   title: string;
   photosDeliverable: string | null;
+  locked?: boolean;
 }) {
   const [viewing, setViewing] = useState<number | null>(null);
   const grid = useRef<HTMLUListElement>(null);
@@ -154,7 +158,12 @@ export function ShootDeliveries({
   const photos = files.filter((f) => f.kind === "photos" && (f.view || f.download));
   const reels = files.filter((f) => f.kind === "reel");
   const longs = files.filter((f) => f.kind === "long_form");
-  const tours = files.filter((f) => f.kind === "tour" && f.link);
+  const tours = files.filter((f) => f.kind === "tour" && (f.link || locked));
+  const lockNote = locked ? (
+    <p className="pt-meta pt-lock-note" data-testid="locked-note" style={{ margin: 0 }}>
+      Preview only. Downloads unlock once the booking is paid in full.
+    </p>
+  ) : null;
   if (!photos.length && !reels.length && !longs.length && !tours.length) return null;
 
   return (
@@ -165,6 +174,7 @@ export function ShootDeliveries({
             <h2 className="pt-h2">Photos ({photos.length})</h2>
             <DownloadAll files={photos} name={`${title} photos`} ext="jpg" />
           </div>
+          {lockNote}
           <ul className="pt-thumbs" aria-label="Photos" ref={grid}>
             {photos.map((f, i) => (
               <li key={f.id}>
@@ -204,9 +214,10 @@ export function ShootDeliveries({
             <h2 className="pt-h2">Vertical videos ({reels.length})</h2>
             <DownloadAll files={reels} name={`${title} reels`} ext="mp4" />
           </div>
+          {lockNote}
           <ul className="pt-reels">
             {reels.map((f) => (
-              <li key={f.id}>
+              <li key={f.id} className={locked ? "pt-preview" : undefined}>
                 {f.view ? (
                   <video
                     src={f.view}
@@ -214,6 +225,13 @@ export function ShootDeliveries({
                     playsInline
                     preload="metadata"
                     aria-label={f.label}
+                    {...(locked
+                      ? {
+                          controlsList: "nodownload noremoteplayback",
+                          disablePictureInPicture: true,
+                          onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+                        }
+                      : {})}
                   />
                 ) : null}
                 <div className="pt-thumb-foot">
@@ -245,7 +263,9 @@ export function ShootDeliveries({
           {longs.map((f) => (
             <div key={f.id} className="pt-row">
               <span>{f.label}</span>
-              {f.download ? (
+              {locked ? (
+                <span className="pt-meta">Unlocks when paid</span>
+              ) : f.download ? (
                 <a className="btn btn-g btn-s" href={f.download} download>
                   Download
                 </a>
@@ -270,30 +290,34 @@ export function ShootDeliveries({
           {tours.map((f) => (
             <div key={f.id} className="pt-row" style={{ flexWrap: "wrap" }}>
               <span>{f.label}</span>
-              <span className="pt-btns">
-                <a
-                  className="btn btn-g btn-s"
-                  href={f.link!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Preview ↗
-                </a>
-                <button
-                  type="button"
-                  className="btn btn-g btn-s"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(f.link!);
-                      say("Link copied");
-                    } catch {
-                      say("Couldn’t copy. Long-press the Preview link instead.");
-                    }
-                  }}
-                >
-                  Copy link
-                </button>
-              </span>
+              {locked || !f.link ? (
+                <span className="pt-meta">Unlocks when paid</span>
+              ) : (
+                <span className="pt-btns">
+                  <a
+                    className="btn btn-g btn-s"
+                    href={f.link!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Preview ↗
+                  </a>
+                  <button
+                    type="button"
+                    className="btn btn-g btn-s"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(f.link!);
+                        say("Link copied");
+                      } catch {
+                        say("Couldn’t copy. Long-press the Preview link instead.");
+                      }
+                    }}
+                  >
+                    Copy link
+                  </button>
+                </span>
+              )}
             </div>
           ))}
         </section>

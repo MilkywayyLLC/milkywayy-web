@@ -827,7 +827,8 @@ test("card payments: Pay now for online accounts; a signed Stripe webhook marks 
   const row = page.getByRole("group", { name: `Invoice INV-CARD-${TAG}`, exact: true });
   const pay = row.getByRole("button", { name: `Pay invoice INV-CARD-${TAG} now` });
   await expect(pay).toBeVisible();
-  await expect(row.getByRole("button", { name: /I've paid/ })).toHaveCount(0);
+  // Payment terms (24 Oct 2026): a receipt can be uploaded on every unpaid invoice.
+  await expect(row.getByRole("button", { name: /I've paid/ })).toBeVisible();
   if (!env.STRIPE_SECRET_KEY) {
     await pay.click();
     await expect(row.getByRole("alert")).toContainText("Card payments aren’t set up yet");

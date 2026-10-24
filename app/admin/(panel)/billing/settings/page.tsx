@@ -1,5 +1,6 @@
 import { BillingNav } from "@/components/admin/BillingNav";
 import { BillingSettingsForm } from "@/components/admin/BillingTools";
+import { PaymentSettingsForm, type PaymentSettings } from "@/components/admin/PaymentAdmin";
 import { TurnaroundForm } from "@/components/admin/TurnaroundForm";
 import { portalAdminPage, portalAdminReady } from "@/lib/portal/admin";
 import type { BillingSettings, TurnaroundRow } from "@/lib/portal/admin-billing-actions";
@@ -26,7 +27,10 @@ export default async function BillingSettingsPage() {
       </div>
       <BillingNav current="/admin/billing/settings" />
       {s ? (
-        <BillingSettingsForm s={s} />
+        <>
+          <BillingSettingsForm s={s} />
+          <PaymentSettingsForm s={s as unknown as PaymentSettings} />
+        </>
       ) : (
         <p className="ad-note warn">PORTAL_ADMIN_SECRET isn’t set for this deployment.</p>
       )}
@@ -39,8 +43,10 @@ export default async function BillingSettingsPage() {
             : "Not set up here: add STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET (test keys on previews)."}
         </span>
         <span className="ad-small ad-muted">
-          Webhook endpoint: /api/stripe/webhook, events checkout.session.completed and
-          checkout.session.async_payment_succeeded. Paid invoices email “Payment received”.
+          Webhook endpoint: /api/stripe/webhook, events checkout.session.completed,
+          checkout.session.async_payment_succeeded and refund.created / refund.updated /
+          refund.failed. Paid invoices email “Payment received”; a paid booking invoice confirms the
+          booking.
         </span>
       </section>
     </div>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import "@/app/styles/portal.css";
 import {
   BillingSwitches,
   BudgetPanel,
@@ -11,6 +12,8 @@ import {
   ServicesBlock,
   type ClientSetupData,
 } from "@/components/admin/ClientSetup";
+import { PaymentTermsBlock, type ClientPayments } from "@/components/admin/PaymentAdmin";
+import { ValuePackageCard, type ValueMonth } from "@/components/portal/PaymentParts";
 import { getPropertyPricing } from "@/lib/data";
 import { notFound } from "next/navigation";
 import {
@@ -56,17 +59,21 @@ export default async function ClientPage({ params, searchParams }: Props) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const rpc = await portalAdminPage();
-  const [c, billing, invoices, openInvites, history, setup, pricing] = await Promise.all([
-    rpc<ClientDetail | null>("portal_admin_client", { p_id: id, p_view_as: false }),
-    rpc<ClientBilling>("portal_admin_client_billing", { p_account: id }),
-    rpc<InvoiceRowData[]>("portal_admin_invoices", { p_account: id }),
-    rpc<{ id: string; last_sent_at: string | null }[]>("portal_admin_open_invites", {
-      p_account: id,
-    }),
-    rpc<BillingHistory>("portal_admin_billing_history", { p_account: id }),
-    rpc<ClientSetupData | null>("portal_admin_client_setup", { p_account: id }),
-    getPropertyPricing(),
-  ]);
+  const [c, billing, invoices, openInvites, history, setup, pricing, payments, valueMonth] =
+    await Promise.all([
+      rpc<ClientDetail | null>("portal_admin_client", { p_id: id, p_view_as: false }),
+      rpc<ClientBilling>("portal_admin_client_billing", { p_account: id }),
+      rpc<InvoiceRowData[]>("portal_admin_invoices", { p_account: id }),
+      rpc<{ id: string; last_sent_at: string | null }[]>("portal_admin_open_invites", {
+        p_account: id,
+      }),
+      rpc<BillingHistory>("portal_admin_billing_history", { p_account: id }),
+      rpc<ClientSetupData | null>("portal_admin_client_setup", { p_account: id }),
+      getPropertyPricing(),
+      // Payment terms and the value package (owner, 24 Oct 2026).
+      rpc<ClientPayments>("portal_admin_client_payments", { p_account: id }),
+      rpc<ValueMonth | null>("portal_admin_value_month", { p_account: id }),
+    ]);
   const sentAt = new Map(openInvites.map((i) => [i.id, i.last_sent_at]));
   if (!c || !setup) notFound();
   const a = c.account;
@@ -115,7 +122,23 @@ export default async function ClientPage({ params, searchParams }: Props) {
 
       <ServicesBlock account={a.id} s={setup.services} />
       <PriceList account={a.id} data={setup} pricing={pricing} />
-      <PlanBlock account={a.id} data={setup} showBudgetSet={history.show_budget_set} />
+      <PaymentTermsBlock account={a.id} data={payments} />
+      <PlanBlock
+        account={a.id}
+        data={setup}
+        showBudgetSet={history.show_budget_set}
+        value={{
+          allowance: payments.package?.allowance ?? null,
+          half_day_cap: payments.package?.half_day_cap ?? null,
+          templates: payments.templates,
+        }}
+      />
+      {/* The same card the client sees on Billing (portal styles), with the money. */}
+      {valueMonth && (
+        <div className="pt" data-tone="light" style={{ background: "transparent" }}>
+          <ValuePackageCard v={valueMonth} admin />
+        </div>
+      )}
 
       <div className="ad-grid2">
         <section className="ad-card" aria-label="Details">

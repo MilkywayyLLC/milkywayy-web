@@ -20,6 +20,7 @@ import {
 import { DEFAULT_COUNTRY, toE164 } from "@/lib/phone";
 import { COUNTRIES } from "@/lib/phone/countries";
 import { portalAdminAction } from "./admin";
+import { emailIssuedInvoices } from "./admin-payment-actions";
 import { originFrom } from "./invite";
 import { projectLink, type MessageEvent, type ProjectInfo } from "./messages";
 import { notifyClients, type Recipient } from "./notify";
@@ -125,11 +126,18 @@ export async function setStatus(
       },
     );
     const emailed = await sendFor(id, out, !!o.notify);
+    // Delivered on 50% terms: the balance invoice goes out with its email.
+    const invoiced = status === "delivered" ? await emailIssuedInvoices(id) : 0;
     return done(id, {
       ok: true,
       event: out.event,
       emailed,
-      notice: emailed ? `Saved. Emailed ${emailed}.` : "Saved.",
+      notice: [
+        emailed ? `Saved. Emailed ${emailed}.` : "Saved.",
+        invoiced ? "Balance invoice sent." : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
     });
   } catch (e) {
     return fail(e);
@@ -316,11 +324,12 @@ export async function publishDelivery(
       },
     );
     const emailed = await sendFor(id, out, notify);
+    const invoiced = await emailIssuedInvoices(id);
     return done(id, {
       ok: true,
       event: out.event,
       emailed,
-      notice: `${out.label} published${emailed ? `, emailed ${emailed}` : ""}.`,
+      notice: `${out.label} published${emailed ? `, emailed ${emailed}` : ""}${invoiced ? ", balance invoice sent" : ""}.`,
     });
   } catch (e) {
     return fail(e);

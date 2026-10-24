@@ -36,6 +36,15 @@ test.beforeAll(async () => {
   const a = await clientAccount(RUN, "a", "Acme Edits");
   A = a.db;
   account = a.account;
+  // Services are per client (17 Oct 2026): this test account didn't tick any at sign-up.
+  await must(
+    adminRpc("portal_admin_set_services", {
+      p_account: account,
+      p_production: true,
+      p_post: true,
+      p_avatars: true,
+    }),
+  );
   const m = await createUser(RUN, "m");
   await must(A.from("account_invites").insert({ account_id: account, email: m, name: "Mo" }));
   M = await signedIn(m);

@@ -4,8 +4,9 @@
  */
 export type InvoiceStatus = "due" | "paid" | "overdue";
 /** Drafts and approved invoices are Milkywayy's only; clients see published ones (owner, 10 Oct 2026). */
-export type QueueStatus = "draft" | "approved" | InvoiceStatus;
-export type InvoiceCategory = "budget" | "fixed" | "payg" | "property" | "one_off" | "manual";
+export type QueueStatus = "draft" | "approved" | InvoiceStatus | "void";
+export type InvoiceCategory =
+  "budget" | "fixed" | "payg" | "property" | "one_off" | "manual" | "booking";
 export type InvoiceLine = {
   description: string;
   qty: number;
@@ -40,6 +41,10 @@ export type Invoice = {
   category?: InvoiceCategory | null;
   period_start?: string | null;
   pdf_source?: "generated" | "ledger";
+  /** Booking invoices (payment terms, 24 Oct 2026). */
+  stage?: "full" | "deposit" | "balance" | "fee" | null;
+  project_id?: string | null;
+  refunded?: number;
 };
 
 export type Inclusion = { key: string; label: string; qty: number };
@@ -233,6 +238,7 @@ export const QUEUE_STATUS_LABEL: Record<QueueStatus, string> = {
   due: "Published",
   paid: "Paid",
   overdue: "Overdue",
+  void: "Cancelled",
 };
 export const CATEGORY_LABEL: Record<InvoiceCategory, string> = {
   budget: "Budget package",
@@ -241,6 +247,7 @@ export const CATEGORY_LABEL: Record<InvoiceCategory, string> = {
   property: "Property shoot",
   one_off: "One-off",
   manual: "Manual",
+  booking: "Booking",
 };
 
 /**

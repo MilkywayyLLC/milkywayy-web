@@ -14,6 +14,7 @@ import { EDIT_KINDS, TYPE_PATH } from "@/lib/portal/projects";
 import type { RequestConfig } from "@/lib/portal/requests";
 import { money } from "@/lib/portal/billing";
 import { BookStep, ServiceCard, ThankYou } from "./BookFrame";
+import { confirmText, DueNow, TermsCheck } from "./BookingTerms";
 import { PriceBlock } from "./PriceBlock";
 import {
   DraftOffer,
@@ -136,6 +137,9 @@ export function ProjectRequestModal({
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [made, setMade] = useState<{ ref: string; failed: boolean }>();
+  // Booking Terms (owner, 24 Oct 2026): required on every new request.
+  const [agreed, setAgreed] = useState(false);
+  const [termsErr, setTermsErr] = useState("");
   const { rows, busy, upload } = useClientUploads();
   const set = (patch: Partial<Snap>) => {
     setTouched(true);
@@ -167,6 +171,14 @@ export function ProjectRequestModal({
   const fmt = s.format ? AVATAR_FORMATS[s.format] : null;
   const length = fmt ? fmt.stops[Math.min(s.stop, fmt.stops.length - 1)] : 0;
   const est = s.format ? avatarEstimate(s.format, length, cfg.price.rates) : null;
+  // What's due now (payment terms): the avatar estimate, or an edit's rate × quantity.
+  const editRate = !avatar ? KIND_CARD[s.kind as (typeof KIND_ORDER)[number]]?.rate : undefined;
+  const reqEst = avatar
+    ? est
+    : editRate && cfg.price.rates?.[editRate] != null && Number(s.quantity) > 0
+      ? Number(cfg.price.rates[editRate]) * Number(s.quantity)
+      : null;
+  const sendLabel = edit ? null : confirmText(cfg.terms, reqEst, cfg.card, cfg.price.currency);
 
   const form = useFormCheck(() => ({
     kind: !avatar && !s.kind && "Choose the type of edit.",
@@ -199,6 +211,10 @@ export function ProjectRequestModal({
 
   async function submit() {
     if (!form.check()) return;
+    if (!edit && !agreed) {
+      setTermsErr("Tick the box to agree to the Booking Terms.");
+      return;
+    }
     setSaving(true);
     if (edit) {
       const r = await updateAvatarBrief(edit.projectId, {
@@ -235,6 +251,7 @@ export function ProjectRequestModal({
       characters: avatar
         ? (s.presenters ?? []).filter((id) => characters.some((c) => c.id === id))
         : undefined,
+      termsAccepted: agreed,
     });
     if (!r.ok) {
       setSaving(false);
@@ -242,6 +259,8 @@ export function ProjectRequestModal({
     }
     let failed = false;
     if (s.mode === "upload" && files.length) failed = (await upload(r.id!, files)) < files.length;
+    // 50% / 100% with card payments on: to Stripe once the files are up.
+    if (r.payUrl && !failed) return window.location.assign(r.payUrl);
     setMade({ ref: r.ref!, failed });
     setSaving(false);
   }
@@ -350,9 +369,11 @@ export function ProjectRequestModal({
             ? "Sending…"
             : edit
               ? "Save changes"
-              : avatar
-                ? "Send brief"
-                : "Send request"}
+              : sendLabel?.startsWith("Pay")
+                ? sendLabel
+                : avatar
+                  ? "Send brief"
+                  : "Send request"}
       </button>
     </>
   );
@@ -667,6 +688,19 @@ export function ProjectRequestModal({
       )}
       <UploadRows rows={rows} />
       {ta && avatar && <span className="pt-turnaround">Usual turnaround: {ta}</span>}
+      {!edit && (
+        <>
+          <DueNow terms={cfg.terms} estimate={reqEst} currency={cfg.price.currency} />
+          <TermsCheck
+            checked={agreed}
+            onChange={(x) => {
+              setAgreed(x);
+              if (x) setTermsErr("");
+            }}
+            error={termsErr}
+          />
+        </>
+      )}
     </>
   );
 
@@ -692,7 +726,13 @@ export function ProjectRequestModal({
             : undefined
         }
         primary={{
-          label: busy ? "Uploading…" : saving ? "Sending…" : "Send request",
+          label: busy
+            ? "Uploading…"
+            : saving
+              ? "Sending…"
+              : sendLabel?.startsWith("Pay")
+                ? sendLabel
+                : "Send request",
           onClick: () => void submit(),
           disabled: saving || busy,
         }}

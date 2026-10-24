@@ -16,6 +16,14 @@ import {
   FilesInList,
 } from "@/components/portal/ProjectParts";
 import { AvatarRequestActions } from "@/components/portal/AvatarRequest";
+import {
+  ProjectPaymentCard,
+  type BillingPayments,
+  type MyProjectPayment,
+} from "@/components/portal/PaymentParts";
+import { ProjectCancel } from "@/components/portal/ShootChanges";
+import { seesMoney } from "@/lib/portal/shell";
+import { stripeReady } from "@/lib/stripe";
 import { AskAbout, ScriptReview } from "@/components/portal/ScriptReview";
 import { DraftsRow, StartRequests } from "@/components/portal/StartRequests";
 import { Back, Badge, Stepper } from "@/components/portal/ui";
@@ -296,11 +304,14 @@ export async function ProjectDetail({
   type,
   projectRef,
   open: openAction,
+  banner,
 }: {
   type: Kind;
   projectRef: string;
   /** Avatar videos: ?edit=1 or ?revise=1 from a card opens that modal. */
   open?: "edit" | "revise";
+  /** Back from Stripe: ?paid=1 or ?pay=1. */
+  banner?: "paid" | "pay" | null;
 }) {
   const base = TYPE_PATH[type];
   const c = COPY[type];
@@ -335,6 +346,15 @@ export async function ProjectDetail({
         : Promise.resolve({ data: [] }),
     ]);
   const all = (files ?? []) as ProjectFile[];
+  // Payment terms (owner, 24 Oct 2026): unpaid booking invoices lock the downloads.
+  const [{ data: payData }, { data: bp }] = await Promise.all([
+    db.rpc("my_project_payment", { p_project: p.id }),
+    seesMoney(current)
+      ? db.rpc("my_billing_payments", { p_account: current.account.id })
+      : Promise.resolve({ data: null }),
+  ]);
+  const pay = payData as MyProjectPayment | null;
+  const locked = !!pay?.locked;
   // Avatar videos: what Edit request / Request a revision need.
   const [cfg, characters, { data: pc }] =
     type === "avatar"
@@ -369,9 +389,7 @@ export async function ProjectDetail({
               .filter(Boolean)
               .join(" · ")}
           </span>
-          <h1 className="pt-h1">
-            {p.title}
-          </h1>
+          <h1 className="pt-h1">{p.title}</h1>
         </div>
         <Badge tone={tone(p)}>{clientStatus(p)}</Badge>
       </div>
@@ -419,17 +437,29 @@ export async function ProjectDetail({
         />
       )}
 
+      {pay && (
+        <ProjectPaymentCard
+          pay={pay}
+          card={stripeReady()}
+          billing={bp as BillingPayments | null}
+          banner={banner}
+        />
+      )}
+      {can(current, AREA_OF[type]) &&
+        ["submitted", "files_received", "brief_received"].includes(p.status) && (
+          <ProjectCancel projectId={p.id} projectRef={p.ref} noun={c.noun} />
+        )}
       <ApprovalNote p={p} />
       <ProjectActions
         projectId={p.id}
-        zipId={zip?.id ?? null}
+        zipId={locked ? null : (zip?.id ?? null)}
         {...actionsFor(p)}
         // Avatar videos ask for revisions (with images) from Request a revision above.
         {...(type === "avatar" ? { canRevise: false } : {})}
         hasDelivery={!!latest}
         noun={c.noun}
       />
-      <DeliveryList files={all} />
+      <DeliveryList files={all} locked={locked} />
       {!latest && (
         <p className="pt-meta" style={{ margin: 0 }}>
           Nothing delivered yet.
