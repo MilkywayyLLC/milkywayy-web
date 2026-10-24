@@ -146,6 +146,8 @@ type Snap = {
   flex?: boolean;
   cv?: Counts;
   day?: "half" | "full";
+  fday?: "half" | "full";
+  rough?: string;
   startTime?: string;
   date: string;
   slot: Slot | "";
@@ -171,9 +173,9 @@ const fmtFrom = (t: string | undefined): Formats => {
 /**
  * Book a shoot on the Book media page (owner, 10 Oct 2026; page, 18 Oct 2026). Property shoot:
  * type and size, then Photography (+ Twilight images), a 360° virtual tour and Video (short-form
- * and long-form counters), any combination. Content shoot: Edited (a fixed
- * count, or flexible: the half-day minimum) or Raw files (half or full day, chosen on When &
- * where), short-form and/or long-form, and a brief.
+ * and long-form counters), any combination. Content shoot, one screen: Edited (a fixed
+ * count, or flexible: Half or Full day) or Raw files (Half or Full day), short-form and/or
+ * long-form, an optional rough count, and a brief.
  * Then When & where and the Summary; Confirm makes a Requested shoot, Milkywayy is emailed and
  * confirms it. Autosaves as a draft.
  */
@@ -223,7 +225,7 @@ export function BookingFlow({
     !v0 || p0
       ? { short: false, long: false }
       : v0.by === "time"
-        ? fmtFrom(v0.approx)
+        ? fmtFrom(v0.approx?.split(" · ")[0])
         : { short: !!v0.short, long: !!v0.long },
   );
   const [edited, setEdited] = useState(!(v0?.by === "time" && v0.raw && !p0));
@@ -238,10 +240,14 @@ export function BookingFlow({
   const [startTime, setStartTime] = useState(edit?.startTime ?? "");
   const [loc, setLoc] = useState<BookingLocation>(edit?.location ?? { address: "" });
   const [note, setNote] = useState(n0.note);
-  // Flexible edited is always the half-day minimum (owner, 19 Oct 2026); an older full-day
-  // flexible booking keeps its day when edited.
-  const flexDay: "half" | "full" =
-    v0?.by === "time" && !v0.raw && !p0 ? (v0.day ?? "half") : "half";
+  // Flexible edited: Half day or Full day, chosen on the content screen (owner, 24 Oct 2026).
+  const [fday, setFday] = useState<"half" | "full">(
+    v0?.by === "time" && !v0.raw && !p0 && v0.day === "full" ? "full" : "half",
+  );
+  // The optional "roughly how many" text rides after the formats in the plan's approx text.
+  const [rough, setRough] = useState(
+    !p0 && v0?.by === "time" ? (v0.approx ?? "").split(" · ").slice(1).join(" · ") : "",
+  );
   const [agent, setAgent] = useState(cfg.myContactId ?? "");
   const [touched, setTouched] = useState(false);
   const [done, setDone] = useState<string | null>(null);
@@ -271,14 +277,15 @@ export function BookingFlow({
       long: !f || f.long ? c.long : 0,
       extra_min: c.extra_min,
     });
+  const approxText = [fmtText(fmt), rough.trim()].filter(Boolean).join(" · ");
   const plan: VideoPlan | null = isProp
     ? (keepPlan ?? (pVideo ? counted(pv) : null))
     : !anyFmt
       ? null
       : !edited
-        ? cleanVideos({ by: "time", raw: true, day, approx: fmtText(fmt) })
+        ? cleanVideos({ by: "time", raw: true, day, approx: approxText })
         : flex
-          ? cleanVideos({ by: "time", day: flexDay, approx: fmtText(fmt) })
+          ? cleanVideos({ by: "time", day: fday, approx: approxText })
           : counted(cv, fmt);
   const services: BookingService[] = [
     ...(isProp && propOk
@@ -324,6 +331,8 @@ export function BookingFlow({
     flex,
     cv,
     day,
+    fday,
+    rough,
     startTime,
     date,
     slot,
@@ -348,6 +357,8 @@ export function BookingFlow({
     if (d.flex != null) setFlex(d.flex);
     if (d.cv) setCv(d.cv);
     if (d.day) setDay(d.day);
+    if (d.fday) setFday(d.fday);
+    setRough(d.rough ?? "");
     setStartTime(d.startTime ?? "");
     setDate(d.date ?? "");
     setLoc(d.loc ?? { address: "" });
@@ -395,13 +406,12 @@ export function BookingFlow({
   const v = priceView(cfg, lines);
   const { m } = v;
   const pText = propertyText(prop, pricing);
-  const fText = fmtText(fmt);
   const sub: Record<string, string> = {
     [KEY.photos]: pText,
-    [KEY.raw.half]: fText,
-    [KEY.raw.full]: fText,
-    [KEY.min.half]: `${fText} · final total after the shoot`,
-    [KEY.min.full]: `${fText} · final total after the shoot`,
+    [KEY.raw.half]: approxText,
+    [KEY.raw.full]: approxText,
+    [KEY.min.half]: `${approxText} · final total after the shoot`,
+    [KEY.min.full]: `${approxText} · final total after the shoot`,
   };
   const panelLines: PanelLine[] = lines.map((l) => ({
     key: l.key,
@@ -668,6 +678,8 @@ export function BookingFlow({
   /* ---------- step 1: content shoot ---------- */
   const setC = touch((patch: Partial<Counts>) => setCv((x) => ({ ...x, ...patch })));
   const fixed = edited && !flex;
+  const dayNow = edited ? fday : day;
+  const dayRate = (d: "half" | "full") => rate(edited ? KEY.min[d] : KEY.raw[d]);
   const CARD = {
     short: {
       title: "Short-form",
@@ -717,6 +729,29 @@ export function BookingFlow({
           />
         </div>
       )}
+      {!fixed && (
+        <div className="bkp-group">
+          <span className="bkp-muted">Length</span>
+          <Seg
+            label="Length"
+            value={dayNow}
+            options={(["half", "full"] as const).map((d) => [
+              d,
+              <span key={d} className="bkp-seg-2">
+                {DAY_LABEL[d]}
+                {v.rates && dayRate(d) != null && (
+                  <span className="bkp-muted">
+                    {edited ? "from " : ""}
+                    {m(dayRate(d)!)}
+                  </span>
+                )}
+              </span>,
+            ])}
+            onChange={touch((d: "half" | "full") => (edited ? setFday(d) : setDay(d)))}
+          />
+        </div>
+      )}
+      {!edited && <span className="bkp-muted">What to create</span>}
       <div className="bkp-cards bkp-cards-2" data-field="kind">
         {(["short", "long"] as const).map((k) => (
           <ServiceCard
@@ -756,15 +791,26 @@ export function BookingFlow({
             : cfg.price.mode === "package"
               ? "Each finished video draws from your package · final total after the shoot"
               : [
-                  rate(KEY.min[flexDay]) != null && `from ${m(rate(KEY.min[flexDay])!)}`,
+                  rate(KEY.min[fday]) != null && `from ${m(rate(KEY.min[fday])!)}`,
                   "final total after the shoot",
                 ]
                   .filter(Boolean)
                   .join(" · ")}
         </p>
       )}
+      {!fixed && (
+        <label className="pt-field">
+          Roughly how many (optional)
+          <input
+            value={rough}
+            maxLength={120}
+            placeholder="e.g. 6 reels and 1 long-form, or leave blank if flexible"
+            onChange={touch((e: React.ChangeEvent<HTMLInputElement>) => setRough(e.target.value))}
+          />
+        </label>
+      )}
       <label className="pt-field">
-        What do you need?
+        {fixed ? "What do you need?" : "Notes"}
         <textarea
           rows={3}
           maxLength={1500}
@@ -787,10 +833,9 @@ export function BookingFlow({
   );
 
   /* ---------- step 2: when & where ---------- */
-  const rawLen = !isProp && !edited;
   const whenStep = (
     <>
-      <div className={`bkp-when ${rawLen ? "bkp-3col" : "bkp-2col"}`}>
+      <div className="bkp-when bkp-2col">
         <Field name="date" label="Date" required group error={form.errors.date}>
           <DatePicker
             value={date}
@@ -810,24 +855,6 @@ export function BookingFlow({
             onChange={touch((x: string) => setStartTime(x))}
           />
         </Field>
-        {rawLen && (
-          <Field name="day" label="Length" group>
-            <Seg
-              label="Length"
-              value={day}
-              options={(["half", "full"] as const).map((d) => [
-                d,
-                <span key={d} className="bkp-seg-2">
-                  {DAY_LABEL[d]}
-                  {v.rates && rate(KEY.raw[d]) != null && (
-                    <span className="bkp-muted">{m(rate(KEY.raw[d])!)}</span>
-                  )}
-                </span>,
-              ])}
-              onChange={touch((d: "half" | "full") => setDay(d))}
-            />
-          </Field>
-        )}
       </div>
       <PlacesField
         value={loc}

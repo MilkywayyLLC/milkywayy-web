@@ -141,8 +141,8 @@ app only ever reads our own account.
 The portal's "Book a shoot" finds the address with Google Places (UAE only) and shows a map with a
 pin the client can drag. Without a key it falls back to a plain address field, so nothing breaks.
 
-- [ ] **Akash** — Google Cloud console → a project for Milkywayy → **APIs & Services → Library**: enable **Maps JavaScript API** and **Places API (New)**. (Not the old "Places API": new projects can't use it, and the portal doesn't.) Billing must be on for the project; Google's monthly free usage covers a portal this size.
-- [ ] **Akash** — **Credentials → Create credentials → API key**. Restrict it: *Application restrictions* → **Websites**: `https://milkywayy.com/*`, `https://www.milkywayy.com/*`, `https://*.vercel.app/*` (previews; remove after launch if you like) and `http://localhost:3000/*`; *API restrictions* → those two APIs only.
+- [ ] **Akash** — Google Cloud console → a project for Milkywayy → **APIs & Services → Library**: enable **Maps JavaScript API**, **Places API (New)** and **Geocoding API** (the pin's reverse lookup). (Not the old "Places API": new projects can't use it, and the portal doesn't.) Billing must be on for the project; Google's monthly free usage covers a portal this size.
+- [ ] **Akash** — **Credentials → Create credentials → API key**. Restrict it: *Application restrictions* → **Websites**: `https://milkywayy.com/*`, `https://www.milkywayy.com/*`, `https://*.vercel.app/*` (previews; remove after launch if you like) and `http://localhost:3000/*`; *API restrictions* → those three APIs only.
 - [ ] **Akash** — Vercel → Environment Variables → `NEXT_PUBLIC_GOOGLE_MAPS_KEY` for Production and Preview (it's a browser key, protected by the restrictions above, so it isn't "Sensitive"). Redeploy.
 - [ ] Optional — **Map Management → Create Map ID** (JavaScript, vector) and set `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`; until then the map uses Google's demo map style.
 

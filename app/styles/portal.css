@@ -4217,17 +4217,6 @@
     padding-top: var(--bk-3);
     border-top: 1px solid var(--line);
   }
-  @media (min-width: 760px) {
-    .bkp-3col {
-      display: grid;
-      gap: var(--bk-4);
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-  .bkp-3col {
-    display: grid;
-    gap: var(--bk-4);
-  }
   @media (min-width: 1000px) {
     .bkp-phone-only {
       display: none;
