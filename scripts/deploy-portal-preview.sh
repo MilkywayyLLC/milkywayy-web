@@ -23,7 +23,7 @@ if [ -n "$SK" ]; then
   case "$SK" in sk_test_*|rk_test_*) EXTRA+=(--env STRIPE_SECRET_KEY="$SK") ;; *) echo "Skipping STRIPE_SECRET_KEY: previews take test keys only" >&2 ;; esac
 fi
 [ -n "$WH" ] && EXTRA+=(--env STRIPE_WEBHOOK_SECRET="$WH")
-exec npx vercel deploy --yes ${EXTRA[@]+"${EXTRA[@]}"} \
+exec npx vercel deploy --yes --archive=tgz ${EXTRA[@]+"${EXTRA[@]}"} \
   --build-env NEXT_PUBLIC_PORTAL_SUPABASE_URL="$URL" \
   --build-env NEXT_PUBLIC_PORTAL_SUPABASE_ANON_KEY="$KEY" \
   --env NEXT_PUBLIC_PORTAL_SUPABASE_URL="$URL" \

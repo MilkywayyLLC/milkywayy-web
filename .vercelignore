@@ -1,0 +1,8 @@
+# CLI deploys (scripts/deploy-portal-preview.sh): never upload local caches, env files or backups.
+.next
+.next-fallback
+.env*
+backups
+test-results
+playwright-report
+tests/.auth
