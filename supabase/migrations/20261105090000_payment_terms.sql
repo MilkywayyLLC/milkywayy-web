@@ -737,7 +737,7 @@ begin
 end $$;
 
 -- ---------- cancellations, reschedules and refunds ----------
--- The server works out the fee and refunds (lib/portal/cancellation.ts, shown to the client before they
+-- The server works out the fee and refunds (quoteChange in lib/portal/payments.ts, shown to the client before they
 -- confirm) and applies them here in one go:
 --   p = {kind: cancel|reschedule, reason, fee, waived, half_days, refunds: [{invoice_id, amount, method}],
 --        keep (edit/avatar: what's kept), date?, slot?, start_time?, by: client|admin}
