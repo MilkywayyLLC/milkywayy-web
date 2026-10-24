@@ -216,6 +216,21 @@ Pick the smallest step that fixes it:
 5. **The site is broken or unreachable:** in Cloudflare, put back the old DNS records from the launch-day screenshot. With the 5-minute TTL most visitors are back on the old site within minutes. (The portal then isn't reachable; its data stays safe in Supabase.) Tell Claude what happened.
 6. **Database problem:** the website keeps showing the last version it loaded and you get an alert; restore from Supabase → Database → Backups (Pro, daily, 7 days).
 
+## 9b. Restore from backup
+
+Production is on the Supabase Free plan, so the only backups are ours: `.github/workflows/db-backup.yml`
+dumps the database every night at 02:00 UTC to the private R2 bucket `milkywayy-backups`
+(`milkywayy-web-YYYY-MM-DD.sql.gz`, newest 14 kept). Run it by hand: GitHub → Actions → Database backup → Run workflow.
+
+1. Cloudflare → R2 → `milkywayy-backups` → download the day you want.
+2. Supabase → **New project** (never restore over production). Copy its Session pooler URI.
+3. `gunzip -c milkywayy-web-YYYY-MM-DD.sql.gz | psql "$NEW_DB_URL" --single-transaction -v ON_ERROR_STOP=1`
+   (psql 17: `brew install postgresql@17`). It rebuilds `public`, `private` and the migration history, then loads every row, sign-ins included.
+4. Check a few counts (leads, accounts, portfolio_items) against the site.
+5. In the new project, redo the dashboard-only settings: Auth URLs, Resend SMTP, email templates (section 2).
+6. Vercel Production: point `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` at the new project, redeploy.
+   `PORTAL_ADMIN_SECRET` keeps working (its hash came back with `private.app_secrets`). Update the `PROD_DB_URL` GitHub secret.
+
 ## Known issues
 
 - After a database outage, press **Refresh the whole site** twice (the first refresh can re-render Home and the service pages from data that was still stale).

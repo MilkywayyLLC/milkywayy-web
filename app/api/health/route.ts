@@ -5,6 +5,8 @@ import { publicDb } from "@/lib/supabase/public";
 /**
  * Uptime check: 200 when the site can read the database, 503 when it can't. Point an uptime
  * monitor here (see LAUNCH.md). With the cron secret, ?test-alert=1 sends a test alert email.
+ * Also the daily keep-alive (vercel.json cron, 03:00 UTC): one cheap read a day keeps the Free
+ * plan Supabase project from pausing for inactivity.
  */
 export const dynamic = "force-dynamic";
 
