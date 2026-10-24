@@ -135,7 +135,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
       />
       {/* The same card the client sees on Billing (portal styles), with the money. */}
       {valueMonth && (
-        <div className="pt" data-tone="light" style={{ background: "transparent" }}>
+        <div className="pt" data-tone="light" style={{ background: "transparent", minHeight: 0 }}>
           <ValuePackageCard v={valueMonth} admin />
         </div>
       )}

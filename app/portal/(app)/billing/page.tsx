@@ -2,6 +2,7 @@ import { cx } from "@/lib/cx";
 import { InvoiceDownload } from "@/components/portal/InvoiceDownload";
 import {
   BankBox,
+  HowYouPay,
   PayActions,
   ValuePackageCard,
   type BillingPayments,
@@ -108,11 +109,13 @@ export default async function Billing({
         </p>
       )}
 
+      {/* Top (owner, 24 Oct 2026): the plan and its meters, then how this client pays. */}
+      {bp?.value && <ValuePackageCard v={bp.value} />}
+      {bp && <HowYouPay bp={bp} card={cardPay} />}
+
       {b?.budget && <BudgetCard b={b.budget} currency={b.currency} />}
       {b?.budget && <ActivityList rows={b.budget.activity} currency={b.currency} />}
       {!b?.budget && b?.activity && <ActivityList rows={b.activity} currency={b.currency} />}
-
-      {bp?.value && <ValuePackageCard v={bp.value} />}
 
       <div className="pt-grid2">
         {plan && (

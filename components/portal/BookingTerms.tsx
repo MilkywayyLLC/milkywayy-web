@@ -160,3 +160,32 @@ export function confirmText(
   const d = dueNow(terms.terms, estimate, terms.vat_rate);
   return d.total && card ? `Pay ${money(currency, d.total)} now` : "Request booking";
 }
+
+/** One line at the top of the summary: what the package has left, or what's due now. */
+export function DueLine({
+  terms,
+  estimate,
+  currency,
+}: {
+  terms: TermsView;
+  estimate: number | null;
+  currency: string;
+}) {
+  const m = (n: number) => money(currency, n);
+  const text = terms.package
+    ? `${terms.package.name}: ${m(terms.package.allowance_left)} and ${shootDays(terms.package.half_days_left)} left this month`
+    : terms.terms === "month_end"
+      ? "Nothing due now: it goes on your month-end invoice"
+      : (() => {
+          const d = dueNow(terms.terms, estimate, terms.vat_rate);
+          return d.total
+            ? `Due now: ${m(d.total)} (${d.pct === 100 ? "100% upfront" : "50% upfront, the rest on delivery"})`
+            : null;
+        })();
+  if (!text) return null;
+  return (
+    <p className="bkp-dueline" data-testid="due-line">
+      {text}
+    </p>
+  );
+}

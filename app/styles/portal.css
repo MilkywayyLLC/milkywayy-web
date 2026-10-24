@@ -4629,3 +4629,98 @@
     display: block;
   }
 }
+
+/* Package meters (owner, 24 Oct 2026): completed gold, booked light gold, remaining dark grey.
+   Functional for now; final styling with the V2 reskin. */
+@layer components {
+  .pt {
+    --pt-done: #b8913a;
+    --pt-booked: var(--champagne);
+    --pt-rest: #3d3b37;
+  }
+  .pt-seg {
+    display: grid;
+    gap: 6px;
+  }
+  .pt-seg-bar {
+    display: flex;
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--pt-rest);
+  }
+  .pt-seg-bar i {
+    display: block;
+    height: 100%;
+  }
+  .pt-seg-bar i.done,
+  .pt-seg-legend i.done {
+    background: var(--pt-done);
+  }
+  .pt-seg-bar i.booked,
+  .pt-seg-legend i.booked {
+    background: var(--pt-booked);
+  }
+  .pt-seg-legend i.rest {
+    background: var(--pt-rest);
+  }
+  .pt-seg-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .pt-seg-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .pt-seg-legend i {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+  .pt-rail-plan {
+    display: grid;
+    gap: 6px;
+    margin: auto 10px 0;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--pt-r);
+    background: var(--bg);
+    text-decoration: none;
+    color: inherit;
+  }
+  .pt-rail-plan b {
+    font-weight: 500;
+  }
+  .pt-rail-plan .pt-seg-bar {
+    height: 4px;
+  }
+  .pt-rail-plan span {
+    font-size: 12px;
+    color: var(--muted);
+  }
+}
+@layer components {
+  @media (min-width: 900px) {
+    .pt-rail {
+      grid-template-rows: auto auto 1fr;
+    }
+    .pt-rail-plan {
+      align-self: end;
+    }
+  }
+}
+@layer components {
+  .bkp-dueline {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-left: 3px solid #b8913a;
+    background: var(--surface);
+    font: 500 15px/1.4 var(--font-sans, inherit);
+  }
+}

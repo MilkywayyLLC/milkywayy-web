@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   dayCount,
   dueNow,
+  packageSplitUsage,
   shootDays,
   halfDaysOf,
   packageSplit,
@@ -58,6 +59,22 @@ test("shoot days in full days: half a day is 0.5 (stored as half-days)", () => {
   expect(shootDays(1)).toBe("0.5 shoot days");
   expect(dayCount(5)).toBe("2.5");
   expect(`${dayCount(5)} of ${shootDays(8)}`).toBe("2.5 of 4 shoot days");
+});
+
+test("package meters: completed (delivered) / booked / remaining, days up to the cap", () => {
+  const u = packageSplitUsage({
+    allowance: 10000,
+    half_day_cap: 8,
+    bookings: [
+      { status: "delivered", late_cancel: false, included: 3200, half_days: 2 },
+      { status: "confirmed", late_cancel: false, included: 1600, half_days: 1 },
+      { status: "cancelled", late_cancel: true, included: 0, half_days: 1 },
+      { status: "requested", late_cancel: false, included: 1600, half_days: 6 },
+    ],
+  });
+  expect(u.aed).toEqual({ done: 3200, booked: 3200, rest: 3600, total: 10000 });
+  // 2 + 1 (late cancel, done) = 3 done; 1 + 4 of the last booking's 6 (cap 8) booked.
+  expect(u.hd).toEqual({ done: 3, booked: 5, rest: 0, total: 8 });
 });
 
 test("value package: covered, over by value, over by half-days", () => {

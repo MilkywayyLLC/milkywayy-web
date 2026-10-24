@@ -8,6 +8,7 @@ import { switchAccount } from "@/lib/portal/account-actions";
 import { signOut } from "@/lib/portal/actions";
 import type { Tab } from "@/lib/portal/shell";
 import { Icon } from "./Icon";
+import type { RailPlan } from "./PaymentParts";
 
 type AccountChoice = { id: string; name: string; role: string };
 
@@ -31,6 +32,7 @@ export function Shell({
   me,
   action,
   unpaid = 0,
+  railPlan,
   children,
 }: {
   main: Tab[];
@@ -43,6 +45,8 @@ export function Shell({
   action?: ReactNode;
   /** Unpaid invoices: a red dot on the bell (billing access only; 24 Oct 2026). */
   unpaid?: number | null;
+  /** Bottom left: the package with a thin AED meter, or "Pay per shoot · 100% upfront". */
+  railPlan?: RailPlan | null;
   children: ReactNode;
 }) {
   const path = usePathname();
@@ -90,6 +94,39 @@ export function Shell({
             </Link>
           ))}
         </nav>
+        {railPlan && (
+          <Link href="/portal/billing" className="pt-rail-plan" data-testid="rail-plan">
+            {railPlan.kind === "package" ? (
+              <>
+                <b>{railPlan.name}</b>
+                <span
+                  className="pt-seg-bar"
+                  role="meter"
+                  aria-label={`Package used: ${railPlan.text}`}
+                  aria-valuemin={0}
+                  aria-valuemax={railPlan.total}
+                  aria-valuenow={Math.min(railPlan.used + railPlan.booked, railPlan.total)}
+                >
+                  <i
+                    className="done"
+                    style={{
+                      width: `${Math.min(100, (railPlan.used / Math.max(1, railPlan.total)) * 100)}%`,
+                    }}
+                  />
+                  <i
+                    className="booked"
+                    style={{
+                      width: `${Math.min(100, (railPlan.booked / Math.max(1, railPlan.total)) * 100)}%`,
+                    }}
+                  />
+                </span>
+                <span>{railPlan.text}</span>
+              </>
+            ) : (
+              <b>{railPlan.text}</b>
+            )}
+          </Link>
+        )}
       </aside>
 
       <div className="pt-main">

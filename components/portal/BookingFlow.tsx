@@ -34,7 +34,7 @@ import {
 import type { RequestConfig } from "@/lib/portal/requests";
 import { halfDaysOf } from "@/lib/portal/payments";
 import { BookingPanel, lineName, PriceTag, priceView, type PanelLine } from "./bookPrice";
-import { confirmText, DueNow, TermsCheck } from "./BookingTerms";
+import { confirmText, DueLine, DueNow, TermsCheck } from "./BookingTerms";
 import { BookStep, Check, Counter, Seg, ServiceCard, ThankYou } from "./BookFrame";
 import { DraftOffer, Field, FormBanner, useDraft, useFormCheck, useLeaveGuard } from "./forms";
 import { DatePicker, TimeWheel } from "./Pickers";
@@ -950,6 +950,7 @@ export function BookingFlow({
   ];
   const reviewStep = (
     <>
+      {!edit && <DueLine terms={cfg.terms} estimate={est} currency={cfg.price.currency} />}
       <dl className="bkp-review" aria-label="Summary">
         {groups.map((g) => (
           <div key={g.key}>

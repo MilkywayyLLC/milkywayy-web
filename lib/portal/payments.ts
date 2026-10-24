@@ -96,6 +96,43 @@ export const dayCount = (halfDays: number) => {
 export const shootDays = (halfDays: number) =>
   `${dayCount(halfDays)} shoot day${Number(halfDays) === 2 ? "" : "s"}`;
 
+const DONE = ["delivered", "completed"];
+
+/**
+ * What the package has used, split for the meters (owner, 24 Oct 2026): completed (delivered, or a
+ * late cancellation's half-day), booked (on the calendar, not delivered yet) and remaining. Value is
+ * what the package covered of each booking; shoot days count up to the cap, in booking order (as the
+ * ledger does).
+ */
+export function packageSplitUsage(v: {
+  allowance: number;
+  half_day_cap: number;
+  bookings: { status: string; late_cancel: boolean; included: number; half_days: number }[];
+}) {
+  let capLeft = Number(v.half_day_cap);
+  const aed = { done: 0, booked: 0 };
+  const hd = { done: 0, booked: 0 };
+  for (const b of v.bookings) {
+    const done = DONE.includes(b.status) || b.late_cancel;
+    const inc = Number(b.included);
+    const h = Math.min(Number(b.half_days), capLeft);
+    capLeft -= h;
+    if (done) {
+      aed.done += inc;
+      hd.done += h;
+    } else {
+      aed.booked += inc;
+      hd.booked += h;
+    }
+  }
+  const allow = Number(v.allowance);
+  const cap = Number(v.half_day_cap);
+  return {
+    aed: { ...aed, rest: Math.max(allow - aed.done - aed.booked, 0), total: allow },
+    hd: { ...hd, rest: Math.max(cap - hd.done - hd.booked, 0), total: cap },
+  };
+}
+
 /** Half-days a shoot uses: content shoots by slot (a full day is 2), property-only shoots none. */
 export function halfDaysOf(o: { hasVideo: boolean; slot?: string | null; fullDay?: boolean }) {
   if (!o.hasVideo) return 0;

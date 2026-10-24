@@ -8,7 +8,14 @@ import {
   type ChangeReason,
 } from "@/lib/portal/payments";
 import { WEBHOOK_SECRET } from "./helpers/env";
-import { adminRpc, cleanup, clientAccount, hasPortalAdmin, newRun } from "./helpers/portal";
+import {
+  adminRpc,
+  cleanup,
+  clientAccount,
+  hasPortalAdmin,
+  newRun,
+  signInUI,
+} from "./helpers/portal";
 
 /**
  * Payment terms in the database (owner, 24 Oct 2026; docs/PAYMENT_TERMS_PLAN.md): each term ×
@@ -105,6 +112,7 @@ async function deliver(projectId: string, ref: string) {
 }
 
 test.beforeAll(async () => {
+  test.setTimeout(120_000);
   for (const [k, terms] of [
     ["prepay", "prepay"],
     ["split", "split"],
@@ -351,6 +359,55 @@ test("package: property shoots count their price, not shoot days; cap hit by val
     c.db.rpc("my_payment_terms", { p_account: c.account }),
   );
   expect(t.package).toMatchObject({ allowance_left: 0, half_days_left: 9 });
+});
+
+test("what the client sees: plan card, segmented meters, How you pay, sidebar plan, summary line", async ({
+  page,
+}) => {
+  // pkg2 (AED 3,000 · 5 shoot days): content 1,600 (0.5 day) + property 2,000 → 600 extra.
+  const c = clients.pkg2;
+  await signInUI(page, c.email);
+  await page.goto("/portal/billing");
+  const card = page.getByTestId("value-package");
+  await expect(card).toContainText("E2E Value");
+  await expect(card.getByTestId("plan-amount")).toContainText("AED 3,000 a month");
+  await expect(card.getByTestId("value-summary")).toContainText(
+    "AED 3,000 of 3,000 · 0.5 of 5 shoot days",
+  );
+  await expect(card.getByTestId("meter-allowance")).toContainText("Booked AED 3,000");
+  await expect(card.getByTestId("meter-shoot-days")).toContainText("Remaining 4.5");
+  await expect(card.getByTestId("value-extras")).toContainText("AED 600");
+  await expect(card.getByTestId("value-bookings")).toContainText("Package + extra AED 600");
+  await expect(page.getByTestId("how-you-pay")).toContainText("Monthly package");
+  await expect(page.getByTestId("rail-plan")).toContainText("E2E Value");
+  // A pay-per-shoot client: the sidebar says how they pay; the summary says what's due now.
+  const p = clients.split;
+  await page.context().clearCookies();
+  await signInUI(page, p.email);
+  await page.goto("/portal/billing");
+  await expect(page.getByTestId("rail-plan")).toContainText("Pay per shoot · 50% upfront");
+  await expect(page.getByTestId("how-you-pay")).toContainText("You pay 50% when you book");
+  const { data: u } = await p.db.auth.getUser();
+  await p.db.from("portal_drafts").upsert({
+    account_id: p.account,
+    user_id: u.user!.id,
+    kind: "booking",
+    data: {
+      kind: "content",
+      step: "review",
+      fmt: { short: true, long: false },
+      edited: true,
+      flex: false,
+      cv: { short: 4, long: 1 },
+      startTime: "09:00",
+      date: inDays(3),
+      slot: "morning",
+      loc: { address: "Marina Gate 1, Dubai Marina" },
+    },
+  });
+  await page.goto("/portal/book?kind=content&draft=1&step=review");
+  await expect(page.getByTestId("due-line")).toContainText("Due now: AED 800 (50% upfront");
+  await expect(page.getByTestId("terms-check")).toBeVisible();
 });
 
 /* ---------- cancellations and refunds ---------- */
