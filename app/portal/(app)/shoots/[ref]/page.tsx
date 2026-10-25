@@ -272,6 +272,7 @@ export default async function ShootPage({
             </a>
           </section>
         )}
+      <span id="files" />
       <ShootDeliveries
         files={dfiles}
         title={p.title}

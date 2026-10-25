@@ -15,7 +15,7 @@ export default async function Welcome() {
     <main className="pt-auth" id="main">
       <div className="pt-card" style={{ width: "min(560px, 100%)" }}>
         <span className="pt-logo">
-          <BrandLogo tone="light" />
+          <BrandLogo tone="dark" />
         </span>
         <div>
           <span className="pt-eb">Welcome · 3 quick questions</span>

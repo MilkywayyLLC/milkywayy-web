@@ -12,6 +12,8 @@ const P: Record<string, string> = {
   settings:
     "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 12l2-1-2-4-2 1-2-1V5h-4v2l-2 1-2-1-2 4 2 1v2l-2 1 2 4 2-1 2 1v2h4v-2l2-1 2 1 2-4-2-1z",
   more: "M5 12h.01M12 12h.01M19 12h.01",
+  menu: "M4 7h16M4 12h16M4 17h16",
+  logout: "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10",
   check: "M5 12l5 5L20 7",
   download: "M12 4v12M7 11l5 5 5-5M4 20h16",
   upload: "M12 16V4M7 9l5-5 5 5M4 20h16",

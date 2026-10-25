@@ -110,7 +110,7 @@ export function YourWork({ projects, cfg }: { projects: Project[]; cfg: RequestC
   if (!cats.length)
     return (
       <section className="pt-card" aria-labelledby="work">
-        <h2 id="work" className="pt-h2">
+        <h2 id="work" className="pt-eb">
           Your work
         </h2>
         <p className="pt-meta" style={{ margin: 0 }}>
@@ -125,7 +125,7 @@ export function YourWork({ projects, cfg }: { projects: Project[]; cfg: RequestC
 
   return (
     <section className="pt-work" aria-labelledby="work" data-testid="your-work">
-      <h2 id="work" className="pt-h2">
+      <h2 id="work" className="pt-eb">
         Your work
       </h2>
       {cats.map((c) => {

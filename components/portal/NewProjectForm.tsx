@@ -717,6 +717,8 @@ export function ProjectRequestModal({
     <div data-testid={`${type}-page`}>
       <BookStep
         heading="Edit only"
+        eyebrow="Book media"
+        icon="scissors"
         onBack={
           onBack
             ? () => {

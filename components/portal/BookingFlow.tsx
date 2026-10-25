@@ -34,10 +34,10 @@ import {
 import type { RequestConfig } from "@/lib/portal/requests";
 import { halfDaysOf } from "@/lib/portal/payments";
 import { BookingPanel, lineName, PriceTag, priceView, type PanelLine } from "./bookPrice";
-import { confirmText, DueLine, DueNow, TermsCheck } from "./BookingTerms";
+import { confirmText, DueLine, DueNow, PanelTerms, TermsCheck } from "./BookingTerms";
 import { BookStep, Check, Counter, Seg, ServiceCard, ThankYou } from "./BookFrame";
 import { DraftOffer, Field, FormBanner, useDraft, useFormCheck, useLeaveGuard } from "./forms";
-import { DatePicker, TimeWheel } from "./Pickers";
+import { DateStrip, TimeWheel } from "./Pickers";
 import { PlacesField } from "./PlacesField";
 
 /** What's being booked: a property shoot (always shot & edited) or a content shoot. */
@@ -535,14 +535,6 @@ export function BookingFlow({
   const twi = twilightTable(prop, pricing);
   const setP = touch((patch: Partial<Counts>) => setPv((x) => ({ ...x, ...patch })));
   const photoSub = prices.photo + (prop.twilight ? twi[prop.twilightQty] : 0);
-  const videoItems = v.items.filter((s) => s.key === KEY.short || s.key === KEY.long);
-  const videoSum = videoItems.reduce((n, s) => n + (s.amount ?? 0), 0);
-  const videoSubtotal =
-    !v.rates || !videoItems.length ? null : v.pkg && !videoSum ? (
-      <span className="bkp-muted">Included in your package</span>
-    ) : (
-      <span className="bkp-price">{m(videoSum)}</span>
-    );
   const plain = (n: number | null | undefined, plus = false) =>
     v.rates && n != null ? <span className="bkp-price">{`${plus ? "+" : ""}${m(n)}`}</span> : null;
 
@@ -662,42 +654,38 @@ export function BookingFlow({
             onChange={() => propAct({ type: "toggle", id: 1, key: "tour" })}
           />
         </div>
-        {
-          <div className="bkp-box-card" data-on={pVideo ? "" : undefined}>
-            <div className="bkp-row">
-              <span className="bkp-body">Video</span>
-              {videoSubtotal}
-            </div>
-            <div className="bkp-row">
-              <Check
-                label="Short-form reel"
-                sub={`30–90 sec · ${DELIVERY.short.toLowerCase()}`}
-                checked={pv.short > 0}
-                right={pv.short > 0 ? <PriceTag s={shown(KEY.short)} v={v} /> : offPrice(KEY.short)}
-                onChange={() => setP({ short: pv.short > 0 ? 0 : 1 })}
+        <div className="bkp-box-card" data-on={pv.short > 0 ? "" : undefined}>
+          <div className="bkp-row">
+            <Check
+              label="Short-form reel"
+              sub={`30–90 sec · ${DELIVERY.short.toLowerCase()}`}
+              checked={pv.short > 0}
+              right={pv.short > 0 ? <PriceTag s={shown(KEY.short)} v={v} /> : offPrice(KEY.short)}
+              onChange={() => setP({ short: pv.short > 0 ? 0 : 1 })}
+            />
+            {pv.short > 0 && !keepPlan && (
+              <Counter
+                label="Short-form reels"
+                value={pv.short}
+                onChange={(n) => setP({ short: n })}
               />
-              {pv.short > 0 && !keepPlan && (
-                <Counter
-                  label="Short-form reels"
-                  value={pv.short}
-                  onChange={(n) => setP({ short: n })}
-                />
-              )}
-            </div>
-            <div className="bkp-row">
-              <Check
-                label="Long-form walkthrough"
-                sub={`Up to 5 min · ${DELIVERY.long} · extra minutes billed after delivery`}
-                checked={pv.long > 0}
-                right={pv.long > 0 ? <PriceTag s={shown(KEY.long)} v={v} /> : offPrice(KEY.long)}
-                onChange={() => setP(pv.long > 0 ? { long: 0, extra_min: 0 } : { long: 1 })}
-              />
-              {pv.long > 0 && !keepPlan && (
-                <Counter label="Long-form" value={pv.long} onChange={(n) => setP({ long: n })} />
-              )}
-            </div>
+            )}
           </div>
-        }
+        </div>
+        <div className="bkp-box-card" data-on={pv.long > 0 ? "" : undefined}>
+          <div className="bkp-row">
+            <Check
+              label="Long-form walkthrough"
+              sub={`Up to 5 min · ${DELIVERY.long} · extra minutes billed after delivery`}
+              checked={pv.long > 0}
+              right={pv.long > 0 ? <PriceTag s={shown(KEY.long)} v={v} /> : offPrice(KEY.long)}
+              onChange={() => setP(pv.long > 0 ? { long: 0, extra_min: 0 } : { long: 1 })}
+            />
+            {pv.long > 0 && !keepPlan && (
+              <Counter label="Long-form" value={pv.long} onChange={(n) => setP({ long: n })} />
+            )}
+          </div>
+        </div>
         {form.errors.property && (
           <span className="pt-field-msg" role="alert">
             {form.errors.property}
@@ -865,28 +853,43 @@ export function BookingFlow({
   );
 
   /* ---------- step 2: when & where ---------- */
+  // Raw shoots: half / full day beside the time (the same choice as on the first step).
+  const rawDay = !isProp && !edited;
   const whenStep = (
     <>
-      <div className="bkp-when bkp-2col">
-        <Field name="date" label="Date" required group error={form.errors.date}>
-          <DatePicker
-            value={date}
-            min={cfg.today}
-            invalid={!!form.errors.date}
-            onChange={touch((x: string) => setDate(x))}
-          />
-        </Field>
-        <Field name="start_time" label="Start time" required group error={form.errors.start_time}>
+      <Field name="date" label="Date" required group error={form.errors.date}>
+        <DateStrip
+          value={date}
+          min={cfg.today}
+          invalid={!!form.errors.date}
+          onChange={touch((x: string) => setDate(x))}
+        />
+      </Field>
+      <div className="bkp-when-row" data-day={rawDay ? "" : undefined}>
+        <Field name="start_time" label="Arrival time" required group error={form.errors.start_time}>
           <TimeWheel
             value={startTime}
             from={WHEEL_FROM}
             to={WHEEL_TO}
             placeholder="Choose a time"
             clearable={false}
+            loop
+            label="Arrival time"
             invalid={!!form.errors.start_time}
             onChange={touch((x: string) => setStartTime(x))}
           />
         </Field>
+        {rawDay && (
+          <div className="bkp-group">
+            <span className="bkp-muted">Length</span>
+            <Seg
+              label="Length"
+              value={day}
+              options={(["half", "full"] as const).map((d) => [d, DAY_LABEL[d]])}
+              onChange={touch((d: "half" | "full") => setDay(d))}
+            />
+          </div>
+        )}
       </div>
       <PlacesField
         value={loc}
@@ -1032,22 +1035,24 @@ export function BookingFlow({
     <>
       <BookStep
         label={`Step ${at + 1} of ${STEPS.length}`}
-        heading={
-          step === "services"
-            ? isProp
-              ? "Property shoot"
-              : "Content shoot"
-            : step === "when"
-              ? "When & where"
-              : "Summary"
+        eyebrow={
+          edit ? (edit.status === "confirmed" ? "Request a change" : "Edit details") : "Book media"
         }
+        icon={isProp ? "building" : "video"}
+        heading={isProp ? "Property shoot" : "Content shoot"}
+        steps={{ labels: ["01 Details", "02 Where & when", "03 Review"], at }}
         onBack={at > 0 || onBack ? back : undefined}
         primary={
           step === "review"
             ? { label: confirmLabel, onClick: confirm, disabled: pending || !services.length }
             : { label: "Next", onClick: next }
         }
-        panel={<BookingPanel lines={panelLines} v={v} />}
+        panel={
+          <>
+            <BookingPanel lines={panelLines} v={v} />
+            {!edit && <PanelTerms terms={cfg.terms} estimate={est} currency={cfg.price.currency} />}
+          </>
+        }
         barText={barText}
       >
         <DraftOffer

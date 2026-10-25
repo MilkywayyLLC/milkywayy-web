@@ -55,6 +55,7 @@ export default async function PortalApp({ children }: { children: React.ReactNod
       me={{ name, first: (profile?.full_name ?? "").trim().split(/\s+/)[0] ?? "" }}
       unpaid={manager ? Number(unpaid ?? 0) : null}
       railPlan={railPlanOf(payments as BillingPayments | null)}
+      canBook={!!cfg && (cfg.shoots || cfg.editing)}
     >
       <Hydrated />
       {children}

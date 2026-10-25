@@ -33,7 +33,7 @@ export default async function Login({
     <main className="pt-auth" id="main">
       <div className="pt-card">
         <Link href="/" className="pt-logo">
-          <BrandLogo tone="light" />
+          <BrandLogo tone="dark" />
         </Link>
         <div>
           <span className="pt-eb">Client portal</span>

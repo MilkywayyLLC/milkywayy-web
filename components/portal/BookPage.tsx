@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import type { RequestConfig } from "@/lib/portal/requests";
@@ -138,7 +139,7 @@ export function BookPage({
         <h1 className="pt-h1">{title}</h1>
       </div>
       {kind === "pick" && (
-        <BookStep heading="What are you booking?" wide>
+        <BookStep heading="What are you booking?" eyebrow="Book media" wide>
           <div className="bkp-cards bkp-cards-3" role="group" aria-label="What are you booking?">
             {choices.map((c) => (
               <ServiceCard
@@ -154,6 +155,11 @@ export function BookPage({
               />
             ))}
           </div>
+          {cfg.avatars && (
+            <p className="bkp-avatar-link">
+              Need an AI avatar? <Link href="/portal/avatars/new">Start here</Link>
+            </p>
+          )}
         </BookStep>
       )}
       {(kind === "property" || kind === "content") && (

@@ -19,9 +19,18 @@ export function BookStep({
   primary,
   barText,
   wide,
+  steps,
+  eyebrow,
+  icon,
 }: {
   /** Full content width (no panel): "What are you booking?". */
   wide?: boolean;
+  /** The stepper under the title (V2 reskin): "01 Details", … and where you are. */
+  steps?: { labels: string[]; at: number };
+  /** Small mono line above the title ("Book media"). */
+  eyebrow?: string;
+  /** The title's icon tile. */
+  icon?: string;
   /** "Step 1 of 3". */
   label?: string;
   heading: string;
@@ -43,10 +52,33 @@ export function BookStep({
             <Icon name="back" size={14} /> Back
           </button>
         )}
-        {label && <span className="pt-eb">{label}</span>}
-        <h2 className="bkp-sec" id="bkp-step-h">
-          {heading}
-        </h2>
+        {label && !steps && <span className="pt-eb">{label}</span>}
+        <div className="bkp-title">
+          {icon && (
+            <span className="bkp-title-ic" aria-hidden="true">
+              <Icon name={icon} size={22} />
+            </span>
+          )}
+          <div>
+            {eyebrow && <span className="pt-eb">{eyebrow}</span>}
+            <h2 className="bkp-sec" id="bkp-step-h">
+              {heading}
+            </h2>
+          </div>
+        </div>
+        {steps && (
+          <ol className="bkp-stepper" aria-label={label}>
+            {steps.labels.map((l, i) => (
+              <li
+                key={l}
+                data-done={i < steps.at ? "" : undefined}
+                aria-current={i === steps.at ? "step" : undefined}
+              >
+                <span>{l}</span>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
       <section className="bkp-main" aria-labelledby="bkp-step-h">
         {children}
