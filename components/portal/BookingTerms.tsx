@@ -189,3 +189,43 @@ export function DueLine({
     </p>
   );
 }
+
+/**
+ * Under "Your booking"'s total (V2 reskin, 25 Oct 2026): the one line that applies (what the
+ * package has left, "Due now AED X" or "Invoiced at month end") and the free-change window.
+ */
+export function PanelTerms({
+  terms,
+  estimate,
+  currency,
+}: {
+  terms: TermsView;
+  estimate: number | null;
+  currency: string;
+}) {
+  const m = (n: number) => money(currency, n);
+  const d =
+    terms.package || terms.terms === "month_end"
+      ? null
+      : dueNow(terms.terms, estimate, terms.vat_rate);
+  const line = terms.package ? (
+    <span>
+      <b>{m(terms.package.allowance_left)}</b> and {shootDays(terms.package.half_days_left)} left in{" "}
+      {terms.package.name}
+    </span>
+  ) : terms.terms === "month_end" ? (
+    <span>
+      <b>Invoiced at month end</b>
+    </span>
+  ) : d?.total ? (
+    <span>
+      <b>Due now {m(d.total)}</b> · {d.pct === 100 ? "100% before the shoot" : "50% now"}
+    </span>
+  ) : null;
+  return (
+    <p className="bkp-pterms" data-testid="panel-terms">
+      {line}
+      <span>Free changes up to {terms.cancel_free_hours}h before</span>
+    </p>
+  );
+}

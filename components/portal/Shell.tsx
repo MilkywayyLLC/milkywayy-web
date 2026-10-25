@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { switchAccount } from "@/lib/portal/account-actions";
 import { signOut } from "@/lib/portal/actions";
-import type { Tab } from "@/lib/portal/shell";
+import { initials, type Tab } from "@/lib/portal/shell";
 import { Icon } from "./Icon";
 import type { RailPlan } from "./PaymentParts";
 
@@ -18,8 +18,9 @@ const isOn = (path: string, href: string) =>
 const ROLE: Record<string, string> = { owner: "Owner", admin: "Admin", member: "Member" };
 
 /**
- * The portal frame from the approved mockup (CLIENT_PORTAL_GUIDE §5.1): a rail of tabs on
- * desktop; on phones a bottom bar with 4 tabs and the rest under More. Top right, one 40px row:
+ * The portal frame (V2 reskin, 25 Oct 2026): a rail of tabs with the plan card at the bottom on
+ * desktop; on phones the same rail as a drawer behind a menu button, and a sticky "Book media"
+ * button at the bottom. Top right, one 40px row:
  * "Hello, {first name}", the account menu (package, account switcher, Settings, Team, Sign out)
  * and "Book media" on the far right.
  */
@@ -33,6 +34,7 @@ export function Shell({
   action,
   unpaid = 0,
   railPlan,
+  canBook = false,
   children,
 }: {
   main: Tab[];
@@ -47,28 +49,29 @@ export function Shell({
   unpaid?: number | null;
   /** Bottom left: the package with a thin AED meter, or "Pay per shoot · 100% upfront". */
   railPlan?: RailPlan | null;
+  /** Phones: the sticky "Book media" button at the bottom (V2 reskin, 25 Oct 2026). */
+  canBook?: boolean;
   children: ReactNode;
 }) {
   const path = usePathname();
-  const [more, setMore] = useState(false);
+  const [drawer, setDrawer] = useState(false);
   const [menu, setMenu] = useState<null | "me">(null);
   const [switching, startSwitch] = useTransition();
   const current = accounts.find((a) => a.id === currentId)!;
-  const bottom = main.slice(0, 4);
-  const rest = [...main, ...account].filter((t) => !bottom.includes(t));
+  const booking = path.startsWith("/portal/book");
 
   // Menus close on navigation and on Escape.
   const [openedOn, setOpenedOn] = useState(path);
   if (openedOn !== path) {
     setOpenedOn(path);
     setMenu(null);
-    setMore(false);
+    setDrawer(false);
   }
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setMenu(null);
-        setMore(false);
+        setDrawer(false);
       }
     };
     addEventListener("keydown", k);
@@ -77,20 +80,32 @@ export function Shell({
 
   return (
     <div className="pt-shell">
-      <aside className="pt-rail" aria-label="Portal">
-        <Link href="/portal" className="pt-logo">
-          <BrandLogo tone="light" />
-        </Link>
+      {drawer && <div className="pt-drawer-bg" onClick={() => setDrawer(false)} />}
+      <aside className="pt-rail" id="pt-rail" aria-label="Portal" data-open={drawer || undefined}>
+        <div className="pt-rail-top">
+          <Link href="/portal" className="pt-logo">
+            <BrandLogo tone="dark" />
+          </Link>
+          <button
+            type="button"
+            className="pt-icon-btn pt-drawer-x"
+            aria-label="Close menu"
+            onClick={() => setDrawer(false)}
+          >
+            <Icon name="close" size={18} />
+          </button>
+        </div>
         <nav className="pt-rail-nav" aria-label="Portal sections">
+          <span className="pt-rail-h">Workspace</span>
           {main.map((t) => (
             <Link key={t.href} href={t.href} aria-current={isOn(path, t.href) ? "page" : undefined}>
-              <Icon name={t.icon} /> {t.label}
+              <Icon name={t.icon} size={18} /> {t.label}
             </Link>
           ))}
-          <span className="pt-rail-sep" />
+          <span className="pt-rail-h">Account</span>
           {account.map((t) => (
             <Link key={t.href} href={t.href} aria-current={isOn(path, t.href) ? "page" : undefined}>
-              <Icon name={t.icon} /> {t.label}
+              <Icon name={t.icon} size={18} /> {t.label}
             </Link>
           ))}
         </nav>
@@ -98,6 +113,7 @@ export function Shell({
           <Link href="/portal/billing" className="pt-rail-plan" data-testid="rail-plan">
             {railPlan.kind === "package" ? (
               <>
+                <span className="pt-rail-plan-k">Your plan</span>
                 <b>{railPlan.name}</b>
                 <span
                   className="pt-seg-bar"
@@ -123,7 +139,10 @@ export function Shell({
                 <span>{railPlan.text}</span>
               </>
             ) : (
-              <b>{railPlan.text}</b>
+              <>
+                <span className="pt-rail-plan-k">How you pay</span>
+                <b>{railPlan.text}</b>
+              </>
             )}
           </Link>
         )}
@@ -131,9 +150,21 @@ export function Shell({
 
       <div className="pt-main">
         <header className="pt-top">
-          <Link href="/portal" className="pt-logo pt-logo-sm">
-            <BrandLogo tone="light" />
-          </Link>
+          <div className="pt-top-left">
+            <button
+              type="button"
+              className="pt-icon-btn pt-burger"
+              aria-label="Open menu"
+              aria-expanded={drawer}
+              aria-controls="pt-rail"
+              onClick={() => setDrawer(true)}
+            >
+              <Icon name="menu" size={20} />
+            </button>
+            <Link href="/portal" className="pt-logo pt-logo-sm">
+              <BrandLogo tone="dark" />
+            </Link>
+          </div>
           <div className="pt-top-right">
             {me.first && <span className="pt-hello">Hello, {me.first}</span>}
             {unpaid != null && (
@@ -160,7 +191,7 @@ export function Shell({
                 aria-expanded={menu === "me"}
                 onClick={() => setMenu(menu === "me" ? null : "me")}
               >
-                <Icon name="person" size={20} />
+                <span className="pt-initials">{initials(me.name)}</span>
               </button>
               <div
                 className="pt-pop pt-pop-right"
@@ -214,7 +245,7 @@ export function Shell({
                 </form>
               </div>
             </div>
-            {action}
+            <span className="pt-top-book">{action}</span>
           </div>
         </header>
         <main className="pt-content" id="main" onClick={() => menu && setMenu(null)}>
@@ -222,51 +253,11 @@ export function Shell({
         </main>
       </div>
 
-      <nav className="pt-bottom" aria-label="Portal tabs">
-        {bottom.map((t) => (
-          <Link key={t.href} href={t.href} aria-current={isOn(path, t.href) ? "page" : undefined}>
-            <Icon name={t.icon} />
-            <span>{t.label}</span>
+      {canBook && !booking && (
+        <div className="pt-bookbar">
+          <Link href="/portal/book" className="btn btn-p">
+            <Icon name="plus" size={16} /> Book media
           </Link>
-        ))}
-        {rest.length > 0 && (
-          <button
-            type="button"
-            aria-expanded={more}
-            aria-current={rest.some((t) => isOn(path, t.href)) ? "page" : undefined}
-            onClick={() => setMore(true)}
-          >
-            <Icon name="more" />
-            <span>More</span>
-          </button>
-        )}
-      </nav>
-      {more && (
-        <div className="pt-sheet-bg" onClick={() => setMore(false)}>
-          <div
-            className="pt-sheet"
-            role="dialog"
-            aria-label="More"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="pt-sheet-head">
-              <b>More</b>
-              <button
-                type="button"
-                className="pt-icon-btn"
-                aria-label="Close"
-                onClick={() => setMore(false)}
-              >
-                <Icon name="close" />
-              </button>
-            </div>
-            {rest.map((t) => (
-              <Link key={t.href} href={t.href} className="pt-more-row">
-                <Icon name={t.icon} /> {t.label}
-                <Icon name="chevron" size={16} />
-              </Link>
-            ))}
-          </div>
         </div>
       )}
     </div>

@@ -11,7 +11,7 @@ export default async function Reset() {
     <main className="pt-auth" id="main">
       <div className="pt-card">
         <span className="pt-logo">
-          <BrandLogo tone="light" />
+          <BrandLogo tone="dark" />
         </span>
         <div>
           <span className="pt-eb">{p.user.email}</span>

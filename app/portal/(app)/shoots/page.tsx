@@ -20,8 +20,14 @@ import { seesMoney } from "@/lib/portal/shell";
 
 export const metadata = { title: "Shoots" };
 
-/** Shoots (§5.2): every shoot with its stepper; completed ones below. Live. */
-export default async function Shoots() {
+/** Shoots (§5.2; V2 reskin, 25 Oct 2026): Active / Completed tabs, a card per shoot with its photo,
+ *  stage tracker, Files and Manage. Live. */
+export default async function Shoots({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const tab = (await searchParams).tab === "completed" ? "completed" : "active";
   const { db, current } = await requireAccount("/portal/shoots");
   if (!can(current, "shoots"))
     return (
@@ -41,7 +47,7 @@ export default async function Shoots() {
   const [covers, { data: items }] = await Promise.all([
     projectCovers(
       db,
-      active.filter((p) => p.delivered_at || p.status === "delivered").map((p) => p.id),
+      all.filter((p) => p.delivered_at || p.status === "delivered").map((p) => p.id),
     ),
     // Prices: only for those who see billing (the database returns no line items to others).
     seesMoney(current) && all.length
@@ -87,81 +93,99 @@ export default async function Shoots() {
         </div>
       )}
 
-      {active.length > 0 && (
-        <div className="pt-grid2" data-testid="shoots">
-          {active.map((p) => (
-            <Link
-              key={p.id}
-              href={`/portal/shoots/${encodeURIComponent(p.ref)}`}
-              className="pt-card pt-card-link"
-            >
-              {covers.get(p.id) && (
-                <span className="pt-card-cover">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={covers.get(p.id)} alt="" loading="lazy" />
-                </span>
-              )}
-              <div className="pt-row">
-                <span className="pt-eb" style={{ whiteSpace: "nowrap" }}>
-                  {p.ref}
-                </span>
-                <Badge tone={p.status === "delivered" ? "gold" : undefined}>
-                  {clientStatus(p)}
-                </Badge>
-              </div>
-              <div style={{ display: "grid", gap: 2 }}>
-                <b className="pt-title">
-                  {p.title}
-                  {p.meta.unit ? ` · ${p.meta.unit}` : ""}
-                </b>
-                <span className="pt-meta">
-                  {[p.meta.area, shootDay(p.shoot_date), p.slot].filter(Boolean).join(" · ")}
-                </span>
-                <span className="pt-meta">
-                  {[
-                    ...(p.meta.services ?? []).map((s) => SHOOT_SERVICE_LABEL[s] ?? s),
-                    price.get(p.id),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-              </div>
-              <Stepper steps={stepsFor("shoot")} now={statusLabel(p.status)} />
-              {p.status === "requested" && !p.meta.attached_by_email && (
-                <span className="pt-meta">
-                  We confirm the date and slot by email, usually within a few hours.
-                </span>
-              )}
-            </Link>
-          ))}
+      {all.length > 0 && (
+        <nav className="pt-tabs" aria-label="Shoots">
+          <Link href="/portal/shoots" aria-selected={tab === "active"} scroll={false}>
+            Active ({active.length})
+          </Link>
+          <Link
+            href="/portal/shoots?tab=completed"
+            aria-selected={tab === "completed"}
+            scroll={false}
+          >
+            Completed ({done.length})
+          </Link>
+        </nav>
+      )}
+
+      {all.length > 0 && (tab === "active" ? active : done).length === 0 && (
+        <div className="pt-card">
+          <span className="pt-meta">
+            {tab === "active"
+              ? "No active shoots. Book one and track it here."
+              : "Nothing completed yet."}
+          </span>
         </div>
       )}
 
-      {done.length > 0 && (
-        <section style={{ display: "grid", gap: 10 }}>
-          <h2 className="pt-h2">Completed</h2>
-          <div className="pt-list" data-testid="completed">
-            {done.map((p) => (
-              <Link
-                key={p.id}
-                href={`/portal/shoots/${encodeURIComponent(p.ref)}`}
-                className="pt-row"
-                style={{ textDecoration: "none" }}
-              >
-                <div>
-                  <b className="pt-title">{p.title}</b>
-                  <div className="pt-meta">
-                    {p.ref} · {shootDay(p.shoot_date)}
-                    {p.completed_at
-                      ? ` · completed ${new Date(p.completed_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
-                      : ""}
+      {(tab === "active" ? active : done).length > 0 && (
+        <div className="pt-scards" data-testid={tab === "active" ? "shoots" : "completed"}>
+          {(tab === "active" ? active : done).map((p) => {
+            const to = `/portal/shoots/${encodeURIComponent(p.ref)}`;
+            const cover = covers.get(p.id);
+            return (
+              <article key={p.id} className="pt-scard">
+                <Link href={to} className="pt-scard-thumb" tabIndex={-1} aria-hidden="true">
+                  {cover ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={cover} alt="" loading="lazy" />
+                  ) : (
+                    <span className="pt-hero-ph">
+                      <Icon name="shoots" />
+                    </span>
+                  )}
+                </Link>
+                <div className="pt-scard-body">
+                  <div className="pt-row">
+                    <span className="pt-eb" style={{ whiteSpace: "nowrap" }}>
+                      {p.ref}
+                    </span>
+                    <Badge tone={p.status === "delivered" ? "gold" : undefined}>
+                      {clientStatus(p)}
+                    </Badge>
+                  </div>
+                  <div style={{ display: "grid", gap: 2 }}>
+                    <Link href={to} className="pt-scard-title">
+                      <b className="pt-title">
+                        {p.title}
+                        {p.meta.unit ? ` · ${p.meta.unit}` : ""}
+                      </b>
+                    </Link>
+                    <span className="pt-meta">
+                      {[p.meta.area, shootDay(p.shoot_date), p.slot].filter(Boolean).join(" · ")}
+                    </span>
+                    <span className="pt-meta">
+                      {[
+                        ...(p.meta.services ?? []).map((s) => SHOOT_SERVICE_LABEL[s] ?? s),
+                        price.get(p.id),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </div>
+                  {p.status !== "cancelled" && (
+                    <Stepper steps={stepsFor("shoot")} now={statusLabel(p.status)} />
+                  )}
+                  {p.status === "requested" && !p.meta.attached_by_email && (
+                    <span className="pt-meta">
+                      We confirm the date and slot by email, usually within a few hours.
+                    </span>
+                  )}
+                  <div className="pt-scard-btns">
+                    {(p.delivered_at || p.status === "delivered" || p.status === "completed") && (
+                      <Link href={`${to}#files`} className="btn btn-p btn-s">
+                        <Icon name="download" size={16} /> Files
+                      </Link>
+                    )}
+                    <Link href={to} className="btn btn-g btn-s">
+                      Manage
+                    </Link>
                   </div>
                 </div>
-                <Icon name="chevron" size={16} />
-              </Link>
-            ))}
-          </div>
-        </section>
+              </article>
+            );
+          })}
+        </div>
       )}
     </>
   );

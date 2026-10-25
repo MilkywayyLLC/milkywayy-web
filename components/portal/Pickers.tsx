@@ -226,42 +226,118 @@ export function DatePicker({
   );
 }
 
+/* ---------- the date strip (Book media, V2 reskin) ---------- */
+
+const STRIP_DAYS = 90;
+const stripDay = (s: string, o: Intl.DateTimeFormatOptions) =>
+  parse(s).toLocaleDateString("en-GB", { ...o, timeZone: "UTC" });
+
+/** A horizontal row of the next 90 days from `min`: weekday, day and month; one tap picks it. */
+export function DateStrip({
+  value,
+  min,
+  onChange,
+  invalid,
+  labelledBy,
+}: {
+  value: string;
+  min: string;
+  onChange: (v: string) => void;
+  invalid?: boolean;
+  labelledBy?: string;
+}) {
+  const row = useRef<HTMLDivElement>(null);
+  const days = Array.from({ length: STRIP_DAYS }, (_, i) => addDays(min, i));
+  // A chosen day outside the strip (an older booking) still shows, first.
+  if (value && !days.includes(value)) days.unshift(value);
+  useLayoutEffect(() => {
+    const el = row.current?.querySelector<HTMLElement>("[aria-pressed='true']");
+    if (el && row.current) row.current.scrollLeft = el.offsetLeft - row.current.offsetLeft - 8;
+  }, []);
+  return (
+    <div
+      className="pt-strip"
+      ref={row}
+      role="group"
+      aria-labelledby={labelledBy}
+      data-invalid={invalid ? "" : undefined}
+    >
+      {days.map((d) => (
+        <button
+          key={d}
+          type="button"
+          aria-pressed={d === value}
+          aria-label={longDate(d)}
+          onClick={() => onChange(d)}
+        >
+          <small>{stripDay(d, { weekday: "short" })}</small>
+          <b>{stripDay(d, { day: "numeric" })}</b>
+          <small>{stripDay(d, { month: "short" })}</small>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* ---------- the time wheel ---------- */
 
 const ROW = 48;
 export const MINUTES = ["00", "15", "30", "45"] as const;
 
-/** One scroll-snap column: the centred item is the value; arrows and a tap move it. */
+/** Copies of a looping column's items: scrolling past the end comes round to the start. */
+const COPIES = 9;
+const MID = Math.floor(COPIES / 2);
+
+/** One scroll-snap column: the centred item is the value; arrows and a tap move it. With `loop`
+ *  the items repeat (after 17 comes 08 again) and the column recentres itself when it settles. */
 function Wheel({
   items,
   value,
   onChange,
   label,
   onDone,
+  loop = false,
 }: {
   items: string[];
   value: string;
   onChange: (v: string) => void;
   label: string;
   onDone: () => void;
+  loop?: boolean;
 }) {
   const col = useRef<HTMLDivElement>(null);
   const timer = useRef<number | undefined>(undefined);
   /** A scroll we started (keys, a tap): it lands on the value, so it never picks one itself. */
   const ours = useRef(false);
   const id = useId();
+  const len = items.length;
   const idx = Math.max(0, items.indexOf(value));
+  const rows = loop ? Array.from({ length: COPIES * len }, (_, i) => items[i % len]) : items;
+  const home = (i: number) => (loop ? MID * len + i : i);
+  /** Where the column is, in rows (with `loop`, a position in the repeated list). */
+  const pos = useRef(home(idx));
 
   // Start on the value without an animation.
   useLayoutEffect(() => {
-    if (col.current) col.current.scrollTop = idx * ROW;
+    pos.current = home(idx);
+    if (col.current) col.current.scrollTop = pos.current * ROW;
     // only when the column mounts or its items change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.join()]);
 
+  /** A looping column far from the middle copy jumps back to it (same item, no animation). */
+  const recentre = (el: HTMLDivElement, n: number) => {
+    if (!loop) return n;
+    const copy = Math.floor(n / len);
+    if (copy >= 2 && copy <= COPIES - 3) return n;
+    const m = home(((n % len) + len) % len);
+    el.scrollTop = m * ROW;
+    return m;
+  };
   const go = (i: number) => {
-    const n = Math.min(items.length - 1, Math.max(0, i));
+    const n = Math.min(rows.length - 1, Math.max(0, i));
     const el = col.current;
+    pos.current = n;
     if (el) {
       ours.current = true;
       el.scrollTo({ top: n * ROW, behavior: "smooth" });
@@ -269,10 +345,11 @@ function Wheel({
       window.clearTimeout(timer.current);
       timer.current = window.setTimeout(() => {
         el.scrollTop = n * ROW;
+        pos.current = recentre(el, n);
         ours.current = false;
       }, 350);
     }
-    if (items[n] !== value) onChange(items[n]);
+    if (rows[n] !== value) onChange(rows[n]);
   };
   const onScroll = () => {
     if (ours.current) return;
@@ -280,8 +357,9 @@ function Wheel({
     timer.current = window.setTimeout(() => {
       const el = col.current;
       if (!el) return;
-      const n = Math.min(items.length - 1, Math.max(0, Math.round(el.scrollTop / ROW)));
-      if (items[n] !== value) onChange(items[n]);
+      const n = Math.min(rows.length - 1, Math.max(0, Math.round(el.scrollTop / ROW)));
+      pos.current = recentre(el, n);
+      if (rows[n] !== value) onChange(rows[n]);
     }, 90);
   };
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -298,28 +376,34 @@ function Wheel({
       onKeyDown={(e) => {
         if (e.key === "ArrowUp" || e.key === "ArrowDown") {
           e.preventDefault();
-          go(idx + (e.key === "ArrowUp" ? -1 : 1));
+          go((loop ? pos.current : idx) + (e.key === "ArrowUp" ? -1 : 1));
         } else if (e.key === "Home" || e.key === "End") {
           e.preventDefault();
-          go(e.key === "Home" ? 0 : items.length - 1);
+          go(home(e.key === "Home" ? 0 : len - 1));
         } else if (e.key === "Enter") {
           e.preventDefault();
           onDone();
         }
       }}
     >
-      {items.map((it, i) => (
-        <div
-          key={it}
-          id={`${id}-${i}`}
-          role="option"
-          aria-selected={i === idx}
-          className="pt-wheel-item"
-          onClick={() => go(i)}
-        >
-          {it}
-        </div>
-      ))}
+      {rows.map((it, i) => {
+        // One copy carries the options for assistive tech; the repeats are decoration.
+        const real = !loop || Math.floor(i / len) === MID;
+        return (
+          <div
+            key={i}
+            id={real ? `${id}-${i % len}` : undefined}
+            role={real ? "option" : undefined}
+            aria-hidden={real ? undefined : true}
+            aria-selected={real ? it === value : undefined}
+            data-on={it === value ? "" : undefined}
+            className="pt-wheel-item"
+            onClick={() => go(i)}
+          >
+            {it}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -335,10 +419,15 @@ export function TimeWheel({
   placeholder = "Any time",
   clearable = true,
   invalid,
+  loop = false,
+  label = "Start time",
 }: {
   value: string;
   from: string;
   to: string;
+  /** Looping hour and minute columns (Book media, V2 reskin). */
+  loop?: boolean;
+  label?: string;
   onChange: (v: string) => void;
   describedBy?: string;
   labelledBy?: string;
@@ -407,7 +496,7 @@ export function TimeWheel({
           className="pt-pop-panel pt-wheel"
           id={id}
           role="dialog"
-          aria-label="Start time"
+          aria-label={label}
           ref={first}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
@@ -423,6 +512,7 @@ export function TimeWheel({
               items={hours}
               value={hh}
               label="Hour"
+              loop={loop}
               onChange={(h) => set(h, mm)}
               onDone={() => close(true)}
             />
@@ -433,6 +523,7 @@ export function TimeWheel({
               items={[...minutes]}
               value={mm}
               label="Minutes"
+              loop={loop && minutes.length === MINUTES.length}
               onChange={(m) => set(hh, m)}
               onDone={() => close(true)}
             />
