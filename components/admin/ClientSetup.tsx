@@ -302,6 +302,9 @@ const nextMonth = () => {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
 };
 
+/** Today in Dubai (YYYY-MM-DD): "Start now" pro-rates this month from today. */
+const dubaiToday = () => new Date(Date.now() + 4 * 3600_000).toISOString().slice(0, 10);
+
 export type PackageValue = {
   allowance: number | null;
   half_day_cap: number | null;
@@ -504,6 +507,17 @@ export function PlanBlock({
                 value={started}
                 onChange={(e) => setStarted(e.target.value)}
               />
+              {started > dubaiToday() && (
+                <button
+                  type="button"
+                  className="ad-btn small"
+                  style={{ marginTop: 6 }}
+                  data-testid="plan-start-now"
+                  onClick={() => setStarted(dubaiToday())}
+                >
+                  Start now (pro-rated)
+                </button>
+              )}
             </div>
             {term === 6 && (
               <div className="ad-field">

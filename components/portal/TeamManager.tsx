@@ -145,19 +145,18 @@ export function TeamManager({
     });
 
   return (
-    <>
-      <div className="pt-head">
+    <section className="pt-sec" aria-labelledby="team-h" data-testid="people-team">
+      <div className="pt-sec-head">
         <div>
-          <span className="pt-eb">{account.name}</span>
-          <h1 className="pt-h1">Team</h1>
+          <h2 id="team-h" className="pt-h2">
+            Team
+          </h2>
+          <span className="pt-meta">Logins and what each person can see and do.</span>
         </div>
         <button type="button" className="btn btn-p btn-s" onClick={() => setSheet("invite")}>
           <Icon name="plus" size={16} /> Invite
         </button>
       </div>
-      <p className="pt-meta" style={{ margin: 0 }}>
-        Each person signs in with their own email. Choose what each one can see and do.
-      </p>
       <p className="pt-meta" style={{ margin: 0 }} data-testid="agents-note">
         Agents see only shoots and listings booked for them or shared with them. Bookings are billed
         to {account.name}.
@@ -343,7 +342,7 @@ export function TeamManager({
         />
       )}
       {toast}
-    </>
+    </section>
   );
 }
 

@@ -269,3 +269,22 @@ export const day = (iso: string | null | undefined, year = false) =>
 /** "deletes on 2 Nov 2026" while it's ahead, "deleted 2 Nov 2026" once it's past. */
 export const expiry = (iso: string) =>
   `${new Date(iso).getTime() > Date.now() ? "deletes on" : "deleted"} ${day(iso, true)}`;
+
+/** Words that only lengthen an address in a list: the city and the country. */
+const PLACE_NOISE = /^(dubai|united arab emirates|uae|u\.a\.e\.?|sharjah emirate)$/i;
+
+/**
+ * A project's title for lists and cards (owner, 25 Oct 2026): "Shoot · Marina Heights Tower - Dubai
+ * Marina - Dubai - United Arab Emirates" → "Marina Heights Tower, Dubai Marina". The full address
+ * stays on the detail page. Titles without an address come back as they are.
+ */
+export function shortTitle(title: string | null | undefined): string {
+  const t = (title ?? "").replace(/^\s*(shoot|booking)\s*·\s*/i, "").trim();
+  if (!t) return title ?? "";
+  const parts = t
+    .split(/\s+-\s+|,\s*/)
+    .map((x) => x.trim())
+    .filter((x) => x && !PLACE_NOISE.test(x));
+  if (parts.length < 2) return parts[0] ?? t;
+  return parts.slice(0, 2).join(", ");
+}

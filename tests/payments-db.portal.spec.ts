@@ -371,14 +371,15 @@ test("what the client sees: plan card, segmented meters, How you pay, sidebar pl
   const card = page.getByTestId("value-package");
   await expect(card).toContainText("E2E Value");
   await expect(card.getByTestId("plan-amount")).toContainText("AED 3,000 a month");
-  await expect(card.getByTestId("value-summary")).toContainText(
-    "AED 3,000 of 3,000 · 0.5 of 5 shoot days",
-  );
-  await expect(card.getByTestId("meter-allowance")).toContainText("Booked AED 3,000");
-  await expect(card.getByTestId("meter-shoot-days")).toContainText("Remaining 4.5");
+  // Refinement round (25 Oct 2026): full-width bars with a label row under each.
+  await expect(card.getByTestId("meter-allowance")).toContainText("AED 3,000 of AED 3,000");
+  await expect(card.getByTestId("meter-allowance")).toContainText("AED 3,000 booked · AED 0 left");
+  await expect(card.getByTestId("meter-shoot-days")).toContainText("0.5 days booked · 4.5 days left");
+  await expect(card.getByTestId("value-statement")).toContainText("AED 3,600");
   await expect(card.getByTestId("value-extras")).toContainText("AED 600");
-  await expect(card.getByTestId("value-bookings")).toContainText("Package + extra AED 600");
-  await expect(page.getByTestId("how-you-pay")).toContainText("Monthly package");
+  await expect(page.getByTestId("value-bookings")).toContainText("Package + extra AED 600");
+  await expect(page.getByTestId("how-you-pay")).toContainText("billed at the end of each month");
+  await expect(page.getByTestId("how-you-pay")).toContainText("WhatsApp us");
   await expect(page.getByTestId("rail-plan")).toContainText("E2E Value");
   // A pay-per-shoot client: the sidebar says how they pay; the summary says what's due now.
   const p = clients.split;
@@ -395,10 +396,11 @@ test("what the client sees: plan card, segmented meters, How you pay, sidebar pl
     data: {
       kind: "content",
       step: "review",
-      fmt: { short: true, long: false },
-      edited: true,
-      flex: false,
-      cv: { short: 4, long: 1 },
+      // 4 h (AED 1,200) + 4 short-form edits (4 × 200) = AED 2,000.
+      hours: 4,
+      raw: false,
+      shortN: 4,
+      longN: 0,
       startTime: "09:00",
       date: inDays(3),
       slot: "morning",
@@ -406,7 +408,7 @@ test("what the client sees: plan card, segmented meters, How you pay, sidebar pl
     },
   });
   await page.goto("/portal/book?kind=content&draft=1&step=review");
-  await expect(page.getByTestId("due-line")).toContainText("Due now: AED 800 (50% upfront");
+  await expect(page.getByTestId("due-line")).toContainText("Due now: AED 1,000 (50% upfront");
   await expect(page.getByTestId("terms-check")).toBeVisible();
 });
 

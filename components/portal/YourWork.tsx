@@ -7,6 +7,7 @@ import {
   PIPELINES,
   SHOOT_SERVICE_LABEL,
   shootDay,
+  shortTitle,
   statusLabel,
   TYPE_PATH,
   type Project,
@@ -154,7 +155,7 @@ export function YourWork({ projects, cfg }: { projects: Project[]; cfg: RequestC
                       className="pt-wrow"
                     >
                       <span className="pt-wbody">
-                        <b className="pt-title">{p.title}</b>
+                        <b className="pt-title">{shortTitle(p.title)}</b>
                         <span className="pt-meta">
                           {[p.ref, when, service(p)].filter(Boolean).join(" · ")}
                         </span>

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { switchAccount } from "@/lib/portal/account-actions";
 import { signOut } from "@/lib/portal/actions";
+import { chatLink } from "@/lib/portal/billing";
 import { initials, type Tab } from "@/lib/portal/shell";
 import { Icon } from "./Icon";
 import type { RailPlan } from "./PaymentParts";
@@ -115,33 +116,36 @@ export function Shell({
               <>
                 <span className="pt-rail-plan-k">Your plan</span>
                 <b>{railPlan.name}</b>
-                <span
-                  className="pt-seg-bar"
+                <div
+                  className="pt-mtr-bar"
                   role="meter"
                   aria-label={`Package used: ${railPlan.text}`}
                   aria-valuemin={0}
                   aria-valuemax={railPlan.total}
                   aria-valuenow={Math.min(railPlan.used + railPlan.booked, railPlan.total)}
                 >
-                  <i
-                    className="done"
+                  <div
+                    className="pt-mtr-done"
                     style={{
                       width: `${Math.min(100, (railPlan.used / Math.max(1, railPlan.total)) * 100)}%`,
                     }}
                   />
-                  <i
-                    className="booked"
+                  <div
+                    className="pt-mtr-booked"
                     style={{
                       width: `${Math.min(100, (railPlan.booked / Math.max(1, railPlan.total)) * 100)}%`,
                     }}
                   />
-                </span>
+                </div>
                 <span>{railPlan.text}</span>
               </>
             ) : (
               <>
-                <span className="pt-rail-plan-k">How you pay</span>
-                <b>{railPlan.text}</b>
+                <span className="pt-rail-plan-k">
+                  {railPlan.upcoming ? "Your plan" : "How you pay"}
+                </span>
+                <b>{railPlan.upcoming ?? railPlan.text}</b>
+                {railPlan.upcoming && <span>{railPlan.text}</span>}
               </>
             )}
           </Link>
@@ -233,9 +237,9 @@ export function Shell({
                 <Link role="menuitem" href="/portal/settings">
                   Settings
                 </Link>
-                {account.some((t) => t.href === "/portal/team") && (
-                  <Link role="menuitem" href="/portal/team">
-                    Team
+                {account.some((t) => t.href === "/portal/people") && (
+                  <Link role="menuitem" href="/portal/people">
+                    People
                   </Link>
                 )}
                 <form action={signOut}>
@@ -251,6 +255,18 @@ export function Shell({
         <main className="pt-content" id="main" onClick={() => menu && setMenu(null)}>
           {children}
         </main>
+        {/* On every page (owner, 25 Oct 2026); replaces the full-width WhatsApp bar. */}
+        <footer className="pt-foot" data-testid="portal-footer">
+          <a href="https://milkywayy.com" target="_blank" rel="noopener">
+            milkywayy.com
+          </a>
+          <a href={chatLink("Hi Milkywayy")} target="_blank" rel="noopener noreferrer">
+            WhatsApp
+          </a>
+          <a href="/terms" target="_blank" rel="noopener">
+            Terms
+          </a>
+        </footer>
       </div>
 
       {canBook && !booking && (

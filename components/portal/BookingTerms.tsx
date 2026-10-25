@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { money } from "@/lib/portal/billing";
+import { dateLabel, money } from "@/lib/portal/billing";
 import {
   BOOKING_TERMS,
   dueNow,
@@ -225,6 +225,11 @@ export function PanelTerms({
   return (
     <p className="bkp-pterms" data-testid="panel-terms">
       {line}
+      {terms.upcoming && !terms.package && (
+        <span data-testid="panel-upcoming">
+          {terms.upcoming.name} starts {dateLabel(terms.upcoming.starts_on, { year: undefined })}
+        </span>
+      )}
       <span>Free changes up to {terms.cancel_free_hours}h before</span>
     </p>
   );

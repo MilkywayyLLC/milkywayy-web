@@ -181,6 +181,7 @@ export async function updateClientAccount(
     return failed(e);
   }
   revalidatePath(`/admin/accounts/${id}`);
+  revalidatePath("/portal", "layout");
   return { ok: true, notice: patch.notes !== undefined ? "Notes saved." : "Currency saved." };
 }
 
@@ -210,6 +211,7 @@ export async function adminInvite(
     return failed(e);
   }
   revalidatePath(`/admin/accounts/${id}`);
+  revalidatePath("/portal", "layout");
   return {
     ok: true,
     notice: `Invited.${sentNote(status)}`,
@@ -225,6 +227,7 @@ export async function adminCancelInvite(accountId: string, inviteId: string): Pr
     return failed(e);
   }
   revalidatePath(`/admin/accounts/${accountId}`);
+  revalidatePath("/portal", "layout");
   return { ok: true, notice: "Invite cancelled." };
 }
 
@@ -233,6 +236,7 @@ export async function resendInvite(accountId: string, inviteId: string): Promise
   try {
     const status = await emailInvite(accountId, inviteId);
     revalidatePath(`/admin/accounts/${accountId}`);
+    revalidatePath("/portal", "layout");
     if (status === null) return { ok: false, error: "That invite has no email address." };
     if (status === "failed") return { ok: false, error: "The email didn’t go out. Try again." };
     return {

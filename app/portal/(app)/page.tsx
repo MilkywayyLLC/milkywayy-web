@@ -1,13 +1,14 @@
 import { dateLabel, money, shownStatus, type Invoice } from "@/lib/portal/billing";
+import type { BillingPayments } from "@/components/portal/PaymentParts";
+import { dayCount, packageSplitUsage } from "@/lib/portal/payments";
 import { Icon } from "@/components/portal/Icon";
 import { projectCovers } from "@/lib/portal/covers";
 import Link from "next/link";
-import { getSiteSettings } from "@/lib/data";
 import { contactOf, requireAccount } from "@/lib/portal/auth";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
 import { YourWork } from "@/components/portal/YourWork";
 import { requestConfig } from "@/lib/portal/requests";
-import { statusLabel, type Project } from "@/lib/portal/projects";
+import { shortTitle, statusLabel, type Project } from "@/lib/portal/projects";
 import { isManager, seesMoney } from "@/lib/portal/shell";
 
 export const metadata = { title: { absolute: "Home · Milkywayy portal" } };
@@ -26,7 +27,7 @@ export default async function PortalHome({
     { data: projectRows },
     { data: profile },
     invites,
-    chat,
+    { data: payments },
     { data: eventRows },
     { data: invoiceRows },
     cfg,
@@ -44,15 +45,15 @@ export default async function PortalHome({
           .eq("account_id", a.id)
           .is("accepted_at", null)
       : Promise.resolve({ count: 0 }),
-    getSiteSettings()
-      .then((s) => s.whatsapp.number)
-      .catch(() => ""),
+    seesMoney(current)
+      ? db.rpc("my_billing_payments", { p_account: a.id })
+      : Promise.resolve({ data: null }),
     db
       .from("project_events")
       .select("id, kind, to_status, note, at, project:projects!inner(ref, title, type, account_id)")
       .eq("project.account_id", a.id)
       .order("at", { ascending: false })
-      .limit(8),
+      .limit(20),
     // Invoices waiting for payment: those who see billing only (RLS returns none to others).
     seesMoney(current)
       ? db
@@ -69,7 +70,6 @@ export default async function PortalHome({
     "id" | "number" | "due_on" | "status" | "amount" | "currency"
   >[];
   const unpaid = invoices.filter((i) => i.status !== "paid");
-  const paid = invoices.filter((i) => i.status === "paid");
   const projects = (projectRows ?? []) as Project[];
   const waiting = projects.filter(
     (p) =>
@@ -96,13 +96,72 @@ export default async function PortalHome({
   });
   const openInvites = invites.count ?? 0;
   const first = (profile?.full_name ?? "").trim().split(/\s+/)[0] ?? "";
-  const activeCount = projects.filter(
-    (p) => p.status !== "completed" && p.status !== "cancelled",
+  // Stats (owner, 25 Oct 2026): next shoot, in editing, ready to download; no money on Home,
+  // except what's left on a package.
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" });
+  const nextShoot = projects
+    .filter(
+      (p) =>
+        p.type === "shoot" &&
+        !!p.shoot_date &&
+        p.shoot_date.slice(0, 10) >= today &&
+        !["cancelled", "delivered", "completed"].includes(p.status),
+    )
+    .map((p) => p.shoot_date!.slice(0, 10))
+    .sort()[0];
+  const inEditing = projects.filter((p) =>
+    ["shot", "editing", "in_editing", "files_received", "in_production"].includes(p.status),
   ).length;
-  const deliveredCount = projects.filter(
-    (p) => p.status === "delivered" || p.status === "completed",
-  ).length;
-  const spent = paid.reduce((n, i) => n + Number(i.amount ?? 0), 0);
+  const pkg = (payments as BillingPayments | null)?.value;
+  const left = pkg ? packageSplitUsage(pkg) : null;
+  // Recent activity: one row per event, no repeats (a status change and its delivery note).
+  const eventText = (e: (typeof events)[number]) => {
+    const t = shortTitle(e.project.title);
+    return e.kind === "created"
+      ? `${e.project.type === "shoot" ? "Requested" : "Submitted"}: ${t}`
+      : e.kind === "script_posted"
+        ? `Script ready: ${t}`
+        : e.kind === "script_approved"
+          ? `Script approved: ${t}`
+          : e.kind === "files_added"
+            ? `Files added: ${t}`
+            : e.kind === "status"
+              ? `${statusLabel(e.to_status ?? "")}: ${t}`
+              : e.kind === "delivery"
+                ? `${statusLabel("delivered")}: ${t}`
+                : e.kind === "revision_requested"
+                  ? `Revision requested: ${t}`
+                  : e.kind === "revision_delivered"
+                    ? `Revision delivered: ${t}`
+                    : e.kind === "approved" || e.kind === "auto_completed"
+                      ? `${statusLabel("completed")}: ${t}`
+                      : (e.note ?? e.kind);
+  };
+  const eventIcon = (e: (typeof events)[number]) =>
+    e.kind === "delivery" || e.to_status === "delivered"
+      ? "download"
+      : e.kind === "created"
+        ? "calendar"
+        : e.kind === "files_added"
+          ? "upload"
+          : e.kind === "approved" || e.kind === "auto_completed"
+            ? "check"
+            : e.project.type === "avatar"
+              ? "avatars"
+              : e.project.type === "edit"
+                ? "editing"
+                : "shoots";
+  const seen = new Set<string>();
+  const activity = events
+    .map((e) => ({ e, text: eventText(e) }))
+    .filter(({ e, text }) => {
+      const k = `${e.project.ref}|${text}|${e.at.slice(0, 10)}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .slice(0, 8);
+
   const href = (p: Project) => `/portal/p/${encodeURIComponent(p.ref)}`;
 
   // Needs your attention: the same items as before; the first is the hero.
@@ -140,7 +199,7 @@ export default async function PortalHome({
             </>
           ),
         plain,
-        text: `${p.title}. Download, then approve or ask for a revision.`,
+        text: `${shortTitle(p.title)}. Download, then approve or ask for a revision.`,
         cta: "Download & review",
         cover: covers.get(p.id) ?? "",
       };
@@ -155,7 +214,7 @@ export default async function PortalHome({
         </>
       ),
       plain: "Approve the script",
-      text: `${p.title}. Production starts once you approve.`,
+      text: `${shortTitle(p.title)}. Production starts once you approve.`,
       cta: "Review script",
     })),
     ...onHold.map((p) => ({
@@ -168,7 +227,7 @@ export default async function PortalHome({
         </>
       ),
       plain: "On hold: waiting on you",
-      text: [p.title, p.status_note].filter(Boolean).join(". "),
+      text: [shortTitle(p.title), p.status_note].filter(Boolean).join(". "),
       cta: "Open",
     })),
     // No amounts on Home (owner, 4 Oct 2026): money only on the invoice itself.
@@ -188,12 +247,12 @@ export default async function PortalHome({
       ? [
           {
             key: "invites",
-            href: "/portal/team",
+            href: "/portal/people",
             eb: "Team",
             title: `${openInvites} invite${openInvites === 1 ? "" : "s"} pending`,
             plain: `${openInvites} invite${openInvites === 1 ? "" : "s"} not accepted yet`,
             text: "They join once they sign in with the email you invited.",
-            cta: "Open Team",
+            cta: "Open People",
           },
         ]
       : []),
@@ -308,6 +367,31 @@ export default async function PortalHome({
         </section>
       )}
 
+      <section className="pt-stats" aria-label="At a glance" data-testid="stats">
+        <div className="pt-stat3">
+          <span className="pt-eb">Next shoot</span>
+          <b>{nextShoot ? dateLabel(nextShoot, { year: undefined }) : "None booked"}</b>
+        </div>
+        <div className="pt-stat3">
+          <span className="pt-eb">In editing</span>
+          <b>{inEditing}</b>
+        </div>
+        {left && pkg ? (
+          <div className="pt-stat3" data-testid="stat-package">
+            <span className="pt-eb">Package left</span>
+            <b>
+              {money(pkg.currency, left.aed.rest)} · {dayCount(left.hd.rest)}{" "}
+              {left.hd.rest === 2 ? "day" : "days"}
+            </b>
+          </div>
+        ) : (
+          <div className="pt-stat3">
+            <span className="pt-eb">Ready to download</span>
+            <b>{waiting.length}</b>
+          </div>
+        )}
+      </section>
+
       {tiles.length > 0 && (
         <section className="pt-sec" aria-labelledby="new">
           <h2 id="new" className="pt-eb">
@@ -325,93 +409,42 @@ export default async function PortalHome({
         </section>
       )}
 
-      <div className="pt-home-grid">
-        <YourWork projects={projects} cfg={cfg} />
+      <YourWork projects={projects} cfg={cfg} />
 
-        <section className="pt-sec" aria-labelledby="act">
-          <h2 id="act" className="pt-eb">
-            Recent activity
-          </h2>
-          <div className="pt-card">
-            {events.length ? (
-              <ul className="pt-activity pt-timeline" data-testid="activity">
-                {events.map((e) => (
-                  <li key={e.id}>
-                    <Link href={`/portal/p/${encodeURIComponent(e.project.ref)}`}>
-                      <span>
-                        {e.project.ref} ·{" "}
-                        {e.kind === "created"
-                          ? `${e.project.type === "shoot" ? "Requested" : "Submitted"}: ${e.project.title}`
-                          : e.kind === "script_posted"
-                            ? `Script ready: ${e.project.title}`
-                            : e.kind === "script_approved"
-                              ? `Script approved: ${e.project.title}`
-                              : e.kind === "files_added"
-                                ? `Files added: ${e.project.title}`
-                                : e.kind === "status"
-                                  ? `${statusLabel(e.to_status ?? "")}: ${e.project.title}`
-                                  : e.kind === "delivery"
-                                    ? (e.note ?? "Delivered")
-                                    : e.kind === "revision_requested"
-                                      ? "Revision requested"
-                                      : e.kind === "revision_delivered"
-                                        ? "Revision delivered"
-                                        : e.kind === "approved" || e.kind === "auto_completed"
-                                          ? "Completed"
-                                          : (e.note ?? e.kind)}
-                      </span>
-                      <time dateTime={e.at}>
-                        {new Date(e.at).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                        })}
-                      </time>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="pt-meta" style={{ margin: 0 }}>
-                Nothing yet. Bookings you make on the website with {contactOf(user)} appear here
-                automatically.
-              </p>
-            )}
-          </div>
-        </section>
-      </div>
-
-      <section className="pt-stats" aria-label="At a glance" data-testid="stats">
-        <div className="pt-stat3">
-          <span className="pt-eb">Active</span>
-          <b>{activeCount}</b>
+      <section className="pt-sec" aria-labelledby="act">
+        <h2 id="act" className="pt-eb">
+          Recent activity
+        </h2>
+        <div className="pt-card pt-act">
+          {activity.length ? (
+            <ul className="pt-act-list" data-testid="activity">
+              {activity.map(({ e, text }) => (
+                <li key={e.id}>
+                  <Link href={`/portal/p/${encodeURIComponent(e.project.ref)}`}>
+                    <span className="pt-act-ic" aria-hidden="true">
+                      <Icon name={eventIcon(e)} size={16} />
+                    </span>
+                    <span className="pt-act-t">{text}</span>
+                    <span className="pt-act-ref pt-mono">{e.project.ref}</span>
+                    <time dateTime={e.at}>
+                      {new Date(e.at).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        timeZone: "Asia/Dubai",
+                      })}
+                    </time>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="pt-meta" style={{ margin: 0 }}>
+              Nothing yet. Bookings you make on the website with {contactOf(user)} appear here
+              automatically.
+            </p>
+          )}
         </div>
-        <div className="pt-stat3">
-          <span className="pt-eb">Delivered</span>
-          <b>{deliveredCount}</b>
-        </div>
-        {seesMoney(current) ? (
-          <div className="pt-stat3">
-            <span className="pt-eb">Spent</span>
-            <b>{money(paid[0]?.currency ?? "AED", spent)}</b>
-          </div>
-        ) : (
-          <div className="pt-stat3">
-            <span className="pt-eb">Completed</span>
-            <b>{projects.filter((p) => p.status === "completed").length}</b>
-          </div>
-        )}
       </section>
-
-      {chat && (
-        <a
-          href={`https://wa.me/${chat}?text=${encodeURIComponent(`Hi Milkywayy, it's ${profile?.full_name ?? contactOf(user)} (${a.name}).`)}`}
-          className="btn btn-g"
-          target="_blank"
-          rel="noopener"
-        >
-          WhatsApp us
-        </a>
-      )}
     </>
   );
 }

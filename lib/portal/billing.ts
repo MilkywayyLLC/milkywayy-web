@@ -278,8 +278,12 @@ export function producedSummary(
   return [...out, ...other.map((o) => o.charAt(0).toLowerCase() + o.slice(1))].join(", ");
 }
 
-export const money = (currency: string, n: number) =>
-  `${currency} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: Number(n) % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
+/** "AED 2,258": AED in whole dirhams (owner, 25 Oct 2026: no halalas on screen; invoice PDFs keep
+ *  their exact amounts); other currencies to the cent where needed. */
+export const money = (currency: string, n: number) => {
+  const v = currency === "AED" ? Math.round(Number(n) || 0) : Number(n);
+  return `${currency} ${v.toLocaleString("en-US", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
+};
 
 export const dateLabel = (d: string | null | undefined, opts: Intl.DateTimeFormatOptions = {}) =>
   d

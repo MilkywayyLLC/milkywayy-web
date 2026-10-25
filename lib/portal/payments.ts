@@ -33,6 +33,8 @@ export type TermsView = {
     allowance_left: number;
     half_days_left: number;
   } | null;
+  /** A package set up to start later (owner, 25 Oct 2026): "Growth starts 1 Nov". */
+  upcoming?: { name: string; starts_on: string; price: number; currency: string } | null;
 };
 
 export const DEFAULT_TERMS: TermsView = {
@@ -91,7 +93,7 @@ export function packageSplit(
  */
 export const dayCount = (halfDays: number) => {
   const d = Number(halfDays) / 2;
-  return Number.isInteger(d) ? String(d) : d.toFixed(1);
+  return String(Math.round(d * 100) / 100);
 };
 export const shootDays = (halfDays: number) =>
   `${dayCount(halfDays)} shoot day${Number(halfDays) === 2 ? "" : "s"}`;
@@ -134,8 +136,17 @@ export function packageSplitUsage(v: {
 }
 
 /** Half-days a shoot uses: content shoots by slot (a full day is 2), property-only shoots none. */
-export function halfDaysOf(o: { hasVideo: boolean; slot?: string | null; fullDay?: boolean }) {
+export function halfDaysOf(o: {
+  hasVideo: boolean;
+  slot?: string | null;
+  fullDay?: boolean;
+  /** A content shoot by length (25 Oct 2026): 2 h = 0.5, 4 h = 1, 8 h = 2 half-days. */
+  hours?: number | null;
+}) {
   if (!o.hasVideo) return 0;
+  if (o.hours === 2) return 0.5;
+  if (o.hours === 4) return 1;
+  if (o.hours === 8) return 2;
   return o.fullDay || o.slot === "full_day" || o.slot === "Full day" ? 2 : 1;
 }
 
@@ -389,3 +400,26 @@ export const BOOKING_TERMS: { title: string; text: string }[] = [
     text: "An avatar based on a real person needs that person’s written consent.",
   },
 ];
+
+/** Whole dirhams (owner, 25 Oct 2026): no halalas anywhere on the client's pages. */
+export const aed0 = (n: number | string | null | undefined) => Math.round(Number(n) || 0);
+
+/**
+ * The month-end invoice so far on a value package (owner, 25 Oct 2026): the package, the extras, and
+ * work from before the package started this month, each its own line, so the lines add up to the
+ * total. `estimate` is the database's (package + extras + before); "before" is what's left of it.
+ */
+export function monthEndSoFar(v: { price: number; extras_total: number; estimate: number }) {
+  const price = aed0(v.price);
+  const extras = aed0(v.extras_total);
+  const before = Math.max(aed0(v.estimate) - price - extras, 0);
+  const lines = [
+    { key: "package", amount: price },
+    { key: "extras", amount: extras },
+    ...(before > 0 ? [{ key: "before", amount: before }] : []),
+  ];
+  return { lines, total: price + extras + before };
+}
+
+/** Pro-rated shoot days to 0.5-day steps (whole half-days). */
+export const halfDayStep = (halfDays: number) => Math.round(Number(halfDays) || 0);

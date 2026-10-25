@@ -295,6 +295,7 @@ export async function setPlan(
       p_ends: term === 6 ? ends || null : null,
     });
     revalidatePath(`/admin/accounts/${account}`);
+    revalidatePath("/portal", "layout");
     return { ok: true, notice: mode === "payg" ? "Now pay as you go." : "Plan saved." };
   } catch (e) {
     return fail(e);
@@ -369,6 +370,7 @@ export async function setClientBilling(
     const rpc = await portalAdminAction();
     await rpc("portal_admin_set_client_billing", { p_account: account, p });
     revalidatePath(`/admin/accounts/${account}`);
+    revalidatePath("/portal", "layout");
     return { ok: true, notice: "Saved." };
   } catch (e) {
     return fail(e);
@@ -493,6 +495,7 @@ export async function hideSuggestions(account: string, hide: boolean): Promise<B
     const rpc = await portalAdminAction();
     await rpc("portal_admin_hide_suggestions", { p_account: account, p_hide: hide });
     revalidatePath(`/admin/accounts/${account}`);
+    revalidatePath("/portal", "layout");
     return {
       ok: true,
       notice: hide ? "Suggestions hidden for this client." : "Suggestions allowed.",

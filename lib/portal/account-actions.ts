@@ -187,6 +187,7 @@ export async function resendInvite(id: string): Promise<Result> {
   if (!data[0].email) return fail("Add an email to send this invite.");
   const status = await emailTeamInvite(id);
   revalidatePath("/portal/team");
+  revalidatePath("/portal/people");
   return status === "sent" || status === "skipped"
     ? { ok: true, notice: `Invite sent again. It works for 14 more days.${sentNote(status)}` }
     : fail("The email didn’t go out. Try again in a minute.");
@@ -211,6 +212,7 @@ export async function setInviteEmail(id: string, raw: string): Promise<Result> {
   if (!data?.length) return fail("That invite is gone already.");
   const status = await emailTeamInvite(id);
   revalidatePath("/portal/team");
+  revalidatePath("/portal/people");
   return { ok: true, notice: `Email added.${sentNote(status)}` };
 }
 

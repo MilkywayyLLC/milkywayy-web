@@ -383,48 +383,70 @@ export function CharactersRow({ characters }: { characters: Character[] }) {
   const [act, setAct] = useState<{ id: string; kind: "edit" | "revise" } | null>(null);
   const open = characters.find((c) => c.id === openId) ?? null;
   const acting = characters.find((c) => c.id === act?.id) ?? null;
+  const [creating, setCreating] = useState(false);
+  // V2 (owner, 25 Oct 2026): a Create card first, then the characters; two placeholder
+  // variations hold the row's shape until there are characters to show.
+  const fill = Math.max(0, 2 - characters.length);
   return (
     <section className="pt-char-sec" aria-label="Your characters">
       <b className="pt-h2">Your characters</b>
-      {characters.length ? (
-        <div className="pt-char-row" data-testid="characters">
-          {characters.map((c) => {
-            const img = coverOf(c);
-            return (
-              <div key={c.id} className="pt-card pt-card-link pt-char-card pt-stretch">
-                {img?.src ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={img.src} alt="" />
-                ) : (
-                  <span className="pt-char-ph" aria-hidden="true">
-                    <Icon name="ai" size={28} />
-                  </span>
-                )}
+      <div className="pt-char-row" data-testid="characters">
+        <button
+          type="button"
+          className="pt-card pt-char-card pt-char-new"
+          onClick={() => setCreating(true)}
+          data-testid="character-create"
+        >
+          <span className="pt-char-ph" aria-hidden="true">
+            <Icon name="plus" size={28} />
+          </span>
+          <b className="pt-title">Create a character</b>
+          <span className="pt-meta">We design three variations, you choose.</span>
+        </button>
+        {characters.map((c) => {
+          const img = coverOf(c);
+          return (
+            <div key={c.id} className="pt-card pt-card-link pt-char-card pt-stretch">
+              {img?.src ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={img.src} alt="" />
+              ) : (
+                <span className="pt-char-ph" aria-hidden="true">
+                  <Icon name="ai" size={28} />
+                </span>
+              )}
+              <button
+                type="button"
+                className="pt-title pt-stretch-link"
+                onClick={() => setOpenId(c.id)}
+              >
+                {characterTitle(c)}
+              </button>
+              <Badge tone={toneOf(c.status)}>{CHARACTER_STATUS[c.status]}</Badge>
+              {(canEdit(c) || canRevise(c)) && (
                 <button
                   type="button"
-                  className="pt-title pt-stretch-link"
-                  onClick={() => setOpenId(c.id)}
+                  className="lnk pt-small pt-stretch-act"
+                  onClick={() => setAct({ id: c.id, kind: canEdit(c) ? "edit" : "revise" })}
                 >
-                  {characterTitle(c)}
+                  {canEdit(c) ? "Edit request" : "Request a revision"}
                 </button>
-                <Badge tone={toneOf(c.status)}>{CHARACTER_STATUS[c.status]}</Badge>
-                {(canEdit(c) || canRevise(c)) && (
-                  <button
-                    type="button"
-                    className="lnk pt-small pt-stretch-act"
-                    onClick={() => setAct({ id: c.id, kind: canEdit(c) ? "edit" : "revise" })}
-                  >
-                    {canEdit(c) ? "Edit request" : "Request a revision"}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="pt-meta" style={{ margin: 0 }}>
-          No characters yet. Create your AI avatar: we design three variations, you choose.
-        </p>
+              )}
+            </div>
+          );
+        })}
+        {Array.from({ length: fill }, (_, n) => (
+          <div key={n} className="pt-card pt-char-card pt-char-ghost" aria-hidden="true">
+            <span className="pt-char-ph">
+              <Icon name="person" size={28} />
+            </span>
+            <b className="pt-title">Variation {n + 1}</b>
+            <span className="pt-meta">Appears here once designed</span>
+          </div>
+        ))}
+      </div>
+      {creating && (
+        <CreateCharacterModal first={!characters.length} onClose={() => setCreating(false)} />
       )}
       {open && (
         <CharacterModal

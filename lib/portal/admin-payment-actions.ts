@@ -42,6 +42,7 @@ export async function setPaymentTerms(account: string, terms: PaymentTerms): Pro
     const rpc = await portalAdminAction();
     await rpc("portal_admin_set_payment_terms", { p_account: account, p_terms: terms });
     revalidatePath(`/admin/accounts/${account}`);
+    revalidatePath("/portal", "layout");
     return { ok: true, notice: "Payment terms saved." };
   } catch (e) {
     return fail(e);
@@ -83,6 +84,7 @@ export async function setPackageValue(
     });
     if (account) revalidatePath(`/admin/accounts/${account}`);
     revalidatePath("/admin/billing/packages");
+    revalidatePath("/portal", "layout");
     return { ok: true, notice: "Package saved." };
   } catch (e) {
     return fail(e);

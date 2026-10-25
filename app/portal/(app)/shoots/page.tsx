@@ -9,6 +9,7 @@ import {
   myProjects,
   SHOOT_SERVICE_LABEL,
   shootDay,
+  shortTitle,
   statusLabel,
   stepsFor,
 } from "@/lib/portal/projects";
@@ -123,18 +124,23 @@ export default async function Shoots({
           {(tab === "active" ? active : done).map((p) => {
             const to = `/portal/shoots/${encodeURIComponent(p.ref)}`;
             const cover = covers.get(p.id);
+            // A thumbnail from Delivered on (owner, 25 Oct 2026); full width until then.
+            const delivered =
+              !!p.delivered_at || p.status === "delivered" || p.status === "completed";
             return (
-              <article key={p.id} className="pt-scard">
-                <Link href={to} className="pt-scard-thumb" tabIndex={-1} aria-hidden="true">
-                  {cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={cover} alt="" loading="lazy" />
-                  ) : (
-                    <span className="pt-hero-ph">
-                      <Icon name="shoots" />
-                    </span>
-                  )}
-                </Link>
+              <article key={p.id} className="pt-scard" data-thumb={delivered ? "" : undefined}>
+                {delivered && (
+                  <Link href={to} className="pt-scard-thumb" tabIndex={-1} aria-hidden="true">
+                    {cover ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={cover} alt="" loading="lazy" />
+                    ) : (
+                      <span className="pt-hero-ph">
+                        <Icon name="shoots" />
+                      </span>
+                    )}
+                  </Link>
+                )}
                 <div className="pt-scard-body">
                   <div className="pt-row">
                     <span className="pt-eb" style={{ whiteSpace: "nowrap" }}>
@@ -147,7 +153,7 @@ export default async function Shoots({
                   <div style={{ display: "grid", gap: 2 }}>
                     <Link href={to} className="pt-scard-title">
                       <b className="pt-title">
-                        {p.title}
+                        {shortTitle(p.title)}
                         {p.meta.unit ? ` · ${p.meta.unit}` : ""}
                       </b>
                     </Link>
