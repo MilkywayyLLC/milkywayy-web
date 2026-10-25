@@ -17,13 +17,12 @@ export function portalTabs(m: Membership) {
     ...(can(m, "listings")
       ? [{ href: "/portal/listings", label: "Listings", icon: "listings" }]
       : []),
-    { href: "/portal/inquiries", label: "Inquiries", icon: "chat" },
     ...(can(m, "billing") ? [{ href: "/portal/billing", label: "Billing", icon: "billing" }] : []),
   ];
   const account: Tab[] = [
-    ...(can(m, "team") ? [{ href: "/portal/team", label: "Team", icon: "team" }] : []),
-    ...(can(m, "listings")
-      ? [{ href: "/portal/contacts", label: "Contacts", icon: "contacts" }]
+    // People (owner, 25 Oct 2026): Team and listing contacts on one page.
+    ...(can(m, "team") || can(m, "listings")
+      ? [{ href: "/portal/people", label: "People", icon: "team" }]
       : []),
     { href: "/portal/settings", label: "Settings", icon: "settings" },
   ];

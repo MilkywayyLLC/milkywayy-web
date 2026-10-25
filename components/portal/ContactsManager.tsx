@@ -13,7 +13,7 @@ import { initials } from "@/lib/portal/shell";
 import { ContactPhotoField, photoPick, savePickedPhoto } from "./ContactPhotoField";
 import { ChoiceDialog } from "./forms";
 import { Icon } from "./Icon";
-import { Badge, Sheet, useToast } from "./ui";
+import { Sheet, useToast } from "./ui";
 
 export type ContactRow = {
   id: string;
@@ -30,110 +30,104 @@ export type ContactRow = {
   photo: string | null;
 };
 
-export function ContactsManager({ contacts }: { contacts: ContactRow[] }) {
+/**
+ * Listing contacts on People (owner, 25 Oct 2026): one pill per person (round photo + name); tap
+ * one to edit it in a sheet. The company comes first and is the default when no person is.
+ * Agents get their own card when they're invited, so they're selectable on share pages.
+ */
+export function ContactsManager({
+  contacts,
+  company,
+}: {
+  contacts: ContactRow[];
+  company: string;
+}) {
   const [editing, setEditing] = useState<ContactRow | "new" | null>(null);
   const [removing, setRemoving] = useState<ContactRow | null>(null);
-  const [pending, start] = useTransition();
+  const [, start] = useTransition();
   const [toast, say] = useToast();
   const run = (p: Promise<Result>) =>
     start(async () => {
       const r = await p;
       say(r.ok ? (r.notice ?? "Saved.") : (r.error ?? "Couldn’t save."));
     });
+  const anyDefault = contacts.some((c) => c.is_default);
 
   return (
-    <>
-      <div className="pt-head">
+    <section className="pt-sec" aria-labelledby="lc-h" data-testid="people-contacts">
+      <div className="pt-sec-head">
         <div>
-          <span className="pt-eb">Shown on your listing pages</span>
-          <h1 className="pt-h1">Contacts</h1>
+          <h2 id="lc-h" className="pt-h2">
+            Listing contacts
+          </h2>
+          <span className="pt-meta">
+            Shown on your listing pages. When you share one you just tap a pill; the default is
+            picked for you.
+          </span>
         </div>
-        <button type="button" className="btn btn-p btn-s" onClick={() => setEditing("new")}>
+        <button type="button" className="btn btn-g btn-s" onClick={() => setEditing("new")}>
           <Icon name="plus" size={16} /> Add contact
         </button>
       </div>
-      <p className="pt-muted" style={{ margin: 0 }}>
-        When you create a share link you just tap a pill. The default one is picked for you.
-      </p>
-      {contacts.length === 0 ? (
-        <div className="pt-card">
-          <span className="pt-meta">
-            No contacts yet. Add the people buyers should call or WhatsApp about a listing.
+      <div className="pt-pills" data-testid="pills">
+        {!anyDefault && (
+          <span className="pt-pill" aria-pressed="true" data-testid="pill-company">
+            <span className="pt-pill-face">{initials(company)}</span>
+            <span>
+              {company}
+              <small>Company · Default</small>
+            </span>
           </span>
-        </div>
-      ) : (
-        <>
-          <div className="pt-pills" data-testid="pills">
-            {contacts.map((c) => (
-              <span key={c.id} className="pt-pill" aria-pressed={c.is_default ? "true" : "false"}>
-                {c.photo ? (
-                  <img
-                    src={c.photo}
-                    alt=""
-                    className="pt-pill-face"
-                    style={{ objectFit: "cover" }}
-                  />
-                ) : (
-                  <span className="pt-pill-face">{initials(c.name)}</span>
-                )}
-                <span>
-                  {c.name}
-                  <small>
-                    {[c.role, c.brn].filter(Boolean).join(" · ") || (c.is_default ? "Default" : "")}
-                  </small>
-                </span>
-              </span>
-            ))}
-          </div>
-          <div className="pt-list" data-testid="contacts">
-            {contacts.map((c) => (
-              <div key={c.id} className="pt-row" style={{ flexWrap: "wrap" }}>
-                <div>
-                  <b>{c.name}</b> {c.is_default && <Badge>Default</Badge>}{" "}
-                  {c.hasLogin && <Badge>Has login</Badge>}
-                  <div className="pt-meta">
-                    {[c.role, c.whatsapp, c.email, c.brn].filter(Boolean).join(" · ")}
-                  </div>
-                </div>
-                {c.canEdit && (
-                  <div className="pt-btns">
-                    {!c.is_default && (
-                      <button
-                        type="button"
-                        className="btn btn-g btn-s pt-btn-sm"
-                        disabled={pending}
-                        onClick={() => run(makeDefaultContact(c.id))}
-                      >
-                        Make default
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="btn btn-g btn-s pt-btn-sm"
-                      onClick={() => setEditing(c)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-g btn-s pt-btn-sm"
-                      disabled={pending}
-                      onClick={() => setRemoving(c)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+        )}
+        {contacts.map((c) => {
+          const face = c.photo ? (
+            <img src={c.photo} alt="" className="pt-pill-face" style={{ objectFit: "cover" }} />
+          ) : (
+            <span className="pt-pill-face">{initials(c.name)}</span>
+          );
+          const text = (
+            <span>
+              {c.name}
+              <small>
+                {[c.is_default ? "Default" : null, c.hasLogin ? "Team" : null, c.role]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </small>
+            </span>
+          );
+          return c.canEdit ? (
+            <button
+              key={c.id}
+              type="button"
+              className="pt-pill"
+              aria-pressed={c.is_default ? "true" : "false"}
+              aria-label={`Edit ${c.name}`}
+              onClick={() => setEditing(c)}
+            >
+              {face}
+              {text}
+            </button>
+          ) : (
+            <span key={c.id} className="pt-pill" aria-pressed={c.is_default ? "true" : "false"}>
+              {face}
+              {text}
+            </span>
+          );
+        })}
+      </div>
       {editing && (
         <ContactSheet
           contact={editing === "new" ? null : editing}
           first={!contacts.length}
           onClose={() => setEditing(null)}
+          onRemove={(c) => {
+            setEditing(null);
+            setRemoving(c);
+          }}
+          onDefault={(c) => {
+            setEditing(null);
+            run(makeDefaultContact(c.id));
+          }}
           say={say}
         />
       )}
@@ -157,7 +151,7 @@ export function ContactsManager({ contacts }: { contacts: ContactRow[] }) {
         />
       )}
       {toast}
-    </>
+    </section>
   );
 }
 
@@ -165,11 +159,15 @@ function ContactSheet({
   contact,
   first,
   onClose,
+  onRemove,
+  onDefault,
   say,
 }: {
   contact: ContactRow | null;
   first: boolean;
   onClose: () => void;
+  onRemove: (c: ContactRow) => void;
+  onDefault: (c: ContactRow) => void;
   say: (m: string) => void;
 }) {
   const [photo, setPhoto] = useState(() => photoPick(contact?.photo));
@@ -252,6 +250,18 @@ function ContactSheet({
         <button type="submit" className="btn btn-p" disabled={saving}>
           {saving ? "Saving…" : "Save contact"}
         </button>
+        {contact && (
+          <div className="pt-btns">
+            {!contact.is_default && (
+              <button type="button" className="btn btn-g btn-s" onClick={() => onDefault(contact)}>
+                Make default
+              </button>
+            )}
+            <button type="button" className="btn btn-g btn-s" onClick={() => onRemove(contact)}>
+              Remove
+            </button>
+          </div>
+        )}
       </form>
     </Sheet>
   );

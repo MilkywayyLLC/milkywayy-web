@@ -48,9 +48,12 @@ export type PropertyConfig = Pick<
 /** Older bookings only: Shot & edited or Shoot only (raw files), for the whole booking. */
 export type ShootMode = "edited" | "raw";
 
-/** The Videos card. By count (the default) or by time ("Not sure how many?"). */
+/** The Videos card. By count (property shoots), by length (content shoots, 25 Oct 2026: 2, 4 or
+ *  8 hours plus edits) or by time (older content bookings: "Not sure how many?"). */
 export type VideoPlan = {
-  by: "count" | "time";
+  by: "count" | "time" | "hours";
+  /** By length: the shoot length in hours. */
+  hours?: ContentHours;
   /** Short-form (30–90 sec) and long-form (up to 5 min): how many. By time: the finished count,
    *  once logged. */
   short?: number;
@@ -59,7 +62,7 @@ export type VideoPlan = {
   extra_min?: number;
   /** By time: a half day (morning or afternoon) or a full day. */
   day?: "half" | "full";
-  /** By time only: raw files, no editing. */
+  /** By time or by length: raw files, no editing. */
   raw?: boolean;
   /** By time: an optional rough count ("about 4 reels and a walkthrough"). */
   approx?: string;
@@ -116,6 +119,24 @@ export const KEY = {
   raw: { half: "half_day", full: "full_day" },
   min: { half: "min_half_day", full: "min_full_day" },
 } as const;
+/** Content shoot by length (owner, 25 Oct 2026): three lengths, edits on top. */
+export const CONTENT_HOURS = [2, 4, 8] as const;
+export type ContentHours = (typeof CONTENT_HOURS)[number];
+export const CONTENT_KEY = {
+  2: "content_2h",
+  4: "content_4h",
+  8: "content_8h",
+  short: "content_short_edit",
+  long: "content_long_edit",
+} as const;
+/** Half-days a content shoot uses on a value package: 2 h a quarter day, 4 h a half, 8 h a full. */
+export const CONTENT_HALF_DAYS: Record<ContentHours, number> = { 2: 0.5, 4: 1, 8: 2 };
+/** Default short-form edits follow the length: 2 h → 2, 4 h → 4, 8 h → 8. */
+export const CONTENT_DEFAULT_SHORT: Record<ContentHours, number> = { 2: 2, 4: 4, 8: 8 };
+export const CONTENT_LONG_MAX = 3;
+export const isContentHours = (n: unknown): n is ContentHours =>
+  CONTENT_HOURS.includes(Number(n) as ContentHours);
+
 /** What counts toward a flexible booking's minimum: the finished videos. */
 export const VIDEO_KEYS: readonly string[] = [KEY.short, KEY.long, KEY.extra];
 export const isMinimumKey = (k: string) => k === KEY.min.half || k === KEY.min.full;
@@ -201,6 +222,13 @@ export function normalizeServices(list: BookingService[]): BookingService[] {
 
 /** The Videos card as stored: whole numbers, by-time fields only by time. */
 export function cleanVideos(v: VideoPlan): VideoPlan {
+  if (v.by === "hours") {
+    const hours = isContentHours(v.hours) ? (Number(v.hours) as ContentHours) : 4;
+    if (v.raw) return { by: "hours", hours, raw: true };
+    const short = int(v.short, 100);
+    const long = int(v.long, CONTENT_LONG_MAX);
+    return { by: "hours", hours, ...(short ? { short } : {}), ...(long ? { long } : {}) };
+  }
   if (v.by === "time")
     return {
       by: "time",
@@ -264,6 +292,15 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 
 /** "4 short-form · 1 long-form (+3 min)", "Half day · raw files only", "Full day, edited". */
 export function videoSummary(v: VideoPlan): string {
+  if (v.by === "hours") {
+    const head = `${v.hours ?? 4} h content shoot`;
+    if (v.raw) return `${head} · raw files only`;
+    const edits = [
+      v.short ? plural(v.short, "short-form edit") : "",
+      v.long ? plural(v.long, "long-form edit") : "",
+    ].filter(Boolean);
+    return [head, edits.join(" · ") || "no edits"].join(" · ");
+  }
   if (v.by === "time") {
     const day = DAY_LABEL[v.day ?? "half"];
     const head = v.raw ? `${day} · raw files only` : `${day}, edited`;
@@ -342,6 +379,13 @@ export function videoLines(v: VideoPlan, rates: Rates): EstimateLine[] {
       ...(minimum ? { minimum } : {}),
     });
   };
+  if (v.by === "hours") {
+    const h = isContentHours(v.hours) ? (Number(v.hours) as ContentHours) : 4;
+    line(CONTENT_KEY[h], `Content shoot · ${h} hours${v.raw ? " · raw files" : ""}`, 1);
+    if (!v.raw && v.short) line(CONTENT_KEY.short, "Short-form edit", v.short);
+    if (!v.raw && v.long) line(CONTENT_KEY.long, "Long-form edit", v.long);
+    return out;
+  }
   const day = v.day === "full" ? "full" : "half";
   if (v.by === "time") {
     if (v.raw) line(KEY.raw[day], `Raw files only · ${DAY_LABEL[day].toLowerCase()}`, 1);

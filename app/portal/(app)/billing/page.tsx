@@ -3,7 +3,9 @@ import { InvoiceDownload } from "@/components/portal/InvoiceDownload";
 import {
   BankBox,
   HowYouPay,
+  PackageBookings,
   PayActions,
+  upcomingText,
   ValuePackageCard,
   type BillingPayments,
 } from "@/components/portal/PaymentParts";
@@ -93,11 +95,11 @@ export default async function Billing({
       <LiveRefresh />
       <div className="pt-head">
         <div>
-          <span className="pt-eb">Owner and admins only · {a.currency}</span>
           <h1 className="pt-h1">Billing</h1>
           {bp && (
             <span className="pt-meta" data-testid="terms">
-              Payment terms: {TERMS_LABEL[bp.terms]}
+              {bp.value ? "Monthly package · one invoice at month end" : TERMS_LABEL[bp.terms]}
+              {upcomingText(bp.upcoming) ? ` · ${upcomingText(bp.upcoming)}` : ""}
             </span>
           )}
         </div>
@@ -111,157 +113,163 @@ export default async function Billing({
 
       {/* Top (owner, 24 Oct 2026): the plan and its meters, then how this client pays. */}
       {bp?.value && <ValuePackageCard v={bp.value} />}
-      {bp && <HowYouPay bp={bp} card={cardPay} />}
+      {!bp?.value && bp?.upcoming && (
+        <section className="pt-card pt-plancard" data-testid="plan-upcoming">
+          <span className="pt-eb">Your plan</span>
+          <h2 className="pt-h2">{upcomingText(bp.upcoming)}</h2>
+          <span className="pt-meta">
+            {money(bp.upcoming.currency, bp.upcoming.price)} a month from{" "}
+            {dateLabel(bp.upcoming.starts_on)}. Until then you pay per shoot.
+          </span>
+        </section>
+      )}
+      {bp && (
+        <HowYouPay
+          bp={bp}
+          card={cardPay}
+          chat={chatLink(`Hi, I have a question about billing for ${a.name}.`)}
+        />
+      )}
+      {bp?.value && <PackageBookings v={bp.value} />}
 
       {b?.budget && <BudgetCard b={b.budget} currency={b.currency} />}
       {b?.budget && <ActivityList rows={b.budget.activity} currency={b.currency} />}
       {!b?.budget && b?.activity && <ActivityList rows={b.activity} currency={b.currency} />}
 
-      <div className="pt-grid2">
-        {plan && (
-          <section className="pt-card" aria-labelledby="plan-h" data-testid="plan">
-            <div className="pt-row">
-              <span className="pt-eb">
-                Your plan ·{" "}
-                {plan.prorated
-                  ? "first month, pro-rated"
-                  : plan.term_months === 6
-                    ? plan.month_no && plan.month_no <= 6
-                      ? `Month ${plan.month_no} of 6`
-                      : "6-month contract"
-                    : "monthly"}
-              </span>
-              <span className="pt-meta">Renews {dateLabel(plan.renews_on)}</span>
-            </div>
-            <h2 id="plan-h" className="pt-h2">
-              {plan.name}
-            </h2>
-            {plan.term_months === 6 && plan.ends_on && (
-              <span className="pt-meta">6-month contract until {dateLabel(plan.ends_on)}</span>
-            )}
-            {plan.prorated && (
-              <span className="pt-meta" data-testid="prorated">
-                Started {dateLabel(plan.started_on)}: this month’s inclusions are pro-rated. Full
-                months from {dateLabel(plan.renews_on)}.
-              </span>
-            )}
-            <span className="pt-eb">This month</span>
-            <div className="pt-meters">
-              {plan.usage.map((u) => {
-                const used = Number(u.used);
-                const qty = Number(u.qty);
-                const pct = Math.min(100, (used / Math.max(1, qty)) * 100);
-                return (
-                  <div key={u.key} className="pt-usage">
-                    <div className="pt-row">
-                      <span>{u.label}</span>
-                      <span className="pt-mono">
-                        {used} of {qty} used
+      {(plan || (b?.mode !== "budget" && b?.suggestion)) && (
+        <div className="pt-grid2">
+          {plan && (
+            <section className="pt-card" aria-labelledby="plan-h" data-testid="plan">
+              <div className="pt-row">
+                <span className="pt-eb">
+                  Your plan ·{" "}
+                  {plan.prorated
+                    ? "first month, pro-rated"
+                    : plan.term_months === 6
+                      ? plan.month_no && plan.month_no <= 6
+                        ? `Month ${plan.month_no} of 6`
+                        : "6-month contract"
+                      : "monthly"}
+                </span>
+                <span className="pt-meta">Renews {dateLabel(plan.renews_on)}</span>
+              </div>
+              <h2 id="plan-h" className="pt-h2">
+                {plan.name}
+              </h2>
+              {plan.term_months === 6 && plan.ends_on && (
+                <span className="pt-meta">6-month contract until {dateLabel(plan.ends_on)}</span>
+              )}
+              {plan.prorated && (
+                <span className="pt-meta" data-testid="prorated">
+                  Started {dateLabel(plan.started_on)}: this month’s inclusions are pro-rated. Full
+                  months from {dateLabel(plan.renews_on)}.
+                </span>
+              )}
+              <span className="pt-eb">This month</span>
+              <div className="pt-meters">
+                {plan.usage.map((u) => {
+                  const used = Number(u.used);
+                  const qty = Number(u.qty);
+                  const pct = Math.min(100, (used / Math.max(1, qty)) * 100);
+                  return (
+                    <div key={u.key} className="pt-usage">
+                      <div className="pt-row">
+                        <span>{u.label}</span>
+                        <span className="pt-mono">
+                          {used} of {qty} used
+                        </span>
+                      </div>
+                      <span
+                        className={cx("pt-meter-bar", used > qty && "over")}
+                        role="meter"
+                        aria-label={`${u.label}: ${used} of ${qty}`}
+                        aria-valuemin={0}
+                        aria-valuemax={qty}
+                        aria-valuenow={used}
+                      >
+                        <i style={{ width: `${pct}%` }} />
+                      </span>
+                      <span className="pt-meta">
+                        {Number(u.over) > 0
+                          ? extraCount(Number(u.over), u.label)
+                          : `${Number(u.remaining)} left this month`}
                       </span>
                     </div>
-                    <span
-                      className={cx("pt-meter-bar", used > qty && "over")}
-                      role="meter"
-                      aria-label={`${u.label}: ${used} of ${qty}`}
-                      aria-valuemin={0}
-                      aria-valuemax={qty}
-                      aria-valuenow={used}
-                    >
-                      <i style={{ width: `${pct}%` }} />
-                    </span>
-                    <span className="pt-meta">
-                      {Number(u.over) > 0
-                        ? extraCount(Number(u.over), u.label)
-                        : `${Number(u.remaining)} left this month`}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            {plan.extra_items && plan.extra_items.length > 0 && (
-              <div className="stack" style={{ gap: 6 }} data-testid="extras">
-                <span className="pt-eb">Extras this month</span>
-                <ul className="pt-summary" aria-label="Extras this month">
-                  {plan.extra_items.map((e, i) => (
-                    <li key={i}>
-                      <span>{e.description}</span>
-                      <span className="pt-mono">
-                        × {Number(e.qty)}
-                        {e.ref ? ` · ${e.ref}` : ""}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                  );
+                })}
               </div>
-            )}
-            {(anyOver || !!plan.extra_items?.length) && (
-              <span className="pt-meta" data-testid="extras-note">
-                Extras are billed at your agreed prices on your month-end invoice.
-              </span>
-            )}
-          </section>
-        )}
-
-        {b?.mode === "budget" ? null : b?.suggestion ? (
-          <section className="pt-card pt-suggest" aria-labelledby="sug-h" data-testid="suggestion">
-            <span className="pt-eb">
-              {b.suggestion.show_saving ? "Package suggestion" : "Your offer"}
-            </span>
-            <h2 id="sug-h" className="pt-h2">
-              {b.suggestion.package}
-            </h2>
-            <span>Includes {inclusionsText(b.suggestion.inclusions)} every month.</span>
-            {b.suggestion.show_saving && b.suggestion.saving != null ? (
-              <>
-                <span>
-                  Based on your usage, {b.suggestion.package} could save you about{" "}
-                  {money(b.suggestion.currency, b.suggestion.saving)} a month.
-                </span>
-                {b.suggestion.saving_6 != null && (
-                  <span className="pt-meta">
-                    On a 6-month plan ({Number(b.suggestion.discount_pct)}% off): about{" "}
-                    {money(b.suggestion.currency, b.suggestion.saving_6)} a month.
-                  </span>
-                )}
-              </>
-            ) : (
-              <span>
-                {money(b.suggestion.currency, b.suggestion.price)} a month, or{" "}
-                {money(b.suggestion.currency, b.suggestion.price_6)} a month on a 6-month plan (
-                {Number(b.suggestion.discount_pct)}% off).
-              </span>
-            )}
-            <a
-              className="btn btn-p btn-s"
-              style={{ justifySelf: "start" }}
-              href={chatLink(
-                `Hi Milkywayy, I'd like to talk about the ${b.suggestion.package} package for ${a.name}.`,
+              {plan.extra_items && plan.extra_items.length > 0 && (
+                <div className="stack" style={{ gap: 6 }} data-testid="extras">
+                  <span className="pt-eb">Extras this month</span>
+                  <ul className="pt-summary" aria-label="Extras this month">
+                    {plan.extra_items.map((e, i) => (
+                      <li key={i}>
+                        <span>{e.description}</span>
+                        <span className="pt-mono">
+                          × {Number(e.qty)}
+                          {e.ref ? ` · ${e.ref}` : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
-              target="_blank"
-              rel="noopener noreferrer"
+              {(anyOver || !!plan.extra_items?.length) && (
+                <span className="pt-meta" data-testid="extras-note">
+                  Extras are billed at your agreed prices on your month-end invoice.
+                </span>
+              )}
+            </section>
+          )}
+
+          {b?.mode === "budget" ? null : b?.suggestion ? (
+            <section
+              className="pt-card pt-suggest"
+              aria-labelledby="sug-h"
+              data-testid="suggestion"
             >
-              Talk to us →
-            </a>
-          </section>
-        ) : (
-          <section className="pt-card" aria-labelledby="q-h">
-            <span className="pt-eb">Questions</span>
-            <h2 id="q-h" className="pt-h2">
-              Something on an invoice?
-            </h2>
-            <span className="pt-meta">Send us a message and a real person replies.</span>
-            <a
-              className="btn btn-g btn-s"
-              style={{ justifySelf: "start" }}
-              href={chatLink(`Hi, I have a question about billing for ${a.name}.`)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              WhatsApp us
-            </a>
-          </section>
-        )}
-      </div>
+              <span className="pt-eb">
+                {b.suggestion.show_saving ? "Package suggestion" : "Your offer"}
+              </span>
+              <h2 id="sug-h" className="pt-h2">
+                {b.suggestion.package}
+              </h2>
+              <span>Includes {inclusionsText(b.suggestion.inclusions)} every month.</span>
+              {b.suggestion.show_saving && b.suggestion.saving != null ? (
+                <>
+                  <span>
+                    Based on your usage, {b.suggestion.package} could save you about{" "}
+                    {money(b.suggestion.currency, b.suggestion.saving)} a month.
+                  </span>
+                  {b.suggestion.saving_6 != null && (
+                    <span className="pt-meta">
+                      On a 6-month plan ({Number(b.suggestion.discount_pct)}% off): about{" "}
+                      {money(b.suggestion.currency, b.suggestion.saving_6)} a month.
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span>
+                  {money(b.suggestion.currency, b.suggestion.price)} a month, or{" "}
+                  {money(b.suggestion.currency, b.suggestion.price_6)} a month on a 6-month plan (
+                  {Number(b.suggestion.discount_pct)}% off).
+                </span>
+              )}
+              <a
+                className="btn btn-p btn-s"
+                style={{ justifySelf: "start" }}
+                href={chatLink(
+                  `Hi Milkywayy, I'd like to talk about the ${b.suggestion.package} package for ${a.name}.`,
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Talk to us →
+              </a>
+            </section>
+          ) : null}
+        </div>
+      )}
 
       <section className="pt-card" aria-labelledby="inv-h">
         <h2 id="inv-h" className="pt-h2">
@@ -358,7 +366,6 @@ export default async function Billing({
             No invoices yet. They appear here, with a PDF, as soon as we issue them.
           </p>
         )}
-        {unpaid && bp && <BankBox bank={bp.bank} wio={bp.wio_link} />}
         {!!bp?.refunds.length && (
           <div className="stack" style={{ gap: 6 }} data-testid="refunds">
             <span className="pt-eb">Refunds</span>
@@ -383,6 +390,9 @@ export default async function Billing({
           </div>
         )}
       </section>
+      {bp && (unpaid || bp.value || bp.terms === "month_end") && (
+        <BankBox bank={bp.bank} wio={bp.wio_link} />
+      )}
     </>
   );
 }

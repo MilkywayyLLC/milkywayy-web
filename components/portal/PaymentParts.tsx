@@ -1,6 +1,9 @@
-import { dateLabel, money, monthLabel } from "@/lib/portal/billing";
+import { dateLabel, money } from "@/lib/portal/billing";
+import { shortTitle } from "@/lib/portal/projects";
 import {
+  aed0,
   dayCount,
+  monthEndSoFar,
   packageSplitUsage,
   shootDays,
   TERMS_LABEL,
@@ -26,6 +29,7 @@ export type BillingPayments = {
     swift: string | null;
   } | null;
   value: ValueMonth | null;
+  upcoming?: PlanUpcoming | null;
   refunds: {
     amount: number;
     currency: string;
@@ -35,6 +39,8 @@ export type BillingPayments = {
     ref: string | null;
   }[];
 };
+
+export type PlanUpcoming = { name: string; starts_on: string; price: number; currency: string };
 
 export type ValueMonth = {
   name: string;
@@ -162,163 +168,150 @@ const STATUS_TEXT: Record<string, string> = {
   in_production: "In production",
 };
 
-/** A meter in three parts: completed (gold), booked (light gold), remaining (dark grey). */
-export function SegMeter({
+/** A full-width bar in three parts: completed (gold), booked (light gold), remaining (dark grey). */
+export function Meter({
   label,
   part,
   fmt,
-  unit,
 }: {
   label: string;
   part: { done: number; booked: number; rest: number; total: number };
   fmt: (n: number) => string;
-  unit?: string;
 }) {
   const pct = (n: number) => `${part.total > 0 ? Math.min(100, (n / part.total) * 100) : 0}%`;
   const used = part.done + part.booked;
   return (
-    <div className="pt-seg" data-testid={`meter-${label.toLowerCase().replace(/\s+/g, "-")}`}>
-      <div className="pt-row">
+    <div className="pt-mtr" data-testid={`meter-${label.toLowerCase().replace(/\s+/g, "-")}`}>
+      <div className="pt-mtr-top">
         <span>{label}</span>
         <span className="pt-mono">
           {fmt(used)} of {fmt(part.total)}
-          {unit ? ` ${unit}` : ""}
         </span>
       </div>
-      <span
-        className="pt-seg-bar"
+      <div
+        className="pt-mtr-bar"
         role="meter"
-        aria-label={`${label}: ${fmt(part.done)} completed, ${fmt(part.booked)} booked, ${fmt(part.rest)} remaining`}
+        aria-label={`${label}: ${fmt(part.done)} completed, ${fmt(part.booked)} booked, ${fmt(part.rest)} left`}
         aria-valuemin={0}
         aria-valuemax={part.total}
         aria-valuenow={Math.min(used, part.total)}
       >
-        <i className="done" style={{ width: pct(part.done) }} />
-        <i className="booked" style={{ width: pct(part.booked) }} />
-      </span>
-      <span className="pt-seg-legend">
-        <span>
-          <i className="done" /> Completed {fmt(part.done)}
-        </span>
-        <span>
-          <i className="booked" /> Booked {fmt(part.booked)}
-        </span>
-        <span>
-          <i className="rest" /> Remaining {fmt(part.rest)}
-        </span>
-      </span>
+        <div className="pt-mtr-done" style={{ width: pct(part.done) }} />
+        <div className="pt-mtr-booked" style={{ width: pct(part.booked) }} />
+      </div>
+      <div className="pt-mtr-label">
+        {part.done > 0 && `${fmt(part.done)} completed · `}
+        {fmt(part.booked)} booked · {fmt(part.rest)} left
+      </div>
     </div>
   );
 }
 
+/** "Growth starts 1 Nov": a package that's set up but hasn't started yet. */
+export const upcomingText = (u: PlanUpcoming | null | undefined) =>
+  u ? `${u.name} starts ${dateLabel(u.starts_on, { year: undefined })}` : null;
+
 /**
- * A value package's month (owner, 24 Oct 2026): the plan (name, monthly amount, renewal), AED and
- * shoot-day meters (completed / booked / remaining), extras so far, and this month's bookings with
- * their value and whether the package covers them.
+ * A value package's month (owner, 25 Oct 2026): name, monthly amount, renewal, the allowance and
+ * shoot-day bars, extras this month, and the month-end invoice so far, line by line.
  */
 export function ValuePackageCard({ v, admin = false }: { v: ValueMonth; admin?: boolean }) {
   const m = (n: number) => money(v.currency, n);
-  const num = (n: number) => Number(n).toLocaleString("en-US", { maximumFractionDigits: 2 });
   const u = packageSplitUsage(v);
-  const extras = Number(v.extras_total);
+  const extras = aed0(v.extras_total);
+  const so = monthEndSoFar(v);
+  const LINE: Record<string, string> = {
+    package: `${v.name}${v.prorated ? " (pro-rated)" : ""}`,
+    extras: "Extras so far",
+    before: "Work before the package started",
+  };
   return (
-    <section className="pt-card" aria-labelledby="vp-h" data-testid="value-package">
-      <div className="pt-row" style={{ alignItems: "baseline", flexWrap: "wrap" }}>
-        <div className="stack" style={{ gap: 2 }}>
-          <span className="pt-eb">
-            Your plan · {monthLabel(v.month)}
-            {v.prorated ? " · pro-rated" : ""}
-          </span>
+    <section className="pt-card pt-plancard" aria-labelledby="vp-h" data-testid="value-package">
+      <div className="pt-plan-head">
+        <div>
+          <span className="pt-eb">Your plan{v.prorated ? " · first month, pro-rated" : ""}</span>
           <h2 id="vp-h" className="pt-h2">
             {v.name}
           </h2>
         </div>
-        <span className="pt-meta" data-testid="plan-amount">
-          {m(Number(v.price))} a month · renews {dateLabel(v.renews_on)}
-        </span>
+        <div className="pt-plan-amt" data-testid="plan-amount">
+          <b className="pt-mono">{m(Number(v.price))}</b>{" "}
+          <span className="pt-meta">a month · renews {dateLabel(v.renews_on)}</span>
+        </div>
       </div>
-      <div className="pt-meters">
-        <SegMeter label="Allowance" part={u.aed} fmt={(n) => m(n)} />
-        <SegMeter label="Shoot days" part={u.hd} fmt={(n) => dayCount(n)} unit="days" />
-      </div>
-      <span className="pt-meta" data-testid="value-summary">
-        {m(u.aed.done + u.aed.booked)} of {num(Number(v.allowance))} ·{" "}
-        {dayCount(u.hd.done + u.hd.booked)} of {shootDays(Number(v.half_day_cap))}. A half day
-        counts 0.5; property shoots use the allowance only. Once either runs out, more work is an
-        extra on your month-end invoice.
-      </span>
-      <div className="pt-row" data-testid="value-extras">
-        <b>Extras this month</b>
+      <Meter label="Allowance" part={u.aed} fmt={(n) => m(n)} />
+      <Meter
+        label="Shoot days"
+        part={u.hd}
+        fmt={(n) => `${dayCount(n)} ${n === 2 ? "day" : "days"}`}
+      />
+      <div className="pt-plan-row" data-testid="value-extras">
+        <span>Extras this month</span>
         <span className="pt-mono">{extras > 0 ? m(extras) : "None"}</span>
       </div>
-      {v.bookings.length > 0 && (
-        <div className="stack" style={{ gap: 6 }}>
-          <span className="pt-eb">This month’s bookings</span>
-          <div style={{ overflowX: "auto" }}>
-            <table
-              className="pt-table"
-              aria-label="This month’s bookings"
-              data-testid="value-bookings"
-            >
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Project</th>
-                  <th>Status</th>
-                  <th>Value</th>
-                  <th>Covered by</th>
-                </tr>
-              </thead>
-              <tbody>
-                {v.bookings.map((b) => (
-                  <tr key={b.project_id}>
-                    <td className="pt-mono">{dateLabel(b.date, { year: undefined })}</td>
-                    <td>
-                      {b.title ?? "Booking"}
-                      <span className="pt-meta">
-                        {" "}
-                        · {b.ref}
-                        {Number(b.half_days) > 0 ? ` · ${shootDays(Number(b.half_days))}` : ""}
-                      </span>
-                    </td>
-                    <td>
-                      {b.late_cancel ? "Late cancellation" : (STATUS_TEXT[b.status] ?? b.status)}
-                    </td>
-                    <td className="pt-mono">{b.late_cancel ? "—" : m(Number(b.value))}</td>
-                    <td>
-                      {Number(b.extra) <= 0
-                        ? "Package"
-                        : Number(b.included) > 0
-                          ? `Package + extra ${m(Number(b.extra))}`
-                          : `Extra ${m(Number(b.extra))}`}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-      <ul className="pt-lines" aria-label="Statement so far" data-testid="value-statement">
-        <li>
-          <span>Package{v.prorated ? " (pro-rated)" : ""}</span>
-          <span className="pt-mono">{m(Number(v.price))}</span>
-        </li>
-        <li>
-          <span>Extras so far</span>
-          <span className="pt-mono">{m(extras)}</span>
-        </li>
+      <ul className="pt-lines" aria-label="Month-end invoice so far" data-testid="value-statement">
+        {so.lines.map((l) => (
+          <li key={l.key}>
+            <span>{LINE[l.key]}</span>
+            <span className="pt-mono">{m(l.amount)}</span>
+          </li>
+        ))}
         <li className="pt-lines-total">
           <b>Month-end invoice so far{admin ? "" : " (before VAT)"}</b>
-          <b className="pt-mono">{m(Number(v.estimate))}</b>
+          <b className="pt-mono">{m(so.total)}</b>
         </li>
       </ul>
     </section>
   );
 }
 
-/** "How you pay" in plain words: the term and the ways to pay that are on for this client. */
-export function HowYouPay({ bp, card }: { bp: BillingPayments; card: boolean }) {
+/** This month's bookings on a package: short title, date, status, value, covered by. */
+export function PackageBookings({ v }: { v: ValueMonth }) {
+  const m = (n: number) => money(v.currency, n);
+  if (!v.bookings.length) return null;
+  return (
+    <section className="pt-card" aria-labelledby="vb-h" data-testid="value-bookings">
+      <h2 id="vb-h" className="pt-h2">
+        This month’s bookings
+      </h2>
+      <div className="pt-blist">
+        {v.bookings.map((b) => (
+          <div key={b.project_id} className="pt-brow">
+            <div className="pt-brow-main">
+              <b>{shortTitle(b.title) || "Booking"}</b>
+              <span className="pt-meta">
+                {dateLabel(b.date, { year: undefined })} · {b.ref}
+                {Number(b.half_days) > 0 ? ` · ${shootDays(Number(b.half_days))}` : ""}
+              </span>
+            </div>
+            <span className="pt-brow-st">
+              {b.late_cancel ? "Late cancellation" : (STATUS_TEXT[b.status] ?? b.status)}
+            </span>
+            <span className="pt-mono">{b.late_cancel ? "—" : m(Number(b.value))}</span>
+            <span className="pt-brow-cov">
+              {Number(b.extra) <= 0
+                ? "Package"
+                : Number(b.included) > 0
+                  ? `Package + extra ${m(Number(b.extra))}`
+                  : `Extra ${m(Number(b.extra))}`}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** "How you pay" in plain words, with the invoice-question line and WhatsApp link inside. */
+export function HowYouPay({
+  bp,
+  card,
+  chat,
+}: {
+  bp: BillingPayments;
+  card: boolean;
+  chat: string;
+}) {
   const ways = [
     bp.bank ? "bank transfer" : null,
     bp.wio_link ? "Wio" : null,
@@ -337,14 +330,19 @@ export function HowYouPay({ bp, card }: { bp: BillingPayments; card: boolean }) 
         : "You pay 100% when you book, which confirms the shoot. The files are yours to download as soon as we deliver.";
   return (
     <section className="pt-card" aria-labelledby="hyp-h" data-testid="how-you-pay">
-      <span className="pt-eb">How you pay</span>
       <h2 id="hyp-h" className="pt-h2">
-        {bp.value ? "Monthly package" : TERMS_LABEL[bp.terms]}
+        How you pay
       </h2>
       <span>{text}</span>
       <span className="pt-meta">
         Pay by {waysText}. Upload the receipt on the invoice and we confirm it.
       </span>
+      <div className="pt-plan-row pt-hyp-q">
+        <span className="pt-meta">Something on an invoice? A real person replies.</span>
+        <a className="btn btn-g btn-s" href={chat} target="_blank" rel="noopener noreferrer">
+          WhatsApp us
+        </a>
+      </div>
     </section>
   );
 }
@@ -352,7 +350,7 @@ export function HowYouPay({ bp, card }: { bp: BillingPayments; card: boolean }) 
 /** The sidebar's plan card: the package with a thin AED meter, or how a pay-per-shoot client pays. */
 export type RailPlan =
   | { kind: "package"; name: string; used: number; booked: number; total: number; text: string }
-  | { kind: "payg"; text: string };
+  | { kind: "payg"; text: string; upcoming?: string | null };
 
 export function railPlanOf(bp: BillingPayments | null): RailPlan | null {
   if (!bp) return null;
@@ -364,11 +362,12 @@ export function railPlanOf(bp: BillingPayments | null): RailPlan | null {
       used: u.aed.done,
       booked: u.aed.booked,
       total: u.aed.total,
-      text: `${money(bp.value.currency, u.aed.done + u.aed.booked)} of ${Number(u.aed.total).toLocaleString("en-US")} · ${dayCount(u.hd.done + u.hd.booked)} of ${shootDays(u.hd.total)}`,
+      text: `${money(bp.value.currency, u.aed.done + u.aed.booked)} of ${Number(u.aed.total).toLocaleString("en-US")} · ${dayCount(u.hd.done + u.hd.booked)} of ${dayCount(u.hd.total)} days`,
     };
   }
   return {
     kind: "payg",
+    upcoming: upcomingText(bp.upcoming),
     text:
       bp.terms === "month_end"
         ? "Pay per shoot · invoiced monthly"

@@ -260,6 +260,7 @@ export async function setContactPhoto(contactId: string, key: string | null): Pr
   const old = before?.photo_url as string | null | undefined;
   if (old && old !== key && r2Ready()) await deleteObject(old).catch(() => undefined);
   revalidatePath("/portal/contacts");
+  revalidatePath("/portal/people");
   return { ok: true, notice: key ? "Photo saved." : "Photo removed." };
 }
 
@@ -336,6 +337,7 @@ export async function saveInlineContact(
   }
   if (!data?.length) return { ok: false, error: "You can only edit contacts you added." };
   revalidatePath("/portal/contacts");
+  revalidatePath("/portal/people");
   return {
     ok: true,
     notice: c.id ? "Contact updated everywhere." : "Contact added to Contacts.",

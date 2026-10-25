@@ -17,8 +17,13 @@ import { bookShoot, updateBooking } from "@/lib/portal/book-actions";
 import { dateLabel } from "@/lib/portal/billing";
 import {
   cleanVideos,
+  CONTENT_DEFAULT_SHORT,
+  CONTENT_HOURS,
+  CONTENT_KEY,
+  CONTENT_LONG_MAX,
   DAY_LABEL,
   estimate,
+  isContentHours,
   estimateLines,
   KEY,
   normalizeServices,
@@ -27,6 +32,7 @@ import {
   SLOTS,
   type BookingLocation,
   type BookingService,
+  type ContentHours,
   type PropertyConfig,
   type Slot,
   type VideoPlan,
@@ -37,7 +43,7 @@ import { BookingPanel, lineName, PriceTag, priceView, type PanelLine } from "./b
 import { confirmText, DueLine, DueNow, PanelTerms, TermsCheck } from "./BookingTerms";
 import { BookStep, Check, Counter, Seg, ServiceCard, ThankYou } from "./BookFrame";
 import { DraftOffer, Field, FormBanner, useDraft, useFormCheck, useLeaveGuard } from "./forms";
-import { DateStrip, TimeWheel } from "./Pickers";
+import { DatePicker, TimeWheel } from "./Pickers";
 import { PlacesField } from "./PlacesField";
 
 /** What's being booked: a property shoot (always shot & edited) or a content shoot. */
@@ -99,8 +105,8 @@ function splitNote(n: string): { brief: string; refs: string; note: string } {
   }
   return { brief, refs, note: rest.join("\n\n") };
 }
-/** The wheel's window: 08:00 to 17:45, every slot's start times together. */
-const [WHEEL_FROM, WHEEL_TO] = slotHours("");
+/** The wheel's window (owner, 25 Oct 2026): working hours 08 to 18, quarter hours. */
+const [WHEEL_FROM, WHEEL_TO] = ["08:00", "18:45"];
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -118,6 +124,18 @@ function propertyText(p: BookingProperty, pricing: RequestConfig["pricing"]) {
 
 /** "4 reels · 1 long-form", "Flexible · Short-form · final total after the shoot". */
 function videoText(v: VideoPlan) {
+  if (v.by === "hours")
+    return [
+      `${v.hours} h shoot`,
+      v.raw
+        ? "raw files only"
+        : [
+            v.short ? plural(v.short, "short-form edit") : "",
+            v.long ? plural(v.long, "long-form edit") : "",
+          ]
+            .filter(Boolean)
+            .join(" · ") || "no edits",
+    ].join(" · ");
   if (v.by === "time")
     return v.raw
       ? [DAY_LABEL[v.day === "full" ? "full" : "half"], "raw files", v.approx ?? ""]
@@ -134,7 +152,6 @@ function videoText(v: VideoPlan) {
     .join(" · ");
 }
 
-type Formats = { short: boolean; long: boolean };
 type Counts = { short: number; long: number; extra_min?: number };
 type Snap = {
   kind?: ShootKind;
@@ -144,13 +161,11 @@ type Snap = {
   pv?: Counts;
   brief?: string;
   refs?: string;
-  fmt?: Formats;
-  edited?: boolean;
-  flex?: boolean;
-  cv?: Counts;
-  day?: "half" | "full";
-  fday?: "half" | "full";
-  rough?: string;
+  /** Content shoot by length (25 Oct 2026). */
+  hours?: ContentHours;
+  raw?: boolean;
+  shortN?: number | null;
+  longN?: number;
   startTime?: string;
   date: string;
   slot: Slot | "";
@@ -162,15 +177,6 @@ const OLD_STEP: Record<string, StepId> = {
   2: "when",
   3: "review",
   property: "services",
-};
-
-/** Short-form / long-form, kept in the rough-count text by the day (owner, 18 Oct 2026). */
-const fmtText = (f: Formats) =>
-  [f.short ? "Short-form" : "", f.long ? "Long-form" : ""].filter(Boolean).join(" + ");
-const fmtFrom = (t: string | undefined): Formats => {
-  const short = /short|reel/i.test(t ?? "");
-  const long = /long|walkthrough|youtube/i.test(t ?? "");
-  return short || long ? { short, long } : { short: true, long: false };
 };
 
 /**
@@ -224,33 +230,28 @@ export function BookingFlow({
   const n0 = splitNote(edit?.note ?? "");
   const [brief, setBrief] = useState(n0.brief);
   const [refs, setRefs] = useState(n0.refs);
-  const [fmt, setFmt] = useState<Formats>(() =>
-    !v0 || p0
-      ? { short: false, long: false }
-      : v0.by === "time"
-        ? fmtFrom(v0.approx?.split(" · ")[0])
-        : { short: !!v0.short, long: !!v0.long },
+  // A content shoot (owner, 25 Oct 2026): a length, edits on top, or raw files only. An older
+  // content booking (by count or by time) opens in this shape.
+  const c0 = p0 ? undefined : v0;
+  const [hours, setHours] = useState<ContentHours>(
+    c0?.by === "hours" && isContentHours(c0.hours)
+      ? c0.hours
+      : c0?.by === "time" && c0.day === "full"
+        ? 8
+        : 4,
   );
-  const [edited, setEdited] = useState(!(v0?.by === "time" && v0.raw && !p0));
-  const [flex, setFlex] = useState(!p0 && v0?.by === "time" && !v0.raw);
-  const [cv, setCv] = useState<Counts>({
-    short: !p0 && v0?.by === "count" && v0.short ? v0.short : 4,
-    long: !p0 && v0?.by === "count" && v0.long ? v0.long : 1,
-    extra_min: !p0 ? v0?.extra_min : undefined,
-  });
-  const [day, setDay] = useState<"half" | "full">(v0?.day === "full" ? "full" : "half");
+  const [raw, setRaw] = useState(!!c0 && c0.by !== "count" && !!c0.raw);
+  /** Short-form edits; null follows the length (2 → 2, 4 → 4, 8 → 8) until changed. */
+  const [shortN, setShortN] = useState<number | null>(
+    c0 && c0.by !== "time" ? (c0.short ?? 0) : null,
+  );
+  const [longN, setLongN] = useState(
+    c0 && c0.by !== "time" ? Math.min(CONTENT_LONG_MAX, c0.long ?? 0) : 0,
+  );
   const [date, setDate] = useState(edit?.date ?? "");
   const [startTime, setStartTime] = useState(edit?.startTime ?? "");
   const [loc, setLoc] = useState<BookingLocation>(edit?.location ?? { address: "" });
   const [note, setNote] = useState(n0.note);
-  // Flexible edited: Half day or Full day, chosen on the content screen (owner, 24 Oct 2026).
-  const [fday, setFday] = useState<"half" | "full">(
-    v0?.by === "time" && !v0.raw && !p0 && v0.day === "full" ? "full" : "half",
-  );
-  // The optional "roughly how many" text rides after the formats in the plan's approx text.
-  const [rough, setRough] = useState(
-    !p0 && v0?.by === "time" ? (v0.approx ?? "").split(" · ").slice(1).join(" · ") : "",
-  );
   const [agent, setAgent] = useState(cfg.myContactId ?? "");
   const [touched, setTouched] = useState(false);
   const [done, setDone] = useState<string | null>(null);
@@ -280,35 +281,23 @@ export function BookingFlow({
   const isProp = kind === "property";
   const propOk = prop.photo || prop.tour;
   const pVideo = pv.short > 0 || pv.long > 0;
-  const anyFmt = fmt.short || fmt.long;
-  const counted = (c: Counts, f?: Formats): VideoPlan =>
-    cleanVideos({
-      by: "count",
-      short: !f || f.short ? c.short : 0,
-      long: !f || f.long ? c.long : 0,
-      extra_min: c.extra_min,
-    });
-  const approxText = [fmtText(fmt), rough.trim()].filter(Boolean).join(" · ");
+  const shortEdits = shortN ?? CONTENT_DEFAULT_SHORT[hours];
+  const counted = (c: Counts): VideoPlan =>
+    cleanVideos({ by: "count", short: c.short, long: c.long, extra_min: c.extra_min });
   const plan: VideoPlan | null = isProp
     ? (keepPlan ?? (pVideo ? counted(pv) : null))
-    : !anyFmt
-      ? null
-      : !edited
-        ? cleanVideos({ by: "time", raw: true, day, approx: approxText })
-        : flex
-          ? cleanVideos({ by: "time", day: fday, approx: approxText })
-          : counted(cv, fmt);
+    : cleanVideos({ by: "hours", hours, raw, short: shortEdits, long: longN });
   const services: BookingService[] = [
     ...(isProp && propOk
       ? [{ service: "property" as const, property: photosOnly(toConfig(prop)) }]
       : []),
-    ...(plan && (plan.by === "time" || plan.short || plan.long)
+    ...(plan && (plan.by !== "count" || plan.short || plan.long)
       ? [{ service: "videos" as const, videos: plan }]
       : []),
   ];
   // No slot picker (owner, 18 Oct 2026): the slot follows the start time; a full day is Full day.
   const slot: Slot | "" =
-    plan?.by === "time" && plan.day === "full"
+    (plan?.by === "time" && plan.day === "full") || (plan?.by === "hours" && plan.hours === 8)
       ? "full_day"
       : !startTime
         ? ""
@@ -337,13 +326,10 @@ export function BookingFlow({
     pv,
     brief,
     refs,
-    fmt,
-    edited,
-    flex,
-    cv,
-    day,
-    fday,
-    rough,
+    hours,
+    raw,
+    shortN,
+    longN,
     startTime,
     date,
     slot,
@@ -363,13 +349,10 @@ export function BookingFlow({
     if (d.pv) setPv(d.pv);
     setBrief(d.brief ?? "");
     setRefs(d.refs ?? "");
-    if (d.fmt) setFmt(d.fmt);
-    if (d.edited != null) setEdited(d.edited);
-    if (d.flex != null) setFlex(d.flex);
-    if (d.cv) setCv(d.cv);
-    if (d.day) setDay(d.day);
-    if (d.fday) setFday(d.fday);
-    setRough(d.rough ?? "");
+    if (isContentHours(d.hours)) setHours(d.hours);
+    if (d.raw != null) setRaw(d.raw);
+    if (d.shortN !== undefined) setShortN(d.shortN);
+    if (d.longN != null) setLongN(d.longN);
     setStartTime(d.startTime ?? "");
     setDate(d.date ?? "");
     setLoc(d.loc ?? { address: "" });
@@ -400,13 +383,14 @@ export function BookingFlow({
     step === "services"
       ? isProp
         ? { property: !propOk && "Choose photography, a 360° tour or both." }
-        : { kind: !anyFmt && "Choose short-form, long-form or both." }
+        : {}
       : step === "when"
         ? {
             date: (!date && "Choose a date.") || (date < cfg.today && "Choose a date from today."),
             start_time:
               (!startTime && "Choose a start time.") ||
-              ((startTime < WHEEL_FROM || startTime > WHEEL_TO) && "Choose a time from 8:00."),
+              ((startTime < WHEEL_FROM || startTime > WHEEL_TO) &&
+                "Choose a time between 08:00 and 18:45."),
             location: loc.address.trim().length < 3 && "Add the location.",
           }
         : {},
@@ -420,16 +404,13 @@ export function BookingFlow({
     hasVideo: services.some((x) => x.service === "videos"),
     slot,
     fullDay: plan?.by === "time" && plan.day === "full",
+    hours: plan?.by === "hours" ? plan.hours : null,
   });
   const v = priceView(cfg, lines);
   const { m } = v;
   const pText = propertyText(prop, pricing);
   const sub: Record<string, string> = {
     [KEY.photos]: pText,
-    [KEY.raw.half]: approxText,
-    [KEY.raw.full]: approxText,
-    [KEY.min.half]: `${approxText} · final total after the shoot`,
-    [KEY.min.full]: `${approxText} · final total after the shoot`,
   };
   const panelLines: PanelLine[] = lines.map((l) => ({
     key: l.key,
@@ -695,142 +676,97 @@ export function BookingFlow({
     </>
   );
 
-  /* ---------- step 1: content shoot ---------- */
-  const setC = touch((patch: Partial<Counts>) => setCv((x) => ({ ...x, ...patch })));
-  const fixed = edited && !flex;
-  const dayNow = edited ? fday : day;
-  const dayRate = (d: "half" | "full") => rate(edited ? KEY.min[d] : KEY.raw[d]);
-  const CARD = {
-    short: {
-      title: "Short-form",
-      line: "Reels, 30–90 sec",
-      key: KEY.short,
-      delivery: DELIVERY.short,
-    },
-    long: {
-      title: "Long-form",
-      line: "YouTube, up to 5 min",
-      key: KEY.long,
-      delivery: DELIVERY.long,
-    },
-  } as const;
-  /** "AED 400 each", or "Included in your package" while some is left. */
-  const each = (key: string) =>
-    leftOf(key) > 0 ? (
-      <span className="bkp-muted">Included in your package</span>
-    ) : v.rates && rate(key) != null ? (
-      <span className="bkp-price">{`${m(rate(key)!)} each`}</span>
-    ) : null;
+  /* ---------- step 1: content shoot (owner, 25 Oct 2026) ---------- */
+  // One screen: the length (2 / 4 / 8 h), editing (short-form edits follow the length, long-form
+  // on request) or raw files only, then the brief. Total = length + edits.
+  const at8 = CONTENT_HOURS.indexOf(hours);
+  const priceOf = (key: string) => (v.rates && rate(key) != null ? m(rate(key)!) : null);
   const contentStep = (
     <>
-      <div className="bkp-group">
-        <span className="bkp-muted">Editing</span>
-        <Seg
-          label="Editing"
-          value={edited ? "edited" : "raw"}
-          options={[
-            ["edited", "Edited"],
-            ["raw", "Raw files"],
-          ]}
-          onChange={touch((x: string) => setEdited(x === "edited"))}
+      <div className="bkp-group" data-testid="content-length">
+        <div className="bkp-row">
+          <span className="bkp-body">Shoot length</span>
+          <b className="bkp-price" data-testid="length-price">
+            {hours} hours{priceOf(CONTENT_KEY[hours]) ? ` · ${priceOf(CONTENT_KEY[hours])}` : ""}
+          </b>
+        </div>
+        <input
+          type="range"
+          className="bkp-slider"
+          min={0}
+          max={CONTENT_HOURS.length - 1}
+          step={1}
+          value={at8}
+          aria-label="Shoot length"
+          aria-valuetext={`${hours} hours`}
+          style={{ ["--pct" as string]: `${(at8 / (CONTENT_HOURS.length - 1)) * 100}%` }}
+          onChange={touch((e: React.ChangeEvent<HTMLInputElement>) =>
+            setHours(CONTENT_HOURS[Number(e.target.value)]),
+          )}
+        />
+        <div className="bkp-ticks" aria-hidden="true">
+          {CONTENT_HOURS.map((h) => (
+            <button
+              key={h}
+              type="button"
+              tabIndex={-1}
+              data-on={h === hours ? "" : undefined}
+              onClick={touch(() => setHours(h))}
+            >
+              <b>{h} h</b>
+              {priceOf(CONTENT_KEY[h]) && <small>{priceOf(CONTENT_KEY[h])}</small>}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="bkp-box-card bkp-edits" data-off={raw ? "" : undefined}>
+        <div className="bkp-row">
+          <span className="bkp-body">Editing</span>
+        </div>
+        <div className="bkp-row" inert={raw}>
+          <span className="bkp-check-t">
+            Short-form edits
+            <span className="bkp-muted">
+              Reels, 30–90 sec
+              {priceOf(CONTENT_KEY.short) ? ` · ${priceOf(CONTENT_KEY.short)} each` : ""}
+            </span>
+          </span>
+          <Counter
+            label="Short-form edits"
+            value={raw ? 0 : shortEdits}
+            min={0}
+            onChange={touch((n: number) => setShortN(n))}
+          />
+        </div>
+        <div className="bkp-row" inert={raw}>
+          <Check
+            label="Long-form edits"
+            sub={`YouTube, up to 5 min${priceOf(CONTENT_KEY.long) ? ` · ${priceOf(CONTENT_KEY.long)} each` : ""}`}
+            checked={!raw && longN > 0}
+            onChange={touch(() => setLongN(longN > 0 ? 0 : 1))}
+          />
+          {!raw && longN > 0 && (
+            <Counter
+              label="Long-form edits"
+              value={longN}
+              min={1}
+              max={CONTENT_LONG_MAX}
+              onChange={touch((n: number) => setLongN(n))}
+            />
+          )}
+        </div>
+      </div>
+      <div className="bkp-box-card" data-on={raw ? "" : undefined}>
+        <Check
+          label="Raw files only"
+          sub="No editing: you get the footage"
+          checked={raw}
+          testId="raw-only"
+          onChange={touch(() => setRaw(!raw))}
         />
       </div>
-      {edited && (
-        <div className="bkp-group">
-          <span className="bkp-muted">Quantity</span>
-          <Seg
-            label="Quantity"
-            value={flex ? "flex" : "fixed"}
-            options={[
-              ["fixed", "Fixed"],
-              ["flex", "Flexible"],
-            ]}
-            onChange={touch((x: string) => setFlex(x === "flex"))}
-          />
-        </div>
-      )}
-      {!fixed && (
-        <div className="bkp-group">
-          <span className="bkp-muted">Length</span>
-          <Seg
-            label="Length"
-            value={dayNow}
-            options={(["half", "full"] as const).map((d) => [
-              d,
-              <span key={d} className="bkp-seg-2">
-                {DAY_LABEL[d]}
-                {v.rates && dayRate(d) != null && (
-                  <span className="bkp-muted">
-                    {edited ? "from " : ""}
-                    {m(dayRate(d)!)}
-                  </span>
-                )}
-              </span>,
-            ])}
-            onChange={touch((d: "half" | "full") => (edited ? setFday(d) : setDay(d)))}
-          />
-        </div>
-      )}
-      {!edited && <span className="bkp-muted">What to create</span>}
-      <div className="bkp-cards bkp-cards-2" data-field="kind">
-        {(["short", "long"] as const).map((k) => (
-          <ServiceCard
-            key={k}
-            title={CARD[k].title}
-            line={CARD[k].line}
-            meta={edited ? CARD[k].delivery : null}
-            price={
-              !edited ? null : fixed && fmt[k] ? (
-                <PriceTag s={shown(CARD[k].key)} v={v} />
-              ) : (
-                each(CARD[k].key)
-              )
-            }
-            on={fmt[k]}
-            onToggle={touch(() => setFmt((f) => ({ ...f, [k]: !f[k] })))}
-          >
-            {fmt[k] && fixed ? (
-              <Counter
-                label={k === "short" ? "Reels" : "Long-form"}
-                value={cv[k]}
-                onChange={(n) => setC({ [k]: n })}
-              />
-            ) : undefined}
-          </ServiceCard>
-        ))}
-        {form.errors.kind && (
-          <span className="pt-field-msg bkp-wide" role="alert">
-            {form.errors.kind}
-          </span>
-        )}
-      </div>
-      {edited && flex && (
-        <p className="bkp-body" data-testid="day-note">
-          {!v.rates
-            ? "Billed per finished video · final total after the shoot"
-            : cfg.price.mode === "package"
-              ? "Each finished video draws from your package · final total after the shoot"
-              : [
-                  rate(KEY.min[fday]) != null && `from ${m(rate(KEY.min[fday])!)}`,
-                  "final total after the shoot",
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-        </p>
-      )}
-      {!fixed && (
-        <label className="pt-field">
-          Roughly how many (optional)
-          <input
-            value={rough}
-            maxLength={120}
-            placeholder="e.g. 6 reels and 1 long-form, or leave blank if flexible"
-            onChange={touch((e: React.ChangeEvent<HTMLInputElement>) => setRough(e.target.value))}
-          />
-        </label>
-      )}
       <label className="pt-field">
-        {fixed ? "What do you need?" : "Notes"}
+        Brief
         <textarea
           rows={3}
           maxLength={1500}
@@ -853,19 +789,19 @@ export function BookingFlow({
   );
 
   /* ---------- step 2: when & where ---------- */
-  // Raw shoots: half / full day beside the time (the same choice as on the first step).
-  const rawDay = !isProp && !edited;
+  // Date and arrival time side by side (owner, 25 Oct 2026): a month calendar and a looping time
+  // wheel, both popovers over the page.
   const whenStep = (
     <>
-      <Field name="date" label="Date" required group error={form.errors.date}>
-        <DateStrip
-          value={date}
-          min={cfg.today}
-          invalid={!!form.errors.date}
-          onChange={touch((x: string) => setDate(x))}
-        />
-      </Field>
-      <div className="bkp-when-row" data-day={rawDay ? "" : undefined}>
+      <div className="bkp-when bkp-2col">
+        <Field name="date" label="Date" required group error={form.errors.date}>
+          <DatePicker
+            value={date}
+            min={cfg.today}
+            invalid={!!form.errors.date}
+            onChange={touch((x: string) => setDate(x))}
+          />
+        </Field>
         <Field name="start_time" label="Arrival time" required group error={form.errors.start_time}>
           <TimeWheel
             value={startTime}
@@ -879,17 +815,6 @@ export function BookingFlow({
             onChange={touch((x: string) => setStartTime(x))}
           />
         </Field>
-        {rawDay && (
-          <div className="bkp-group">
-            <span className="bkp-muted">Length</span>
-            <Seg
-              label="Length"
-              value={day}
-              options={(["half", "full"] as const).map((d) => [d, DAY_LABEL[d]])}
-              onChange={touch((d: "half" | "full") => setDay(d))}
-            />
-          </div>
-        )}
       </div>
       <PlacesField
         value={loc}
@@ -1004,7 +929,7 @@ export function BookingFlow({
             estimate={est}
             currency={cfg.price.currency}
             halfDays={halfDays}
-            flexible={plan?.by === "time" && !plan.raw}
+            flexible={false}
           />
           <TermsCheck
             checked={agreed}
