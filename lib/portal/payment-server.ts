@@ -17,6 +17,24 @@ const PAGE = { shoot: "shoots", edit: "editing", avatar: "avatars" } as const;
 export const pagePath = (origin: string, type: keyof typeof PAGE, ref: string) =>
   `${origin}/portal/${PAGE[type] ?? "shoots"}/${encodeURIComponent(ref)}`;
 
+/**
+ * The company's rates for pricing a booking on the server (phase 1, 27 Oct 2026). A teammate without
+ * price access gets no rates from my_booking_options, which left their bookings with no estimate and so
+ * no invoice. Uses the client's own view when it has the rates, else the gated admin function; the
+ * rates stay on the server either way.
+ */
+export async function companyRates<R>(accountId: string, own: R | null, actor: string) {
+  if (own) return own;
+  try {
+    return (await portalAdminAs(actor)<R | null>("portal_admin_account_rates", {
+      p_account: accountId,
+    })) as R | null;
+  } catch (e) {
+    console.error("[payments] company rates:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
 export type StageInvoice = {
   id: string;
   number: string | null;

@@ -24,7 +24,7 @@ import { portalAdminAs } from "./admin";
 import { originFrom } from "./invite";
 import { notifyMilkywayy } from "./notify";
 import { applyMyChange } from "./payment-actions";
-import { afterBooking } from "./payment-server";
+import { afterBooking, companyRates } from "./payment-server";
 import { BOOKING_TERMS_VERSION } from "./payments";
 
 /**
@@ -119,7 +119,12 @@ export async function bookShoot(b: {
   if (!services.length) return { ok: false, error: "Add at least one service." };
   const pricing = await getPropertyPricing();
   const { data: opts } = await db.rpc("my_booking_options", { p_account: current.account.id });
-  const rates = (opts as { rates: Rates | null } | null)?.rates ?? null;
+  // Teammates without price access still book at the company's rates (server-side only).
+  const rates = await companyRates<Rates>(
+    current.account.id,
+    (opts as { rates: Rates | null } | null)?.rates ?? null,
+    `client:${user.email ?? user.id}`,
+  );
   const est = rates ? estimate(services, rates, clientPricing(pricing, rates)) : null;
   const loc: BookingLocation = {
     address: b.location.address.trim(),
@@ -221,7 +226,7 @@ const slotLabel = (k: string | null | undefined) => SLOTS.find(([s]) => s === k)
 
 /** Edit a Requested shoot, or ask to change a Confirmed one (back to Requested). Admin is told. */
 export async function updateBooking(projectId: string, b: BookingInput): Promise<BookResult> {
-  const { db, current } = await requireAccount("/portal/shoots");
+  const { db, user, current } = await requireAccount("/portal/shoots");
   if (!can(current, "shoots"))
     return { ok: false, error: "Your access doesn’t include shoots. Ask the account owner." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return { ok: false, error: "Choose a date." };
@@ -251,7 +256,12 @@ export async function updateBooking(projectId: string, b: BookingInput): Promise
   }
   const pricing = await getPropertyPricing();
   const { data: opts } = await db.rpc("my_booking_options", { p_account: current.account.id });
-  const rates = (opts as { rates: Rates | null } | null)?.rates ?? null;
+  // Teammates without price access still book at the company's rates (server-side only).
+  const rates = await companyRates<Rates>(
+    current.account.id,
+    (opts as { rates: Rates | null } | null)?.rates ?? null,
+    `client:${user.email ?? user.id}`,
+  );
   const est = rates ? estimate(services, rates, clientPricing(pricing, rates)) : null;
   const loc: BookingLocation = {
     address: b.location.address.trim(),

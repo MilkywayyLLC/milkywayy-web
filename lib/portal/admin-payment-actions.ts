@@ -2,7 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { getPropertyPricing } from "@/lib/data";
 import { portalAdminAction } from "./admin";
+import {
+  clientPricing,
+  estimate,
+  estimateLines,
+  normalizeServices,
+  type BookingService,
+  type Rates,
+} from "./booking";
 import { originFrom } from "./invite";
 import type { Recipient } from "./notify";
 import type { ProjectPayment } from "./payment-actions";
@@ -265,5 +274,78 @@ export async function emailIssuedInvoices(projectId: string) {
   } catch (e) {
     console.error("[admin/payments] invoice email:", e instanceof Error ? e.message : e);
     return 0;
+  }
+}
+
+export type UnpricedBooking = {
+  id: string;
+  ref: string;
+  account_id: string;
+  account: string;
+  status: string;
+  title: string;
+  services: BookingService[] | null;
+  terms: PaymentTerms;
+  estimate: number | null;
+  has_invoice: boolean;
+};
+
+/**
+ * Phase 1 part 1 backfill (27 Oct 2026): bookings a teammate made without price access had no estimate
+ * and no invoice. Prices each at the company's rates and, on 50% / 100% terms while it's still
+ * requested or confirmed, issues the booking invoice (emailed to the company's billing people).
+ * Delivered work is only priced (month-end and per-project drafts pick it up), never auto-invoiced.
+ * `dry` lists what it would do.
+ */
+export async function backfillBookingInvoices(dry = true): Promise<Result & { rows?: string[] }> {
+  try {
+    const rpc = await portalAdminAction();
+    const list = await rpc<UnpricedBooking[]>("portal_admin_unpriced_bookings", {});
+    const pricing = await getPropertyPricing();
+    const origin = originFrom(await headers());
+    const rows: string[] = [];
+    for (const b of list ?? []) {
+      const rates = await rpc<Rates | null>("portal_admin_account_rates", { p_account: b.account_id });
+      const services = normalizeServices(b.services ?? []);
+      const cp = clientPricing(pricing, rates);
+      const est = b.estimate ?? (rates && services.length ? estimate(services, rates, cp) : null);
+      const invoice =
+        !b.has_invoice &&
+        ["prepay", "split"].includes(b.terms) &&
+        ["requested", "confirmed"].includes(b.status) &&
+        !!est;
+      rows.push(
+        `${b.ref} · ${b.account} · ${b.status} · ${b.terms} · estimate ${est ?? "—"}${invoice ? " · issue invoice" : ""}`,
+      );
+      if (dry || est == null) continue;
+      if (b.estimate == null)
+        await rpc("portal_admin_set_estimate", { p_project: b.id, p_estimate: est });
+      if (invoice && rates) {
+        await rpc("portal_admin_booking_invoice", {
+          p_project: b.id,
+          p_lines: estimateLines(services, rates, cp)
+            .filter((l) => l.amount != null && l.amount > 0)
+            .map((l) => ({
+              description: l.label,
+              qty: l.qty,
+              unit_price: Math.round((Number(l.amount) / l.qty) * 100) / 100,
+            })),
+          p_estimate: est,
+        });
+        await sendNewInvoices(rpc, b.id, origin, "backfill");
+      }
+    }
+    if (!dry) revalidatePath("/admin/billing");
+    return {
+      ok: true,
+      rows,
+      notice: rows.length
+        ? dry
+          ? `${rows.length} booking${rows.length === 1 ? "" : "s"} to fix.`
+          : `Fixed ${rows.length}.`
+        : "Nothing to fix.",
+    };
+  } catch (e) {
+    return fail(e);
   }
 }

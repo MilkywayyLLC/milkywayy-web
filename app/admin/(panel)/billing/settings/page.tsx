@@ -1,3 +1,4 @@
+import { BackfillInvoices } from "@/components/admin/BackfillInvoices";
 import { BillingNav } from "@/components/admin/BillingNav";
 import { BillingSettingsForm } from "@/components/admin/BillingTools";
 import { PaymentSettingsForm, type PaymentSettings } from "@/components/admin/PaymentAdmin";
@@ -34,6 +35,7 @@ export default async function BillingSettingsPage() {
       ) : (
         <p className="ad-note warn">PORTAL_ADMIN_SECRET isn’t set for this deployment.</p>
       )}
+      {s && <BackfillInvoices />}
       {turnaround.length > 0 && <TurnaroundForm rows={turnaround} />}
       <section className="ad-card ad-form" aria-label="Card payments">
         <h2 className="ad-h2">Card payments (Stripe)</h2>
