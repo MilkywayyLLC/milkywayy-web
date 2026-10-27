@@ -1,5 +1,7 @@
 import { DownloadButton } from "@/components/portal/ProjectActions";
+import { activityIcon, activityTime, tidyNote } from "@/lib/portal/activity";
 import { thumbSrc } from "@/lib/portal/thumbs";
+import { Icon } from "./Icon";
 import {
   bytes,
   day,
@@ -43,16 +45,27 @@ const when = (iso: string) =>
     timeZone: "Asia/Dubai",
   });
 
-export function ActivityList({ events }: { events: ProjectEvent[] }) {
+export function ActivityList({
+  events,
+  type = "shoot",
+}: {
+  events: ProjectEvent[];
+  type?: string;
+}) {
   return (
     <section className="pt-card">
       <h2 className="pt-h2">Activity</h2>
-      <ul className="pt-timeline" data-testid="activity">
+      <ul className="pt-act-list pt-act-compact" data-testid="activity">
         {events.map((e) => (
           <li key={e.id}>
-            <div style={{ display: "grid" }}>
-              <span>{(EVENT_TEXT[e.kind] ?? (() => e.kind))(e)}</span>
-              <span className="pt-meta pt-mono">{when(e.at)}</span>
+            <div className="pt-act-row">
+              <span className="pt-act-ic" aria-hidden="true">
+                <Icon name={activityIcon(e, type)} size={16} />
+              </span>
+              <span className="pt-act-t">
+                {tidyNote((EVENT_TEXT[e.kind] ?? (() => e.kind))(e))}
+              </span>
+              <time dateTime={e.at}>{activityTime(e.at)}</time>
             </div>
           </li>
         ))}
