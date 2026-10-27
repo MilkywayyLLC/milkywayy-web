@@ -619,3 +619,9 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 - Turnaround times + invoice backfill moved to the new Settings → Operations (`/admin/operations`), same components.
 - A booking opens its project first: `/admin/projects/ref/<ref>` finds the project(s) (one → it, several lines → filtered list, none → the lead with "no project"). Client page Bookings and the lead's new "Open project" button use it.
 - Admin Playwright specs that assert old labels ("Client accounts", "Billing") weren't edited (expectations frozen for this round); they need the new names.
+
+**Phase C — client page.**
+- Header (name, type, currency, since, Plan + Terms chips; New project · View as client · AI characters) + 5 tabs: Overview · Billing & payment · Projects · People · History. Tabs are client-side (`ClientTabs`): every panel renders once and is only hidden, so unsaved edits survive a tab switch; `?tab=` survives reload. After "Client created" it opens on People (the invite).
+- One Save per tab: Overview (file retention, notes, services) and Billing & payment (currency + how they pay, plan, budget if legacy, rollover, prices, what the client sees, suggestions). The bar warns before leaving with unsaved changes. Projects/People/History hold actions (attach booking, invite, resend, member phone), not settings, so they keep their own buttons.
+- Billing currency moved from "Billing and notes" into How they pay. "Billing and notes" is now just Notes.
+- Every existing capability kept; nothing removed except duplicate controls (Phase A).

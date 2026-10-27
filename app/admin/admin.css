@@ -1709,3 +1709,90 @@
 .ad-savebar.dirty {
   border-color: var(--fg);
 }
+
+/* ---------- shared spacing + small parts (admin redesign, 27 Oct 2026) ---------- */
+.ad-stack-4,
+.ad-stack-8,
+.ad-stack-12,
+.ad-stack-16,
+.ad-stack-24 {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+}
+.ad-stack-4 {
+  gap: 4px;
+}
+.ad-stack-8 {
+  gap: 8px;
+}
+.ad-stack-12 {
+  gap: 12px;
+}
+.ad-stack-16 {
+  gap: 16px;
+}
+.ad-stack-24 {
+  gap: 24px;
+}
+.ad-block {
+  display: block;
+}
+.ad-pre {
+  white-space: pre-wrap;
+}
+.ad-top {
+  align-items: start;
+}
+.ad-chips {
+  margin-top: 8px;
+  gap: 6px;
+}
+.ad-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font: 500 12px/1 var(--font-mono);
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* The client's own package card, portal styles, inside the admin. */
+.ad-portal-card {
+  background: transparent;
+  min-height: 0;
+}
+/* Status pills: one colour per meaning (components/admin/Pill.tsx). */
+.ad-pill.t-neutral {
+  border-color: var(--line);
+  color: var(--muted);
+  background: var(--surface);
+}
+.ad-pill.t-info {
+  border-color: #b9c7e4;
+  color: #274a8a;
+  background: #eef2fa;
+}
+.ad-pill.t-warn {
+  border-color: #ecd29a;
+  color: #8a5a00;
+  background: #fdf5e3;
+}
+.ad-pill.t-danger {
+  border-color: #f2c1bc;
+  color: #b42318;
+  background: #fdf0ee;
+}
+.ad-pill.t-ok {
+  border-color: #b9dfc6;
+  color: #1e6b3a;
+  background: #edf8f1;
+}
+.ad-pill.t-accent {
+  border-color: var(--acc);
+  color: var(--bg);
+  background: var(--acc);
+}

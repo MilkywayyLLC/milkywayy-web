@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import type { PropertyPricing } from "@/content/types";
 import { dateLabel, money } from "@/lib/portal/billing";
 import { setClientRate } from "@/lib/portal/budget-actions";
@@ -11,7 +10,6 @@ import {
   saveClientPrices,
   setPayg,
   setServices,
-  type SetupResult,
 } from "@/lib/portal/client-setup-actions";
 import { cx } from "@/lib/cx";
 
@@ -52,14 +50,6 @@ export type ClientSetupData = {
   }[];
 };
 
-function Note({ r, pending }: { r?: SetupResult; pending?: boolean }) {
-  return (
-    <span className={cx("ad-status", r && !r.ok && "error", r?.ok && "ok")} role="status">
-      {pending ? "Saving…" : (r?.notice ?? r?.error)}
-    </span>
-  );
-}
-
 /* ---------------- services ---------------- */
 
 const SERVICES = [
@@ -69,10 +59,9 @@ const SERVICES = [
 ] as const;
 
 export function ServicesBlock({ account, s }: { account: string; s: ClientSetupData["services"] }) {
-  const router = useRouter();
   const [on, setOn] = useState(s);
-  const [r, setR] = useState<SetupResult>();
-  const [pending, start] = useTransition();
+  const dirty = (Object.keys(s) as (keyof typeof s)[]).some((k) => on[k] !== s[k]);
+  useSaveSlot(`svc-${account}`, "Services", 10, dirty, () => setServices(account, on));
   return (
     <section
       className="ad-card ad-form"
@@ -80,8 +69,8 @@ export function ServicesBlock({ account, s }: { account: string; s: ClientSetupD
       data-testid="client-services"
     >
       <h2 className="ad-h2">Services enabled</h2>
-      <span className="ad-small ad-muted">
-        The client sees and can book only what’s on. AI avatars have their own tab, never in Book
+      <span className="ad-help">
+        Affects what the client sees and can book. AI avatars have their own tab, never in Book
         media.
       </span>
       <div className="ad-grid3">
@@ -90,28 +79,17 @@ export function ServicesBlock({ account, s }: { account: string; s: ClientSetupD
             <input
               type="checkbox"
               checked={on[k]}
-              disabled={pending}
-              onChange={(e) => {
-                const next = { ...on, [k]: e.target.checked };
-                setOn(next);
-                start(async () => {
-                  const res = await setServices(account, next);
-                  setR(res);
-                  if (res.ok) router.refresh();
-                  else setOn(on);
-                });
-              }}
+              onChange={(e) => setOn({ ...on, [k]: e.target.checked })}
             />
             <span>
               <b>{label}</b>
-              <span className="ad-small ad-muted" style={{ display: "block" }}>
+              <span className="ad-help" style={{ display: "block" }}>
                 {hint}
               </span>
             </span>
           </label>
         ))}
       </div>
-      <Note r={r} pending={pending} />
     </section>
   );
 }

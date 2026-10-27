@@ -72,10 +72,13 @@ export function HowTheyPay({
   account,
   data,
   bankTransfer,
+  children,
 }: {
   account: string;
   data: ClientPayments;
   bankTransfer: boolean;
+  /** More fields in the same block (the billing currency). */
+  children?: React.ReactNode;
 }) {
   const online0 = data.pay_online_set == null ? "" : String(data.pay_online_set);
   const [terms, setTerms] = useState<PaymentTerms>(data.payment_terms);
@@ -145,6 +148,7 @@ export function HowTheyPay({
           </span>
         </span>
       </label>
+      {children}
     </section>
   );
 }
