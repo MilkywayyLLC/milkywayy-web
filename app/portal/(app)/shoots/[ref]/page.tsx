@@ -15,6 +15,7 @@ import {
   clientStatus,
   deliveries,
   SHOOT_SERVICE_LABEL,
+  shortTitle,
   statusLabel,
   stepsFor,
   type Project,
@@ -193,7 +194,7 @@ export default async function ShootPage({
             {p.ref}
             {when ? ` · ${when}` : ""}
           </span>
-          <h1 className="pt-h1">{p.title}</h1>
+          <h1 className="pt-h1">{shortTitle(p.title)}</h1>
         </div>
         <Badge tone={p.status === "delivered" ? "gold" : undefined}>{clientStatus(p, pay)}</Badge>
       </div>

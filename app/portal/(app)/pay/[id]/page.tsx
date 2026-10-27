@@ -4,6 +4,7 @@ import { PayChoice } from "@/components/portal/PayChoice";
 import { money } from "@/lib/portal/billing";
 import { payView } from "@/lib/portal/pay-actions";
 import { pagePath } from "@/lib/portal/payment-server";
+import { shortTitle } from "@/lib/portal/projects";
 import { whenLabel } from "@/lib/portal/when";
 import { stripeReady } from "@/lib/stripe";
 
@@ -52,7 +53,7 @@ export default async function Pay({ params }: { params: Promise<{ id: string }> 
       <div className="pt-pay-grid">
         <aside className="pt-card pt-pay-sum" aria-label="Summary">
           <span className="pt-eb">{inv.account}</span>
-          {p && <h2 className="pt-h2">{p.title}</h2>}
+          {p && <h2 className="pt-h2">{shortTitle(p.title)}</h2>}
           <ul className="pt-summary">
             {p && (
               <li>

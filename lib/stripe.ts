@@ -105,7 +105,7 @@ export async function createCheckout(o: {
       mode: "payment",
       client_reference_id: o.invoiceId,
       ...(embedded
-        ? { ui_mode: "embedded", return_url: o.returnUrl }
+        ? { ui_mode: "embedded_page", return_url: o.returnUrl }
         : { success_url: o.successUrl, cancel_url: o.cancelUrl }),
       ...(o.customer
         ? {
@@ -198,7 +198,7 @@ export async function createSetupCheckout(o: {
       metadata: { account_id: o.accountId, purpose: "save_card" },
       setup_intent_data: { metadata: { account_id: o.accountId } },
       ...(embedded
-        ? { ui_mode: "embedded", return_url: o.returnUrl }
+        ? { ui_mode: "embedded_page", return_url: o.returnUrl }
         : { success_url: o.returnUrl, cancel_url: o.cancelUrl }),
     },
   );
