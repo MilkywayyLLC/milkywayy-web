@@ -84,7 +84,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
       <div className="ad-head">
         <div>
           <Link className="ad-eb" href="/admin/accounts" prefetch={false}>
-            ← Client accounts
+            ← Clients
           </Link>
           <h1 className="ad-h1">{a.name}</h1>
           <span className="ad-small ad-muted">
@@ -339,7 +339,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
             {c.bookings.map((b) => (
               <Link
                 key={b.ref}
-                href={`/admin/leads/${b.ref}`}
+                href={`/admin/projects/ref/${b.ref}`}
                 className="ad-row ad-lead"
                 prefetch={false}
               >

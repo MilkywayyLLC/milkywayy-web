@@ -6,66 +6,78 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "@/lib/admin/auth-actions";
 
-type Item = { href: string; label: string; owner?: boolean };
-const GROUPS: { title: string; items: Item[] }[] = [
+type Item = { href: string; label: string; owner?: boolean; also?: string[] };
+type Entry = Item | { title: string; owner?: boolean; collapsed?: boolean; items: Item[] };
+
+/**
+ * Admin redesign (27 Oct 2026): 8 top-level entries by job. Routes are unchanged; `also` marks the
+ * sub-pages that light an entry up. Website starts collapsed (it opens on its own pages).
+ */
+const NAV: Entry[] = [
+  { href: "/admin", label: "Today" },
+  { href: "/admin/projects", label: "Projects", owner: true },
+  { href: "/admin/inquiries", label: "Messages", owner: true },
   {
-    title: "Workspace",
+    href: "/admin/accounts",
+    label: "Clients",
+    owner: true,
+    also: ["/admin/characters", "/admin/listings"],
+  },
+  { href: "/admin/leads", label: "Leads", owner: true },
+  {
+    title: "Money",
+    owner: true,
     items: [
-      { href: "/admin", label: "Dashboard" },
-      { href: "/admin/leads", label: "Website leads", owner: true },
+      { href: "/admin/billing", label: "Invoices", also: ["/admin/billing/invoices"] },
+      {
+        href: "/admin/billing/rates",
+        label: "Prices & packages",
+        also: ["/admin/billing/packages", "/admin/pricing"],
+      },
+      { href: "/admin/billing/refunds", label: "Refunds" },
     ],
   },
   {
-    title: "Portal",
+    title: "Website",
+    collapsed: true,
     items: [
-      { href: "/admin/projects", label: "Projects", owner: true },
-      { href: "/admin/characters", label: "AI characters", owner: true },
-      { href: "/admin/inquiries", label: "Client messages", owner: true },
-      { href: "/admin/accounts", label: "Client accounts", owner: true },
-      { href: "/admin/billing", label: "Billing", owner: true },
-      { href: "/admin/listings", label: "Listings", owner: true },
-    ],
-  },
-  {
-    title: "Content",
-    items: [
-      { href: "/admin/library", label: "Library" },
+      { href: "/admin/library", label: "Library", also: ["/admin/portfolio"] },
       { href: "/admin/pages", label: "Pages" },
       { href: "/admin/case-studies", label: "Case studies" },
       { href: "/admin/before-after", label: "Before / after" },
-      { href: "/admin/avatars", label: "Website avatars" },
+      { href: "/admin/avatars", label: "Avatars", also: ["/admin/avatar-hero"] },
       { href: "/admin/reviews", label: "Reviews" },
       { href: "/admin/faqs", label: "FAQs" },
       { href: "/admin/stats", label: "Stats" },
       { href: "/admin/clients", label: "Client logos" },
-    ],
-  },
-  {
-    title: "Pricing",
-    items: [
-      { href: "/admin/pricing", label: "Property shoots", owner: true },
-      { href: "/admin/pricing/other", label: "Other prices", owner: true },
+      { href: "/admin/seo", label: "SEO" },
     ],
   },
   {
     title: "Settings",
+    owner: true,
     items: [
-      { href: "/admin/settings", label: "Site settings", owner: true },
-      { href: "/admin/seo", label: "SEO" },
-      { href: "/admin/admins", label: "Admins", owner: true },
+      { href: "/admin/billing/settings", label: "Business & billing" },
+      { href: "/admin/operations", label: "Operations" },
+      { href: "/admin/settings", label: "Site settings" },
+      { href: "/admin/admins", label: "Admins" },
+      { href: "/admin/billing/suggestions", label: "Advanced" },
     ],
   },
 ];
 
-const current = (path: string, href: string) =>
-  href === "/admin"
+const under = (path: string, href: string) => path === href || path.startsWith(`${href}/`);
+/** The billing sub-pages have their own entries, so Invoices doesn't claim them. */
+const BILLING_OWN = ["rates", "packages", "refunds", "settings", "suggestions"].map(
+  (x) => `/admin/billing/${x}`,
+);
+const current = (path: string, i: Item) =>
+  i.href === "/admin"
     ? path === "/admin"
-    : href === "/admin/pricing"
-      ? path === href
-      : path === href ||
-        path.startsWith(`${href}/`) ||
-        (href === "/admin/avatars" && path === "/admin/avatar-hero") ||
-        (href === "/admin/library" && path.startsWith("/admin/portfolio"));
+    : i.href === "/admin/billing"
+      ? (path === i.href || under(path, "/admin/billing/invoices")) &&
+        !BILLING_OWN.some((b) => under(path, b))
+      : under(path, i.href) || !!i.also?.some((h) => under(path, h));
 
 /** Sidebar on desktop; a full-screen menu behind the Menu button on phones. */
 export function AdminNav({ role, email }: { role: "owner" | "editor"; email: string }) {
@@ -96,23 +108,23 @@ export function AdminNav({ role, email }: { role: "owner" | "editor"; email: str
       </header>
       <aside id="ad-side" className="ad-side" data-open={open} aria-label="Admin sections">
         <nav className="ad-nav">
-          {GROUPS.map((g) => {
-            const items = g.items.filter((i) => !i.owner || role === "owner");
+          {NAV.map((e) => {
+            if (e.owner && role !== "owner") return null;
+            if ("href" in e) return <NavLink key={e.href} i={e} path={path} />;
+            const items = e.items.filter((i) => !i.owner || role === "owner");
             if (!items.length) return null;
+            const active = items.some((i) => current(path, i));
             return (
-              <div className="ad-nav-group" key={g.title}>
-                <span className="ad-eb">{g.title}</span>
+              <details
+                className="ad-nav-group"
+                key={e.title}
+                open={!e.collapsed || active || undefined}
+              >
+                <summary className="ad-eb">{e.title}</summary>
                 {items.map((i) => (
-                  <Link
-                    key={i.href}
-                    href={i.href}
-                    prefetch={false}
-                    aria-current={current(path, i.href) ? "page" : undefined}
-                  >
-                    {i.label}
-                  </Link>
+                  <NavLink key={i.href} i={i} path={path} />
                 ))}
-              </div>
+              </details>
             );
           })}
           <div className="ad-nav-foot">
@@ -131,5 +143,13 @@ export function AdminNav({ role, email }: { role: "owner" | "editor"; email: str
         </nav>
       </aside>
     </>
+  );
+}
+
+function NavLink({ i, path }: { i: Item; path: string }) {
+  return (
+    <Link href={i.href} prefetch={false} aria-current={current(path, i) ? "page" : undefined}>
+      {i.label}
+    </Link>
   );
 }

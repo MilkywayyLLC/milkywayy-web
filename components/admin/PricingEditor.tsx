@@ -124,10 +124,12 @@ export function PricingEditor({
   live,
   draft,
   history,
+  tabs,
 }: {
   live: PropertyPricing;
   draft: { value: PropertyPricing; updated_by: string; updated_at: string } | null;
   history: { at: string; admin_email: string; summary: string; details: Change[] }[];
+  tabs?: React.ReactNode;
 }) {
   const [p, setP] = useState<PropertyPricing>(draft?.value ?? live);
   const [saved, setSaved] = useState(p);
@@ -457,13 +459,14 @@ export function PricingEditor({
     <div className="ad-page">
       <div className="ad-head">
         <div>
-          <span className="ad-eb">Pricing · AED</span>
-          <h1 className="ad-h1">Property shoots</h1>
+          <span className="ad-eb">Money · Prices &amp; packages · AED</span>
+          <h1 className="ad-h1">Website prices</h1>
         </div>
         <span className={`ad-pill ${hasDraft ? "draft" : "live"}`}>
           {hasDraft ? "Draft" : "Live"}
         </span>
       </div>
+      {tabs}
       <p className="ad-note">
         {hasDraft && draft
           ? `Showing the draft (saved by ${draft.updated_by}). Changed cells are highlighted against the live prices.`

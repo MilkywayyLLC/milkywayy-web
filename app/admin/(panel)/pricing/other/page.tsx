@@ -1,3 +1,4 @@
+import { PricesNav } from "@/components/admin/PricesNav";
 import { DocEditor } from "@/components/admin/DocEditor";
 import { requireAdmin } from "@/lib/admin/auth";
 import { getDraft, liveDoc } from "@/lib/admin/data";
@@ -9,5 +10,13 @@ export default async function Page() {
   const { db, role } = await requireAdmin({ owner: true });
   const doc = docByKey("pricing_other")!;
   const [live, draft] = await Promise.all([liveDoc(db, doc), getDraft(db, doc.key)]);
-  return <DocEditor docKey={doc.key} live={live} draft={draft} isOwner={role === "owner"} />;
+  return (
+    <DocEditor
+      docKey={doc.key}
+      live={live}
+      draft={draft}
+      isOwner={role === "owner"}
+      tabs={<PricesNav current="/admin/pricing/other" />}
+    />
+  );
 }

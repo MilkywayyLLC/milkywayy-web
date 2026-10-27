@@ -1,3 +1,4 @@
+import { PricesNav } from "@/components/admin/PricesNav";
 import { PricingEditor } from "@/components/admin/PricingEditor";
 import type { PropertyPricing } from "@/content/types";
 import { requireAdmin, TEST_ACCOUNTS } from "@/lib/admin/auth";
@@ -21,6 +22,7 @@ export default async function Pricing() {
   ]);
   return (
     <PricingEditor
+      tabs={<PricesNav current="/admin/pricing" />}
       live={live}
       draft={draft as { value: PropertyPricing; updated_by: string; updated_at: string } | null}
       history={

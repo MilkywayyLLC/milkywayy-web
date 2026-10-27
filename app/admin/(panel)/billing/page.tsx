@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { BillingNav } from "@/components/admin/BillingNav";
 import {
   NewInvoiceForm,
   PaymentReview,
@@ -115,15 +114,14 @@ export default async function InvoiceQueue({
     <div className="ad-page">
       <div className="ad-head">
         <div>
-          <span className="ad-eb">Portal</span>
-          <h1 className="ad-h1">Billing</h1>
+          <span className="ad-eb">Money</span>
+          <h1 className="ad-h1">Invoices</h1>
           <span className="ad-small ad-muted">
             Drafts are made on the 25th and when a one-off project is delivered. Nothing reaches a
             client until you approve it.
           </span>
         </div>
       </div>
-      <BillingNav current="/admin/billing" />
       {error && <p className="ad-note warn">{error}</p>}
       {f.deleted && (
         <p className="ad-note" role="status">

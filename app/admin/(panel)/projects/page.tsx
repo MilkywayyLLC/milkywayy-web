@@ -111,7 +111,7 @@ export default async function Projects({ searchParams }: Props) {
     <div className="ad-page">
       <div className="ad-head">
         <div>
-          <span className="ad-eb">Portal</span>
+          <span className="ad-eb">Work</span>
           <h1 className="ad-h1">Projects</h1>
           <span className="ad-small ad-muted">
             {type === "shoot"

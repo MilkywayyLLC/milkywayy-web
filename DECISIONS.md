@@ -611,3 +611,11 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 - Budget (legacy): no prod client is on it (checked: 1 package, 3 PAYG). The panel still shows only for a budget client, editing behind "Change the budget".
 - One Save per tab: `components/admin/SaveGroup.tsx`. Blocks register "dirty + save"; the bar saves dirty blocks in a fixed order (How they pay → Plan → Budget → Rollover → Prices → Client sees → Suggestions), then refreshes once. Plan before Client sees because `setPayg` rewrites `show_budget` with the stored value. Rollover keeps its own button on Billing → Packages (outside a group). Unchanged blocks never call their action, so opening and saving a client can't touch other settings.
 - Verification: prod fingerprint of every client's billing fields (terms, pay_online, bank_transfer, payg_invoicing, show_budget, hide_suggestions, pinned offer, currency, plan mode/advance/package, client_rates count) taken before the work, compared after deploy.
+
+**Phase B — navigation + settings.**
+- Sidebar: Today · Projects · Messages · Clients · Leads · Money (Invoices, Prices & packages, Refunds) · Website (collapsed unless you're on one of its pages; SEO moved in) · Settings (Business & billing, Operations, Site settings, Admins, Advanced). Routes unchanged; editors still see only Today + Website.
+- AI characters and Share pages left the sidebar: buttons on the Clients list (both still per-client on the client page).
+- Prices & packages = one tab bar over Website prices (`/admin/pricing`), Other website prices, Portal rate card (`/admin/billing/rates`), Packages. The old six-button Billing nav is gone (Invoices and Refunds are sidebar items; Settings and Suggestions moved under Settings).
+- Turnaround times + invoice backfill moved to the new Settings → Operations (`/admin/operations`), same components.
+- A booking opens its project first: `/admin/projects/ref/<ref>` finds the project(s) (one → it, several lines → filtered list, none → the lead with "no project"). Client page Bookings and the lead's new "Open project" button use it.
+- Admin Playwright specs that assert old labels ("Client accounts", "Billing") weren't edited (expectations frozen for this round); they need the new names.

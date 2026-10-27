@@ -56,11 +56,9 @@ export default async function Dashboard({
       {params["owner-only"] && <p className="ad-note warn">That section is for the Owner.</p>}
       {params["portal-key"] && (
         <p className="ad-note warn">
-          Client portal sections can&apos;t open:{" "}
-          PORTAL_ADMIN_SECRET in Vercel is unset or doesn&apos;t match the key stored in the
-          database.{" "}
-          Generate a new one, put it in Vercel and its hash in private.app_secrets
-          (&ldquo;portal_admin&rdquo;), then redeploy.
+          Client portal sections can&apos;t open: PORTAL_ADMIN_SECRET in Vercel is unset or
+          doesn&apos;t match the key stored in the database. Generate a new one, put it in Vercel
+          and its hash in private.app_secrets (&ldquo;portal_admin&rdquo;), then redeploy.
         </p>
       )}
       {!!drafts.data?.length && (

@@ -28,8 +28,8 @@ export default async function Leads({ searchParams }: Props) {
     <div className="ad-page">
       <div className="ad-head">
         <div>
-          <span className="ad-eb">Workspace</span>
-          <h1 className="ad-h1">Website leads</h1>
+          <span className="ad-eb">Clients</span>
+          <h1 className="ad-h1">Leads</h1>
         </div>
         <a className="ad-btn ghost" href={`/admin/leads/export${qs ? `?${qs}` : ""}`}>
           Export CSV

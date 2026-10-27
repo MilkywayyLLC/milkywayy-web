@@ -4,7 +4,7 @@ import { dubai } from "@/lib/admin/format";
 import { portalAdminPage, portalAdminReady, type ClientListRow } from "@/lib/portal/admin";
 import { industryLabel, SERVICES, serviceLabel } from "@/lib/portal/options";
 
-export const metadata = { title: "Client accounts" };
+export const metadata = { title: "Clients" };
 
 type Props = { searchParams: Promise<{ q?: string; service?: string; type?: string }> };
 
@@ -32,12 +32,20 @@ export default async function Accounts({ searchParams }: Props) {
     <div className="ad-page">
       <div className="ad-head">
         <div>
-          <span className="ad-eb">Portal</span>
-          <h1 className="ad-h1">Client accounts</h1>
+          <span className="ad-eb">Clients</span>
+          <h1 className="ad-h1">Clients</h1>
         </div>
-        <Link className="ad-btn" href="/admin/accounts/new" prefetch={false}>
-          New client
-        </Link>
+        <div className="ad-btns">
+          <Link className="ad-btn ghost small" href="/admin/characters" prefetch={false}>
+            AI characters
+          </Link>
+          <Link className="ad-btn ghost small" href="/admin/listings" prefetch={false}>
+            Share pages
+          </Link>
+          <Link className="ad-btn" href="/admin/accounts/new" prefetch={false}>
+            New client
+          </Link>
+        </div>
       </div>
       <form className="ad-filter" method="get" role="search">
         <input

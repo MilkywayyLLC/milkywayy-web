@@ -1,4 +1,3 @@
-import { BillingNav } from "@/components/admin/BillingNav";
 import { RefundsTable, type RefundListRow } from "@/components/admin/PaymentAdmin";
 import { portalAdminPage, portalAdminReady } from "@/lib/portal/admin";
 
@@ -18,7 +17,7 @@ export default async function RefundsPage() {
     <div className="ad-page">
       <div className="ad-head">
         <div>
-          <span className="ad-eb">Portal · Billing</span>
+          <span className="ad-eb">Money</span>
           <h1 className="ad-h1">Refunds</h1>
           <span className="ad-small ad-muted">
             {due.length
@@ -27,7 +26,6 @@ export default async function RefundsPage() {
           </span>
         </div>
       </div>
-      <BillingNav current="/admin/billing/refunds" />
       <section className="ad-card">
         <RefundsTable rows={sorted} />
       </section>

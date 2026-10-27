@@ -61,7 +61,7 @@ export default async function AdminListings({ searchParams }: Props) {
     <div className="ad-page">
       <div className="ad-head">
         <div>
-          <span className="ad-eb">Portal</span>
+          <span className="ad-eb">Clients</span>
           <h1 className="ad-h1">Listings</h1>
           <span className="ad-small ad-muted">
             Clients’ share pages (/l/) and collections (/c/). Views and taps exclude bots.
