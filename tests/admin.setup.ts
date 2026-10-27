@@ -24,14 +24,14 @@ setup("owner: password, then two-factor", async ({ page }) => {
   }
   expect(secret, "tests/.auth/owner-totp.txt (see the comment above to reset)").not.toBe("");
   await enterCode(page, secret);
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
   await page.context().storageState({ path: OWNER });
 });
 
 setup("editor: password only", async ({ page }) => {
   await signInWithPassword(page, "EDITOR");
   await page.waitForURL(/\/admin$/);
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
   await page.context().storageState({ path: EDITOR });
 });
 

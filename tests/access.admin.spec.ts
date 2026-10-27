@@ -95,7 +95,7 @@ test.describe("signed out", () => {
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("alert").filter({ hasText: "didn't work" })).toBeVisible();
     await enterCode(page, savedSecret());
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
   });
 });
 

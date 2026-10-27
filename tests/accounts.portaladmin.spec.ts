@@ -3,7 +3,7 @@ import { EDITOR, OWNER } from "./helpers/admin";
 import { hasAdminAccounts } from "./helpers/env";
 import { adminRpc, cleanup, hasPortalAdmin, newRun } from "./helpers/portal";
 
-/** Admin → Client accounts (step 6), as the e2e Owner (password + code) and the Editor. */
+/** Admin → Clients (step 6), as the e2e Owner (password + code) and the Editor. */
 test.skip(
   !hasAdminAccounts || !hasPortalAdmin,
   "needs the e2e admin accounts and PORTAL_ADMIN_SECRET",
@@ -21,7 +21,7 @@ test.describe("Owner", () => {
 
   test("create a client with an Owner invite, then find it", async ({ page }) => {
     await page.goto("/admin/accounts");
-    await expect(page.getByRole("heading", { name: "Client accounts" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Clients", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "New client" }).click();
     await page.getByLabel("Company name").fill(NAME);
     await page.getByLabel("What they do").selectOption("holiday-homes");
@@ -55,12 +55,22 @@ test.describe("Owner", () => {
       .getByRole("link", { name: new RegExp(NAME) })
       .click();
 
-    await page.getByLabel("Notes (only admins see these)").fill("Prefers WhatsApp after 6pm.");
-    await page.getByRole("button", { name: "Save notes" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Notes saved." })).toBeVisible();
+    // One Save per tab (admin redesign): Notes on Overview, currency on Billing & payment.
+    await page.getByLabel("Only admins see these").fill("Prefers WhatsApp after 6pm.");
+    await page.getByRole("button", { name: "Save overview" }).click();
+    await expect(
+      page.getByRole("tabpanel", { name: "Overview" }).getByText("Saved.", { exact: true }),
+    ).toBeVisible();
+    await page.getByRole("tab", { name: "Billing & payment" }).click();
     await page.getByLabel("Billing currency").selectOption("AED");
-    await expect(page.getByRole("status").filter({ hasText: "Currency saved." })).toBeVisible();
+    await page.getByRole("button", { name: "Save billing & payment" }).click();
+    await expect(
+      page
+        .getByRole("tabpanel", { name: "Billing & payment" })
+        .getByText("Saved.", { exact: true }),
+    ).toBeVisible();
 
+    await page.getByRole("tab", { name: "People" }).click();
     await page.getByLabel("Name", { exact: true }).fill("Omar Ops");
     await page.getByLabel("WhatsApp number").fill("050 000 0099");
     await page.getByRole("button", { name: "Invite", exact: true }).click();
@@ -74,12 +84,14 @@ test.describe("Owner", () => {
     await expect(page.getByText(`Viewing as ${NAME}`)).toBeVisible();
     await expect(page.getByTestId("view-as")).not.toContainText("Prefers WhatsApp");
     await page.getByRole("link", { name: "Back to the client" }).click();
+    await page.getByRole("tab", { name: "History" }).click();
     await expect(page.getByTestId("history")).toContainText("Viewed as client");
     await expect(page.getByTestId("history")).toContainText("Notes updated");
     await expect(page.getByTestId("history")).toContainText("Currency set to AED");
     await expect(page.getByTestId("history")).toContainText("e2e-owner@example.com");
     await page.reload();
-    await expect(page.getByLabel("Notes (only admins see these)")).toHaveValue(
+    await page.getByRole("tab", { name: "Overview" }).click();
+    await expect(page.getByLabel("Only admins see these")).toHaveValue(
       "Prefers WhatsApp after 6pm.",
     );
   });
@@ -107,10 +119,10 @@ test.describe("Owner", () => {
 
 test.describe("Editor", () => {
   test.use({ storageState: EDITOR });
-  test("can't open Client accounts", async ({ page }) => {
+  test("can’t open Clients", async ({ page }) => {
     await page.goto("/admin/accounts");
     await expect(page).toHaveURL(/\/admin\?owner-only=1$/);
-    await expect(page.getByRole("link", { name: "Client accounts" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Clients", exact: true })).toHaveCount(0);
   });
 });
 
