@@ -104,7 +104,7 @@ export default async function ListingPage({ params }: Props) {
   ).filter(([, v]) => v);
 
   return (
-    <div className="sh" data-tone="light">
+    <div className="sh" data-tone="auto">
       <Brand brand={brand} />
       <main id="main" className="sh-page sh-wide">
         {photos.length > 0 ? (

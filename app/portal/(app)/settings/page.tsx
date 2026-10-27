@@ -97,6 +97,7 @@ export default async function Settings() {
               a.brand_logo_key && r2Ready() ? presign("GET", a.brand_logo_key, 3600) : null
             }
             fallbackName={a.type === "company" ? a.name : "e.g. Harbourline Properties"}
+            layout={a.brand_layout ?? null}
           />
         </section>
       )}

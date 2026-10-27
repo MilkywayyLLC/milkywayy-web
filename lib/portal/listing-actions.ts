@@ -276,7 +276,11 @@ export async function brandLogoUrl(type: string, size: number): Promise<ShareRes
   );
 }
 
-export async function saveBrand(name: string, logoKey: string | null): Promise<ShareResult> {
+export async function saveBrand(
+  name: string,
+  logoKey: string | null,
+  layout: "logo" | "icon_name" | "name" | null = null,
+): Promise<ShareResult> {
   const { db, current } = await requireAccount("/portal/settings");
   if (!isManager(current)) return { ok: false, error: "Only the owner and admins can do that." };
   const n = name.trim();
@@ -286,7 +290,11 @@ export async function saveBrand(name: string, logoKey: string | null): Promise<S
   const old = current.account.brand_logo_key ?? null;
   const { error } = await db
     .from("accounts")
-    .update({ brand_name: n || null, brand_logo_key: logoKey })
+    .update({
+      brand_name: n || null,
+      brand_logo_key: logoKey,
+      brand_layout: layout && ["logo", "icon_name", "name"].includes(layout) ? layout : null,
+    })
     .eq("id", current.account.id);
   if (error) return { ok: false, error: "We couldn’t save that. Try again in a minute." };
   if (old && old !== logoKey && r2Ready()) await deleteObject(old).catch(() => undefined);

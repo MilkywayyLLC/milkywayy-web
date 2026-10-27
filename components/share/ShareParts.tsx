@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- media is pre-sized WebP on R2 (signed URLs), not next/image */
 import { headers } from "next/headers";
+import { BrandHeader } from "./BrandHeader";
 import { pageMediaUrl } from "@/lib/r2";
 import { Icon } from "@/components/portal/Icon";
 import {
@@ -23,12 +24,8 @@ export async function requestOrigin() {
 
 export function Brand({ brand }: { brand: ShareBrand }) {
   if (!brand?.name && !brand?.logo) return null;
-  const logo = pageMediaUrl(brand.logo);
   return (
-    <header className="sh-brand">
-      {logo && <img src={logo} alt={brand.name ? `${brand.name} logo` : "Logo"} height={32} />}
-      {brand.name && <span>{brand.name}</span>}
-    </header>
+    <BrandHeader name={brand.name} logo={pageMediaUrl(brand.logo)} layout={brand.layout ?? null} />
   );
 }
 
@@ -206,7 +203,7 @@ const UTM = "utm_source=sharepage&utm_medium=referral&utm_campaign=listing";
 export function Unavailable({ kind }: { kind: "l" | "c" }) {
   const what = kind === "l" ? "listing" : "collection";
   return (
-    <div className="sh" data-tone="light">
+    <div className="sh" data-tone="auto">
       <main id="main" className="sh-gone">
         <span className="sh-eb">Milkywayy share page</span>
         <h1 className="sh-h1">This {what} isn’t available</h1>

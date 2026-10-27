@@ -1,0 +1,162 @@
+/*
+ * Share pages, phase 1 (27 Oct 2026): premium and minimal. Light first; dark when the visitor's
+ * device asks for it (prefers-color-scheme), through data-tone="auto". Gallery first, a clear
+ * price and specs, the agent card; softer corners, more air, fewer lines. Loaded after share.css.
+ */
+/* Unlayered, like the tone tokens in globals.css. */
+[data-tone="auto"] {
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface-2: #eeebe5;
+  --line: #e2ded6;
+  --fg: #121211;
+  --muted: #6b665d;
+  --btn: #121211;
+  --btn-ink: #f7f6f3;
+  --acc: #7a5c2e;
+  --hl-bg: #e6d3a3;
+  --hl-fg: #111110;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  [data-tone="auto"] {
+    --bg: #0e0e0d;
+    --surface: #171716;
+    --surface-2: #21201e;
+    --line: #2b2a27;
+    --fg: #eeece7;
+    --muted: #97938b;
+    --btn: #e6d3a3;
+    --btn-ink: #111111;
+    --acc: #e6d3a3;
+    --hl-bg: transparent;
+    --hl-fg: #e6d3a3;
+    color-scheme: dark;
+  }
+}
+
+@layer components {
+  .sh {
+    --sh-r: 14px;
+    --sh-shadow: none;
+    -webkit-font-smoothing: antialiased;
+  }
+  .sh-page {
+    gap: 28px;
+  }
+  @media (min-width: 700px) {
+    .sh-page {
+      padding: 24px 32px 48px;
+    }
+  }
+
+  /* Brand header: quiet, sticky, translucent. */
+  .sh-brand {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    min-height: 60px;
+    padding: 10px 20px;
+    font: 700 15px/1.2 var(--font-sans);
+    letter-spacing: -0.01em;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: saturate(1.4) blur(14px);
+    -webkit-backdrop-filter: saturate(1.4) blur(14px);
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  }
+  @media (min-width: 700px) {
+    .sh-brand {
+      padding-inline: max(32px, calc((100vw - 1200px) / 2 + 32px));
+    }
+  }
+  .sh-brand img,
+  .sh-brand-logo {
+    height: 32px;
+    width: auto;
+    max-width: 180px;
+    object-fit: contain;
+  }
+  .sh-brand .sh-brand-icon {
+    width: 28px;
+    height: 28px;
+    max-width: none;
+    border-radius: 6px;
+  }
+
+  /* Gallery first: rounded, tight gutters. */
+  @media (min-width: 700px) {
+    .sh-mosaic {
+      gap: 8px;
+      border-radius: var(--sh-r);
+      height: clamp(360px, 50vw, 580px);
+    }
+    .sh-mosaic-grid {
+      gap: 8px;
+    }
+  }
+
+  /* Price and specs: the clearest things on the page. */
+  .sh-top {
+    gap: 10px;
+  }
+  .sh-price {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  @media (min-width: 1024px) {
+    .sh-price {
+      font-size: 48px;
+    }
+    .sh-h1 {
+      font-size: 22px;
+    }
+  }
+  .sh-h1 {
+    color: var(--fg);
+    font-weight: 500;
+  }
+  .sh-facts {
+    gap: 12px 28px;
+    padding: 18px 0;
+  }
+  .sh-facts li {
+    font-weight: 500;
+  }
+  .sh-sec {
+    gap: 14px;
+    padding-top: 28px;
+  }
+  .sh-h2 {
+    font: 600 13px/1.2 var(--font-mono);
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-variation-settings: normal;
+  }
+  .sh-chips li {
+    background: transparent;
+  }
+
+  /* Agent card: a soft card, sticky on desktop. */
+  .sh-card,
+  .sh-agents {
+    border-radius: var(--sh-r);
+  }
+  .sh-agents {
+    padding: 22px;
+  }
+  @media (min-width: 1024px) {
+    .sh-side {
+      top: 84px;
+    }
+  }
+  .sh-agent-btns .btn,
+  .sh-bar .btn {
+    border-radius: 999px;
+  }
+  .sh-bar {
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: none;
+  }
+}

@@ -54,7 +54,7 @@ export default async function CollectionPage({ params }: Props) {
   const by = contacts[0]?.name;
 
   return (
-    <div className="sh" data-tone="light">
+    <div className="sh" data-tone="auto">
       <Brand brand={brand} />
       <main id="main" className="sh-page sh-wide">
         <div className="sh-top sh-ctop">

@@ -162,6 +162,11 @@ function Uploader({
         (patch) => set(i, patch),
       );
     }
+    // Share-page versions the browser couldn't make (Safari, phase 1): the server makes them now.
+    if (kind === "photos") {
+      let res = await makeWebVersions(projectId).catch(() => null);
+      while (res?.ok && res.left) res = await makeWebVersions(projectId).catch(() => null);
+    }
     setBusy(false);
   }
 
