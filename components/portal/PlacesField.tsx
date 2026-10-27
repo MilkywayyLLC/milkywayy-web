@@ -12,7 +12,7 @@ import type { BookingLocation } from "@/lib/portal/booking";
  * JavaScript, Places (New) and Geocoding APIs); without it, the plain address field as before.
  */
 const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
-const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
+export const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
 const DUBAI = { lat: 25.2048, lng: 55.2708 };
 
 type LatLng = { lat: number; lng: number };
@@ -27,12 +27,12 @@ type Geo = {
   formatted_address: string;
   address_components: { long_name: string; types: string[] }[];
 };
-type Maps = {
+export type Maps = {
   importLibrary: (name: string) => Promise<Record<string, unknown>>;
 };
 
 let loading: Promise<Maps> | null = null;
-function loadMaps(): Promise<Maps> {
+export function loadMaps(): Promise<Maps> {
   const w = window as unknown as { google?: { maps?: Maps }; __mwMaps?: () => void };
   if (w.google?.maps?.importLibrary) return Promise.resolve(w.google.maps);
   loading ??= new Promise((resolve, reject) => {

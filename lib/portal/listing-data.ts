@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { thumbSrc } from "./thumbs";
 import type { PickContact, PickPhoto, PickVideo } from "@/components/portal/ListingForm";
 import { presign, r2Ready } from "@/lib/r2";
 import type { Account } from "./auth";
@@ -29,7 +30,7 @@ export async function listingFormData(
   const [{ data: files }, { data: cs }] = await Promise.all([
     db
       .from("project_files")
-      .select("id, kind, source, url, label, r2_key, thumb_key, web_key, created_at")
+      .select("id, kind, source, url, label, r2_key, thumb_key, web_key, content_type, created_at")
       .eq("project_id", project.id)
       .eq("direction", "out")
       .order("delivery_no")
@@ -46,7 +47,7 @@ export async function listingFormData(
   const fs = files ?? [];
   const photos: PickPhoto[] = fs
     .filter((f) => f.kind === "photos" && f.source === "r2")
-    .map((f) => ({ id: f.id, label: f.label, src: sign(f.thumb_key) }));
+    .map((f) => ({ id: f.id, label: f.label, src: thumbSrc(f) }));
   const videos: PickVideo[] = fs
     .filter((f) => (f.kind === "reel" || f.kind === "long_form") && f.web_key)
     .map((f) => ({ id: f.id, label: f.label }));

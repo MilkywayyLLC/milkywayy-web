@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- signed, short-lived R2 previews */
 import Link from "next/link";
+import { thumbSrc } from "@/lib/portal/thumbs";
 import { Icon } from "@/components/portal/Icon";
 import { ShareControls } from "@/components/portal/ListingParts";
 import { DraftsRow } from "@/components/portal/StartRequests";
@@ -15,7 +16,6 @@ import {
   type ListingRow,
 } from "@/lib/portal/listings";
 import { isManager } from "@/lib/portal/shell";
-import { presign, r2Ready } from "@/lib/r2";
 import { price as fmtPrice } from "@/lib/share";
 
 export const metadata = { title: "Listings" };
@@ -90,7 +90,7 @@ export default async function Listings() {
     listings.length
       ? db
           .from("project_files")
-          .select("id, thumb_key")
+          .select("id, source, r2_key, thumb_key, content_type, label")
           .in(
             "id",
             listings.map((l) => l.photo_ids[0]),
@@ -108,12 +108,7 @@ export default async function Listings() {
     totals.set(k, t);
   }
   const zero = { views: 0, wa: 0, call: 0 };
-  const cover = new Map(
-    (covers ?? []).map((f) => [
-      f.id as string,
-      f.thumb_key && r2Ready() ? presign("GET", f.thumb_key, 3600) : null,
-    ]),
-  );
+  const cover = new Map((covers ?? []).map((f) => [f.id as string, thumbSrc(f)]));
   const canEdit = (createdBy: string | null) => isManager(current) || createdBy === user.id;
   const day = today();
   const shootList = (shoots ?? []) as { id: string; ref: string; title: string }[];

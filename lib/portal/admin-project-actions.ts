@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { makeStoredThumb } from "./thumb-server";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import {
@@ -582,6 +583,22 @@ export async function thumbUploadUrl(key: string): Promise<{ ok: boolean; url?: 
   if (!r2Ready() || !/^projects\/[^/]+\/d\d+\//.test(key) || key.includes(".."))
     return { ok: false };
   return { ok: true, url: presign("PUT", `${key}.thumb.webp`, 600) };
+}
+
+/** The browser couldn't make the preview (Safari has no WebP encoder): make it on the server. */
+export async function serverThumb(id: string, fileId: string, key: string): Promise<ActionResult> {
+  try {
+    const rpc = await portalAdminAction();
+    if (!r2Ready() || !/^projects\/[^/]+\/d\d+\//.test(key) || key.includes(".."))
+      return { ok: false, error: "No storage." };
+    const made = await makeStoredThumb(key);
+    if (!made) return { ok: false, error: "The photo couldn’t be read." };
+    await rpc("portal_admin_set_thumb", { p_file: fileId, p_thumb_key: made.key });
+    revalidatePath(`/admin/projects/${id}`);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
 }
 
 export async function saveThumb(id: string, fileId: string, key: string): Promise<ActionResult> {

@@ -12,6 +12,7 @@ import {
   saveProjectNotes,
   saveThumb,
   startUpload,
+  serverThumb,
   thumbUploadUrl,
   type ActionResult,
 } from "@/lib/portal/admin-project-actions";
@@ -149,6 +150,9 @@ function Uploader({
               const t = thumb ? await thumbUploadUrl(x.key) : null;
               if (thumb && t?.url && (await putBlob(t.url, thumb)))
                 await saveThumb(projectId, r.fileId, x.key);
+              // Safari can't encode WebP: the server makes the preview instead (phase 1).
+              else if (kind === "photos" || /^image\//.test(f.type))
+                await serverThumb(projectId, r.fileId, x.key);
               // And the web versions share pages use (§6.5): a 2048px WebP, a 1200px JPEG preview.
               if (kind === "photos" && thumb) await photoWebVersions(projectId, r.fileId, f);
             }

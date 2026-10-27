@@ -33,6 +33,8 @@ import { downloadUrl, presign, r2Ready } from "@/lib/r2";
 import { stripeReady } from "@/lib/stripe";
 import { ProposalBanner } from "@/components/portal/ProposalBanner";
 import { projectWhen, whenLabel } from "@/lib/portal/when";
+import { thumbSrc } from "@/lib/portal/thumbs";
+import { ShootMap } from "@/components/portal/ShootMap";
 import { AddToCalendar } from "@/components/portal/AddToCalendar";
 import { shootEventOf } from "@/lib/portal/shoot-calendar";
 import { originFrom } from "@/lib/portal/invite";
@@ -145,8 +147,8 @@ export default async function ShootPage({
       thumb:
         locked && f.kind === "photos" && f.source === "r2"
           ? `/api/portal/preview/${f.id}?s=t`
-          : r2 && f.thumb_key
-            ? presign("GET", f.thumb_key, 3600)
+          : r2
+            ? thumbSrc(f)
             : null,
       deliverableId: f.deliverable_id ?? null,
     })),
@@ -348,20 +350,7 @@ export default async function ShootPage({
             <AddToCalendar {...calendarLinks(shootEventOf(p, origin))} />
           )}
           {booking?.location.lat != null && booking.location.lng != null && MAPS_KEY && (
-            <a
-              className="pt-staticmap"
-              href={`https://www.google.com/maps/search/?api=1&query=${booking.location.lat},${booking.location.lng}`}
-              target="_blank"
-              rel="noopener"
-              aria-label="Open the shoot location in Google Maps"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                alt=""
-                loading="lazy"
-                src={`https://maps.googleapis.com/maps/api/staticmap?center=${booking.location.lat},${booking.location.lng}&zoom=16&size=600x240&scale=2&markers=color:0x111110%7C${booking.location.lat},${booking.location.lng}&key=${encodeURIComponent(MAPS_KEY)}`}
-              />
-            </a>
+            <ShootMap lat={booking.location.lat} lng={booking.location.lng} />
           )}
         </section>
         <ActivityList events={(events ?? []) as ProjectEvent[]} />
