@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { projectStart } from "@/lib/portal/when";
 import Link from "next/link";
 import { portalAdminPage, type ProjectListRow } from "@/lib/portal/admin";
 import { calendarToken } from "@/lib/portal/calendar";
@@ -101,7 +102,7 @@ export default async function ShootCalendar({
                   className={`ad-cal-ev ${s.status}`}
                   title={`${s.ref} · ${s.title} · ${statusLabel(s.status)}`}
                 >
-                  <b>{s.slot ?? ""}</b> {s.account_name ?? s.client_name ?? s.title}
+                  <b>{projectStart(s) ?? ""}</b> {s.account_name ?? s.client_name ?? s.title}
                 </Link>
               ))}
             </div>

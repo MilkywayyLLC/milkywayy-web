@@ -1,20 +1,22 @@
 import { expect, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { signWebhook } from "@/lib/stripe";
+import { chargeSavedCard, createCustomer, refundCheckout, signWebhook } from "@/lib/stripe";
 import {
   quoteChange,
   BOOKING_TERMS_VERSION,
   type ChangeKind,
   type ChangeReason,
 } from "@/lib/portal/payments";
-import { WEBHOOK_SECRET } from "./helpers/env";
+import { env, WEBHOOK_SECRET } from "./helpers/env";
 import {
   adminRpc,
   cleanup,
   clientAccount,
+  createUser,
   hasPortalAdmin,
   newRun,
   signInUI,
+  signedIn,
 } from "./helpers/portal";
 
 /**
@@ -91,6 +93,10 @@ const pay = (c: Client, id: string) =>
   }>(c.db.rpc("my_project_payment", { p_project: id }));
 const status = async (c: Client, id: string) =>
   (await must<{ status: string }[]>(c.db.from("projects").select("status").eq("id", id)))[0].status;
+const paidAt = async (c: Client, id: string) =>
+  (
+    await must<{ meta: { paid_at?: string } }[]>(c.db.from("projects").select("meta").eq("id", id))
+  )[0].meta.paid_at;
 const markPaid = (invoice: string) =>
   admin("portal_admin_set_invoice_status", { p_id: invoice, p_status: "paid" });
 /** A delivery for a project (one photo), published: the project turns Delivered. */
@@ -143,7 +149,7 @@ test("new accounts start on 100% before the shoot; the term is set per client", 
   expect(t).toMatchObject({ terms: "split", late_fee_min: 250 });
 });
 
-test("100% before: invoice at booking, locked until paid, paid = confirmed, unlocked on delivery", async () => {
+test("100% before: invoice at booking, locked until paid, paid = pending confirmation, unlocked on delivery", async () => {
   const c = clients.prepay;
   const b = await book(c, { estimate: 1600 });
   expect(b.inv).toMatchObject({ stage: "full", amount: 1600 });
@@ -155,7 +161,9 @@ test("100% before: invoice at booking, locked until paid, paid = confirmed, unlo
   );
   expect(inv.status).toBe("due");
   await markPaid(b.inv!.id);
-  expect(await status(c, b.id)).toBe("confirmed");
+  // Phase 1: paying never confirms; the booking waits for Milkywayy (paid_at marks it).
+  expect(await status(c, b.id)).toBe("requested");
+  expect(await paidAt(c, b.id)).toBeTruthy();
   expect((await pay(c, b.id)).locked).toBe(false);
   await deliver(b.id, b.ref);
   expect((await pay(c, b.id)).locked).toBe(false);
@@ -183,13 +191,13 @@ test("100% before, unpaid at delivery: still locked; Mark as paid releases", asy
   expect(p.invoices[0].status).toBe("paid");
 });
 
-test("50/50: deposit at booking confirms; balance issued on delivery locks the files until paid", async () => {
+test("50/50: deposit at booking (pending confirmation); balance issued on delivery locks the files until paid", async () => {
   const c = clients.split;
   const b = await book(c, { estimate: 2000 });
   expect(b.inv).toMatchObject({ stage: "deposit", amount: 1000 });
   expect((await pay(c, b.id)).locked).toBe(true);
   await markPaid(b.inv!.id);
-  expect(await status(c, b.id)).toBe("confirmed");
+  expect(await status(c, b.id)).toBe("requested");
   expect((await pay(c, b.id)).locked).toBe(false);
   // What was shot: 6 reels at 400 = 2,400 (more than the estimate).
   await admin("portal_admin_add_line_item", {
@@ -226,7 +234,7 @@ test("end of month: nothing due at booking, never locked, the term means month-e
   expect(setup.payg_invoicing).toBe("month_end");
 });
 
-test("receipt upload → the admin is asked → Mark as paid confirms the booking", async () => {
+test("receipt upload → the admin is asked → Mark as paid → pending confirmation", async () => {
   const c = clients.prepay;
   const b = await book(c, { estimate: 1200 });
   const key = `payments/${c.account}/${b.inv!.id}/receipt.pdf`;
@@ -249,7 +257,8 @@ test("receipt upload → the admin is asked → Mark as paid confirms the bookin
     c.db.from("payment_proofs").select("id").eq("invoice_id", b.inv!.id),
   );
   await admin("portal_admin_decide_payment", { p_proof: proof.id, p_confirm: true });
-  expect(await status(c, b.id)).toBe("confirmed");
+  expect(await status(c, b.id)).toBe("requested");
+  expect(await paidAt(c, b.id)).toBeTruthy();
   expect((await pay(c, b.id)).invoices[0].status).toBe("paid");
 });
 
@@ -374,7 +383,9 @@ test("what the client sees: plan card, segmented meters, How you pay, sidebar pl
   // Refinement round (25 Oct 2026): full-width bars with a label row under each.
   await expect(card.getByTestId("meter-allowance")).toContainText("AED 3,000 of AED 3,000");
   await expect(card.getByTestId("meter-allowance")).toContainText("AED 3,000 booked · AED 0 left");
-  await expect(card.getByTestId("meter-shoot-days")).toContainText("0.5 days booked · 4.5 days left");
+  await expect(card.getByTestId("meter-shoot-days")).toContainText(
+    "0.5 days booked · 4.5 days left",
+  );
   await expect(card.getByTestId("value-statement")).toContainText("AED 3,600");
   await expect(card.getByTestId("value-extras")).toContainText("AED 600");
   await expect(page.getByTestId("value-bookings")).toContainText("Package + extra AED 600");
@@ -583,7 +594,7 @@ test("reschedule: free more than 3h before; late = fee, nothing refunded", async
   expect(p.status).not.toBe("cancelled");
 });
 
-test("Stripe: a paid booking confirms; a cancellation refunds through Stripe and the refund webhook settles it", async ({
+test("Stripe: a paid booking waits for confirmation; a cancellation refunds through Stripe and the refund webhook settles it", async ({
   request,
 }) => {
   const c = clients.prepay;
@@ -613,7 +624,8 @@ test("Stripe: a paid booking confirms; a cancellation refunds through Stripe and
     },
   });
   expect(await ok.json()).toMatchObject({ received: true, paid: true });
-  expect(await status(c, b.id)).toBe("confirmed");
+  expect(await status(c, b.id)).toBe("requested");
+  expect(await paidAt(c, b.id)).toBeTruthy();
 
   // Cancelled early: a Stripe refund (pending until Stripe confirms it).
   const { out } = await change(b.id, "cancel", 10);
@@ -668,4 +680,297 @@ test("bank refunds: Refund due until the admin ticks it off", async () => {
     {},
   );
   expect(st[clients.prepay.account]).toBeDefined();
+});
+
+/* ---------- Phase 1 (27 Oct 2026): Stripe as the main way to pay ---------- */
+
+const metaOf = async (c: Client, id: string) =>
+  (
+    await must<{ meta: Record<string, unknown>; status: string; shoot_date: string }[]>(
+      c.db.from("projects").select("meta, status, shoot_date").eq("id", id),
+    )
+  )[0];
+
+test("Pay page access: billing people and the booker see it; another teammate doesn't; send to company", async () => {
+  const owner = await clientAccount(RUN, "payowner", "E2E Pay team");
+  await admin("portal_admin_set_payment_terms", { p_account: owner.account, p_terms: "prepay" });
+  const mates: { email: string; db: SupabaseClient; id: string }[] = [];
+  for (const n of ["booker", "other"]) {
+    const email = await createUser(RUN, n);
+    await must(
+      owner.db.from("account_invites").insert({ account_id: owner.account, email, name: n }),
+    );
+    const db = await signedIn(email);
+    await must(db.rpc("accept_my_invites"));
+    const id = (await db.auth.getUser()).data.user!.id;
+    await must(
+      owner.db
+        .from("account_members")
+        .update({ access: { preset: "custom", shoots: true, billing: false, all_projects: false } })
+        .eq("user_id", id)
+        .select(),
+    );
+    mates.push({ email, db, id });
+  }
+  const [booker, other] = mates;
+  const b = await book(
+    { db: booker.db, account: owner.account, email: booker.email },
+    { estimate: 700 },
+  );
+  const ownerId = (await owner.db.auth.getUser()).data.user!.id;
+  const view = (u: string) =>
+    admin<{ billing: boolean; amount: number; unpaid: boolean } | null>("portal_admin_pay_view", {
+      p_invoice: b.inv!.id,
+      p_user: u,
+    });
+  expect(await view(ownerId)).toMatchObject({ billing: true, amount: 700, unpaid: true });
+  expect(await view(booker.id)).toMatchObject({ billing: false, amount: 700 });
+  expect(await view(other.id)).toBeNull();
+  // Billing options are for billing people only.
+  expect(await must(booker.db.rpc("my_payment_options", { p_account: owner.account }))).toBeNull();
+  expect(
+    await must(owner.db.rpc("my_payment_options", { p_account: owner.account })),
+  ).toMatchObject({ bank_transfer: true, card: null, autopay: false });
+
+  // Only the booker can hand it to the company; the owners are the recipients.
+  await expect(
+    admin("portal_admin_send_to_company", { p_project: b.id, p_user: other.id, p_by: "Other" }),
+  ).rejects.toThrow(/not yours/);
+  const sent = await admin<{ number: string; recipients: { email: string }[] }>(
+    "portal_admin_send_to_company",
+    { p_project: b.id, p_user: booker.id, p_by: "Booker" },
+  );
+  expect(sent.number).toBe(b.inv!.number);
+  expect(sent.recipients.map((r) => r.email)).toContain(owner.email);
+  expect((await metaOf(owner, b.id)).meta.pay_by).toBe("company");
+
+  // Admin turns bank transfer off for this client.
+  await admin("portal_admin_set_bank_transfer", { p_account: owner.account, p_on: false });
+  expect(
+    await must(owner.db.rpc("my_payment_options", { p_account: owner.account })),
+  ).toMatchObject({
+    bank_transfer: false,
+  });
+});
+
+test("Propose a new time: accept confirms at that time; decline cancels with a full Stripe refund", async ({
+  request,
+}) => {
+  const c = clients.prepay;
+  // Accept.
+  const a = await book(c, { estimate: 600, start: "10:15" });
+  await markPaid(a.inv!.id);
+  await admin("portal_admin_propose_time", {
+    p_project: a.id,
+    p_date: inDays(14),
+    p_start: "11:30",
+    p_note: "Photographer is booked that morning",
+  });
+  expect((await metaOf(c, a.id)).meta.proposal).toMatchObject({ start_time: "11:30" });
+  await admin("portal_admin_accept_proposal", { p_project: a.id, p_by: "Client" });
+  const m = await metaOf(c, a.id);
+  expect(m.status).toBe("confirmed");
+  expect(m.shoot_date).toBe(inDays(14));
+  expect((m.meta.booking as { start_time: string }).start_time).toBe("11:30");
+  expect(m.meta.proposal).toBeUndefined();
+  await expect(
+    admin("portal_admin_propose_time", {
+      p_project: a.id,
+      p_date: inDays(15),
+      p_start: "25:00",
+      p_note: null,
+    }),
+  ).rejects.toThrow(/bad time/);
+
+  // Decline, paid by card, an hour before (late): the admin reason waives the fee, all of it comes back.
+  const d = await book(c, { estimate: 900 });
+  const session = `cs_test_decline_${RUN}`;
+  await admin("portal_admin_set_stripe_session", { p_invoice: d.inv!.id, p_session: session });
+  const paid = JSON.stringify({
+    id: `evt_d_${RUN}`,
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        id: session,
+        object: "checkout.session",
+        mode: "payment",
+        payment_status: "paid",
+        amount_total: 90000,
+        currency: "aed",
+        client_reference_id: d.inv!.id,
+        metadata: { invoice_id: d.inv!.id },
+      },
+    },
+  });
+  const ok = await request.post("/api/stripe/webhook", {
+    data: paid,
+    headers: {
+      "stripe-signature": signWebhook(paid, WEBHOOK_SECRET),
+      "content-type": "application/json",
+    },
+  });
+  expect(await ok.json()).toMatchObject({ received: true, paid: true });
+  expect(await status(c, d.id)).toBe("requested");
+  await admin("portal_admin_propose_time", {
+    p_project: d.id,
+    p_date: inDays(20),
+    p_start: "09:00",
+    p_note: null,
+  });
+  const { q, out } = await change(d.id, "cancel", 1, { reason: "admin", waive: true });
+  expect(q).toMatchObject({ fee: 0, refund: 900 });
+  expect(out.refunds).toEqual([expect.objectContaining({ amount: 900, stripe: true })]);
+  expect(await status(c, d.id)).toBe("cancelled");
+});
+
+test("Saved card + automatic payment: signed payment_intent events, failures recorded, 3 tries max", async ({
+  request,
+}) => {
+  const c = clients.monthend;
+  await admin("portal_admin_set_stripe_customer", {
+    p_account: c.account,
+    p: {
+      customer_id: `cus_test_${RUN}`,
+      pm_id: `pm_test_${RUN}`,
+      brand: "visa",
+      last4: "4242",
+      exp: "12/30",
+    },
+  });
+  await admin("portal_admin_set_stripe_customer", {
+    p_account: c.account,
+    p: { autopay: true, by: c.email },
+  });
+  expect(await must(c.db.rpc("my_payment_options", { p_account: c.account }))).toMatchObject({
+    card: { brand: "visa", last4: "4242" },
+    autopay: true,
+  });
+  // A month-end invoice, due today.
+  const number = `INV-AP-${RUN.slice(-5).toUpperCase()}`;
+  const created = await admin<{ id: string }>("portal_admin_create_invoice", {
+    p_account: c.account,
+    p_number: number,
+    p_issued: today(),
+    p_due: today(),
+    p_amount: 450,
+    p_currency: "AED",
+    p_status: "due",
+    p_pdf_key: null,
+  });
+  await admin("portal_admin_approve_invoice", { p_id: created.id, p_publish_now: true });
+  const inv = { id: created.id, number };
+  const due = await admin<{ id: string }[]>("portal_admin_autopay_due", {});
+  expect(due.map((r) => r.id)).toContain(inv.id);
+
+  // A declined try: recorded, still due, shown to the client.
+  const r1 = await admin<{ attempts: number }>("portal_admin_autopay_result", {
+    p_invoice: inv.id,
+    p_pi: `pi_fail_${RUN}`,
+    p_error: "Your card was declined.",
+  });
+  expect(r1.attempts).toBe(1);
+  expect(await must(c.db.rpc("my_payment_options", { p_account: c.account }))).toMatchObject({
+    failed: [{ number: inv.number, error: "Your card was declined." }],
+  });
+  // Not retried within 20 hours.
+  expect(
+    (await admin<{ id: string }[]>("portal_admin_autopay_due", {})).map((r) => r.id),
+  ).not.toContain(inv.id);
+
+  // The next try succeeds: the signed webhook marks it paid (intent and amount must match).
+  const pi = `pi_ok_${RUN}`;
+  await admin("portal_admin_autopay_result", { p_invoice: inv.id, p_pi: pi, p_error: null });
+  const event = (amount: number) =>
+    JSON.stringify({
+      id: `evt_pi_${RUN}_${amount}`,
+      type: "payment_intent.succeeded",
+      data: {
+        object: {
+          id: pi,
+          object: "payment_intent",
+          status: "succeeded",
+          amount,
+          currency: "aed",
+          metadata: { invoice_id: inv.id, autopay: "1" },
+        },
+      },
+    });
+  const post = (body: string) =>
+    request.post("/api/stripe/webhook", {
+      data: body,
+      headers: {
+        "stripe-signature": signWebhook(body, WEBHOOK_SECRET),
+        "content-type": "application/json",
+      },
+    });
+  expect(await (await post(event(100))).json()).toMatchObject({ error: "not recorded" });
+  expect(await (await post(event(45000))).json()).toMatchObject({ received: true, paid: true });
+  expect(await (await post(event(45000))).json()).toMatchObject({ received: true, paid: false });
+  const [after] = await must<{ status: string }[]>(
+    c.db.from("invoices").select("status").eq("id", inv.id),
+  );
+  expect(after.status).toBe("paid");
+
+  // Remove the card: autopay goes off with it.
+  await admin("portal_admin_set_stripe_customer", {
+    p_account: c.account,
+    p: { clear_card: true },
+  });
+  expect(await must(c.db.rpc("my_payment_options", { p_account: c.account }))).toMatchObject({
+    card: null,
+    autopay: false,
+  });
+});
+
+test("Stripe test mode, real API: customer, off-session charge on a saved card, refund by intent", async () => {
+  test.skip(
+    !/^sk_test_/.test(env.STRIPE_SECRET_KEY ?? ""),
+    "needs a Stripe test key in .env.local",
+  );
+  process.env.STRIPE_SECRET_KEY = env.STRIPE_SECRET_KEY;
+  const c = clients.pkg2;
+  const cus = await createCustomer({
+    accountId: `${c.account}-${RUN}`,
+    name: "E2E Phase 1",
+    email: c.email,
+  });
+  expect(cus.id).toMatch(/^cus_/);
+  // Attach Stripe's test Visa (what a saved card from Checkout setup mode becomes).
+  const attach = await fetch("https://api.stripe.com/v1/payment_methods/pm_card_visa/attach", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: `customer=${cus.id}`,
+  });
+  const pm = (await attach.json()) as { id: string };
+  expect(pm.id).toMatch(/^pm_/);
+  const b = await book(c, { estimate: 300 });
+  const charged = await chargeSavedCard({
+    customer: cus.id,
+    pm: pm.id,
+    invoiceId: b.inv!.id,
+    number: b.inv!.number,
+    amount: 300,
+    currency: "AED",
+    attempt: 1,
+  });
+  expect(charged).toMatchObject({ status: "succeeded", amount: 30000, currency: "aed" });
+  await admin("portal_admin_set_payment_intent", { p_invoice: b.inv!.id, p_pi: charged.id });
+  const out = await admin<{ already: boolean; project_id: string }>("portal_admin_stripe_pi_paid", {
+    p_invoice: b.inv!.id,
+    p_pi: charged.id,
+    p_amount_minor: charged.amount,
+    p_currency: charged.currency,
+  });
+  expect(out).toMatchObject({ already: false, project_id: b.id });
+  expect(await status(c, b.id)).toBe("requested"); // pending confirmation, never auto-confirmed
+  const refund = await refundCheckout({
+    sessionId: charged.id,
+    amount: 300,
+    refundId: `e2e-${RUN}`,
+  });
+  expect(refund.id).toMatch(/^re_/);
+  expect(["succeeded", "pending"]).toContain(refund.status);
 });

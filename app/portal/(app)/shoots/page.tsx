@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { projectWhen } from "@/lib/portal/when";
 import { Icon } from "@/components/portal/Icon";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
 import { DraftsRow, StartRequests } from "@/components/portal/StartRequests";
@@ -8,7 +9,6 @@ import {
   clientStatus,
   myProjects,
   SHOOT_SERVICE_LABEL,
-  shootDay,
   shortTitle,
   statusLabel,
   stepsFor,
@@ -158,7 +158,7 @@ export default async function Shoots({
                       </b>
                     </Link>
                     <span className="pt-meta">
-                      {[p.meta.area, shootDay(p.shoot_date), p.slot].filter(Boolean).join(" · ")}
+                      {[p.meta.area, projectWhen(p)].filter(Boolean).join(" · ")}
                     </span>
                     <span className="pt-meta">
                       {[

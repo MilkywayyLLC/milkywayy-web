@@ -127,6 +127,20 @@ export type Project = {
     /** Booked in the portal (owner, 10 Oct 2026): location, services, estimate. */
     source?: "portal";
     booking?: import("./booking").PortalBooking;
+    /** Start time set by the admin on a shoot without a portal booking (phase 1). */
+    start_time?: string | null;
+    /** Phase 1 (27 Oct 2026): a time Milkywayy proposed, waiting for the client's answer. */
+    proposal?: {
+      date: string;
+      start_time: string;
+      note?: string | null;
+      was_date?: string | null;
+      was_start?: string | null;
+    };
+    /** A teammate sent the booking to the company for payment. */
+    pay_by?: "company";
+    /** When the booking invoice was paid (waiting for confirmation). */
+    paid_at?: string;
   };
   /** Agency teams: the Agent (contact) and teammates it's shared with. */
   agent_contact_id?: string | null;
@@ -195,8 +209,20 @@ export type ProjectMessage = {
 };
 
 /** What the client is waiting on, in one line. */
-export function clientStatus(p: Project) {
+export function clientStatus(
+  p: Project,
+  pay?: { invoices: { stage: string | null; status: string }[] | null } | null,
+) {
   if (p.status === "on_hold") return "On hold";
+  // Phase 1 (27 Oct 2026): a requested shoot says what it's waiting for.
+  if (p.type === "shoot" && p.status === "requested") {
+    const m = p.meta as { proposal?: unknown; pay_by?: string; paid_at?: string };
+    if (m.proposal) return "New time proposed";
+    if (m.pay_by === "company") return "Awaiting company payment";
+    const stage = (pay?.invoices ?? []).filter((i) => i.stage === "full" || i.stage === "deposit");
+    if (m.paid_at || stage.some((i) => i.status === "paid")) return "Pending confirmation";
+    if (stage.some((i) => i.status === "due" || i.status === "overdue")) return "Awaiting payment";
+  }
   // Booked with their email while signed out: we confirm it with them first.
   if (p.status === "requested" && p.meta.attached_by_email)
     return "Requested — we’ll confirm on WhatsApp";

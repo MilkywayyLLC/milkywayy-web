@@ -1,5 +1,6 @@
 "use client";
 
+import { dubaiToday, WhenPicker } from "./WhenPicker";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -156,26 +157,14 @@ function ChangeDialog({
             )}
             {kind === "reschedule" && (
               <>
-                <label className="pt-field">
-                  New date
-                  <input
-                    type="date"
-                    value={date}
-                    min={new Date().toISOString().slice(0, 10)}
-                    onChange={(e) => setDate(e.target.value)}
-                  />
-                </label>
-                <label className="pt-field">
-                  Start time
-                  <input
-                    type="time"
-                    step={900}
-                    min="08:00"
-                    max="17:45"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                  />
-                </label>
+                <WhenPicker
+                  date={date}
+                  time={time}
+                  min={dubaiToday()}
+                  onDate={setDate}
+                  onTime={setTime}
+                  dateLabel="New date"
+                />
                 <span className="pt-meta">We confirm the new time before it’s booked in.</span>
               </>
             )}

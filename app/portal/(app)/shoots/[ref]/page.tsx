@@ -15,7 +15,6 @@ import {
   clientStatus,
   deliveries,
   SHOOT_SERVICE_LABEL,
-  shootDay,
   statusLabel,
   stepsFor,
   type Project,
@@ -32,6 +31,12 @@ import type { Slot } from "@/lib/portal/booking";
 import { ShootDeliveries, type DFile } from "@/components/portal/ShootDeliveries";
 import { downloadUrl, presign, r2Ready } from "@/lib/r2";
 import { stripeReady } from "@/lib/stripe";
+import { ProposalBanner } from "@/components/portal/ProposalBanner";
+import { projectWhen, whenLabel } from "@/lib/portal/when";
+import { AddToCalendar } from "@/components/portal/AddToCalendar";
+import { shootEventOf } from "@/lib/portal/shoot-calendar";
+import { originFrom } from "@/lib/portal/invite";
+import { headers } from "next/headers";
 import {
   ProjectPaymentCard,
   type BillingPayments,
@@ -167,13 +172,12 @@ export default async function ShootPage({
     contactName(db, p.agent_contact_id),
     admin ? teammates(db, current.account.id) : Promise.resolve([]),
   ]);
-  const when = [
-    shootDay(p.shoot_date),
-    p.slot,
-    booking?.start_time ? `preferred start ${booking.start_time}` : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  // The real date and start time, never Morning / Afternoon (phase 1).
+  const when = projectWhen(p);
+  const origin = originFrom(await headers());
+  const proposal = (
+    p.meta as { proposal?: { date: string; start_time: string; note?: string | null } }
+  ).proposal;
   const total = (items ?? []).reduce((t, i) => t + Number(i.qty) * Number(i.unit_price), 0);
 
   return (
@@ -188,7 +192,7 @@ export default async function ShootPage({
           </span>
           <h1 className="pt-h1">{p.title}</h1>
         </div>
-        <Badge tone={p.status === "delivered" ? "gold" : undefined}>{clientStatus(p)}</Badge>
+        <Badge tone={p.status === "delivered" ? "gold" : undefined}>{clientStatus(p, pay)}</Badge>
       </div>
       {p.status === "cancelled" ? (
         <p className="pt-note" role="status">
@@ -222,10 +226,19 @@ export default async function ShootPage({
           }}
         />
       )}
+      {proposal && p.status !== "cancelled" && can(current, "shoots") && (
+        <ProposalBanner
+          projectId={p.id}
+          when={whenLabel(proposal.date, proposal.start_time)}
+          was={when}
+          note={proposal.note}
+          paid={!!pay?.invoices?.some((i) => i.stage && i.status === "paid")}
+        />
+      )}
       {booked && (
         <p className="pt-note" role="status">
-          Requested. We’ll confirm the date and slot shortly; you’ll get an email when it’s
-          confirmed.
+          Requested. Your preferred date and time are subject to availability. We’ll review and
+          email you once confirmed.
         </p>
       )}
       {!!(agentName || p.shared_with?.length) && (
@@ -331,6 +344,9 @@ export default async function ShootPage({
                 </div>
               ))}
           </dl>
+          {p.shoot_date && ["requested", "confirmed"].includes(p.status) && (
+            <AddToCalendar {...calendarLinks(shootEventOf(p, origin))} />
+          )}
           {booking?.location.lat != null && booking.location.lng != null && MAPS_KEY && (
             <a
               className="pt-staticmap"
@@ -361,3 +377,5 @@ export default async function ShootPage({
     </>
   );
 }
+
+const calendarLinks = (e: ReturnType<typeof shootEventOf>) => ({ google: e.google, ics: e.icsUrl });

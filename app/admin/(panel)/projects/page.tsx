@@ -1,4 +1,5 @@
 import { unstable_rethrow } from "next/navigation";
+import { projectWhen } from "@/lib/portal/when";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { EmailAttachedBadge } from "@/components/admin/EmailAttachedBadge";
@@ -10,7 +11,6 @@ import {
   briefKindLabel,
   day,
   REVISION_LABEL,
-  shootDay,
   statusLabel,
   type ProjectType,
 } from "@/lib/portal/projects";
@@ -38,8 +38,7 @@ function facts(r: ProjectListRow) {
   const revision =
     r.revision_state && r.revision_state !== "delivered" ? REVISION_LABEL[r.revision_state] : "";
   const due = r.due_at ? `by ${day(r.due_at)}` : "";
-  if (r.type === "shoot")
-    return [shootDay(r.shoot_date), r.slot, revision].filter(Boolean).join(" · ");
+  if (r.type === "shoot") return [projectWhen(r), revision].filter(Boolean).join(" · ");
   if (r.type === "avatar")
     return [
       briefKindLabel("avatar", r.meta.kind),

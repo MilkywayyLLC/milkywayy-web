@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./admin.css";
+import "@/app/styles/pickers-admin.css";
 
 /** /admin: never indexed (also X-Robots-Tag from proxy.ts and Disallow in robots.txt). */
 export const metadata: Metadata = {

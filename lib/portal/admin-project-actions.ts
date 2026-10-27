@@ -111,10 +111,13 @@ const done = (id: string, r: ActionResult): ActionResult => {
 export async function setStatus(
   id: string,
   status: string,
-  o: { note?: string; date?: string; slot?: string; notify?: boolean } = {},
+  o: { note?: string; date?: string; slot?: string; startTime?: string; notify?: boolean } = {},
 ): Promise<ActionResult> {
   try {
     const rpc = await portalAdminAction();
+    // The real start time (phase 1), saved before the status so the email carries it.
+    if (status === "confirmed" && o.startTime && /^([01]\d|2[0-3]):[0-5]\d$/.test(o.startTime))
+      await rpc("portal_admin_set_start_time", { p_project: id, p_start: o.startTime });
     const out = await rpc<{ event: string | null; recipients: Recipient[] }>(
       "portal_admin_set_status",
       {
@@ -467,6 +470,7 @@ export type NewClientProject = {
   due?: string;
   shootDate?: string;
   slot?: string;
+  startTime?: string;
   area?: string;
   building?: string;
   unit?: string;
@@ -500,6 +504,8 @@ export async function createClientProject(
       p_price: p.price ?? null,
       p_script_by: p.type === "avatar" ? (p.scriptBy ?? "milkywayy") : null,
     });
+    if (p.type === "shoot" && p.startTime)
+      await rpc("portal_admin_set_start_time", { p_project: out.id, p_start: p.startTime });
     revalidatePath("/admin/projects");
     revalidatePath(`/admin/accounts/${p.account}`);
     return { ok: true, id: out.id, ref: out.ref, notice: `${out.ref} created.` };

@@ -36,6 +36,9 @@ const P: Record<string, string> = {
   area: "M4 4h16v16H4zM4 9h5M15 4v5M9 20v-5M20 15h-5",
   sofa: "M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3M2 11h4v4h12v-4h4v7H2zM5 18v2M19 18v2",
   building: "M5 21V4h10v17M15 9h4v12M3 21h18M8 8h4M8 12h4M8 16h4",
+  card: "M3 6h18v12H3zM3 10h18M7 15h4",
+  ics: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M12 13v5M9.5 15.5 12 18l2.5-2.5",
+  revise: "M4 12a8 8 0 0 1 14-5.3M20 4v5h-5M20 12a8 8 0 0 1-14 5.3M4 20v-5h5",
   mail: "M3 5h18v14H3zM3 6l9 7 9-7",
   whatsapp:
     "M4 20l1.3-4A8 8 0 1 1 8 18.7zM9 9c0 3 3 6 6 6l1-1.5-2-1-1 .8c-1-.5-1.8-1.3-2.3-2.3l.8-1-1-2z",

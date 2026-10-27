@@ -22,6 +22,8 @@ export type BillingPayments = {
   account_terms: PaymentTerms;
   wio_link: string | null;
   pay_online: boolean;
+  /** Bank transfer + receipt upload allowed for this client (admin toggle, phase 1; default on). */
+  bank_transfer?: boolean;
   bank: {
     account_name: string | null;
     bank: string | null;
@@ -70,24 +72,28 @@ export type ValueMonth = {
   }[];
 };
 
-/** Pay this invoice: card (Stripe on and allowed), Wio, or "I've paid" with the receipt. */
+/**
+ * Pay this invoice (phase 1, 27 Oct 2026): card first (Stripe, on our own page) on every open invoice;
+ * Wio and "I've paid" with the bank receipt only where the client may pay by bank transfer.
+ */
 export function PayActions({
   inv,
   card,
-  payOnline,
+  bank = true,
   wio,
 }: {
   inv: { id: string; number: string | null; stage?: string | null; payment_state?: string | null };
   card: boolean;
-  payOnline: boolean;
+  /** @deprecated kept for older callers; Stripe is on for every client now. */
+  payOnline?: boolean;
+  bank?: boolean;
   wio: string | null;
 }) {
   if (inv.payment_state === "submitted") return null;
-  const byCard = card && (payOnline || !!inv.stage);
   return (
     <>
-      {byCard && <PayNow id={inv.id} number={inv.number ?? ""} />}
-      {wio && (
+      {card && <PayNow id={inv.id} number={inv.number ?? ""} />}
+      {(bank || !card) && wio && (
         <a
           className="btn btn-g btn-s pt-btn-sm"
           href={wio}
@@ -98,7 +104,7 @@ export function PayActions({
           Pay with Wio ↗
         </a>
       )}
-      <PaidByTransfer id={inv.id} number={inv.number ?? ""} />
+      {(bank || !card) && <PaidByTransfer id={inv.id} number={inv.number ?? ""} />}
     </>
   );
 }
@@ -312,10 +318,11 @@ export function HowYouPay({
   card: boolean;
   chat: string;
 }) {
+  const bank = bp.bank_transfer !== false || !card;
   const ways = [
-    bp.bank ? "bank transfer" : null,
-    bp.wio_link ? "Wio" : null,
-    card && (bp.pay_online || bp.terms !== "month_end") ? "card" : null,
+    card ? "card" : null,
+    bank && bp.bank ? "bank transfer" : null,
+    bank && bp.wio_link ? "Wio" : null,
   ].filter(Boolean) as string[];
   const waysText =
     ways.length > 1
@@ -326,8 +333,8 @@ export function HowYouPay({
     : bp.terms === "month_end"
       ? "You book and we invoice everything at the end of the month. Nothing is due when you book."
       : bp.terms === "split"
-        ? "You pay 50% when you book, which confirms the shoot. The other 50% is invoiced when we deliver; the files unlock for download once it’s paid."
-        : "You pay 100% when you book, which confirms the shoot. The files are yours to download as soon as we deliver.";
+        ? "You pay 50% when you book; we confirm the date and time once it’s paid. The other 50% is invoiced when we deliver; the files unlock for download once it’s paid."
+        : "You pay 100% when you book; we confirm the date and time once it’s paid. The files are yours to download as soon as we deliver.";
   return (
     <section className="pt-card" aria-labelledby="hyp-h" data-testid="how-you-pay">
       <h2 id="hyp-h" className="pt-h2">
@@ -335,7 +342,8 @@ export function HowYouPay({
       </h2>
       <span>{text}</span>
       <span className="pt-meta">
-        Pay by {waysText}. Upload the receipt on the invoice and we confirm it.
+        Pay by {waysText}.
+        {bank ? " For a bank transfer, upload the receipt on the invoice and we confirm it." : ""}
       </span>
       <div className="pt-plan-row pt-hyp-q">
         <span className="pt-meta">Something on an invoice? A real person replies.</span>
@@ -481,7 +489,7 @@ export function ProjectPaymentCard({
                   <PayActions
                     inv={i}
                     card={card}
-                    payOnline={billing.pay_online}
+                    bank={billing.bank_transfer !== false}
                     wio={billing.wio_link}
                   />
                 )}
@@ -492,6 +500,12 @@ export function ProjectPaymentCard({
       )}
       {open.length > 0 && billing && !card && (
         <BankBox bank={billing.bank} wio={billing.wio_link} />
+      )}
+      {open.length > 0 && billing && card && billing.bank_transfer !== false && (
+        <details className="pt-breakdown">
+          <summary>Pay by bank transfer instead</summary>
+          <BankBox bank={billing.bank} wio={billing.wio_link} />
+        </details>
       )}
       {refunds.length > 0 && (
         <ul className="pt-lines" aria-label="Refunds">

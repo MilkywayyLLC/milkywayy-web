@@ -13,6 +13,9 @@ import {
   type Rates,
 } from "./booking";
 import { originFrom } from "./invite";
+import { firstName, projectLink } from "./messages";
+import { notifyPeople } from "./notify";
+import { whenLabel } from "./when";
 import type { Recipient } from "./notify";
 import type { ProjectPayment } from "./payment-actions";
 import { emailConfirmed, runRefunds, sendNewInvoices, type RefundRow } from "./payment-server";
@@ -194,6 +197,8 @@ export async function adminApplyChange(
   c: AdminChange,
 ): Promise<Result> {
   try {
+    // Phase 1: an admin cancellation (Milkywayy's reason) always refunds in full.
+    if (kind === "cancel" && c.reason === "admin") c = { ...c, waive: true, fee: null };
     const { rpc, q } = await quoteAdmin(projectId, kind, c);
     if (!q.allowed) return { ok: false, error: q.blocked };
     if (kind === "reschedule" && !c.date) return { ok: false, error: "Choose the new date." };
@@ -305,7 +310,9 @@ export async function backfillBookingInvoices(dry = true): Promise<Result & { ro
     const origin = originFrom(await headers());
     const rows: string[] = [];
     for (const b of list ?? []) {
-      const rates = await rpc<Rates | null>("portal_admin_account_rates", { p_account: b.account_id });
+      const rates = await rpc<Rates | null>("portal_admin_account_rates", {
+        p_account: b.account_id,
+      });
       const services = normalizeServices(b.services ?? []);
       const cp = clientPricing(pricing, rates);
       const est = b.estimate ?? (rates && services.length ? estimate(services, rates, cp) : null);
@@ -345,6 +352,65 @@ export async function backfillBookingInvoices(dry = true): Promise<Result & { ro
           : `Fixed ${rows.length}.`
         : "Nothing to fix.",
     };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Per client: may they pay by bank transfer + receipt upload (phase 1; Stripe is the main way). */
+export async function setBankTransfer(account: string, on: boolean): Promise<Result> {
+  try {
+    const rpc = await portalAdminAction();
+    await rpc("portal_admin_set_bank_transfer", { p_account: account, p_on: on });
+    revalidatePath(`/admin/accounts/${account}`);
+    revalidatePath("/portal", "layout");
+    return { ok: true, notice: on ? "Bank transfer allowed." : "Card only." };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/**
+ * Propose another time for a requested shoot (phase 1): the client is emailed and sees Accept /
+ * Decline on the shoot page. Accept confirms it; decline cancels with a full refund.
+ */
+export async function proposeTime(
+  projectId: string,
+  date: string,
+  startTime: string,
+  note: string,
+): Promise<Result> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "Choose the date." };
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime)) return { ok: false, error: "Choose a time." };
+  try {
+    const rpc = await portalAdminAction();
+    const out = await rpc<{
+      ref: string;
+      title: string;
+      recipients: { email: string; name?: string | null }[];
+    }>("portal_admin_propose_time", {
+      p_project: projectId,
+      p_date: date,
+      p_start: startTime,
+      p_note: note.trim() || null,
+    });
+    const when = whenLabel(date, startTime);
+    await notifyPeople({
+      projectId,
+      template: "time_proposed",
+      recipients: out.recipients,
+      subject: `New time proposed for ${out.ref}: ${when}`,
+      lines: (name) => [
+        `Hi ${firstName(name)},`,
+        `Your preferred time for ${out.title} (${out.ref}) isn’t available. We can do ${when} instead.`,
+        ...(note.trim() ? [note.trim()] : []),
+        "Accept it on the shoot page and it’s confirmed. If it doesn’t suit you, decline and you get a full refund.",
+      ],
+      button: "Accept or decline",
+      link: projectLink(originFrom(await headers()), out.ref),
+      actor: "admin",
+    });
+    return doneProject(projectId, { ok: true, notice: `Proposed ${when}. The client is emailed.` });
   } catch (e) {
     return fail(e);
   }

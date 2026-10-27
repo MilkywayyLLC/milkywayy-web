@@ -1,0 +1,111 @@
+/*
+ * Phase 1 (27 Oct 2026): checkout, saved card, time proposals, calendar links, the shared date + time
+ * picker, delivery actions, the activity timeline. Loaded after portal-v2.css in the same layer.
+ */
+@layer components {
+  /* ---------- checkout ---------- */
+  .pt-pay {
+    display: grid;
+    gap: var(--sp-5);
+    max-width: 1040px;
+  }
+  .pt-pay-grid {
+    display: grid;
+    gap: var(--sp-4);
+    align-items: start;
+  }
+  @media (min-width: 900px) {
+    .pt-pay-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    }
+  }
+  .pt-pay-sum,
+  .pt-pay-form {
+    display: grid;
+    gap: var(--sp-3);
+  }
+  .pt-pay-sum dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--sp-2) var(--sp-4);
+    margin: 0;
+  }
+  .pt-pay-sum dd {
+    margin: 0;
+    text-align: right;
+  }
+  .pt-pay-done {
+    max-width: 620px;
+  }
+  .pt-stripe {
+    min-height: 360px;
+    border-radius: var(--pt-r-sm);
+    overflow: hidden;
+  }
+
+  /* ---------- pay myself / send to company ---------- */
+  .pt-paychoice {
+    display: grid;
+    gap: var(--sp-3);
+  }
+  .pt-choice-card {
+    display: grid;
+    gap: var(--sp-2);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--pt-r-sm);
+    background: var(--surface);
+  }
+
+  /* ---------- saved card ---------- */
+  .pt-savedcard {
+    display: grid;
+    gap: var(--sp-3);
+  }
+  .pt-cardrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+  }
+  .pt-cardchip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font: var(--t-num);
+  }
+  .pt-check.is-off {
+    opacity: 0.5;
+  }
+
+  /* ---------- new time proposed ---------- */
+  .pt-proposal {
+    display: grid;
+    gap: var(--sp-3);
+    border-color: var(--pt-gold);
+  }
+  .pt-proposal-when {
+    font: var(--t-sec);
+  }
+  .pt-proposal-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  /* ---------- calendar links ---------- */
+  .pt-cal-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-top: var(--sp-2);
+  }
+
+  /* ---------- date + arrival time: side by side on desktop, stacked on mobile ---------- */
+  @media (max-width: 699px) {
+    .pt-whenpick.bkp-2col {
+      grid-template-columns: 1fr;
+    }
+  }
+}

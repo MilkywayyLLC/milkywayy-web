@@ -8,6 +8,8 @@ import {
   type MessageEvent,
   type ProjectInfo,
 } from "./messages";
+import type { Project } from "./projects";
+import { shootEventOf } from "./shoot-calendar";
 import { portalKey, portalUrl } from "./supabase";
 
 /**
@@ -104,8 +106,27 @@ export async function notifyClients(
   o: { link: string; label?: string; text?: string; expires?: string; actor?: string },
 ) {
   let sent = 0;
+  // Confirmed shoots carry Google Calendar and .ics links (phase 1).
+  const calendar =
+    event === "booking_confirmed" && project.shoot_date
+      ? (() => {
+          const e = shootEventOf(
+            {
+              id: projectId,
+              ref: project.ref,
+              title: project.title,
+              status: "confirmed",
+              shoot_date: project.shoot_date,
+              slot: project.slot ?? null,
+              meta: (project.meta ?? {}) as Project["meta"],
+            },
+            new URL(o.link).origin,
+          );
+          return { google: e.google, ics: e.icsUrl };
+        })()
+      : null;
   for (const r of recipients) {
-    const m = emailFor(event, project, { ...o, name: r.name });
+    const m = emailFor(event, project, { ...o, name: r.name, calendar });
     const { text, html } = renderEmail(m.lines, m.button, o.link);
     const res = await sendEmail(r.email, m.subject, text, html);
     if (res.status === "sent") sent++;
@@ -307,4 +328,38 @@ export async function sendTeamInvite(
   const { text, html } = renderEmail(m.lines, m.button, link);
   const res = await sendEmail(invite.email, m.subject, text, html);
   return res.status;
+}
+
+/**
+ * A one-off email to a project's people (phase 1, 27 Oct 2026: a new time proposed, a booking sent to
+ * the company for payment, an automatic payment that failed), each logged against the project when
+ * there is one. Test addresses are skipped like every other send.
+ */
+export async function notifyPeople(o: {
+  projectId?: string | null;
+  template: string;
+  recipients: Recipient[];
+  subject: string;
+  lines: (name?: string | null) => string[];
+  button: string;
+  link: string;
+  actor?: string;
+}) {
+  let sent = 0;
+  for (const r of o.recipients) {
+    const { text, html } = renderEmail(o.lines(r.name), o.button, o.link);
+    const res = await sendEmail(r.email, o.subject, text, html);
+    if (res.status === "sent") sent++;
+    if (o.projectId)
+      await log(
+        o.projectId,
+        o.template,
+        r.email,
+        res.status,
+        "id" in res ? res.id : undefined,
+        "error" in res ? res.error : undefined,
+        o.actor,
+      );
+  }
+  return sent;
 }

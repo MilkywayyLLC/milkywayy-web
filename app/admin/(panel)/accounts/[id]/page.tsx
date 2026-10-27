@@ -12,7 +12,11 @@ import {
   ServicesBlock,
   type ClientSetupData,
 } from "@/components/admin/ClientSetup";
-import { PaymentTermsBlock, type ClientPayments } from "@/components/admin/PaymentAdmin";
+import {
+  BankTransferToggle,
+  PaymentTermsBlock,
+  type ClientPayments,
+} from "@/components/admin/PaymentAdmin";
 import { ValuePackageCard, type ValueMonth } from "@/components/portal/PaymentParts";
 import { getPropertyPricing } from "@/lib/data";
 import { notFound } from "next/navigation";
@@ -123,6 +127,10 @@ export default async function ClientPage({ params, searchParams }: Props) {
       <ServicesBlock account={a.id} s={setup.services} />
       <PriceList account={a.id} data={setup} pricing={pricing} />
       <PaymentTermsBlock account={a.id} data={payments} />
+      <BankTransferToggle
+        account={a.id}
+        on={(a as { bank_transfer?: boolean }).bank_transfer !== false}
+      />
       <PlanBlock
         account={a.id}
         data={setup}
@@ -343,7 +351,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
                   <span>
                     <span className="ad-row-title">
                       {b.properties
-                        .map((p) => `${propertyTitle({ ...p, line: 0 })}, ${day(p.date)} ${p.slot}`)
+                        .map((p) => `${propertyTitle({ ...p, line: 0 })}, ${day(p.date)}`)
                         .join(" + ")}
                     </span>
                     <span className="ad-row-meta" style={{ display: "block" }}>

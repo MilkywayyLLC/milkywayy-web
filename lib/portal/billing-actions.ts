@@ -4,13 +4,13 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { downloadUrl, presign, r2Ready } from "@/lib/r2";
-import { createCheckout, stripeReady } from "@/lib/stripe";
+import { stripeReady } from "@/lib/stripe";
 import { portalAdminAs } from "./admin";
 import { requireAccount } from "./auth";
 import { money } from "./billing";
 import { originFrom } from "./invite";
 import { alertMilkywayyBilling } from "./notify";
-import { pagePath } from "./payment-server";
+import { payPath } from "./payment-server";
 
 type Result = { ok: boolean; url?: string; key?: string; error?: string; notice?: string };
 
@@ -25,53 +25,19 @@ export async function invoiceLink(id: string): Promise<Result> {
 }
 
 /**
- * "Pay now" (billing add-on): a Stripe Checkout page in the invoice's currency, for accounts that
- * pay online. The webhook marks the invoice Paid; nothing here does.
+ * "Pay now" (billing add-on; phase 1, 27 Oct 2026): Stripe is the main way to pay, on every open
+ * invoice. Opens our own checkout page; the session is made there and the webhook marks it Paid.
  */
 export async function payInvoice(id: string): Promise<Result> {
-  const { db, user } = await requireAccount("/portal/billing");
-  const { data, error } = await db.rpc("my_invoice_for_payment", { p_invoice: id });
-  if (error) return { ok: false, error: "That invoice isn’t yours to pay." };
-  const inv = data as {
-    id: string;
-    number: string;
-    amount: number;
-    currency: string;
-    unpaid: boolean;
-    pay_online: boolean;
-    stage: string | null;
-    project_id: string | null;
-  };
-  if (!inv.unpaid) return { ok: false, error: "That invoice is already paid." };
-  if (!inv.pay_online) return { ok: false, error: "This invoice is paid by bank transfer." };
+  const { user } = await requireAccount("/portal/billing");
   if (!stripeReady()) return { ok: false, error: "Card payments aren’t set up yet. WhatsApp us." };
-  const origin = originFrom(await headers());
-  // A booking invoice comes back to its project page (paid = confirmed).
-  const { data: proj } = inv.project_id
-    ? await db.from("projects").select("ref, type").eq("id", inv.project_id).maybeSingle()
-    : { data: null };
-  const back = proj ? pagePath(origin, proj.type, proj.ref) : null;
-  try {
-    const s = await createCheckout({
-      invoiceId: inv.id,
-      number: inv.number,
-      amount: inv.amount,
-      currency: inv.currency,
-      email: user.email,
-      successUrl: back
-        ? `${back}?paid=1`
-        : `${origin}/portal/billing?paid=${encodeURIComponent(inv.number)}`,
-      cancelUrl: back ? `${back}?pay=1` : `${origin}/portal/billing`,
-    });
-    await portalAdminAs(`client:${user.email ?? user.id}`)("portal_admin_set_stripe_session", {
-      p_invoice: inv.id,
-      p_session: s.id,
-    });
-    return { ok: true, url: s.url };
-  } catch (e) {
-    console.error("[billing] checkout:", e instanceof Error ? e.message : e);
-    return { ok: false, error: "Couldn’t open the payment page. Try again in a minute." };
-  }
+  const inv = await portalAdminAs(`client:${user.email ?? user.id}`)<{ unpaid: boolean } | null>(
+    "portal_admin_pay_view",
+    { p_invoice: id, p_user: user.id },
+  );
+  if (!inv) return { ok: false, error: "That invoice isn’t yours to pay." };
+  if (!inv.unpaid) return { ok: false, error: "That invoice is already paid." };
+  return { ok: true, url: payPath(id) };
 }
 
 const PROOF_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic"];

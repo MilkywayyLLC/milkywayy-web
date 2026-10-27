@@ -2,7 +2,14 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EmailAttachedBadge } from "@/components/admin/EmailAttachedBadge";
-import { ProjectPaymentAdmin, type AdminProjectPayment } from "@/components/admin/PaymentAdmin";
+import {
+  ProjectPaymentAdmin,
+  ProposeTime,
+  type AdminProjectPayment,
+} from "@/components/admin/PaymentAdmin";
+import { AddToCalendar } from "@/components/portal/AddToCalendar";
+import { shootEventOf } from "@/lib/portal/shoot-calendar";
+import { projectWhen } from "@/lib/portal/when";
 import { LineItems } from "@/components/admin/BillingTools";
 import { AttachToClient } from "@/components/admin/ClientProjectTools";
 import { FilesIn, ScriptPanel } from "@/components/admin/ProjectBrief";
@@ -30,7 +37,6 @@ import {
   REVISION_LABEL,
   TYPE_LABEL,
   SHOOT_SERVICE_LABEL,
-  shootDay,
   statusLabel,
 } from "@/lib/portal/projects";
 
@@ -271,6 +277,13 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         </span>
       </section>
 
+      {shoot && (p.status === "requested" || p.status === "confirmed") && (
+        <ProposeTime
+          projectId={p.id}
+          proposal={p.meta.proposal ?? null}
+          paid={!!p.meta.paid_at || !!payment?.invoices.some((i) => i.stage && i.status === "paid")}
+        />
+      )}
       {payment && <ProjectPaymentAdmin projectId={p.id} pay={payment} currency={payCurrency} />}
 
       <div className="ad-grid2">
@@ -281,13 +294,10 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
               <>
                 <dt>When</dt>
                 <dd>
-                  {[
-                    shootDay(p.shoot_date),
-                    p.slot,
-                    booking?.start_time ? `preferred start ${booking.start_time}` : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || "—"}
+                  {projectWhen(p) || "—"}
+                  {p.shoot_date && p.status !== "cancelled" && (
+                    <AddToCalendar admin {...calLinks(shootEventOf(p, origin))} />
+                  )}
                 </dd>
                 <dt>Where</dt>
                 <dd>
@@ -541,3 +551,5 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     </div>
   );
 }
+
+const calLinks = (e: ReturnType<typeof shootEventOf>) => ({ google: e.google, ics: e.icsUrl });
