@@ -28,11 +28,14 @@ export function DocEditor({
   live,
   draft,
   isOwner,
+  tabs,
 }: {
   docKey: string;
   live: Record<string, unknown>;
   draft: Draft;
   isOwner: boolean;
+  /** Section tabs under the heading (Prices & packages). */
+  tabs?: React.ReactNode;
 }) {
   const doc = docByKey(docKey)!;
   const [values, setValues] = useState<Record<string, unknown>>(
@@ -132,7 +135,7 @@ export function DocEditor({
         <div>
           <span className="ad-eb">
             {doc.isPrice
-              ? "Pricing"
+              ? "Money · Prices & packages"
               : doc.key === "avatar_hero"
                 ? "Content · AI avatars"
                 : "Settings"}
@@ -143,6 +146,7 @@ export function DocEditor({
           {hasDraft ? "Draft" : "Live"}
         </span>
       </div>
+      {tabs}
       <p className="ad-note">
         {draftInfo || "You're editing the live version. Changes stay a draft until you publish."}
       </p>

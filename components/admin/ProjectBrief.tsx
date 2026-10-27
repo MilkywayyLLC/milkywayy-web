@@ -23,9 +23,7 @@ export function FilesIn({ projectId, files }: { projectId: string; files: Projec
           >
             <span className="ad-row-main">
               <span>
-                <span className="ad-row-title" style={{ overflowWrap: "anywhere" }}>
-                  {f.label}
-                </span>
+                <span className="ad-row-title ad-break">{f.label}</span>
                 <span
                   className="ad-row-meta"
                   style={{ display: "block", overflowWrap: "anywhere" }}
@@ -98,11 +96,7 @@ export function ScriptPanel({
           <div className="ad-small" style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>
             {s.body}
           </div>
-          {s.client_comment && (
-            <p className="ad-note warn" style={{ marginTop: 8 }}>
-              Client: “{s.client_comment}”
-            </p>
-          )}
+          {s.client_comment && <p className="ad-note warn ad-mt-8">Client: “{s.client_comment}”</p>}
         </details>
       ))}
       {locked ? (
@@ -140,7 +134,7 @@ export function ScriptPanel({
             />
             Email the client
           </label>
-          <div className="ad-btns" style={{ alignItems: "center" }}>
+          <div className="ad-btns ad-center">
             <button
               type="button"
               className="ad-btn"

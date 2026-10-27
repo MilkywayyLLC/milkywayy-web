@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { STATUS_TONE } from "@/components/admin/Pill";
 import { notFound } from "next/navigation";
 import {
   InvoiceActions,
@@ -83,11 +84,14 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             {inv.published_at ? ` · published ${dateLabel(inv.published_at)}` : ""}
           </span>
         </div>
-        <span className={`ad-pill ${inv.shown_status}`} data-testid="invoice-status">
+        <span
+          className={`ad-pill t-${STATUS_TONE[inv.shown_status] ?? "neutral"}`}
+          data-testid="invoice-status"
+        >
           {QUEUE_STATUS_LABEL[inv.shown_status]}
         </span>
         {Number(inv.refunded ?? 0) > 0 && (
-          <span className="ad-pill" data-testid="invoice-refunded">
+          <span className="ad-pill t-warn" data-testid="invoice-refunded">
             {refundState(inv)} · {money(inv.currency, Number(inv.refunded))}
           </span>
         )}

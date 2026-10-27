@@ -12,7 +12,7 @@ export default async function Login() {
   return (
     <main className="ad-auth">
       <div className="ad-card">
-        <div style={{ display: "grid", gap: 6 }}>
+        <div className="ad-stack-8">
           <BrandLogo tone="light" />
           <h1 className="ad-h1">Admin sign in</h1>
         </div>

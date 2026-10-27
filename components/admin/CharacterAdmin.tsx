@@ -112,7 +112,7 @@ function CharacterAdminCard({ c, showClient }: { c: Character; showClient?: bool
       aria-label={characterTitle(c)}
       data-testid="admin-character"
     >
-      <div className="ad-row-main" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+      <div className="ad-row-main ad-between ad-wrap">
         <h2 className="ad-h2">
           {characterTitle(c)}
           {showClient && (
@@ -213,7 +213,7 @@ function CharacterAdminCard({ c, showClient }: { c: Character; showClient?: bool
         </div>
       ))}
       {canUpload && (
-        <div className="ad-btns" style={{ alignItems: "center" }}>
+        <div className="ad-btns ad-center">
           <label className="ad-btn small ghost">
             Upload variations ({next.length}/3)
             <input
@@ -312,7 +312,7 @@ function CharacterAdminCard({ c, showClient }: { c: Character; showClient?: bool
 
       <h3 className="ad-small">Pack files (Milkywayy only)</h3>
       {pack.map((f) => (
-        <div key={f.id} className="ad-btns" style={{ alignItems: "center" }}>
+        <div key={f.id} className="ad-btns ad-center">
           <span className="ad-small">{f.label}</span>
           <button type="button" className="ad-btn quiet small" onClick={() => download(f)}>
             {f.r2_key ? "Download" : "Open"}

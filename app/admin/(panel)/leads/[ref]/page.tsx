@@ -7,14 +7,18 @@ import { dubai } from "@/lib/admin/format";
 import { LEAD_TYPES, waTo, type LeadRow } from "@/lib/admin/leads";
 import { EDIT_KINDS, SERVICE_LABELS } from "@/lib/leads/rules";
 
-type Props = { params: Promise<{ ref: string }> };
+type Props = {
+  params: Promise<{ ref: string }>;
+  searchParams?: Promise<{ project?: string }>;
+};
 
 export async function generateMetadata({ params }: Props) {
   return { title: `Lead ${(await params).ref}` };
 }
 
-export default async function LeadDetail({ params }: Props) {
+export default async function LeadDetail({ params, searchParams }: Props) {
   const { ref } = await params;
+  const noProject = (await searchParams)?.project === "none";
   const { db } = await requireAdmin({ owner: true });
   const { data } = await db.from("leads").select("*").eq("ref", ref).maybeSingle();
   if (!data) notFound();
@@ -77,8 +81,13 @@ export default async function LeadDetail({ params }: Props) {
           </span>
         </div>
         <div className="ad-btns">
+          {l.type === "property" && !noProject && (
+            <Link className="ad-btn" href={`/admin/projects/ref/${l.ref}`} prefetch={false}>
+              Open project
+            </Link>
+          )}
           {l.phone && (
-            <a className="ad-btn" href={waTo(l.phone)} target="_blank" rel="noopener">
+            <a className="ad-btn ghost" href={waTo(l.phone)} target="_blank" rel="noopener">
               WhatsApp
             </a>
           )}
@@ -126,7 +135,7 @@ export default async function LeadDetail({ params }: Props) {
             {answers.map(([k, v]) => (
               <div key={k} style={{ display: "contents" }}>
                 <dt>{k}</dt>
-                <dd style={{ whiteSpace: "pre-wrap" }}>{String(v)}</dd>
+                <dd className="ad-pre">{String(v)}</dd>
               </div>
             ))}
           </dl>

@@ -214,7 +214,7 @@ export function AdminNewProject({
         <label htmlFor="np-notes">Notes (the client sees these)</label>
         <textarea id="np-notes" name="notes" rows={3} maxLength={4000} />
       </div>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button type="submit" className="ad-btn" disabled={pending}>
           Create project
         </button>
@@ -364,7 +364,7 @@ export function MemberPhone({
           autoComplete="off"
         />
       </div>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button type="submit" className="ad-btn small" disabled={pending}>
           Save
         </button>

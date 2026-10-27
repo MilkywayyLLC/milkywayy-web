@@ -28,7 +28,7 @@ export function ShareSwitch({
       if (r.ok) setOpen(false);
     });
   return (
-    <div className="ad-btns" style={{ alignItems: "center" }}>
+    <div className="ad-btns ad-center">
       {disabled ? (
         <button
           type="button"

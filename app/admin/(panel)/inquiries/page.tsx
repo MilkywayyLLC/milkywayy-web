@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { portalAdminPage } from "@/lib/portal/admin";
 
-export const metadata = { title: "Client messages" };
+export const metadata = { title: "Messages" };
 
 type Row = {
   id: string;
@@ -39,8 +39,8 @@ export default async function AdminInquiries({
     <div className="ad-page">
       <div className="ad-head">
         <div>
-          <span className="ad-eb">Portal</span>
-          <h1 className="ad-h1">Client messages{unread ? ` · ${unread} unread` : ""}</h1>
+          <span className="ad-eb">Work</span>
+          <h1 className="ad-h1">Messages{unread ? ` · ${unread} unread` : ""}</h1>
           <span className="ad-small ad-muted">
             Clients’ questions, optionally about a shoot. You’re emailed on each new one and each
             reply; they’re emailed when you answer.
@@ -88,7 +88,7 @@ export default async function AdminInquiries({
                 })}
               </div>
             </div>
-            <span className={`ad-pill ${r.status === "open" ? "draft" : "live"}`}>
+            <span className={`ad-pill ${r.status === "open" ? "t-info" : "t-ok"}`}>
               {r.status === "open" ? "Open" : "Resolved"}
             </span>
           </Link>

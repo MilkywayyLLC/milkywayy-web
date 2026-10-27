@@ -37,7 +37,7 @@ export function TurnaroundForm({ rows }: { rows: TurnaroundRow[] }) {
           />
         </div>
       ))}
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button type="submit" className="ad-btn" disabled={pending}>
           Save turnaround
         </button>

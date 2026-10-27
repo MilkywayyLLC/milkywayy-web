@@ -68,7 +68,7 @@ function PageSeo({ page, row }: { page: SeoPage; row: Row }) {
             See the share image
           </a>
         </p>
-        <div className="ad-btns" style={{ alignItems: "center" }}>
+        <div className="ad-btns ad-center">
           <button
             type="button"
             className="ad-btn"

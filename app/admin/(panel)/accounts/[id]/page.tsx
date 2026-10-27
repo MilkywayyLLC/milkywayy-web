@@ -1,11 +1,10 @@
 import Link from "next/link";
 import "@/app/styles/portal.css";
-import {
-  BillingSwitches,
-  BudgetPanel,
-  ClientRateHistory,
-  type BillingHistory,
-} from "@/components/admin/BudgetTools";
+import { BillingSwitches, BudgetPanel, type BillingHistory } from "@/components/admin/BudgetTools";
+import { SaveGroup } from "@/components/admin/SaveGroup";
+import { ClientTabs } from "@/components/admin/ClientTabs";
+import { Pill } from "@/components/admin/Pill";
+import { TERMS_LABEL } from "@/lib/portal/payments";
 import {
   PlanBlock,
   PriceList,
@@ -13,24 +12,20 @@ import {
   type ClientSetupData,
 } from "@/components/admin/ClientSetup";
 import { RolloverSettings, type RolloverView } from "@/components/admin/RolloverSettings";
-import {
-  BankTransferToggle,
-  PaymentTermsBlock,
-  type ClientPayments,
-} from "@/components/admin/PaymentAdmin";
+import { HowTheyPay, type ClientPayments } from "@/components/admin/PaymentAdmin";
 import { ValuePackageCard, type ValueMonth } from "@/components/portal/PaymentParts";
 import { getPropertyPricing } from "@/lib/data";
 import { notFound } from "next/navigation";
 import {
   CancelInvite,
   ResendInvite,
-  ClientEditor,
+  ClientNotes,
+  CurrencyField,
   ClientInviteForm,
   RetentionSelect,
 } from "@/components/admin/ClientAccountTools";
 import {
-  ClientOffer,
-  HideSuggestions,
+  ClientSuggestions,
   OfferPreview,
   Statements,
   type ClientBilling,
@@ -47,7 +42,7 @@ export const metadata = { title: "Client" };
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ created?: string; emailed?: string }>;
+  searchParams: Promise<{ created?: string; emailed?: string; tab?: string }>;
 };
 
 const ROLE: Record<string, string> = { owner: "Owner", admin: "Admin", member: "Member" };
@@ -86,74 +81,17 @@ export default async function ClientPage({ params, searchParams }: Props) {
   const sentAt = new Map(openInvites.map((i) => [i.id, i.last_sent_at]));
   if (!c || !setup) notFound();
   const a = c.account;
-  const { created, emailed } = await searchParams;
+  const { created, emailed, tab } = await searchParams;
+  const pkg = billing.plan.package;
+  const planChip =
+    history.mode === "budget"
+      ? "Budget package"
+      : pkg
+        ? `${pkg.name} · ${money(pkg.currency, pkg.price)}/mo`
+        : "Pay as you go";
 
-  return (
-    <div className="ad-page">
-      <div className="ad-head">
-        <div>
-          <Link className="ad-eb" href="/admin/accounts" prefetch={false}>
-            ← Client accounts
-          </Link>
-          <h1 className="ad-h1">{a.name}</h1>
-          <span className="ad-small ad-muted">
-            {a.type === "company"
-              ? industryLabel(a.industry, a.industry_other) || "Company"
-              : "Individual"}{" "}
-            · {a.currency} · since {dubai(a.created_at)}
-          </span>
-        </div>
-        <div className="ad-btns">
-          <Link
-            className="ad-btn ghost"
-            href={`/admin/accounts/${a.id}/characters`}
-            prefetch={false}
-          >
-            AI characters
-          </Link>
-          <Link className="ad-btn ghost" href={`/admin/accounts/${a.id}/view`} prefetch={false}>
-            View as client
-          </Link>
-        </div>
-      </div>
-      {created && (
-        <p className="ad-note" role="status">
-          Client created.{" "}
-          {emailed === "sent"
-            ? "“Your Milkywayy portal is ready” is on its way to the Owner."
-            : emailed === "skipped"
-              ? "The invite email isn’t sent here (no email set up, or a test address)."
-              : emailed === "failed"
-                ? "The invite email didn’t go out: use Resend invite below."
-                : "Send the Owner invite below so they know where to sign in."}
-        </p>
-      )}
-
-      <ServicesBlock account={a.id} s={setup.services} />
-      <PriceList account={a.id} data={setup} pricing={pricing} />
-      <PaymentTermsBlock account={a.id} data={payments} />
-      <BankTransferToggle
-        account={a.id}
-        on={(a as { bank_transfer?: boolean }).bank_transfer !== false}
-      />
-      <PlanBlock
-        account={a.id}
-        data={setup}
-        showBudgetSet={history.show_budget_set}
-        value={{
-          allowance: payments.package?.allowance ?? null,
-          half_day_cap: payments.package?.half_day_cap ?? null,
-          templates: payments.templates,
-        }}
-      />
-      {/* The same card the client sees on Billing (portal styles), with the money. */}
-      {valueMonth && (
-        <div className="pt" data-tone="light" style={{ background: "transparent", minHeight: 0 }}>
-          <ValuePackageCard v={valueMonth} admin />
-        </div>
-      )}
-      {rollover && <RolloverSettings account={id} data={rollover} />}
-
+  const overview = (
+    <SaveGroup label="overview">
       <div className="ad-grid2">
         <section className="ad-card" aria-label="Details">
           <h2 className="ad-h2">Details</h2>
@@ -165,47 +103,83 @@ export default async function ClientPage({ params, searchParams }: Props) {
             <dt>TRN</dt>
             <dd>{a.trn ?? "—"}</dd>
             <dt>Billing address</dt>
-            <dd style={{ whiteSpace: "pre-wrap" }}>{a.billing_address ?? "—"}</dd>
+            <dd className="ad-pre">{a.billing_address ?? "—"}</dd>
             <dt>Members see</dt>
             <dd>Set per member by the client (Team → Access)</dd>
           </dl>
           <RetentionSelect accountId={a.id} months={a.retention_months ?? 12} />
         </section>
-        <ClientEditor id={a.id} currency={a.currency} notes={c.notes ?? ""} />
+        <ClientNotes id={a.id} notes={c.notes ?? ""} />
       </div>
+      <ServicesBlock account={a.id} s={setup.services} />
+      <section className="ad-card" aria-label="Contacts">
+        <h2 className="ad-h2">Their listing contacts</h2>
+        {c.contacts.length ? (
+          <p className="ad-small">
+            {c.contacts.map((x) => `${x.name}${x.is_default ? " (default)" : ""}`).join(" · ")}
+          </p>
+        ) : (
+          <p className="ad-empty">None saved.</p>
+        )}
+      </section>
+    </SaveGroup>
+  );
 
-      <section className="ad-card ad-form" aria-label="Billing" data-testid="client-billing">
-        <div className="ad-row-main" style={{ justifyContent: "space-between" }}>
-          <h2 className="ad-h2">Billing · {billing.currency}</h2>
+  const billingTab = (
+    <SaveGroup label="billing & payment">
+      <HowTheyPay
+        account={a.id}
+        data={payments}
+        bankTransfer={(a as { bank_transfer?: boolean }).bank_transfer !== false}
+      >
+        <CurrencyField id={a.id} currency={a.currency} />
+      </HowTheyPay>
+      <PlanBlock
+        account={a.id}
+        data={setup}
+        showBudgetSet={history.show_budget_set}
+        value={{
+          allowance: payments.package?.allowance ?? null,
+          half_day_cap: payments.package?.half_day_cap ?? null,
+          templates: payments.templates,
+        }}
+      />
+      {history.mode === "budget" && (
+        <BudgetPanel account={a.id} currency={billing.currency} h={history} />
+      )}
+      {rollover && <RolloverSettings account={id} data={rollover} />}
+      {/* The same card the client sees on Billing (portal styles), with the money. */}
+      {valueMonth && (
+        <div className="pt ad-portal-card" data-tone="light">
+          <ValuePackageCard v={valueMonth} admin />
+        </div>
+      )}
+      <PriceList account={a.id} data={setup} pricing={pricing} history={history.rates} />
+
+      <section className="ad-card ad-form" aria-label="This month" data-testid="client-billing">
+        <div className="ad-row-between">
+          <h2 className="ad-h2">This month · {billing.currency}</h2>
           <Link className="ad-btn ghost small" href="/admin/billing" prefetch={false}>
             Invoices ({invoices.length})
           </Link>
-          <Link
-            className="ad-btn ghost small"
-            href={`/admin/listings?account=${a.id}`}
-            prefetch={false}
-          >
-            Share pages
-          </Link>
         </div>
-        {history.mode === "budget" ? null : billing.plan.package ? (
-          <div className="stack" style={{ gap: 8 }}>
+        {history.mode === "budget" ? null : pkg ? (
+          <div className="ad-stack-8">
             <b>
-              {billing.plan.package.name} ·{" "}
-              {money(billing.plan.package.currency, billing.plan.package.price)}/month
-              {billing.plan.package.prorated
-                ? ` · first month pro-rated (${billing.plan.package.days}/${billing.plan.package.month_days} days)`
-                : billing.plan.package.term_months === 6
-                  ? ` · Month ${billing.plan.package.month_no} of 6${billing.plan.package.ends_on ? `, ends ${dateLabel(billing.plan.package.ends_on)}` : ""}`
+              {pkg.name} · {money(pkg.currency, pkg.price)}/month
+              {pkg.prorated
+                ? ` · first month pro-rated (${pkg.days}/${pkg.month_days} days)`
+                : pkg.term_months === 6
+                  ? ` · Month ${pkg.month_no} of 6${pkg.ends_on ? `, ends ${dateLabel(pkg.ends_on)}` : ""}`
                   : ""}{" "}
-              · renews {dateLabel(billing.plan.package.renews_on)}
+              · renews {dateLabel(pkg.renews_on)}
             </b>
-            {billing.plan.package.usage.map((u) => (
-              <div key={u.key} className="stack" style={{ gap: 4 }}>
+            {pkg.usage.map((u) => (
+              <div key={u.key} className="ad-stack-4">
                 <span className="ad-small">
                   {u.label}: {Number(u.used)} of {Number(u.qty)}
                   {Number(u.over) > 0
-                    ? ` · ${Number(u.over)} over (${money(billing.plan.package!.currency, Number(u.overage))})`
+                    ? ` · ${Number(u.over)} over (${money(pkg.currency, Number(u.overage))})`
                     : ""}
                 </span>
                 <span className="ad-meter" aria-hidden="true">
@@ -218,8 +192,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
               </div>
             ))}
             <span className="ad-small">
-              This month, estimated:{" "}
-              {money(billing.plan.package.currency, Number(billing.plan.package.estimate))}
+              This month, estimated: {money(pkg.currency, Number(pkg.estimate))}
             </span>
           </div>
         ) : (
@@ -231,24 +204,27 @@ export default async function ClientPage({ params, searchParams }: Props) {
               : ""}
           </span>
         )}
-        {history.mode === "budget" && (
-          <BudgetPanel account={a.id} currency={billing.currency} h={history} />
-        )}
-        <BillingSwitches account={a.id} h={history} />
         <details>
           <summary className="ad-small">Monthly statements</summary>
           <Statements account={a.id} billing={billing} />
         </details>
-        {/* Not needed at launch (AUDIT item 14): offers, suggestions and dated price history. */}
-        <details data-testid="billing-advanced">
-          <summary className="ad-small">Advanced: offers, suggestions, price history</summary>
-          <OfferPreview billing={billing} />
-          <HideSuggestions account={a.id} hidden={billing.hide_suggestions} />
-          <ClientOffer account={a.id} billing={billing} />
-          <ClientRateHistory account={a.id} currency={billing.currency} h={history} />
-        </details>
       </section>
 
+      <section className="ad-card ad-form" aria-label="What the client sees">
+        <h2 className="ad-h2">What the client sees</h2>
+        <BillingSwitches account={a.id} h={history} />
+        {/* Not needed at launch (AUDIT item 14): package suggestions. */}
+        <details data-testid="billing-advanced">
+          <summary className="ad-small">Advanced: package suggestions</summary>
+          <OfferPreview billing={billing} />
+          <ClientSuggestions account={a.id} billing={billing} />
+        </details>
+      </section>
+    </SaveGroup>
+  );
+
+  const projectsTab = (
+    <>
       <section className="ad-card ad-form" aria-label="Projects">
         <h2 className="ad-h2">Projects</h2>
         <div className="ad-btns">
@@ -268,28 +244,73 @@ export default async function ClientPage({ params, searchParams }: Props) {
           </Link>
           <Link
             className="ad-btn ghost small"
-            href={`/admin/projects?q=${encodeURIComponent(a.name)}&view=list`}
+            href={`/admin/projects?q=${encodeURIComponent(a.name)}&type=all`}
             prefetch={false}
           >
             Their projects
+          </Link>
+          <Link
+            className="ad-btn ghost small"
+            href={`/admin/listings?account=${a.id}`}
+            prefetch={false}
+          >
+            Share pages
           </Link>
         </div>
         <AttachBooking account={a.id} />
       </section>
 
+      <section className="ad-card" aria-label="Bookings">
+        <h2 className="ad-h2">Website bookings</h2>
+        {c.bookings.length ? (
+          <div className="ad-list">
+            {c.bookings.map((b) => (
+              <Link
+                key={b.ref}
+                href={`/admin/projects/ref/${b.ref}`}
+                className="ad-row ad-lead"
+                prefetch={false}
+              >
+                <span className="ad-tag">{b.ref}</span>
+                <span className="ad-row-main">
+                  <span>
+                    <span className="ad-row-title">
+                      {b.properties
+                        .map((p) => `${propertyTitle({ ...p, line: 0 })}, ${day(p.date)}`)
+                        .join(" + ")}
+                    </span>
+                    <span className="ad-row-meta ad-block">
+                      {b.properties
+                        .flatMap((p) => p.services.map((s) => SHOOT_SERVICES[s] ?? s))
+                        .join(", ")}{" "}
+                      · attached by {b.via} {dubai(b.claimed_at)}
+                    </span>
+                  </span>
+                </span>
+                <span aria-hidden="true">›</span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="ad-empty">No website bookings attached yet.</p>
+        )}
+      </section>
+    </>
+  );
+
+  const peopleTab = (
+    <>
       <section className="ad-card" aria-label="Members">
         <h2 className="ad-h2">Members</h2>
         {c.members.length ? (
           <div className="ad-list" data-testid="members">
             {c.members.map((m) => (
-              <div key={m.user_id} className="ad-row ad-lead" style={{ alignItems: "start" }}>
-                <span className={`ad-pill ${m.role === "owner" ? "live" : "draft"}`}>
-                  {ROLE[m.role]}
-                </span>
+              <div key={m.user_id} className="ad-row ad-lead ad-top">
+                <span className="ad-tag">{ROLE[m.role]}</span>
                 <span className="ad-row-main">
                   <span>
                     <span className="ad-row-title">{m.name ?? m.email ?? m.phone}</span>
-                    <span className="ad-row-meta" style={{ display: "block" }}>
+                    <span className="ad-row-meta ad-block">
                       {[m.email, m.phone].filter(Boolean).join(" · ")} · joined {dubai(m.joined)}
                       {m.last_sign_in ? ` · last sign-in ${dubai(m.last_sign_in)}` : ""}
                     </span>
@@ -309,17 +330,15 @@ export default async function ClientPage({ params, searchParams }: Props) {
         )}
         {c.invites.length > 0 && (
           <>
-            <h3 className="ad-h2" style={{ fontSize: 15 }}>
-              Invited, not joined yet
-            </h3>
+            <h3 className="ad-h3">Invited, not joined yet</h3>
             <div className="ad-list" data-testid="invites">
               {c.invites.map((i) => (
                 <div key={i.id} className="ad-row ad-lead">
-                  <span className="ad-pill draft">{ROLE[i.role]}</span>
+                  <span className="ad-tag">{ROLE[i.role]}</span>
                   <span className="ad-row-main">
                     <span>
                       <span className="ad-row-title">{i.name ?? i.email ?? i.phone}</span>
-                      <span className="ad-row-meta" style={{ display: "block" }}>
+                      <span className="ad-row-meta ad-block">
                         {[i.email, i.phone].filter(Boolean).join(" · ")} · invited{" "}
                         {dubai(i.created_at)}
                         {sentAt.get(i.id)
@@ -338,76 +357,90 @@ export default async function ClientPage({ params, searchParams }: Props) {
           </>
         )}
       </section>
-
       <ClientInviteForm id={a.id} name={a.name} />
+    </>
+  );
 
-      <section className="ad-card" aria-label="Bookings">
-        <h2 className="ad-h2">Bookings</h2>
-        {c.bookings.length ? (
-          <div className="ad-list">
-            {c.bookings.map((b) => (
-              <Link
-                key={b.ref}
-                href={`/admin/leads/${b.ref}`}
-                className="ad-row ad-lead"
-                prefetch={false}
-              >
-                <span className="ad-pill draft">{b.ref}</span>
-                <span className="ad-row-main">
-                  <span>
-                    <span className="ad-row-title">
-                      {b.properties
-                        .map((p) => `${propertyTitle({ ...p, line: 0 })}, ${day(p.date)}`)
-                        .join(" + ")}
-                    </span>
-                    <span className="ad-row-meta" style={{ display: "block" }}>
-                      {b.properties
-                        .flatMap((p) => p.services.map((s) => SHOOT_SERVICES[s] ?? s))
-                        .join(", ")}{" "}
-                      · attached by {b.via} {dubai(b.claimed_at)}
-                    </span>
-                  </span>
+  const historyTab = (
+    <section className="ad-card" aria-label="History">
+      <h2 className="ad-h2">Admin history</h2>
+      <div className="ad-list" data-testid="history">
+        {(c.log ?? []).map((g, i) => (
+          <div key={i} className="ad-row ad-lead">
+            <span className="ad-row-main">
+              <span>
+                <span className="ad-row-title">
+                  {ACTION[g.action] ?? g.action}
+                  {g.detail ? `: ${g.detail}` : ""}
                 </span>
-                <span aria-hidden="true">›</span>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p className="ad-empty">No website bookings attached yet.</p>
-        )}
-      </section>
-
-      <section className="ad-card" aria-label="Contacts">
-        <h2 className="ad-h2">Their listing contacts</h2>
-        {c.contacts.length ? (
-          <p className="ad-small">
-            {c.contacts.map((x) => `${x.name}${x.is_default ? " (default)" : ""}`).join(" · ")}
-          </p>
-        ) : (
-          <p className="ad-empty">None saved.</p>
-        )}
-      </section>
-
-      <section className="ad-card" aria-label="History">
-        <h2 className="ad-h2">Admin history</h2>
-        <div className="ad-list" data-testid="history">
-          {(c.log ?? []).map((g, i) => (
-            <div key={i} className="ad-row ad-lead">
-              <span className="ad-row-main">
-                <span>
-                  <span className="ad-row-title">
-                    {ACTION[g.action] ?? g.action}
-                    {g.detail ? `: ${g.detail}` : ""}
-                  </span>
-                  <span className="ad-row-meta" style={{ display: "block" }}>
-                    {g.actor} · {dubai(g.at, true)}
-                  </span>
+                <span className="ad-row-meta ad-block">
+                  {g.actor} · {dubai(g.at, true)}
                 </span>
               </span>
-            </div>
-          ))}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+
+  return (
+    <div className="ad-page">
+      <div className="ad-head">
+        <div>
+          <Link className="ad-eb" href="/admin/accounts" prefetch={false}>
+            ← Clients
+          </Link>
+          <h1 className="ad-h1">{a.name}</h1>
+          <span className="ad-small ad-muted">
+            {a.type === "company"
+              ? industryLabel(a.industry, a.industry_other) || "Company"
+              : "Individual"}{" "}
+            · {a.currency} · since {dubai(a.created_at)}
+          </span>
+          <span className="ad-btns ad-chips">
+            <Pill tone="neutral">{planChip}</Pill>
+            <Pill tone="neutral">{TERMS_LABEL[payments.payment_terms]}</Pill>
+          </span>
         </div>
-      </section>
+        <div className="ad-btns">
+          <Link className="ad-btn" href={`/admin/projects/new?account=${a.id}`} prefetch={false}>
+            New project
+          </Link>
+          <Link className="ad-btn ghost" href={`/admin/accounts/${a.id}/view`} prefetch={false}>
+            View as client
+          </Link>
+          <Link
+            className="ad-btn quiet"
+            href={`/admin/accounts/${a.id}/characters`}
+            prefetch={false}
+          >
+            AI characters
+          </Link>
+        </div>
+      </div>
+      {created && (
+        <p className="ad-note" role="status">
+          Client created.{" "}
+          {emailed === "sent"
+            ? "“Your Milkywayy portal is ready” is on its way to the Owner."
+            : emailed === "skipped"
+              ? "The invite email isn’t sent here (no email set up, or a test address)."
+              : emailed === "failed"
+                ? "The invite email didn’t go out: use Resend invite under People."
+                : "Send the Owner invite under People so they know where to sign in."}
+        </p>
+      )}
+      <ClientTabs
+        initial={tab ?? (created ? "people" : "overview")}
+        tabs={[
+          { key: "overview", label: "Overview", node: overview },
+          { key: "billing", label: "Billing & payment", node: billingTab },
+          { key: "projects", label: "Projects", node: projectsTab },
+          { key: "people", label: "People", node: peopleTab },
+          { key: "history", label: "History", node: historyTab },
+        ]}
+      />
     </div>
   );
 }

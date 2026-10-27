@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { BillingNav } from "@/components/admin/BillingNav";
 import { SuggestionMinimums, SuggestionsSwitch } from "@/components/admin/BillingTools";
 import { portalAdminPage } from "@/lib/portal/admin";
 
@@ -23,7 +22,7 @@ export default async function Suggestions() {
     <div className="ad-page">
       <div className="ad-head">
         <div>
-          <span className="ad-eb">Portal · Billing</span>
+          <span className="ad-eb">Settings · Advanced</span>
           <h1 className="ad-h1">Suggestions</h1>
           <span className="ad-small ad-muted">
             A card in the client’s Billing: the package, what it includes, the monthly and 6-month
@@ -31,7 +30,6 @@ export default async function Suggestions() {
           </span>
         </div>
       </div>
-      <BillingNav current="/admin/billing/suggestions" />
       <section className="ad-card ad-form" aria-label="Global switch">
         <SuggestionsSwitch enabled={s.enabled} />
         <span className="ad-small ad-muted">

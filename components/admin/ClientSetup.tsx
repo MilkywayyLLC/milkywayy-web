@@ -1,15 +1,15 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import type { PropertyPricing } from "@/content/types";
-import { money } from "@/lib/portal/billing";
+import { dateLabel, money } from "@/lib/portal/billing";
+import { setClientRate } from "@/lib/portal/budget-actions";
+import { useSaveSlot } from "./SaveGroup";
 import {
   saveClientPackage,
   saveClientPrices,
   setPayg,
   setServices,
-  type SetupResult,
 } from "@/lib/portal/client-setup-actions";
 import { cx } from "@/lib/cx";
 
@@ -50,14 +50,6 @@ export type ClientSetupData = {
   }[];
 };
 
-function Note({ r, pending }: { r?: SetupResult; pending?: boolean }) {
-  return (
-    <span className={cx("ad-status", r && !r.ok && "error", r?.ok && "ok")} role="status">
-      {pending ? "Saving…" : (r?.notice ?? r?.error)}
-    </span>
-  );
-}
-
 /* ---------------- services ---------------- */
 
 const SERVICES = [
@@ -67,10 +59,9 @@ const SERVICES = [
 ] as const;
 
 export function ServicesBlock({ account, s }: { account: string; s: ClientSetupData["services"] }) {
-  const router = useRouter();
   const [on, setOn] = useState(s);
-  const [r, setR] = useState<SetupResult>();
-  const [pending, start] = useTransition();
+  const dirty = (Object.keys(s) as (keyof typeof s)[]).some((k) => on[k] !== s[k]);
+  useSaveSlot(`svc-${account}`, "Services", 10, dirty, () => setServices(account, on));
   return (
     <section
       className="ad-card ad-form"
@@ -78,8 +69,8 @@ export function ServicesBlock({ account, s }: { account: string; s: ClientSetupD
       data-testid="client-services"
     >
       <h2 className="ad-h2">Services enabled</h2>
-      <span className="ad-small ad-muted">
-        The client sees and can book only what’s on. AI avatars have their own tab, never in Book
+      <span className="ad-help">
+        Affects what the client sees and can book. AI avatars have their own tab, never in Book
         media.
       </span>
       <div className="ad-grid3">
@@ -88,33 +79,27 @@ export function ServicesBlock({ account, s }: { account: string; s: ClientSetupD
             <input
               type="checkbox"
               checked={on[k]}
-              disabled={pending}
-              onChange={(e) => {
-                const next = { ...on, [k]: e.target.checked };
-                setOn(next);
-                start(async () => {
-                  const res = await setServices(account, next);
-                  setR(res);
-                  if (res.ok) router.refresh();
-                  else setOn(on);
-                });
-              }}
+              onChange={(e) => setOn({ ...on, [k]: e.target.checked })}
             />
             <span>
               <b>{label}</b>
-              <span className="ad-small ad-muted" style={{ display: "block" }}>
-                {hint}
-              </span>
+              <span className="ad-help ad-block">{hint}</span>
             </span>
           </label>
         ))}
       </div>
-      <Note r={r} pending={pending} />
     </section>
   );
 }
 
 /* ---------------- price list ---------------- */
+
+export type PriceHistory = {
+  key: string;
+  amount: number | null;
+  effective_from: string;
+  created_by: string | null;
+};
 
 const GROUPS = [
   ["property", "Photos · by property size"],
@@ -152,51 +137,55 @@ export function PriceList({
   account,
   data,
   pricing,
+  history = [],
 }: {
   account: string;
   data: ClientSetupData;
   pricing: PropertyPricing;
+  /** Dated prices (`client_rates`), newest first: shown per row (rate history merged in). */
+  history?: PriceHistory[];
 }) {
-  const router = useRouter();
   // Rows for property sizes the price list doesn't have are left out.
   const rows = data.prices.filter(
     (p) =>
       !RETIRED.has(p.key) && (!/^prop_photo_/.test(p.key) || siteDefault(p.key, pricing) !== null),
   );
-  const [vals, setVals] = useState<Record<string, string>>(
-    Object.fromEntries(rows.map((p) => [p.key, p.client == null ? "" : String(Number(p.client))])),
+  const vals0 = Object.fromEntries(
+    rows.map((p) => [p.key, p.client == null ? "" : String(Number(p.client))]),
   );
-  const [r, setR] = useState<SetupResult>();
-  const [pending, start] = useTransition();
+  const [vals, setVals] = useState<Record<string, string>>(vals0);
+  const today = dubaiToday();
+  const [from, setFrom] = useState(today);
+  const changed = rows.filter((p) => vals[p.key].trim() !== vals0[p.key]);
+  // From today: the whole list, as before (saveClientPrices). From a later date: each changed price
+  // as a dated rate (setClientRate, what Rate history did).
+  useSaveSlot(`prices-${account}`, "Prices", 40, changed.length > 0, async () => {
+    if (from <= today)
+      return saveClientPrices(
+        account,
+        rows.map((p) => ({
+          key: p.key,
+          amount: vals[p.key].trim() === "" ? null : Number(vals[p.key]),
+        })),
+      );
+    if (changed.some((p) => vals[p.key].trim() === ""))
+      return { ok: false, error: "Going back to the default can only apply from today." };
+    for (const p of changed) {
+      const res = await setClientRate(account, p.key, Number(vals[p.key]), from);
+      if (!res.ok) return res;
+    }
+    return { ok: true };
+  });
+  const past = (k: string) => history.filter((h) => h.key === k);
   // This client's own prices only, unless "Show all" (AUDIT item 8). Saved prices decide what
   // shows, so a row doesn't vanish while you type; hidden rows are saved unchanged.
   const own = rows.filter((p) => p.client != null).length;
   const [all, setAll] = useState(own === 0);
   const shown = (p: (typeof rows)[number]) => all || p.client != null;
   return (
-    <form
-      className="ad-card ad-form"
-      aria-label="Client price list"
-      data-testid="client-prices"
-      onSubmit={(e) => {
-        e.preventDefault();
-        start(async () => {
-          const res = await saveClientPrices(
-            account,
-            rows.map((p) => ({
-              key: p.key,
-              amount: vals[p.key].trim() === "" ? null : Number(vals[p.key]),
-            })),
-          );
-          setR(res);
-          if (res.ok) router.refresh();
-        });
-      }}
-    >
+    <section className="ad-card ad-form" aria-label="Client price list" data-testid="client-prices">
       <div className="ad-row-between">
-        <h2 className="ad-h2" style={{ margin: 0 }}>
-          Client price list · {data.currency}
-        </h2>
+        <h2 className="ad-h2 ad-m0">Client price list · {data.currency}</h2>
         <label className="ad-check ad-small">
           <input
             type="checkbox"
@@ -212,9 +201,9 @@ export function PriceList({
           {own} custom price{own === 1 ? "" : "s"}. Everything else is the default.
         </span>
       )}
-      <span className="ad-small ad-muted">
-        Blank uses the default. A changed price applies to work logged from today; anything already
-        logged keeps its price. Shown on bookings to those who see prices.
+      <span className="ad-help">
+        Affects every line item for this client. Blank = the default. Property photo defaults come
+        from Prices &amp; packages → Website prices.
       </span>
       <div className="ad-scroll">
         <table className="ad-table" aria-label="Client price list">
@@ -224,6 +213,7 @@ export function PriceList({
               <th>Includes</th>
               <th>Default</th>
               <th>This client’s price</th>
+              <th>History</th>
             </tr>
           </thead>
           {GROUPS.map(([g, title]) => {
@@ -234,7 +224,7 @@ export function PriceList({
               return (
                 <tbody key={g} data-testid={`prices-off-${g}`}>
                   <tr>
-                    <th colSpan={4}>
+                    <th colSpan={5}>
                       {title}
                       <span className="ad-small ad-muted" style={{ fontWeight: 400 }}>
                         {" "}
@@ -248,7 +238,7 @@ export function PriceList({
             return (
               <tbody key={g}>
                 <tr>
-                  <th colSpan={4}>{title}</th>
+                  <th colSpan={5}>{title}</th>
                 </tr>
                 {list.map((p) => {
                   const site = siteDefault(p.key, pricing);
@@ -275,6 +265,28 @@ export function PriceList({
                           onChange={(e) => setVals((v) => ({ ...v, [p.key]: e.target.value }))}
                         />
                       </td>
+                      <td className="ad-small">
+                        {past(p.key).length ? (
+                          <details data-testid="rate-history">
+                            <summary>{past(p.key).length}</summary>
+                            <ul className="ad-history">
+                              {past(p.key).map((h) => (
+                                <li key={h.effective_from}>
+                                  {h.amount == null
+                                    ? "default"
+                                    : money(data.currency, Number(h.amount))}{" "}
+                                  from {dateLabel(h.effective_from)}
+                                  <span className="ad-muted">
+                                    {h.created_by ? ` · ${h.created_by}` : ""}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        ) : (
+                          <span className="ad-muted">—</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -283,13 +295,18 @@ export function PriceList({
           })}
         </table>
       </div>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
-        <button type="submit" className="ad-btn small" disabled={pending}>
-          Save prices
-        </button>
-        <Note r={r} pending={pending} />
+      <div className="ad-field" style={{ maxWidth: 260 }}>
+        <label htmlFor={`prices-from-${account}`}>Changed prices apply from</label>
+        <input
+          id={`prices-from-${account}`}
+          type="date"
+          min={today}
+          value={from}
+          onChange={(e) => setFrom(e.target.value || today)}
+        />
+        <span className="ad-help">Work already logged keeps its price.</span>
       </div>
-    </form>
+    </section>
   );
 }
 
@@ -325,30 +342,44 @@ export function PlanBlock({
   /** The value model (owner, 24 Oct 2026): monthly allowance + half-day cap. */
   value?: PackageValue;
 }) {
-  const router = useRouter();
   const p = data.plan;
-  const [mode, setMode] = useState<"payg" | "package">(p.mode === "package" ? "package" : "payg");
+  const init = {
+    mode: (p.mode === "package" ? "package" : "payg") as "payg" | "package",
+    name: p.name ?? "",
+    amount: p.amount != null ? String(Number(p.amount)) : "",
+    term: (p.term ?? 1) as 1 | 6,
+    started: p.started_on ?? nextMonth(),
+    ends: p.ends_on ?? "",
+    advance: p.advance,
+    payg: data.payg_invoicing,
+    allowance: value?.allowance != null ? String(Number(value.allowance)) : "",
+    // Shoot days in full days (owner, 24 Oct 2026); stored as half-days.
+    cap: value?.half_day_cap != null ? String(Number(value.half_day_cap) / 2) : "",
+  };
+  const [mode, setMode] = useState(init.mode);
   const [template, setTemplate] = useState("");
-  const [name, setName] = useState(p.name ?? "");
-  const [amount, setAmount] = useState(p.amount != null ? String(Number(p.amount)) : "");
-  const [term, setTerm] = useState<1 | 6>(p.term ?? 1);
-  const [started, setStarted] = useState(p.started_on ?? nextMonth());
-  const [ends, setEnds] = useState(p.ends_on ?? "");
-  const [advance, setAdvance] = useState(p.advance);
+  const [name, setName] = useState(init.name);
+  const [amount, setAmount] = useState(init.amount);
+  const [term, setTerm] = useState<1 | 6>(init.term);
+  const [started, setStarted] = useState(init.started);
+  const [ends, setEnds] = useState(init.ends);
+  const [advance, setAdvance] = useState(init.advance);
   const [inc, setInc] = useState<Inc[]>(
     p.inclusions.map((i) => ({ key: i.key, label: i.label, qty: String(Number(i.qty)) })),
   );
-  const [payg, setPaygInv] = useState(data.payg_invoicing);
-  const [allowance, setAllowance] = useState(
-    value?.allowance != null ? String(Number(value.allowance)) : "",
-  );
-  // Shoot days in full days (owner, 24 Oct 2026); stored as half-days.
-  const [cap, setCap] = useState(
-    value?.half_day_cap != null ? String(Number(value.half_day_cap) / 2) : "",
-  );
-  const [r, setR] = useState<SetupResult>();
-  const [pending, start] = useTransition();
-
+  const [payg, setPaygInv] = useState(init.payg);
+  const [allowance, setAllowance] = useState(init.allowance);
+  const [cap, setCap] = useState(init.cap);
+  const now = { mode, name, amount, term, started, ends, advance, payg, allowance, cap };
+  const dirty =
+    !!template ||
+    (Object.keys(init) as (keyof typeof init)[]).some((k) =>
+      mode === "payg"
+        ? k === "mode" || k === "payg"
+          ? now[k] !== init[k]
+          : false
+        : k !== "payg" && now[k] !== init[k],
+    );
   // What an inclusion can count: a whole property shoot, or any listed service but property parts.
   const options = [
     { key: "shoot", label: "Property shoot (shot & edited)" },
@@ -373,40 +404,30 @@ export function PlanBlock({
     );
   };
 
+  useSaveSlot(`plan-${account}`, "Plan", 20, dirty, () =>
+    mode === "payg"
+      ? setPayg(account, payg, showBudgetSet)
+      : saveClientPackage(account, {
+          template_id: template || null,
+          name: name.trim(),
+          amount: amount.trim() === "" ? NaN : Number(amount),
+          term,
+          started,
+          ends: term === 6 ? ends || null : null,
+          advance,
+          inclusions: inc
+            .filter((i) => i.key)
+            .map((i) => ({ key: i.key, label: labelOf(i.key), qty: Number(i.qty) })),
+          allowance: allowance.trim() === "" ? null : Number(allowance),
+          half_day_cap: cap.trim() === "" ? null : Math.round(Number(cap) * 2),
+        }),
+  );
+
   return (
-    <form
-      className="ad-card ad-form"
-      aria-label="Plan"
-      data-testid="client-plan"
-      noValidate
-      onSubmit={(e) => {
-        e.preventDefault();
-        start(async () => {
-          const res =
-            mode === "payg"
-              ? await setPayg(account, payg, showBudgetSet)
-              : await saveClientPackage(account, {
-                  template_id: template || null,
-                  name: name.trim(),
-                  amount: amount.trim() === "" ? NaN : Number(amount),
-                  term,
-                  started,
-                  ends: term === 6 ? ends || null : null,
-                  advance,
-                  inclusions: inc
-                    .filter((i) => i.key)
-                    .map((i) => ({ key: i.key, label: labelOf(i.key), qty: Number(i.qty) })),
-                  allowance: allowance.trim() === "" ? null : Number(allowance),
-                  half_day_cap: cap.trim() === "" ? null : Math.round(Number(cap) * 2),
-                });
-          setR(res);
-          if (res.ok) router.refresh();
-        });
-      }}
-    >
+    <section className="ad-card ad-form" aria-label="Plan" data-testid="client-plan">
       <h2 className="ad-h2">Plan</h2>
       {p.mode === "budget" && (
-        <p className="ad-note" style={{ margin: 0 }}>
+        <p className="ad-note ad-m0">
           This client is on a budget package (below). Saving a plan here replaces it.
         </p>
       )}
@@ -441,7 +462,8 @@ export function PlanBlock({
             <option value="per_project">One per delivery</option>
           </select>
           <span className="ad-help">
-            Every item at this client’s prices. Drafts still need your approval.
+            Affects when pay-as-you-go invoices are drafted: one per delivery or one a month. Drafts
+            still need your approval.
           </span>
         </div>
       ) : (
@@ -531,7 +553,7 @@ export function PlanBlock({
               </div>
             )}
             <div className="ad-field">
-              <label htmlFor="plan-billing">Billing</label>
+              <label htmlFor="plan-billing">Package invoice</label>
               <select
                 id="plan-billing"
                 value={advance ? "advance" : "month_end"}
@@ -597,13 +619,6 @@ export function PlanBlock({
           )}
         </>
       )}
-
-      <div className="ad-btns" style={{ alignItems: "center" }}>
-        <button type="submit" className="ad-btn small" disabled={pending}>
-          Save plan
-        </button>
-        <Note r={r} pending={pending} />
-      </div>
-    </form>
+    </section>
   );
 }

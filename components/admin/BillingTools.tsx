@@ -18,7 +18,6 @@ import {
   saveRate,
   setClientBilling,
   setInvoiceStatus,
-  setPlan,
   setSuggestions,
   startInvoiceUpload,
   statementFor,
@@ -38,6 +37,7 @@ import {
   type PlanView,
 } from "@/lib/portal/billing";
 import { cx } from "@/lib/cx";
+import { useSaveSlot } from "./SaveGroup";
 import { uploadFile } from "@/lib/upload-browser";
 
 /** Admin → Billing (CLIENT_PORTAL_GUIDE §7.3): the client-side pieces. */
@@ -279,7 +279,7 @@ export function NewInvoiceForm({
         <label htmlFor="inv-note">Note (optional, the client sees it)</label>
         <input id="inv-note" name="note" maxLength={500} />
       </div>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button type="submit" className="ad-btn" disabled={pending}>
           Add as a draft
         </button>
@@ -324,7 +324,7 @@ export function PaymentReview({ inv }: { inv: InvoiceRowData }) {
   const p = inv.proof;
   if (!p || p.status !== "submitted" || inv.status === "paid") return null;
   return (
-    <div className="ad-note" data-testid="payment-review" style={{ margin: 0 }}>
+    <div className="ad-note ad-m0" data-testid="payment-review">
       <b>Payment submitted</b> · {p.filename}
       {p.note ? ` · “${p.note}”` : ""}
       <div className="ad-btns" style={{ alignItems: "center", marginTop: 8 }}>
@@ -402,7 +402,7 @@ export function InvoiceActions({ inv }: { inv: InvoiceRowData }) {
   const [sure, setSure] = useState(false);
   const [pending, start] = useTransition();
   return (
-    <div className="ad-btns" style={{ alignItems: "center" }}>
+    <div className="ad-btns ad-center">
       <select
         aria-label={`Status of ${inv.number}`}
         value={inv.shown_status}
@@ -827,7 +827,7 @@ export function PackageEditor({
         Work beyond the inclusions is charged at these rates; kinds without one use the client’s own
         rate.
       </span>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button type="submit" className="ad-btn" disabled={pending}>
           {pkg ? "Save package" : "Create package"}
         </button>
@@ -860,7 +860,7 @@ export function SuggestionsSwitch({ enabled }: { enabled: boolean }) {
   const [r, setR] = useState<BillingResult>();
   const [pending, start] = useTransition();
   return (
-    <div className="ad-btns" style={{ alignItems: "center" }}>
+    <div className="ad-btns ad-center">
       <label className="ad-check">
         <input
           type="checkbox"
@@ -913,7 +913,7 @@ export function SuggestionMinimums({ aed, usd }: { aed: number; usd: number }) {
           <input id="min-usd" name="usd" type="number" min={0} step="1" defaultValue={usd} />
         </div>
       </div>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button type="submit" className="ad-btn small" disabled={pending}>
           Save minimums
         </button>
@@ -1067,7 +1067,7 @@ export function BillingSettingsForm({ s }: { s: BillingSettings }) {
           <input id="bk-swift" name="swift" maxLength={11} defaultValue={s.bank_swift ?? ""} />
         </div>
       </div>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button type="submit" className="ad-btn" disabled={pending}>
           Save settings
         </button>
@@ -1119,190 +1119,55 @@ export type ClientBilling = {
   statements: (Statement & { id: string })[];
 };
 
-export function PlanForm({ account, billing }: { account: string; billing: ClientBilling }) {
-  const router = useRouter();
-  const [mode, setMode] = useState(billing.plan.mode);
-  const [term, setTerm] = useState<1 | 6>(billing.plan.term_months ?? 1);
-  const [r, setR] = useState<BillingResult>();
-  const [pending, start] = useTransition();
-  return (
-    <form
-      className="ad-form"
-      aria-label="Plan"
-      noValidate
-      onSubmit={(e) => {
-        e.preventDefault();
-        const f = new FormData(e.currentTarget);
-        start(async () => {
-          const res = await setPlan(
-            account,
-            mode,
-            mode === "package" ? String(f.get("package") ?? "") || null : null,
-            String(f.get("started") ?? "") || null,
-            null,
-            term,
-            String(f.get("ends") ?? "") || null,
-          );
-          setR(res);
-          if (res.ok) router.refresh();
-        });
-      }}
-    >
-      <div className="ad-btns" role="group" aria-label="Plan type">
-        {(
-          [
-            ["payg", "Pay as you go"],
-            ["package", "Monthly package"],
-          ] as const
-        ).map(([m, l]) => (
-          <button
-            key={m}
-            type="button"
-            className={cx("ad-btn small", mode !== m && "ghost")}
-            aria-pressed={mode === m}
-            onClick={() => setMode(m)}
-          >
-            {l}
-          </button>
-        ))}
-      </div>
-      {mode === "package" && (
-        <>
-          <div className="ad-field">
-            <label htmlFor="plan-package">Package</label>
-            <select id="plan-package" name="package" defaultValue={billing.plan.package_id ?? ""}>
-              <option value="">Choose…</option>
-              {billing.packages.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} · {money(p.currency, p.price)}/month{p.private ? "" : " (template)"}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="ad-field">
-            <label htmlFor="plan-term">Term</label>
-            <select
-              id="plan-term"
-              value={term}
-              onChange={(e) => setTerm(Number(e.target.value) as 1 | 6)}
-            >
-              <option value={1}>Monthly</option>
-              <option value={6}>6-month contract (package’s discount applies)</option>
-            </select>
-          </div>
-          <div className="ad-field">
-            <label htmlFor="plan-start">Starts on</label>
-            <input
-              id="plan-start"
-              name="started"
-              type="date"
-              defaultValue={billing.plan.started_on ?? ""}
-            />
-            <span className="ad-small ad-muted">
-              Packages run by calendar month and renew on the 1st. Starting mid-month pro-rates the
-              first month (price and inclusions by days).
-            </span>
-          </div>
-          {term === 6 && (
-            <div className="ad-field">
-              <label htmlFor="plan-ends">
-                Contract ends (blank: 6 full months after a pro-rated first month)
-              </label>
-              <input
-                id="plan-ends"
-                name="ends"
-                type="date"
-                defaultValue={billing.plan.ends_on ?? ""}
-              />
-            </div>
-          )}
-        </>
-      )}
-      <div className="ad-btns" style={{ alignItems: "center" }}>
-        <button type="submit" className="ad-btn small" disabled={pending}>
-          Save plan
-        </button>
-        <Note r={r} pending={pending} />
-      </div>
-    </form>
+/**
+ * Per client: package suggestions (admin redesign, 27 Oct 2026: saved with the tab). Pinned offer
+ * (`accounts.pinned_package_id`) replaces the templates; "never suggest" (`hide_suggestions`).
+ * Card vs bank moved to How they pay.
+ */
+export function ClientSuggestions({
+  account,
+  billing,
+}: {
+  account: string;
+  billing: ClientBilling;
+}) {
+  const pin0 = billing.pinned_package_id ?? "";
+  const [pin, setPin] = useState(pin0);
+  const [hide, setHide] = useState(billing.hide_suggestions);
+  useSaveSlot(
+    `sugg-${account}`,
+    "Suggestions",
+    60,
+    pin !== pin0 || hide !== billing.hide_suggestions,
+    async () => {
+      if (pin !== pin0) {
+        const r = await setClientBilling(account, { pinned_package_id: pin || null });
+        if (!r.ok) return r;
+      }
+      if (hide !== billing.hide_suggestions) return hideSuggestions(account, hide);
+      return { ok: true };
+    },
   );
-}
-
-export function HideSuggestions({ account, hidden }: { account: string; hidden: boolean }) {
-  const router = useRouter();
-  const [r, setR] = useState<BillingResult>();
-  const [pending, start] = useTransition();
   return (
-    <div className="ad-btns" style={{ alignItems: "center" }}>
+    <div className="ad-form ad-gap-12">
+      <div className="ad-field">
+        <label htmlFor="pin-offer">Pinned offer (instead of the templates)</label>
+        <select id="pin-offer" value={pin} onChange={(e) => setPin(e.target.value)}>
+          <option value="">None: suggest from templates</option>
+          {billing.packages.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name} · {money(p.currency, p.price)}/month{p.private ? "" : " (template)"}
+            </option>
+          ))}
+        </select>
+        <span className="ad-help">
+          Affects the package suggestion on the client’s Billing page.
+        </span>
+      </div>
       <label className="ad-check">
-        <input
-          type="checkbox"
-          checked={hidden}
-          disabled={pending}
-          onChange={(e) =>
-            start(async () => {
-              const res = await hideSuggestions(account, e.target.checked);
-              setR(res);
-              if (res.ok) router.refresh();
-            })
-          }
-        />
+        <input type="checkbox" checked={hide} onChange={(e) => setHide(e.target.checked)} />
         Never show this client a package suggestion
       </label>
-      <Note r={r} pending={pending} />
-    </div>
-  );
-}
-
-/** Per client: pin a custom offer (replaces the templates in their suggestion); card or bank. */
-export function ClientOffer({ account, billing }: { account: string; billing: ClientBilling }) {
-  const router = useRouter();
-  const [r, setR] = useState<BillingResult>();
-  const [pending, start] = useTransition();
-  const save = (p: Parameters<typeof setClientBilling>[1]) =>
-    start(async () => {
-      const res = await setClientBilling(account, p);
-      setR(res);
-      if (res.ok) router.refresh();
-    });
-  return (
-    <div className="ad-form" style={{ gap: 10 }}>
-      <div className="ad-grid2">
-        <div className="ad-field">
-          <label htmlFor="pin-offer">Pinned offer (instead of the templates)</label>
-          <select
-            id="pin-offer"
-            value={billing.pinned_package_id ?? ""}
-            disabled={pending}
-            onChange={(e) => save({ pinned_package_id: e.target.value || null })}
-          >
-            <option value="">None: suggest from templates</option>
-            {billing.packages.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} · {money(p.currency, p.price)}/month{p.private ? "" : " (template)"}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="ad-field">
-          <label htmlFor="pay-online">How they pay</label>
-          <select
-            id="pay-online"
-            value={billing.pay_online == null ? "" : String(billing.pay_online)}
-            disabled={pending}
-            onChange={(e) =>
-              save({ pay_online: e.target.value === "" ? null : e.target.value === "true" })
-            }
-          >
-            <option value="">
-              Automatic ({billing.currency === "AED" ? "bank transfer for AED" : "card for USD"})
-            </option>
-            <option value="true">Card (Stripe “Pay now”)</option>
-            <option value="false">Bank transfer</option>
-          </select>
-        </div>
-      </div>
-      <Note r={r} pending={pending} />
     </div>
   );
 }
@@ -1313,7 +1178,7 @@ export function OfferPreview({ billing }: { billing: ClientBilling }) {
   if (!o) {
     if (billing.plan.mode === "package") return null;
     return (
-      <p className="ad-small ad-muted" style={{ margin: 0 }} data-testid="offer-preview">
+      <p className="ad-small ad-muted ad-m0" data-testid="offer-preview">
         No suggestion: needs work in at least 2 of the last 3 complete months.
       </p>
     );
@@ -1326,7 +1191,7 @@ export function OfferPreview({ billing }: { billing: ClientBilling }) {
         ? "The client sees this."
         : "Not shown: suggestions are off, or the saving is under the minimum.";
   return (
-    <div className="ad-note" style={{ margin: 0 }} data-testid="offer-preview">
+    <div className="ad-note ad-m0" data-testid="offer-preview">
       <b>
         {o.pinned ? "Pinned offer" : "Best offer"}: {o.package}
       </b>{" "}
@@ -1357,7 +1222,7 @@ export function Statements({ account, billing }: { account: string; billing: Cli
       {billing.statements.length ? (
         <ul className="ad-list" style={{ margin: 0, padding: 0, listStyle: "none" }}>
           {billing.statements.map((s) => (
-            <li key={s.month} className="ad-row" style={{ justifyContent: "space-between" }}>
+            <li key={s.month} className="ad-row ad-between">
               <span>
                 {monthLabel(s.month)} · {s.mode === "package" ? "package" : "pay as you go"}
                 <span className="ad-small ad-muted"> · frozen {dateLabel(s.frozen_at)}</span>
@@ -1375,11 +1240,11 @@ export function Statements({ account, billing }: { account: string; billing: Cli
           ))}
         </ul>
       ) : (
-        <p className="ad-small ad-muted" style={{ margin: 0 }}>
+        <p className="ad-small ad-muted ad-m0">
           No statements yet. They freeze on the 1st for every client with work or a package.
         </p>
       )}
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button
           type="button"
           className="ad-btn ghost small"

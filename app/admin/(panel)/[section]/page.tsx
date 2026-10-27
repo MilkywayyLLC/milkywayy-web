@@ -11,11 +11,7 @@ export async function generateMetadata({ params }: { params: Promise<{ section: 
   return { title: sectionByKey((await params).section)?.title ?? "Not found" };
 }
 
-export default async function SectionList({
-  params,
-}: {
-  params: Promise<{ section: string }>;
-}) {
+export default async function SectionList({ params }: { params: Promise<{ section: string }> }) {
   const { section: key } = await params;
   const section = sectionByKey(key);
   if (!section) notFound();

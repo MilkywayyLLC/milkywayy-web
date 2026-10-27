@@ -113,7 +113,7 @@ export default async function ShootCalendar({
         <h2 className="ad-h2">Add to Google Calendar</h2>
         {feed ? (
           <>
-            <p className="ad-small" style={{ margin: 0 }}>
+            <p className="ad-small ad-m0">
               Google Calendar → Other calendars → <b>From URL</b>, then paste this private link.
               Anyone with it can see the bookings, so keep it to yourself.
             </p>

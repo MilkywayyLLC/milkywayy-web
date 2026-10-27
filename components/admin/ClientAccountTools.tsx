@@ -1,52 +1,44 @@
 "use client";
 
-import { cx } from "@/lib/cx";
 import { useActionState, useState, useTransition } from "react";
 import {
   adminCancelInvite,
   adminInvite,
   updateClientAccount,
-  type AdminResult,
   resendInvite,
 } from "@/lib/portal/admin-actions";
 import { setRetention } from "@/lib/portal/admin-project-actions";
+import { useSaveSlot } from "./SaveGroup";
 
-/** Billing currency (admin-only) and private notes the client never sees. */
-export function ClientEditor({
-  id,
-  currency,
-  notes: initial,
-}: {
-  id: string;
-  currency: string;
-  notes: string;
-}) {
-  const [notes, setNotes] = useState(initial);
-  const [saved, setSaved] = useState(initial);
-  const [msg, setMsg] = useState<AdminResult>();
-  const [pending, start] = useTransition();
-  const run = (patch: { currency?: string; notes?: string }) =>
-    start(async () => {
-      const r = await updateClientAccount(id, patch);
-      setMsg(r);
-      if (r.ok && patch.notes !== undefined) setSaved(patch.notes);
-    });
+/** Billing currency (`accounts.currency`), saved with the Billing & payment tab. */
+export function CurrencyField({ id, currency }: { id: string; currency: string }) {
+  const [v, setV] = useState(currency);
+  useSaveSlot(`cur-${id}`, "Currency", 5, v !== currency, () =>
+    updateClientAccount(id, { currency: v }),
+  );
   return (
-    <section className="ad-card ad-form" aria-label="Billing and notes">
-      <h2 className="ad-h2">Billing and notes</h2>
+    <div className="ad-field">
+      <label htmlFor="acc-currency">Billing currency</label>
+      <select id="acc-currency" value={v} onChange={(e) => setV(e.target.value)}>
+        <option value="AED">AED</option>
+        <option value="USD">USD</option>
+      </select>
+      <span className="ad-help">Affects every price and invoice for this client.</span>
+    </div>
+  );
+}
+
+/** Private notes the client never sees, saved with the Overview tab. */
+export function ClientNotes({ id, notes: initial }: { id: string; notes: string }) {
+  const [notes, setNotes] = useState(initial);
+  useSaveSlot(`notes-${id}`, "Notes", 30, notes !== initial, () =>
+    updateClientAccount(id, { notes }),
+  );
+  return (
+    <section className="ad-card ad-form" aria-label="Notes">
+      <h2 className="ad-h2">Notes</h2>
       <div className="ad-field">
-        <label htmlFor="acc-currency">Billing currency</label>
-        <select
-          id="acc-currency"
-          defaultValue={currency}
-          onChange={(e) => run({ currency: e.target.value })}
-        >
-          <option value="AED">AED</option>
-          <option value="USD">USD</option>
-        </select>
-      </div>
-      <div className="ad-field">
-        <label htmlFor="acc-notes">Notes (only admins see these)</label>
+        <label htmlFor="acc-notes">Only admins see these</label>
         <textarea
           id="acc-notes"
           rows={5}
@@ -54,19 +46,6 @@ export function ClientEditor({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />
-      </div>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
-        <button
-          type="button"
-          className="ad-btn"
-          disabled={pending || notes === saved}
-          onClick={() => run({ notes })}
-        >
-          Save notes
-        </button>
-        <span className={cx("ad-status", msg && (msg.ok ? "ok" : "error"))} role="status">
-          {pending ? "Saving…" : (msg?.notice ?? msg?.error)}
-        </span>
       </div>
     </section>
   );
@@ -86,9 +65,7 @@ function InviteRound({ id, name, again }: { id: string; name: string; again: () 
       {state?.ok && state.share ? (
         <div className="ad-form" role="status">
           <p className="ad-note">Invited. Send them this so they know where to sign in:</p>
-          <p className="ad-small" style={{ whiteSpace: "pre-wrap" }}>
-            {state.share.text}
-          </p>
+          <p className="ad-small ad-pre">{state.share.text}</p>
           <div className="ad-btns">
             {state.share.whatsapp && (
               <a className="ad-btn" href={state.share.whatsapp} target="_blank" rel="noopener">
@@ -203,46 +180,20 @@ export function CancelInvite({ accountId, inviteId }: { accountId: string; invit
 /** How long this client's delivered files are kept after a project completes (default 12 months). */
 export function RetentionSelect({ accountId, months }: { accountId: string; months: number }) {
   const [value, setValue] = useState(months);
-  const [msg, setMsg] = useState<{ ok: boolean; text?: string }>();
-  const [pending, start] = useTransition();
+  useSaveSlot(`ret-${accountId}`, "File retention", 20, value !== months, () =>
+    setRetention(accountId, value),
+  );
   return (
     <div className="ad-field">
       <label htmlFor="retention">Keep delivered files</label>
-      <div className="ad-btns">
-        <select
-          id="retention"
-          value={value}
-          onChange={(e) => setValue(Number(e.target.value))}
-          style={{ width: "auto" }}
-        >
-          {[12, 18, 24, 36, 60].map((m) => (
-            <option key={m} value={m}>
-              {m} months after completion
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="ad-btn small"
-          disabled={pending || value === months}
-          onClick={() =>
-            start(async () => {
-              const r = await setRetention(accountId, value);
-              setMsg({ ok: r.ok, text: r.ok ? r.notice : r.error });
-            })
-          }
-        >
-          {pending ? "Saving…" : "Save"}
-        </button>
-      </div>
-      <span className="ad-small ad-muted">
-        Raw uploads are always deleted 30 days after completion.
-      </span>
-      {msg && (
-        <span className={`ad-status ${msg.ok ? "" : "error"}`} role={msg.ok ? "status" : "alert"}>
-          {msg.text}
-        </span>
-      )}
+      <select id="retention" value={value} onChange={(e) => setValue(Number(e.target.value))}>
+        {[12, 18, 24, 36, 60].map((m) => (
+          <option key={m} value={m}>
+            {m} months after completion
+          </option>
+        ))}
+      </select>
+      <span className="ad-help">Raw uploads are always deleted 30 days after completion.</span>
     </div>
   );
 }

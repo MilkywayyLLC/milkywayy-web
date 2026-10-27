@@ -1,4 +1,4 @@
-import { BillingNav } from "@/components/admin/BillingNav";
+import { PricesNav } from "@/components/admin/PricesNav";
 import { PackageEditor, type PackageRow } from "@/components/admin/BillingTools";
 import { PackageLimits } from "@/components/admin/PaymentAdmin";
 import { RolloverSettings, type RolloverView } from "@/components/admin/RolloverSettings";
@@ -40,7 +40,7 @@ export default async function Packages() {
     <div className="ad-page">
       <div className="ad-head">
         <div>
-          <span className="ad-eb">Portal · Billing</span>
+          <span className="ad-eb">Money · Prices & packages</span>
           <h1 className="ad-h1">Packages</h1>
           <span className="ad-small ad-muted">
             Private to one client unless you choose “Template”. Every package has two limits: an AED
@@ -48,12 +48,10 @@ export default async function Packages() {
           </span>
         </div>
       </div>
-      <BillingNav current="/admin/billing/packages" />
+      <PricesNav current="/admin/billing/packages" />
       <h2 className="ad-h2">New package</h2>
       <PackageEditor clients={list} />
-      <h2 className="ad-h2" style={{ marginTop: 12 }}>
-        Templates (internal, for suggestions)
-      </h2>
+      <h2 className="ad-h2 ad-mt-12">Templates (internal, for suggestions)</h2>
       {!pkgs.some((p) => !p.account_id) && (
         <p className="ad-empty">
           None yet. Choose “Template” as the client above: priced in AED and USD, never shown as a
@@ -80,9 +78,7 @@ export default async function Packages() {
             {rules.get(p.id) && <RolloverSettings packageId={p.id} data={rules.get(p.id)!} />}
           </section>
         ))}
-      <h2 className="ad-h2" style={{ marginTop: 12 }}>
-        Clients’ own packages
-      </h2>
+      <h2 className="ad-h2 ad-mt-12">Clients’ own packages</h2>
       {pkgs
         .filter((p) => p.account_id)
         .map((p) => (

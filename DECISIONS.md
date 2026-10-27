@@ -601,3 +601,49 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 **Part 12 — listing page.** Same structure (gallery first, price + specs, agent card), restyled premium/minimal in `share-phase1.css`: 14px radius, more air, quieter section labels, sticky translucent brand header, pill buttons. Theme: `data-tone="auto"` — light tokens by default, dark under `prefers-color-scheme: dark` (plus viewport `color-scheme` / `theme-color`), so it follows the visitor. Branding: `accounts.brand_layout` (logo · icon_name · name; null = old behaviour), chosen in Settings with a live header preview in light and dark drawn by the same `BrandHeader` component as the public page. Image order: verified the page keeps the creator's order (`share_photos` unnests `photo_ids` with ordinality). Also: share-page web versions are now made on the server automatically after a photo upload when the browser couldn't (same Safari cause as part 6).
 **Verify fix — autopay toggle.** `portal_admin_set_stripe_customer` failed when the payload had no `customer_id` (turning autopay on): Postgres checks NOT NULL before ON CONFLICT. The insert now only runs with a customer id. Fixed in the (not yet on prod) stripe migration and re-applied on dev.
 **Verify fixes — checkout + reschedule.** (1) Checkout now checks the stored Stripe customer still exists and makes a new one if not (clearing the old saved card): a customer made with test keys is unknown to live keys, so testing on prod before going live would otherwise break every company checkout. (2) Reschedule sheet: the time wheel was cut off by the sheet — picker panels now open in place inside sheets. Quote reads "Free reschedule / More than 3 hours before the shoot." instead of running the two together.
+
+## 27 Oct 2026 — Admin redesign (docs/ADMIN_AUDIT.md, all 20 items)
+
+**Phase A — one control per setting.**
+- `accounts.payg_invoicing`: only Plan → "Invoice timing" sets it now. The Billing-switches copy is gone; `setBillingSwitches` passes `null`, which the RPC already coalesces to the stored value (no SQL change).
+- "How they pay" is one block: Payment terms (`payment_terms`), Card on month-end invoices (`pay_online`, moved out of Advanced) and Allow bank transfer (`bank_transfer`). Same three server actions; only changed values are sent.
+- Client price list and Rate history both wrote `client_rates`; merged. The table has a History column (dated rows per service) and one "Changed prices apply from" date: today → `saveClientPrices` (as before), a later date → `setClientRate` per changed price (what Rate history did). Going back to the default can only apply from today (the dated RPC needs an amount).
+- Budget (legacy): no prod client is on it (checked: 1 package, 3 PAYG). The panel still shows only for a budget client, editing behind "Change the budget".
+- One Save per tab: `components/admin/SaveGroup.tsx`. Blocks register "dirty + save"; the bar saves dirty blocks in a fixed order (How they pay → Plan → Budget → Rollover → Prices → Client sees → Suggestions), then refreshes once. Plan before Client sees because `setPayg` rewrites `show_budget` with the stored value. Rollover keeps its own button on Billing → Packages (outside a group). Unchanged blocks never call their action, so opening and saving a client can't touch other settings.
+- Verification: prod fingerprint of every client's billing fields (terms, pay_online, bank_transfer, payg_invoicing, show_budget, hide_suggestions, pinned offer, currency, plan mode/advance/package, client_rates count) taken before the work, compared after deploy.
+
+**Phase B — navigation + settings.**
+- Sidebar: Today · Projects · Messages · Clients · Leads · Money (Invoices, Prices & packages, Refunds) · Website (collapsed unless you're on one of its pages; SEO moved in) · Settings (Business & billing, Operations, Site settings, Admins, Advanced). Routes unchanged; editors still see only Today + Website.
+- AI characters and Share pages left the sidebar: buttons on the Clients list (both still per-client on the client page).
+- Prices & packages = one tab bar over Website prices (`/admin/pricing`), Other website prices, Portal rate card (`/admin/billing/rates`), Packages. The old six-button Billing nav is gone (Invoices and Refunds are sidebar items; Settings and Suggestions moved under Settings).
+- Turnaround times + invoice backfill moved to the new Settings → Operations (`/admin/operations`), same components.
+- A booking opens its project first: `/admin/projects/ref/<ref>` finds the project(s) (one → it, several lines → filtered list, none → the lead with "no project"). Client page Bookings and the lead's new "Open project" button use it.
+- Admin Playwright specs that assert old labels ("Client accounts", "Billing") weren't edited (expectations frozen for this round); they need the new names.
+
+**Phase C — client page.**
+- Header (name, type, currency, since, Plan + Terms chips; New project · View as client · AI characters) + 5 tabs: Overview · Billing & payment · Projects · People · History. Tabs are client-side (`ClientTabs`): every panel renders once and is only hidden, so unsaved edits survive a tab switch; `?tab=` survives reload. After "Client created" it opens on People (the invite).
+- One Save per tab: Overview (file retention, notes, services) and Billing & payment (currency + how they pay, plan, budget if legacy, rollover, prices, what the client sees, suggestions). The bar warns before leaving with unsaved changes. Projects/People/History hold actions (attach booking, invite, resend, member phone), not settings, so they keep their own buttons.
+- Billing currency moved from "Billing and notes" into How they pay. "Billing and notes" is now just Notes.
+- Every existing capability kept; nothing removed except duplicate controls (Phase A).
+
+**Phase D — Today.**
+- `invoices.paid_at` already existed and is already set by the Stripe webhook (`now()`), Mark as paid (`coalesce(paid_at, now())`) and a confirmed bank receipt; prod's only paid invoice has it. Migration `20261108090000_invoice_paid_at_revenue.sql` is additive: `add column if not exists`, backfill of any paid invoice without a time (confirmed receipt's decision time, else created_at), a partial index, and read-only `portal_admin_revenue(p_month)` (paid invoices per currency by Dubai month of `paid_at`, with refunded shown separately). No existing function touched.
+- Today = action counts · pending confirmations (Confirm opens the same status dialog as Projects; Propose time is the project page's picker in a compact row) · shoots today + 6 days (date, start time, area, client) · projects by stage · deliveries (revision first, then awaiting approval with days) · money (revenue this month, outstanding, overdue list) · recent client activity (new bookings/briefs, approvals, revisions, messages; last 14 days) · new leads. Website changes + quick links fold into a "Website" card (open for editors).
+- One `portal_admin_projects` call for all types (it syncs bookings on every call). Each source loads on its own; a failure blanks one card.
+- A website booking shows once: new leads whose ref already has a project are left out.
+- Warnings are one line with the fix (#19): no DB names; "Invoices are missing company details" links to Business & billing (TRN only once VAT registered).
+- Recent client activity has no events table read (none exists for admins without a new RPC): it's derived from project rows and messages. Receipts show in the action counts, not the feed (the queue has no submit time).
+
+**Phase E — Projects.**
+- List is the default (all types): Project (short title or brief kind, ref) · Client · When (date + start time; due date for batches/avatars) · Area · Stage pill · Next action · Status (the same status dialog, folded behind a button). Phones: each row becomes a labelled card.
+- Next action is a pure function of the row (`lib/portal/next-action.ts`): confirm/propose, shoot today, mark as shot, edit + deliver, waiting on files/script/client approval (days), revisions first. Sorted by urgency, then date. Quick filters: Open · Needs me · This week · Waiting on client · Done; plus search, type, stage.
+- Board is `?view=board`, every card shown (the 12-card cap is gone), columns scroll sideways. Calendar is the third tab. Old `?view=list` links still land on the list.
+- `nextAction` has no unit test this round (new tests limited to paid_at).
+
+**Phase F — design system.**
+- Light tone kept (all-day data tool; never confused with "View as client"). Portal V2 shapes: `--ad-r` 14px cards/tables/dialogs, `--ad-r-sm` 10px inputs/buttons/notes, pills fully round. Fonts unchanged (Archivo condensed headings, Archivo body, DM Mono labels = V2's).
+- Type scale: 12 label · 13 meta · 15 body · 17 h3 · 20 h2 · 28 h1 (desktop h1 no longer 36). Exceptions kept on purpose: 16px inputs (iOS zoom), icon glyphs (16/18) and the 24px two-factor code.
+- One status pill: `components/admin/Pill.tsx` (`STATUS_TONE`: accent = needs you, info = in progress, warn = look at it, danger = late/cancelled, ok = done, neutral). The older `.ad-pill.live/draft/due/…` modifiers now render the same colours, so every pill in the admin reads one way. Refs, account types and file kinds use `.ad-tag`, not pills.
+- Buttons: primary (filled, one per header), ghost (outline, secondary), quiet (tertiary), danger. Invoice filters and project quick filters are chips with counts, not buttons (#11).
+- Inline styles 163 → 68 via shared helpers (`ad-stack-*`, `ad-center`, `ad-between`, `ad-m0`, `ad-pre`, `ad-grow`…); what's left is one-off widths and drag transforms.
+- Dead code: `PlanForm` (BillingTools) and `describeVideo` (MediaParts) deleted. The `setPlan` server action is left in place (lib API, no caller now).

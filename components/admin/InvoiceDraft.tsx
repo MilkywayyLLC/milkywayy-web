@@ -141,7 +141,7 @@ export function DraftEditor({ inv, vatOn }: { inv: DraftData; vatOn: boolean }) 
       }}
     >
       {changed && (
-        <p className="ad-note warn" data-testid="draft-changed" style={{ margin: 0 }}>
+        <p className="ad-note warn ad-m0" data-testid="draft-changed">
           More work was logged after this draft was made ({money(c, Number(inv.basis_total))} →{" "}
           {money(c, Number(inv.activity_total))}).{" "}
           <button
@@ -356,7 +356,7 @@ export function GenerateDrafts() {
   const [r, setR] = useState<InvoiceResult>();
   const [pending, start] = useTransition();
   return (
-    <div className="ad-btns" style={{ alignItems: "center" }}>
+    <div className="ad-btns ad-center">
       <button
         type="button"
         className="ad-btn ghost small"

@@ -68,7 +68,7 @@ export function InquiryReply({ id }: { id: string }) {
           />
         </div>
       </div>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button type="submit" className="ad-btn small" disabled={pending || !body.trim()}>
           Send reply
         </button>

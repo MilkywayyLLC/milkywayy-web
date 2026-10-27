@@ -12,7 +12,7 @@ export default async function TwoFactorPage() {
   return (
     <main className="ad-auth">
       <div className="ad-card">
-        <div style={{ display: "grid", gap: 6 }}>
+        <div className="ad-stack-8">
           <span className="ad-eb">{a.email}</span>
           <h1 className="ad-h1">
             {a.state === "mfa-enroll" ? "Set up two-factor" : "Enter your code"}

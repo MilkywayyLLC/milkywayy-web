@@ -318,7 +318,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                         </>
                       )}
                       {booking.location.access && (
-                        <span className="ad-small ad-muted" style={{ display: "block" }}>
+                        <span className="ad-small ad-muted ad-block">
                           Access: {booking.location.access}
                         </span>
                       )}
@@ -333,16 +333,16 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                 <dd>
                   {booking && pricing
                     ? normalizeServices(booking.services).map((s, n) => (
-                        <span key={n} style={{ display: "block" }}>
+                        <span className="ad-block" key={n}>
                           {SERVICE_LABEL[s.service]}: {serviceSummary(s, pricing)}
                           {s.notes ? ` · “${s.notes}”` : ""}
                           {(s.links ?? []).map((l) => (
                             <a
+                              className="ad-block"
                               key={l}
                               href={l}
                               target="_blank"
                               rel="noopener noreferrer"
-                              style={{ display: "block" }}
                             >
                               {l}
                             </a>
@@ -352,9 +352,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                     : (p.meta.services ?? []).map((s) => SHOOT_SERVICE_LABEL[s] ?? s).join(", ") ||
                       "—"}
                   {booking?.note && (
-                    <span className="ad-small ad-muted" style={{ display: "block" }}>
-                      {booking.note}
-                    </span>
+                    <span className="ad-small ad-muted ad-block">{booking.note}</span>
                   )}
                 </dd>
               </>
@@ -393,17 +391,17 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                 <dt>Wanted by</dt>
                 <dd>{p.due_at ? day(p.due_at, true) : "—"}</dd>
                 <dt>Notes</dt>
-                <dd style={{ whiteSpace: "pre-wrap" }}>{p.meta.notes ?? "—"}</dd>
+                <dd className="ad-pre">{p.meta.notes ?? "—"}</dd>
                 <dt>Reference</dt>
-                <dd style={{ overflowWrap: "anywhere" }}>
+                <dd className="ad-break">
                   {(p.meta.references ?? []).length
                     ? (p.meta.references ?? []).map((r) => (
                         <a
+                          className="ad-block"
                           key={r}
                           href={r}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ display: "block" }}
                         >
                           {r}
                         </a>
@@ -512,7 +510,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                     <span className="ad-row-title">
                       {n.template} → {n.to_address}
                     </span>
-                    <span className="ad-row-meta" style={{ display: "block" }}>
+                    <span className="ad-row-meta ad-block">
                       {n.status}
                       {n.error ? ` (${n.error})` : ""} · {dubai(n.at, true)}
                     </span>
@@ -538,7 +536,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                       {/* Status notes too: "Change requested", "Cancelled by the client", reasons. */}
                       {e.note ? (e.kind === "status" ? ` · ${e.note}` : `: ${e.note}`) : ""}
                     </span>
-                    <span className="ad-row-meta" style={{ display: "block" }}>
+                    <span className="ad-row-meta ad-block">
                       {e.actor_name} · {dubai(e.at, true)}
                     </span>
                   </span>

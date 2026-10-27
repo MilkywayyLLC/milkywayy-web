@@ -70,7 +70,8 @@ export async function setClientRate(
 export async function setBillingSwitches(
   account: string,
   showBudget: boolean | null,
-  paygInvoicing: "per_project" | "month_end",
+  /** null keeps the stored value (the RPC coalesces). */
+  paygInvoicing: "per_project" | "month_end" | null,
   advance: boolean | null,
 ): Promise<BudgetResult> {
   try {

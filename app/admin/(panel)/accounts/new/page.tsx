@@ -11,7 +11,7 @@ export default async function NewClient() {
       <div className="ad-head">
         <div>
           <Link className="ad-eb" href="/admin/accounts" prefetch={false}>
-            ← Client accounts
+            ← Clients
           </Link>
           <h1 className="ad-h1">New client</h1>
           <span className="ad-small ad-muted">

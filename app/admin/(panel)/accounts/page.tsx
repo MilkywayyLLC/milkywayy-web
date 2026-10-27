@@ -4,7 +4,7 @@ import { dubai } from "@/lib/admin/format";
 import { portalAdminPage, portalAdminReady, type ClientListRow } from "@/lib/portal/admin";
 import { industryLabel, SERVICES, serviceLabel } from "@/lib/portal/options";
 
-export const metadata = { title: "Client accounts" };
+export const metadata = { title: "Clients" };
 
 type Props = { searchParams: Promise<{ q?: string; service?: string; type?: string }> };
 
@@ -32,21 +32,29 @@ export default async function Accounts({ searchParams }: Props) {
     <div className="ad-page">
       <div className="ad-head">
         <div>
-          <span className="ad-eb">Portal</span>
-          <h1 className="ad-h1">Client accounts</h1>
+          <span className="ad-eb">Clients</span>
+          <h1 className="ad-h1">Clients</h1>
         </div>
-        <Link className="ad-btn" href="/admin/accounts/new" prefetch={false}>
-          New client
-        </Link>
+        <div className="ad-btns">
+          <Link className="ad-btn ghost small" href="/admin/characters" prefetch={false}>
+            AI characters
+          </Link>
+          <Link className="ad-btn ghost small" href="/admin/listings" prefetch={false}>
+            Share pages
+          </Link>
+          <Link className="ad-btn" href="/admin/accounts/new" prefetch={false}>
+            New client
+          </Link>
+        </div>
       </div>
       <form className="ad-filter" method="get" role="search">
         <input
+          className="ad-grow"
           type="search"
           name="q"
           defaultValue={f.q}
           placeholder="Name, email or phone"
           aria-label="Search clients"
-          style={{ flex: "1 1 220px", width: "auto" }}
         />
         <select name="service" defaultValue={f.service ?? ""} aria-label="Service">
           <option value="">All services</option>
@@ -79,11 +87,11 @@ export default async function Accounts({ searchParams }: Props) {
             className="ad-row ad-lead"
             prefetch={false}
           >
-            <span className="ad-pill draft">{r.type === "company" ? "Company" : "Individual"}</span>
+            <span className="ad-tag">{r.type === "company" ? "Company" : "Individual"}</span>
             <span className="ad-row-main">
               <span>
                 <span className="ad-row-title">{r.name}</span>
-                <span className="ad-row-meta" style={{ display: "block" }}>
+                <span className="ad-row-meta ad-block">
                   {[
                     r.type === "company" ? industryLabel(r.industry, r.industry_other) : null,
                     r.services_interest.map(serviceLabel).join(", ") || "No services chosen",
