@@ -879,10 +879,13 @@ export function ProposeTime({
   projectId,
   proposal,
   paid,
+  compact,
 }: {
   projectId: string;
   proposal: { date: string; start_time: string } | null;
   paid: boolean;
+  /** Just the button and the picker (a row on Admin → Today). */
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -891,10 +894,17 @@ export function ProposeTime({
   const [note, setNote] = useState("");
   const [r, setR] = useState<R>();
   const [pending, start] = useTransition();
+  const Wrap = compact ? "div" : "section";
   return (
-    <section className="ad-card ad-form" aria-label="Confirm or propose" data-testid="propose-time">
-      <h2 className="ad-h2">{paid ? "Paid · waiting for you to confirm" : "Booking request"}</h2>
-      {proposal ? (
+    <Wrap
+      className={compact ? "ad-stack-8" : "ad-card ad-form"}
+      aria-label="Confirm or propose"
+      data-testid="propose-time"
+    >
+      {!compact && (
+        <h2 className="ad-h2">{paid ? "Paid · waiting for you to confirm" : "Booking request"}</h2>
+      )}
+      {compact ? null : proposal ? (
         <p className="ad-note" style={{ margin: 0 }}>
           Proposed {proposal.date} · {proposal.start_time}. Waiting for the client to accept or
           decline (decline cancels with a full refund).
@@ -907,8 +917,16 @@ export function ProposeTime({
       )}
       {!open ? (
         <div className="ad-btns">
-          <button type="button" className="ad-btn small" onClick={() => setOpen(true)}>
-            {proposal ? "Propose a different time" : "Propose a new time"}
+          <button
+            type="button"
+            className={compact ? "ad-btn ghost small" : "ad-btn small"}
+            onClick={() => setOpen(true)}
+          >
+            {compact
+              ? "Propose time"
+              : proposal
+                ? "Propose a different time"
+                : "Propose a new time"}
           </button>
         </div>
       ) : (
@@ -956,6 +974,6 @@ export function ProposeTime({
         </>
       )}
       <Note r={r} pending={pending} />
-    </section>
+    </Wrap>
   );
 }

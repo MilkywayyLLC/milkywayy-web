@@ -1796,3 +1796,59 @@
   color: var(--bg);
   background: var(--acc);
 }
+
+/* ---------- Today (admin redesign) ---------- */
+.ad-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 8px;
+}
+.ad-actions a {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--ad-r-sm, 10px);
+  background: var(--surface);
+  text-decoration: none;
+  color: var(--muted);
+}
+.ad-actions a b {
+  font: 700 24px/1 var(--font-display);
+}
+.ad-actions a.on {
+  color: var(--fg);
+  border-color: var(--acc);
+}
+.ad-today-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  text-decoration: none;
+}
+.ad-today-row > .ad-row-main {
+  flex: 1 1 220px;
+}
+.ad-today-when {
+  display: grid;
+  min-width: 96px;
+  font-size: 13px;
+}
+.ad-feed {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.ad-feed li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+}
+.ad-stage {
+  text-decoration: none;
+}
