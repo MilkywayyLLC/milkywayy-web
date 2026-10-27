@@ -7,6 +7,7 @@ import {
   type ChangeKind,
   type ChangeReason,
 } from "@/lib/portal/payments";
+import { invoicePdf, type PdfInvoice } from "@/lib/invoice-pdf";
 import { env, WEBHOOK_SECRET } from "./helpers/env";
 import {
   adminRpc,
@@ -973,4 +974,78 @@ test("Stripe test mode, real API: customer, off-session charge on a saved card, 
   });
   expect(refund.id).toMatch(/^re_/);
   expect(["succeeded", "pending"]).toContain(refund.status);
+});
+
+test("Invoices: issued at booking, Due → Paid → Refunded, PDF for owner / billing teammate / admin only", async () => {
+  const owner = await clientAccount(RUN, "invowner", "E2E Pay invoices");
+  await admin("portal_admin_set_payment_terms", { p_account: owner.account, p_terms: "prepay" });
+  const b = await book(owner, { estimate: 500 });
+  expect(b.inv).toMatchObject({ stage: "full", amount: 500 });
+  const row = async () =>
+    (
+      await must<{ status: string; refunded: number }[]>(
+        owner.db.from("invoices").select("status, refunded").eq("id", b.inv!.id),
+      )
+    )[0];
+  expect(await row()).toMatchObject({ status: "due" });
+
+  // PDF: the owner and a teammate with billing access, never a plain teammate.
+  const team: SupabaseClient[] = [];
+  for (const [n, billing] of [
+    ["billmate", true],
+    ["plainmate", false],
+  ] as const) {
+    const email = await createUser(RUN, n);
+    await must(
+      owner.db.from("account_invites").insert({ account_id: owner.account, email, name: n }),
+    );
+    const db = await signedIn(email);
+    await must(db.rpc("accept_my_invites"));
+    const id = (await db.auth.getUser()).data.user!.id;
+    await must(
+      owner.db
+        .from("account_members")
+        .update({ access: { preset: "custom", shoots: true, billing, all_projects: false } })
+        .eq("user_id", id)
+        .select(),
+    );
+    team.push(db);
+  }
+  const pdfOf = (db: SupabaseClient) => db.rpc("my_invoice_pdf", { p_invoice: b.inv!.id });
+  expect((await pdfOf(owner.db)).error).toBeNull();
+  expect((await pdfOf(team[0])).error).toBeNull();
+  expect((await pdfOf(team[1])).error?.message).toMatch(/not your invoice/);
+  const d = (await pdfOf(owner.db)).data as PdfInvoice & { invoice: Record<string, unknown> };
+  // No Stripe ids in what the PDF is made from.
+  expect(Object.keys(d.invoice)).not.toContain("stripe_payment_intent");
+  expect(Object.keys(d.invoice)).not.toContain("stripe_session_id");
+  expect(
+    (await admin<PdfInvoice | null>("portal_admin_invoice_pdf", { p_invoice: b.inv!.id }))?.invoice,
+  ).toMatchObject({ number: b.inv!.number });
+
+  // Paid, then cancelled early: a full bank refund; ticked off, the invoice shows it.
+  await markPaid(b.inv!.id);
+  expect(await row()).toMatchObject({ status: "paid" });
+  await change(b.id, "cancel", 48);
+  const due = await admin<{ id: string; invoice_id?: string }[]>("portal_admin_refunds", {
+    p_status: "due",
+  });
+  const mine = await refundsOf(owner, b.id);
+  expect(mine).toEqual([{ amount: 500, status: "due", method: "bank" }]);
+  const [ref] = await must<{ id: string }[]>(
+    owner.db.from("refunds").select("id").eq("project_id", b.id),
+  );
+  expect(due.map((r) => r.id)).toContain(ref.id);
+  await admin("portal_admin_refund_done", { p_refund: ref.id });
+  expect(Number((await row()).refunded)).toBe(500);
+  const refunded = await admin<Record<string, number>>("portal_admin_refunded_invoices", {});
+  expect(Number(refunded[b.inv!.id])).toBe(500);
+
+  // The PDF renders, PAID with the refund.
+  const after = (await pdfOf(owner.db)).data as PdfInvoice;
+  const pdf = Buffer.from(
+    await invoicePdf(after, { payUrl: "https://example.test/portal/billing" }),
+  );
+  expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+  expect(pdf.toString("latin1")).toContain("REFUNDED");
 });

@@ -24,6 +24,7 @@ import {
   money,
   monthLabel,
   shownStatus,
+  refundState,
   STATUS_LABEL,
   type Invoice,
   type InvoiceLine,
@@ -310,6 +311,9 @@ export default async function Billing({
                         {monthLabel(month)} · due {dateLabel(i.due_on)}
                         {i.paid_via === "stripe" ? " · paid by card" : ""}
                         {i.paid_via === "bank" ? " · paid by bank transfer" : ""}
+                        {Number(i.refunded ?? 0) > 0
+                          ? ` · ${money(i.currency, Number(i.refunded))} refunded`
+                          : ""}
                       </div>
                       {open && i.payment_state === "rejected" && (
                         <div className="pt-meta pt-warn-text">
@@ -330,7 +334,11 @@ export default async function Billing({
                               : "gold"
                       }
                     >
-                      {submitted ? "Payment submitted" : STATUS_LABEL[st]}
+                      {submitted
+                        ? "Payment submitted"
+                        : st === "paid" && refundState(i)
+                          ? refundState(i)
+                          : STATUS_LABEL[st]}
                     </Badge>
                     <span className="pt-inv-actions">
                       {open && !submitted && bp && (

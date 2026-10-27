@@ -225,6 +225,14 @@ export const extraCount = (n: number, label: string) => {
 export const dubaiToday = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" }).format(new Date());
 
+/** Money given back on a paid invoice (phase 1): "Refunded", "Part refunded", or null. */
+export const refundState = (i: { amount: number; refunded?: number | null }) =>
+  Number(i.refunded ?? 0) <= 0
+    ? null
+    : Number(i.refunded) >= Number(i.amount)
+      ? "Refunded"
+      : "Part refunded";
+
 /** Due becomes Overdue the day after the due date (the cron also records it). */
 export const shownStatus = (i: Pick<Invoice, "status" | "due_on">): InvoiceStatus =>
   i.status === "due" && i.due_on < dubaiToday() ? "overdue" : i.status;
