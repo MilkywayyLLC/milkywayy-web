@@ -1,6 +1,7 @@
 import { BillingNav } from "@/components/admin/BillingNav";
 import { PackageEditor, type PackageRow } from "@/components/admin/BillingTools";
 import { PackageLimits } from "@/components/admin/PaymentAdmin";
+import { RolloverSettings, type RolloverView } from "@/components/admin/RolloverSettings";
 
 type Limits = { allowance: number | null; half_day_cap: number | null; currency: string };
 import { portalAdminPage, type ClientListRow } from "@/lib/portal/admin";
@@ -19,6 +20,19 @@ export default async function Packages() {
     rpc<PackageRow[]>("portal_admin_packages", {}),
     rpc<ClientListRow[]>("portal_admin_clients", {}),
   ]);
+  // Rollover rules for value packages (phase 1 part 4).
+  const value = pkgs.filter((p) => (p as PackageRow & Limits).allowance != null);
+  const rules = new Map(
+    await Promise.all(
+      value.map(
+        async (p) =>
+          [
+            p.id,
+            await rpc<RolloverView>("portal_admin_rollover", { p_package: p.id, p_account: null }),
+          ] as const,
+      ),
+    ),
+  );
   const list = clients
     .map((c) => ({ id: c.id, name: c.name, currency: c.currency }))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -63,6 +77,7 @@ export default async function Packages() {
               allowance={(p as PackageRow & Limits).allowance}
               halfDayCap={(p as PackageRow & Limits).half_day_cap}
             />
+            {rules.get(p.id) && <RolloverSettings packageId={p.id} data={rules.get(p.id)!} />}
           </section>
         ))}
       <h2 className="ad-h2" style={{ marginTop: 12 }}>
@@ -86,6 +101,7 @@ export default async function Packages() {
               halfDayCap={(p as PackageRow & Limits).half_day_cap}
               account={p.account_id}
             />
+            {rules.get(p.id) && <RolloverSettings packageId={p.id} data={rules.get(p.id)!} />}
           </section>
         ))}
     </div>

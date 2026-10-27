@@ -204,6 +204,8 @@ export type StatementRow = {
     overage_total: number;
     extras_total: number;
     before_total: number;
+    /** Package rollover that month (phase 1): carried in, used, expired, carrying on. */
+    rollover?: import("./rollover").Carry | null;
   } | null;
   lines: (LineItem & { amount: number })[];
   overage: Usage[];

@@ -320,3 +320,48 @@ revoke all on function public.portal_admin_rollover(text, text, uuid, uuid),
 grant execute on function public.portal_admin_rollover(text, text, uuid, uuid),
   public.portal_admin_set_rollover(text, text, uuid, uuid, jsonb),
   public.portal_admin_carry_sim(text, text, jsonb) to anon, authenticated;
+
+-- The month-end statement lists what was carried in, used and expired, and what carries on.
+create or replace function private.build_statement(p_account uuid, p_month date) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare a public.accounts%rowtype; v_vat_on boolean; v_lines jsonb; v_sub numeric; v_pm jsonb; v_vat numeric;
+  v_month date := date_trunc('month', p_month)::date; v_budget numeric; v_used numeric; v_mode text;
+begin
+  select * into a from public.accounts where id = p_account;
+  select vat_registered into v_vat_on from public.billing_settings where id;
+  select coalesce(jsonb_agg(jsonb_build_object('description', li.description, 'qty', li.qty,
+      'unit_price', li.unit_price, 'kind', li.kind, 'ref', p.ref, 'amount', round(li.qty * li.unit_price, 2))
+      order by coalesce(li.service_date, (p.delivered_at at time zone 'Asia/Dubai')::date), li.sort, li.created_at), '[]'::jsonb)
+    into v_lines
+  from public.line_items li left join public.projects p on p.id = li.project_id
+  where li.account_id = p_account and li.delivered_month = v_month;
+  v_budget := private.budget_for(p_account, v_month);
+  if v_budget is not null then
+    v_mode := 'budget';
+    select coalesce(sum((l ->> 'amount')::numeric), 0) into v_used from jsonb_array_elements(v_lines) l;
+    v_sub := greatest(v_budget, v_used);
+  else
+    v_pm := private.package_month(p_account, v_month);
+    if v_pm is not null then
+      v_mode := 'package';
+      v_sub := (v_pm ->> 'estimate')::numeric;
+    else
+      v_mode := 'payg';
+      select coalesce(sum((l ->> 'amount')::numeric), 0) into v_sub from jsonb_array_elements(v_lines) l;
+    end if;
+  end if;
+  v_vat := (case when coalesce(v_vat_on, false) then round(v_sub * 0.05, 2) else 0 end);
+  return jsonb_build_object('account_id', p_account, 'month', v_month, 'currency', a.currency,
+    'mode', v_mode,
+    'package', (case when v_mode = 'package' then jsonb_build_object('name', v_pm ->> 'name',
+      'price', (v_pm ->> 'price')::numeric, 'full_price', (v_pm ->> 'full_price')::numeric,
+      'prorated', (v_pm ->> 'prorated')::boolean, 'term_months', (v_pm ->> 'term_months')::int,
+      'overage_total', (v_pm ->> 'overage_total')::numeric, 'extras_total', (v_pm ->> 'extras_total')::numeric,
+      'before_total', (v_pm ->> 'before_total')::numeric,
+      'rollover', v_pm -> 'value' -> 'carry')
+      when v_mode = 'budget' then jsonb_build_object('name', 'Monthly package', 'price', v_budget,
+        'used', v_used, 'additional', greatest(v_used - v_budget, 0)) end),
+    'lines', v_lines, 'overage', coalesce(v_pm -> 'usage', '[]'::jsonb),
+    'subtotal', round(v_sub, 2), 'vat_rate', (case when coalesce(v_vat_on, false) then 5 else 0 end),
+    'vat', v_vat, 'total', round(v_sub, 2) + v_vat);
+end $$;

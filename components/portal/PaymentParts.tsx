@@ -1,5 +1,6 @@
 import { dateLabel, money } from "@/lib/portal/billing";
 import { shortTitle } from "@/lib/portal/projects";
+import { carriedLines, carrySummary, type Carry } from "@/lib/portal/rollover";
 import {
   aed0,
   dayCount,
@@ -57,6 +58,10 @@ export type ValueMonth = {
   half_days_used: number;
   extras_total: number;
   estimate: number;
+  /** Carried in from earlier months (phase 1 rollover); included in allowance / half_day_cap. */
+  carry?: Carry | null;
+  base_allowance?: number;
+  base_half_day_cap?: number;
   bookings: {
     project_id: string;
     ref: string | null;
@@ -251,6 +256,21 @@ export function ValuePackageCard({ v, admin = false }: { v: ValueMonth; admin?: 
         part={u.hd}
         fmt={(n) => `${dayCount(n)} ${n === 2 ? "day" : "days"}`}
       />
+      {carriedLines(v.currency, v.carry).map((l) => (
+        <p key={l} className="pt-carried" data-testid="value-carried">
+          {l}
+        </p>
+      ))}
+      {admin && carrySummary(v.currency, v.carry).length > 0 && (
+        <ul className="pt-lines" aria-label="Rollover this month" data-testid="value-rollover">
+          {carrySummary(v.currency, v.carry).map((r) => (
+            <li key={r.key}>
+              <span>{r.label}</span>
+              <span className="pt-mono">{r.value}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="pt-plan-row" data-testid="value-extras">
         <span>Extras this month</span>
         <span className="pt-mono">{extras > 0 ? m(extras) : "None"}</span>

@@ -109,3 +109,19 @@
     }
   }
 }
+
+@layer components {
+  /* ---------- package rollover ---------- */
+  .pt-carried {
+    margin: 0;
+    font: var(--t-small);
+    color: var(--pt-gold);
+  }
+}
+
+@layer components {
+  .pt-lines-note {
+    color: var(--muted);
+    font: var(--t-small);
+  }
+}

@@ -415,3 +415,42 @@ export async function proposeTime(
     return fail(e);
   }
 }
+
+/**
+ * Package rollover (phase 1 part 4): a template's or a client's rule. Saved rules apply from the next
+ * month; credit already carried keeps its expiry. `useTemplate` drops a client's own rule.
+ */
+export async function setRollover(
+  target: { packageId?: string; account?: string },
+  rule:
+    { enabled: boolean; months: number; allowance: boolean; days: boolean } | { useTemplate: true },
+): Promise<Result> {
+  try {
+    const rpc = await portalAdminAction();
+    const p =
+      "useTemplate" in rule
+        ? { use_template: true }
+        : {
+            enabled: rule.enabled && rule.months > 0,
+            months: Math.max(0, Math.min(3, Math.round(rule.months))),
+            allowance: rule.allowance,
+            days: rule.days,
+          };
+    if (!("useTemplate" in rule) && p.enabled && !rule.allowance && !rule.days)
+      return { ok: false, error: "Tick allowance, shoot days or both." };
+    const from = await rpc<string>("portal_admin_set_rollover", {
+      p_package: target.account ? null : (target.packageId ?? null),
+      p_account: target.account ?? null,
+      p,
+    });
+    if (target.account) revalidatePath(`/admin/accounts/${target.account}`);
+    revalidatePath("/admin/billing/packages");
+    const month = new Date(`${from}T12:00:00`).toLocaleDateString("en-GB", {
+      month: "long",
+      year: "numeric",
+    });
+    return { ok: true, notice: `Saved. Applies from ${month}.` };
+  } catch (e) {
+    return fail(e);
+  }
+}

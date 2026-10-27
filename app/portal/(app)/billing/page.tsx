@@ -1,3 +1,4 @@
+import { carrySummary } from "@/lib/portal/rollover";
 import { cx } from "@/lib/cx";
 import { InvoiceDownload } from "@/components/portal/InvoiceDownload";
 import {
@@ -436,6 +437,13 @@ function Breakdown({ s }: { s: StatementRow }) {
         <li key={n}>
           <span>{label}</span>
           <span className="pt-mono">{money(c, amount)}</span>
+        </li>
+      ))}
+      {/* Package rollover (phase 1): carried in, used, expired, carrying on. No money. */}
+      {carrySummary(c, s.package?.rollover).map((r) => (
+        <li key={r.key} className="pt-lines-note" data-testid="statement-rollover">
+          <span>{r.label}</span>
+          <span className="pt-mono">{r.value}</span>
         </li>
       ))}
       {Number(s.vat) > 0 && (

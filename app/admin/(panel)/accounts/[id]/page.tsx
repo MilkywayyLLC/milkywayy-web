@@ -12,6 +12,7 @@ import {
   ServicesBlock,
   type ClientSetupData,
 } from "@/components/admin/ClientSetup";
+import { RolloverSettings, type RolloverView } from "@/components/admin/RolloverSettings";
 import {
   BankTransferToggle,
   PaymentTermsBlock,
@@ -78,6 +79,10 @@ export default async function ClientPage({ params, searchParams }: Props) {
       rpc<ClientPayments>("portal_admin_client_payments", { p_account: id }),
       rpc<ValueMonth | null>("portal_admin_value_month", { p_account: id }),
     ]);
+  // Package rollover (phase 1 part 4): this client's rule and carried credit.
+  const rollover = valueMonth
+    ? await rpc<RolloverView>("portal_admin_rollover", { p_package: null, p_account: id })
+    : null;
   const sentAt = new Map(openInvites.map((i) => [i.id, i.last_sent_at]));
   if (!c || !setup) notFound();
   const a = c.account;
@@ -147,6 +152,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
           <ValuePackageCard v={valueMonth} admin />
         </div>
       )}
+      {rollover && <RolloverSettings account={id} data={rollover} />}
 
       <div className="ad-grid2">
         <section className="ad-card" aria-label="Details">
