@@ -30,7 +30,8 @@ import { whenLabel } from "./when";
 
 /**
  * "Book a shoot" (owner, 10 Oct 2026): every client can book in the portal. The request becomes a
- * Requested shoot; Milkywayy is emailed "New booking request". The estimate is worked out here from
+ * Requested shoot; Milkywayy is emailed "New booking request" (a 100% / 50% upfront one only once it's
+ * paid or a bank receipt is uploaded: until then it's an "Awaiting payment" draft). The estimate is worked out here from
  * the client's own rates and the property price list (only for those who may see money).
  * Payment terms (owner, 24 Oct 2026): the Booking Terms must be accepted (stored with the version);
  * 100% / 50% clients get their invoice now and, with Stripe on, the payment page (paid = confirmed).
@@ -167,21 +168,6 @@ export async function bookShoot(b: {
     if (ae) console.error("[portal] set_project_agent:", ae.message);
   }
   const origin = originFrom(await headers());
-  await notifyMilkywayy(
-    out.id,
-    "booking_requested",
-    `New booking request: ${current.account.name} · ${b.date}`,
-    [
-      `${current.account.name} asked for a shoot on ${whenLabel(b.date, startTime(b.startTime), b.slot)}.`,
-      `Where: ${loc.address}${loc.unit ? ` · ${loc.unit}` : ""}`,
-      ...services.map((s) => `${SERVICE_LABEL[s.service]}: ${serviceSummary(s, pricing)}`),
-      ...(est != null
-        ? [`Estimate at their rates: ${current.account.currency} ${est.toLocaleString("en-US")}`]
-        : []),
-      "Confirm the date and time in the admin, or propose another time.",
-    ],
-    `${origin}/admin/projects/${out.id}`,
-  ).catch((e) => console.error("[portal] booking alert:", e));
   // What's due now by the client's term (an invoice, then Stripe if it's on).
   const pay =
     est != null && rates
@@ -202,7 +188,24 @@ export async function bookShoot(b: {
           origin,
           actor: `client:${user.email ?? user.id}`,
         })
-      : { invoice: null, payUrl: null };
+      : { invoice: null, payUrl: null, held: false };
+  // A 100% / 50% upfront shoot is held as a draft until paid: Milkywayy hears about it then.
+  if (!pay.held)
+    await notifyMilkywayy(
+      out.id,
+      "booking_requested",
+      `New booking request: ${current.account.name} · ${b.date}`,
+      [
+        `${current.account.name} asked for a shoot on ${whenLabel(b.date, startTime(b.startTime), b.slot)}.`,
+        `Where: ${loc.address}${loc.unit ? ` · ${loc.unit}` : ""}`,
+        ...services.map((s) => `${SERVICE_LABEL[s.service]}: ${serviceSummary(s, pricing)}`),
+        ...(est != null
+          ? [`Estimate at their rates: ${current.account.currency} ${est.toLocaleString("en-US")}`]
+          : []),
+        "Confirm the date and time in the admin, or propose another time.",
+      ],
+      `${origin}/admin/projects/${out.id}`,
+    ).catch((e) => console.error("[portal] booking alert:", e));
   // Sent: the booking draft goes.
   await db
     .from("portal_drafts")

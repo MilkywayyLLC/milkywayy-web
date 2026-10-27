@@ -40,6 +40,10 @@ export async function GET(req: NextRequest) {
   if (!portalAdminReady()) return NextResponse.json({ skipped: "portal not configured" });
 
   const out = await portalAdminSystem<Out>("portal_admin_housekeeping");
+  // Unpaid booking drafts (100% / 50% upfront) expire after 7 days: invoice voided, booking gone.
+  const draftsExpired = await portalAdminSystem<number>("portal_admin_expire_booking_drafts").catch(
+    (e) => (console.error("[housekeeping] drafts:", e), 0),
+  );
   // Invoices past their due date become Overdue (Phase 12).
   const overdue = await portalAdminSystem<number>("portal_admin_mark_overdue");
 
@@ -124,5 +128,6 @@ export async function GET(req: NextRequest) {
     warned,
     invoices_overdue: overdue,
     statements_frozen: statements,
+    booking_drafts_expired: draftsExpired,
   });
 }

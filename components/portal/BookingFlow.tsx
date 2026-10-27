@@ -369,6 +369,7 @@ export function BookingFlow({
     dirty: touched && !done && !edit,
     saveNow: draft.saveNow,
     discard: draft.discard,
+    discardOnly: true,
   });
   // Leaving for "What are you booking?" with the browser's back button: keep the draft.
   const saveRef = useRef<() => void>(() => {});

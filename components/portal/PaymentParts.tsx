@@ -10,6 +10,8 @@ import {
   TERMS_LABEL,
   type PaymentTerms,
 } from "@/lib/portal/payments";
+import type { ReactNode } from "react";
+import { Icon } from "./Icon";
 import { PaidByTransfer, PayNow } from "./InvoicePay";
 import { Badge } from "./ui";
 
@@ -78,19 +80,20 @@ export type ValueMonth = {
 };
 
 /**
- * Pay this invoice (phase 1, 27 Oct 2026): card first (Stripe, on our own page) on every open invoice;
- * Wio and "I've paid" with the bank receipt only where the client may pay by bank transfer.
+ * Pay this invoice (phase 1, 27 Oct 2026): card first (Stripe, on our own page) on every open invoice.
+ * With card on, "I've paid" and Wio live only in the bank-transfer box (owner, 27 Oct 2026), never next
+ * to Pay now; without card they're the invoice's own actions.
  */
 export function PayActions({
   inv,
   card,
-  bank = true,
   wio,
 }: {
   inv: { id: string; number: string | null; stage?: string | null; payment_state?: string | null };
   card: boolean;
   /** @deprecated kept for older callers; Stripe is on for every client now. */
   payOnline?: boolean;
+  /** @deprecated the bank-transfer box decides now (BankBox `pay`). */
   bank?: boolean;
   wio: string | null;
 }) {
@@ -98,7 +101,7 @@ export function PayActions({
   return (
     <>
       {card && <PayNow id={inv.id} number={inv.number ?? ""} />}
-      {(bank || !card) && wio && (
+      {!card && wio && (
         <a
           className="btn btn-g btn-s pt-btn-sm"
           href={wio}
@@ -109,13 +112,25 @@ export function PayActions({
           Pay with Wio ↗
         </a>
       )}
-      {(bank || !card) && <PaidByTransfer id={inv.id} number={inv.number ?? ""} />}
+      {!card && <PaidByTransfer id={inv.id} number={inv.number ?? ""} />}
     </>
   );
 }
 
-/** Bank transfer details (and the Wio link), shown whenever something is unpaid. */
-export function BankBox({ bank, wio }: { bank: BillingPayments["bank"]; wio: string | null }) {
+/**
+ * Bank transfer details (and the Wio link), shown whenever something is unpaid. `pay`: the open
+ * invoices it can take a receipt for ("I've paid"), when card is the main way to pay.
+ */
+export function BankBox({
+  bank,
+  wio,
+  pay,
+}: {
+  bank: BillingPayments["bank"];
+  wio: string | null;
+  pay?: { id: string; number: string | null; payment_state?: string | null }[];
+}) {
+  const proof = (pay ?? []).filter((i) => i.payment_state !== "submitted");
   return (
     <div className="pt-card pt-bank" data-testid="bank">
       <span className="pt-eb">Pay by bank transfer</span>
@@ -158,7 +173,72 @@ export function BankBox({ bank, wio }: { bank: BillingPayments["bank"]; wio: str
       <span className="pt-meta">
         Put the invoice number in the reference, then tap “I’ve paid” and upload the receipt.
       </span>
+      {proof.length > 0 && (
+        <div className="pt-btns">
+          {proof.map((i) => (
+            <PaidByTransfer key={i.id} id={i.id} number={i.number ?? ""} named={proof.length > 1} />
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+/**
+ * One invoice, compact (owner, 27 Oct 2026). Line 1: number · amount · status, never wrapped. Line 2:
+ * the month and due date, small. Pay now and a PDF icon sit on the right, or below when there's no
+ * room; Breakdown is a small link that opens underneath.
+ */
+export function InvoiceRow({
+  number,
+  amount,
+  badge,
+  meta,
+  note,
+  actions,
+  breakdown,
+}: {
+  number: string;
+  amount: string;
+  badge: ReactNode;
+  meta: ReactNode;
+  note?: ReactNode;
+  actions?: ReactNode;
+  breakdown?: ReactNode;
+}) {
+  return (
+    <div className="pt-ir" role="group" aria-label={`Invoice ${number}`}>
+      <div className="pt-ir-info">
+        <div className="pt-ir-l1">
+          <b className="pt-ir-no">{number}</b>
+          <span className="pt-ir-amt">{amount}</span>
+          {badge}
+        </div>
+        <div className="pt-ir-l2">{meta}</div>
+        {note}
+      </div>
+      {actions && <div className="pt-ir-act">{actions}</div>}
+      {breakdown && (
+        <details className="pt-ir-bd">
+          <summary>Breakdown</summary>
+          {breakdown}
+        </details>
+      )}
+    </div>
+  );
+}
+
+/** The PDF of an invoice we generate, as an icon button. */
+export function PdfLink({ id, number }: { id: string; number: string }) {
+  return (
+    <a
+      className="btn btn-g btn-s pt-btn-sm pt-ir-pdf"
+      href={`/portal/billing/invoice/${id}`}
+      download={`${number}.pdf`}
+      aria-label={`Download ${number} (PDF)`}
+    >
+      <Icon name="download" size={16} />
+    </a>
   );
 }
 
@@ -479,42 +559,40 @@ export function ProjectPaymentCard({
       {inv.length > 0 && (
         <div className="pt-list">
           {inv.map((i) => (
-            <div
+            <InvoiceRow
               key={i.id}
-              className="pt-inv"
-              role="group"
-              aria-label={`Invoice ${i.number ?? ""}`}
-            >
-              <div>
-                <b>{STAGE[i.stage] ?? "Invoice"}</b>
-                <div className="pt-meta">
-                  {i.number}
+              number={i.number ?? "Invoice"}
+              amount={money(i.currency, Number(i.amount))}
+              badge={
+                <Badge tone={i.status === "paid" ? "ok" : i.status === "overdue" ? "warn" : "gold"}>
+                  {i.payment_state === "submitted" && i.status !== "paid"
+                    ? "Submitted"
+                    : i.status === "paid"
+                      ? "Paid"
+                      : i.status === "overdue"
+                        ? "Overdue"
+                        : "Due"}
+                </Badge>
+              }
+              meta={
+                <>
+                  {STAGE[i.stage] ?? "Invoice"}
                   {Number(i.refunded) > 0
                     ? ` · ${money(i.currency, Number(i.refunded))} refunded`
                     : ""}
-                </div>
-              </div>
-              <span className="pt-mono">{money(i.currency, Number(i.amount))}</span>
-              <Badge tone={i.status === "paid" ? "ok" : i.status === "overdue" ? "warn" : "gold"}>
-                {i.payment_state === "submitted" && i.status !== "paid"
-                  ? "Payment submitted"
-                  : i.status === "paid"
-                    ? "Paid"
-                    : i.status === "overdue"
-                      ? "Overdue"
-                      : "Due"}
-              </Badge>
-              <span className="pt-inv-actions">
-                {i.status !== "paid" && billing && (
+                </>
+              }
+              actions={
+                i.status !== "paid" && billing ? (
                   <PayActions
                     inv={i}
                     card={card}
                     bank={billing.bank_transfer !== false}
                     wio={billing.wio_link}
                   />
-                )}
-              </span>
-            </div>
+                ) : null
+              }
+            />
           ))}
         </div>
       )}
@@ -524,7 +602,7 @@ export function ProjectPaymentCard({
       {open.length > 0 && billing && card && billing.bank_transfer !== false && (
         <details className="pt-breakdown">
           <summary>Pay by bank transfer instead</summary>
-          <BankBox bank={billing.bank} wio={billing.wio_link} />
+          <BankBox bank={billing.bank} wio={billing.wio_link} pay={open} />
         </details>
       )}
       {refunds.length > 0 && (

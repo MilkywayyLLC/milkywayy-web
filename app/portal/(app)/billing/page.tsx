@@ -5,7 +5,9 @@ import {
   BankBox,
   HowYouPay,
   PackageBookings,
+  InvoiceRow,
   PayActions,
+  PdfLink,
   upcomingText,
   ValuePackageCard,
   type BillingPayments,
@@ -298,31 +300,11 @@ export default async function Billing({
                 ? statements.get(i.statement_month.slice(0, 10))
                 : undefined;
               return (
-                <div
+                <InvoiceRow
                   key={i.id}
-                  className="pt-inv-wrap"
-                  role="group"
-                  aria-label={`Invoice ${i.number ?? ""}`}
-                >
-                  <div className="pt-inv">
-                    <div>
-                      <b>{i.number ?? "Invoice"}</b>
-                      <div className="pt-meta">
-                        {monthLabel(month)} · due {dateLabel(i.due_on)}
-                        {i.paid_via === "stripe" ? " · paid by card" : ""}
-                        {i.paid_via === "bank" ? " · paid by bank transfer" : ""}
-                        {Number(i.refunded ?? 0) > 0
-                          ? ` · ${money(i.currency, Number(i.refunded))} refunded`
-                          : ""}
-                      </div>
-                      {open && i.payment_state === "rejected" && (
-                        <div className="pt-meta pt-warn-text">
-                          We couldn’t confirm your transfer: {i.reject_reason}. Upload the proof
-                          again.
-                        </div>
-                      )}
-                    </div>
-                    <span className="pt-mono">{money(i.currency, i.amount)}</span>
+                  number={i.number ?? "Invoice"}
+                  amount={money(i.currency, i.amount)}
+                  badge={
                     <Badge
                       tone={
                         st === "paid"
@@ -335,12 +317,32 @@ export default async function Billing({
                       }
                     >
                       {submitted
-                        ? "Payment submitted"
+                        ? "Submitted"
                         : st === "paid" && refundState(i)
                           ? refundState(i)
                           : STATUS_LABEL[st]}
                     </Badge>
-                    <span className="pt-inv-actions">
+                  }
+                  meta={
+                    <>
+                      {monthLabel(month)} · due {dateLabel(i.due_on, { year: undefined })}
+                      {i.paid_via === "stripe" ? " · by card" : ""}
+                      {i.paid_via === "bank" ? " · by bank transfer" : ""}
+                      {Number(i.refunded ?? 0) > 0
+                        ? ` · ${money(i.currency, Number(i.refunded))} refunded`
+                        : ""}
+                    </>
+                  }
+                  note={
+                    open && i.payment_state === "rejected" ? (
+                      <div className="pt-meta pt-warn-text">
+                        We couldn’t confirm your transfer: {i.reject_reason}. Upload the proof
+                        again.
+                      </div>
+                    ) : null
+                  }
+                  actions={
+                    <>
                       {open && !submitted && bp && (
                         <PayActions
                           inv={i}
@@ -350,33 +352,21 @@ export default async function Billing({
                         />
                       )}
                       {i.pdf_source === "generated" ? (
-                        <a
-                          className="btn btn-g btn-s"
-                          href={`/portal/billing/invoice/${i.id}`}
-                          download={`${i.number}.pdf`}
-                        >
-                          PDF
-                        </a>
+                        <PdfLink id={i.id} number={i.number ?? "invoice"} />
                       ) : (
                         i.pdf_key && <InvoiceDownload id={i.id} number={i.number ?? ""} />
                       )}
-                    </span>
-                  </div>
-                  {/* A ledger invoice for a frozen month shows that month's statement; drafts carry their own lines. */}
-                  {statement ? (
-                    <details className="pt-breakdown">
-                      <summary>Breakdown</summary>
+                    </>
+                  }
+                  breakdown={
+                    // A ledger invoice for a frozen month shows that month's statement; drafts carry their own lines.
+                    statement ? (
                       <Breakdown s={statement} />
-                    </details>
-                  ) : (
-                    !!i.lines?.length && (
-                      <details className="pt-breakdown">
-                        <summary>Breakdown</summary>
-                        <InvoiceLines inv={i} />
-                      </details>
-                    )
-                  )}
-                </div>
+                    ) : i.lines?.length ? (
+                      <InvoiceLines inv={i} />
+                    ) : null
+                  }
+                />
               );
             })}
           </div>
@@ -410,7 +400,11 @@ export default async function Billing({
         )}
       </section>
       {bp && bp.bank_transfer !== false && (unpaid || bp.value || bp.terms === "month_end") && (
-        <BankBox bank={bp.bank} wio={bp.wio_link} />
+        <BankBox
+          bank={bp.bank}
+          wio={bp.wio_link}
+          pay={cardPay ? invoices.filter((i) => shownStatus(i) !== "paid") : undefined}
+        />
       )}
     </>
   );

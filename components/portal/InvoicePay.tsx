@@ -37,7 +37,16 @@ export function PayNow({ id, number }: { id: string; number: string }) {
 }
 
 /** "I've paid" by bank transfer: upload the proof (PDF or photo, 10 MB) with an optional note. */
-export function PaidByTransfer({ id, number }: { id: string; number: string }) {
+export function PaidByTransfer({
+  id,
+  number,
+  named = false,
+}: {
+  id: string;
+  number: string;
+  /** "I’ve paid INV-1003": when several invoices sit side by side. */
+  named?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
@@ -51,7 +60,7 @@ export function PaidByTransfer({ id, number }: { id: string; number: string }) {
         aria-label={`I've paid invoice ${number}`}
         onClick={() => setOpen(true)}
       >
-        I’ve paid
+        {named ? `I’ve paid ${number}` : "I’ve paid"}
       </button>
       {open && (
         <Sheet title={`I’ve paid ${number}`} onClose={() => setOpen(false)}>

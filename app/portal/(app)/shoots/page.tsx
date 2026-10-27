@@ -29,7 +29,7 @@ export default async function Shoots({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const tab = (await searchParams).tab === "completed" ? "completed" : "active";
-  const { db, current } = await requireAccount("/portal/shoots");
+  const { db, user, current } = await requireAccount("/portal/shoots");
   if (!can(current, "shoots"))
     return (
       <div className="pt-card">
@@ -38,7 +38,7 @@ export default async function Shoots({
       </div>
     );
   const [all, cfg, drafts] = await Promise.all([
-    myProjects(db, current.account.id, "shoot"),
+    myProjects(db, current.account.id, "shoot", user.id),
     requestConfig(db, current),
     myDrafts(),
   ]);

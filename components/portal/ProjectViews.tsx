@@ -109,7 +109,7 @@ const tone = (p: Project) =>
 export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; q?: string }) {
   const base = TYPE_PATH[type];
   const c = COPY[type];
-  const { db, current } = await requireAccount(base);
+  const { db, user, current } = await requireAccount(base);
   if (!can(current, AREA_OF[type]))
     return (
       <div className="pt-card">
@@ -118,7 +118,7 @@ export async function ProjectList({ type, tab, q }: { type: Kind; tab?: string; 
       </div>
     );
   const [all, cfg, drafts, characters] = await Promise.all([
-    myProjects(db, current.account.id, type),
+    myProjects(db, current.account.id, type, user.id),
     requestConfig(db, current),
     myDrafts(),
     type === "avatar" ? myCharacters(db, current.account.id) : Promise.resolve([]),

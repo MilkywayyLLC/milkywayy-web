@@ -9,7 +9,7 @@ import { contactOf, requireAccount } from "@/lib/portal/auth";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
 import { YourWork } from "@/components/portal/YourWork";
 import { requestConfig } from "@/lib/portal/requests";
-import { shortTitle, statusLabel, type Project } from "@/lib/portal/projects";
+import { shortTitle, statusLabel, visibleTo, type Project } from "@/lib/portal/projects";
 import { isManager, seesMoney } from "@/lib/portal/shell";
 
 export const metadata = { title: { absolute: "Home · Milkywayy portal" } };
@@ -51,7 +51,9 @@ export default async function PortalHome({
       : Promise.resolve({ data: null }),
     db
       .from("project_events")
-      .select("id, kind, to_status, note, at, project:projects!inner(ref, title, type, account_id)")
+      .select(
+        "id, kind, to_status, note, at, project:projects!inner(ref, title, type, account_id, status, meta, created_by, requested_by)",
+      )
       .eq("project.account_id", a.id)
       .order("at", { ascending: false })
       .limit(20),
@@ -71,7 +73,7 @@ export default async function PortalHome({
     "id" | "number" | "due_on" | "status" | "amount" | "currency"
   >[];
   const unpaid = invoices.filter((i) => i.status !== "paid");
-  const projects = (projectRows ?? []) as Project[];
+  const projects = ((projectRows ?? []) as Project[]).filter((p) => visibleTo(p, user.id));
   const waiting = projects.filter(
     (p) =>
       p.status === "delivered" &&
@@ -86,8 +88,10 @@ export default async function PortalHome({
     to_status: string | null;
     note: string | null;
     at: string;
-    project: { ref: string; title: string; type: string };
+    project: Project;
   }[];
+  // Drafts awaiting payment: only their booker sees their activity (owner, 27 Oct 2026).
+  const feed = events.filter((e) => visibleTo(e.project, user.id));
   const claimed = Number(q.claimed ?? 0);
   const now = new Date().toLocaleDateString("en-GB", {
     weekday: "short",
@@ -140,7 +144,7 @@ export default async function PortalHome({
   };
   const eventIcon = (e: (typeof events)[number]) => activityIcon(e, e.project.type);
   const seen = new Set<string>();
-  const activity = events
+  const activity = feed
     .map((e) => ({ e, text: eventText(e) }))
     .filter(({ e, text }) => {
       const k = `${e.project.ref}|${text}|${e.at.slice(0, 10)}`;

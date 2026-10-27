@@ -392,20 +392,24 @@ export function useCloseGuard({
   return { request, dialog };
 }
 
-/** Pages with a form: links clicked with unsaved input ask the same three questions first. */
-export function useLeaveGuard(opts: {
-  dirty: boolean;
-  saveNow: () => Promise<unknown>;
-  discard: () => Promise<unknown>;
-}) {
+/**
+ * Leaving a page that isn't done (owner, 27 Oct 2026): a same-site link click (nav, logo) while
+ * `active` is caught and handed back as `to` for a dialog to decide. `history`: Back is caught too
+ * (one extra history entry); `unload`: closing or reloading the tab asks the browser's own question.
+ * `go` lets the person leave without asking again.
+ */
+export function useNavIntercept(
+  active: boolean,
+  o: { history?: boolean; unload?: boolean; back?: string } = {},
+) {
   const [to, setTo] = useState<string | null>(null);
-  const dirty = useRef(opts.dirty);
+  const on = useRef(active);
   useEffect(() => {
-    dirty.current = opts.dirty;
-  }, [opts.dirty]);
+    on.current = active;
+  }, [active]);
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (!dirty.current || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey) return;
+      if (!on.current || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey) return;
       const a = (e.target as HTMLElement).closest("a[href]") as HTMLAnchorElement | null;
       if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
       const url = new URL(a.href, location.href);
@@ -417,11 +421,60 @@ export function useLeaveGuard(opts: {
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
   }, []);
+  useEffect(() => {
+    if (!o.history) return;
+    // Back lands on this extra entry first: put it back and ask.
+    window.history.pushState({ guard: 1 }, "", location.href);
+    const onPop = () => {
+      if (!on.current) return;
+      window.history.pushState({ guard: 1 }, "", location.href);
+      setTo(o.back ?? "/portal");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [o.history, o.back]);
+  useEffect(() => {
+    if (!o.unload) return;
+    const onUnload = (e: BeforeUnloadEvent) => {
+      // Stripe's own redirect after paying starts inside its frame: never ask then.
+      if (!on.current || document.activeElement?.tagName === "IFRAME") return;
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("beforeunload", onUnload);
+  }, [o.unload]);
   const go = (href: string) => {
-    dirty.current = false;
+    on.current = false;
     location.assign(href);
   };
-  return to ? (
+  return { to, stay: () => setTo(null), go };
+}
+
+/** Pages with a form: links clicked with unsaved input ask the same three questions first. */
+export function useLeaveGuard(opts: {
+  dirty: boolean;
+  saveNow: () => Promise<unknown>;
+  discard: () => Promise<unknown>;
+  /** The booking form (owner, 27 Oct 2026): just "Discard this booking?" · Keep editing / Discard. */
+  discardOnly?: boolean;
+}) {
+  const { to, stay, go } = useNavIntercept(opts.dirty);
+  if (!to) return null;
+  return opts.discardOnly ? (
+    <ChoiceDialog
+      title="Discard this booking?"
+      body="What you’ve filled in so far will be lost."
+      choices={[
+        { label: "Keep editing", primary: true, onClick: stay },
+        {
+          label: "Discard",
+          danger: true,
+          onClick: () => void opts.discard().finally(() => go(to)),
+        },
+      ]}
+      onDismiss={stay}
+    />
+  ) : (
     <ChoiceDialog
       title="Leave this page?"
       body="You’ve started filling in the form."
@@ -432,9 +485,9 @@ export function useLeaveGuard(opts: {
           onClick: () => void opts.saveNow().finally(() => go(to)),
         },
         { label: "Discard", onClick: () => void opts.discard().finally(() => go(to)) },
-        { label: "Keep editing", onClick: () => setTo(null) },
+        { label: "Keep editing", onClick: stay },
       ]}
-      onDismiss={() => setTo(null)}
+      onDismiss={stay}
     />
-  ) : null;
+  );
 }

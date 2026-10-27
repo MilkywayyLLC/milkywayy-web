@@ -36,6 +36,17 @@ export function publishableKey() {
   return k;
 }
 
+/**
+ * The embedded form in the portal's dark tone (owner, 27 Oct 2026): our surface colour, the gold
+ * accent on the pay button, rounded corners. Stripe has no Archivo; Inter is the nearest of its fonts.
+ */
+const BRAND = {
+  background_color: "#171716",
+  button_color: "#b8913a",
+  border_style: "rounded",
+  font_family: "inter",
+};
+
 /** Stripe's form encoding, nested keys included (line_items[0][price_data][currency]=aed). */
 function form(obj: Record<string, unknown>, prefix = ""): string[] {
   return Object.entries(obj).flatMap(([k, v]) => {
@@ -105,7 +116,7 @@ export async function createCheckout(o: {
       mode: "payment",
       client_reference_id: o.invoiceId,
       ...(embedded
-        ? { ui_mode: "embedded_page", return_url: o.returnUrl }
+        ? { ui_mode: "embedded_page", return_url: o.returnUrl, branding_settings: BRAND }
         : { success_url: o.successUrl, cancel_url: o.cancelUrl }),
       ...(o.customer
         ? {
@@ -198,7 +209,7 @@ export async function createSetupCheckout(o: {
       metadata: { account_id: o.accountId, purpose: "save_card" },
       setup_intent_data: { metadata: { account_id: o.accountId } },
       ...(embedded
-        ? { ui_mode: "embedded_page", return_url: o.returnUrl }
+        ? { ui_mode: "embedded_page", return_url: o.returnUrl, branding_settings: BRAND }
         : { success_url: o.returnUrl, cancel_url: o.cancelUrl }),
     },
   );

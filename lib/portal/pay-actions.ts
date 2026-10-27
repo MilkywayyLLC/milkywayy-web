@@ -18,6 +18,7 @@ import { notifyMilkywayy, notifyPeople } from "./notify";
 import {
   checkoutSession,
   customerFor,
+  emailBookingRequest,
   pagePath,
   recordCardSaved,
   recordCheckoutPaid,
@@ -109,10 +110,11 @@ export async function startPayment(
 }
 
 /**
- * The return page: asks Stripe whether the session is paid (never the browser's word) and records it,
- * in case the webhook hasn't arrived yet. Returns what the thank-you page shows.
+ * The return page: asks Stripe whether the session is paid (never the browser's word). The webhook is
+ * the source of truth (owner, 27 Oct 2026), so a paid session shows "Confirming payment…" until it
+ * lands; `record` (a fallback the page calls after a while) records it here instead.
  */
-export async function finishPayment(invoiceId: string, sessionId: string) {
+export async function finishPayment(invoiceId: string, sessionId: string, record = false) {
   const { user, rpc } = await me();
   const inv = await rpc<PayView | null>("portal_admin_pay_view", {
     p_invoice: invoiceId,
@@ -125,6 +127,7 @@ export async function finishPayment(invoiceId: string, sessionId: string) {
     const s = await checkoutSession(sessionId);
     if (s.client_reference_id !== invoiceId) return { state: "open" as const, inv };
     if (s.payment_status === "paid") {
+      if (!record) return { state: "confirming" as const, inv };
       await recordCheckoutPaid(rpc, s, originFrom(await headers()));
       revalidatePath("/portal", "layout");
       return { state: "paid" as const, inv };
@@ -161,6 +164,14 @@ export async function sendToCompany(projectId: string): Promise<Result> {
       p_by: by,
     });
     const origin = originFrom(await headers());
+    // A booking held for payment goes through now (unchanged for the teammate: Milkywayy is told).
+    await rpc("portal_admin_release_booking", {
+      p_project: projectId,
+      p_why: `Sent to the company for payment (${out.number}). Request sent.`,
+    });
+    await emailBookingRequest(rpc, projectId, origin, [
+      `${by} sent it to the company to pay (${out.number}, ${money(out.currency, out.amount)}).`,
+    ]);
     await notifyPeople({
       projectId,
       template: "pay_requested",
@@ -187,6 +198,23 @@ export async function sendToCompany(projectId: string): Promise<Result> {
         : "Couldn’t send it. Try again.",
     };
   }
+}
+
+/** The booker discards their unpaid draft: the invoice is voided and the booking is gone. */
+export async function discardDraft(projectId: string): Promise<Result> {
+  const { db } = await me();
+  const { error } = await db.rpc("discard_booking_draft", { p_project: projectId });
+  if (error) {
+    console.error("[pay] discard:", error.message);
+    return {
+      ok: false,
+      error: /only an unpaid draft/.test(error.message)
+        ? "This booking is already paid or sent, so it can’t be discarded here."
+        : "Couldn’t discard it. Try again.",
+    };
+  }
+  revalidatePath("/portal", "layout");
+  return { ok: true, notice: "Booking discarded." };
 }
 
 async function invoiceOf(rpc: ReturnType<typeof portalAdminAs>, _user: string, projectId: string) {

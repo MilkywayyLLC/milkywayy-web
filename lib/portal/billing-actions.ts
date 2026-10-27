@@ -10,7 +10,7 @@ import { requireAccount } from "./auth";
 import { money } from "./billing";
 import { originFrom } from "./invite";
 import { alertMilkywayyBilling } from "./notify";
-import { payPath } from "./payment-server";
+import { emailBookingRequest, payPath } from "./payment-server";
 
 type Result = { ok: boolean; url?: string; key?: string; error?: string; notice?: string };
 
@@ -79,7 +79,7 @@ export async function submitProof(
   file: { key: string; name: string; size: number; type: string },
   note: string,
 ): Promise<Result> {
-  const { db, current } = await requireAccount("/portal/billing");
+  const { db, user, current } = await requireAccount("/portal/billing");
   const { data, error } = await db.rpc("submit_payment_proof", {
     p_invoice: id,
     p_key: file.key,
@@ -112,6 +112,17 @@ export async function submitProof(
     ],
     `${origin}/admin/billing?status=submitted`,
   );
-  revalidatePath("/portal/billing");
+  // A booking held for payment went through when the receipt was recorded: tell Milkywayy once.
+  const { data: inv } = await db.from("invoices").select("project_id").eq("id", id).maybeSingle();
+  if (inv?.project_id)
+    await emailBookingRequest(
+      portalAdminAs(`client:${user.email ?? user.id}`),
+      inv.project_id,
+      origin,
+      [
+        `Paid by bank transfer: ${d.number}, ${money(d.currency, d.amount)}. Receipt uploaded, payment to verify.`,
+      ],
+    );
+  revalidatePath("/portal", "layout");
   return { ok: true, notice: "Thanks. We’ll confirm it and email you." };
 }

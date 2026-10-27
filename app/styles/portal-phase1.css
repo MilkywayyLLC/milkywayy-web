@@ -327,3 +327,72 @@
     box-shadow: none;
   }
 }
+
+@layer components {
+  /* Checkout on phones (owner, 27 Oct 2026): the payment form right under the title; the summary is a
+     bar pinned to the bottom that opens a sheet. Desktop keeps the two columns. */
+  .pt-paybar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 26;
+    padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+  }
+  .pt-paybar-btn {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--fg);
+    font: 600 14px/1.2 var(--font-mono);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .pt-paybar-btn > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pt-paybar-up {
+    display: inline-flex;
+    transform: rotate(-90deg);
+    color: var(--champagne);
+  }
+  .pt-paybar-sheet {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  @media (max-width: 899px) {
+    .pt-pay {
+      padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    }
+    .pt-pay-grid > .pt-pay-sum {
+      display: none;
+    }
+  }
+  @media (min-width: 900px) {
+    .pt-paybar {
+      display: none;
+    }
+  }
+}
+
+@layer components {
+  /* Booking flow price bar on phones (owner, 27 Oct 2026): a true bottom bar. V2 has no tab bar, so the
+     old 57px lift made it float over the map. The page gets room for it so nothing hides underneath. */
+  @media (max-width: 999px) {
+    .bkp-bar {
+      bottom: 0;
+      padding-bottom: calc(var(--bk-3) + env(safe-area-inset-bottom));
+    }
+    .bkp-grid:has(.bkp-bar) {
+      padding-bottom: calc(88px + env(safe-area-inset-bottom));
+    }
+  }
+}

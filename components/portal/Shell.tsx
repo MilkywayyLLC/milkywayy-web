@@ -59,7 +59,8 @@ export function Shell({
   const [menu, setMenu] = useState<null | "me">(null);
   const [switching, startSwitch] = useTransition();
   const current = accounts.find((a) => a.id === currentId)!;
-  const booking = path.startsWith("/portal/book");
+  // The phone's floating "Book media" only on Home and the Shoots list (owner, 27 Oct 2026).
+  const bookbar = path === "/portal" || path === "/portal/shoots";
 
   // Menus close on navigation and on Escape.
   const [openedOn, setOpenedOn] = useState(path);
@@ -269,7 +270,7 @@ export function Shell({
         </footer>
       </div>
 
-      {canBook && !booking && (
+      {canBook && bookbar && (
         <div className="pt-bookbar">
           <Link href="/portal/book" className="btn btn-p">
             <Icon name="plus" size={16} /> Book media

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CheckoutGuard, PaySummaryBar } from "@/components/portal/CheckoutChrome";
 import { PayChoice } from "@/components/portal/PayChoice";
 import { money } from "@/lib/portal/billing";
 import { payView } from "@/lib/portal/pay-actions";
@@ -15,6 +16,13 @@ const STAGE: Record<string, string> = {
   deposit: "Deposit (50%)",
   balance: "Balance (50%)",
   fee: "Change fee",
+};
+/** The phone summary bar's short word ("INV-1010 · Deposit AED 225"). */
+const SHORT: Record<string, string> = {
+  full: "Total",
+  deposit: "Deposit",
+  balance: "Balance",
+  fee: "Fee",
 };
 
 /**
@@ -40,6 +48,47 @@ export default async function Pay({ params }: { params: Promise<{ id: string }> 
       </div>
     );
   const shoot = p?.type === "shoot";
+  // The summary: a side card on desktop, the bottom bar's sheet on phones (owner, 27 Oct 2026).
+  const summary = (
+    <>
+      <span className="pt-eb">{inv.account}</span>
+      {p && <h2 className="pt-h2">{shortTitle(p.title)}</h2>}
+      <ul className="pt-summary">
+        {p && (
+          <li>
+            <span>Booking</span>
+            <span className="pt-mono">{p.ref}</span>
+          </li>
+        )}
+        {shoot && p?.shoot_date && (
+          <li>
+            <span>Preferred date and time</span>
+            <span>{whenLabel(p.shoot_date, p.start_time)}</span>
+          </li>
+        )}
+        {p && inv.stage === "deposit" && (
+          <li>
+            <span>Booking total</span>
+            <span>{money(inv.currency, Number(p.estimate))}</span>
+          </li>
+        )}
+        <li>
+          <span>Invoice</span>
+          <span className="pt-mono">{inv.number}</span>
+        </li>
+        <li>
+          <span>{STAGE[inv.stage ?? ""] ?? "Amount"}</span>
+          <b>{money(inv.currency, Number(inv.amount))}</b>
+        </li>
+      </ul>
+      {shoot && (
+        <p className="pt-note" data-testid="availability-note">
+          Your preferred date and time are subject to availability. We’ll review and email you once
+          confirmed.
+        </p>
+      )}
+    </>
+  );
   return (
     <div className="pt-pay">
       <div className="pt-head">
@@ -50,44 +99,13 @@ export default async function Pay({ params }: { params: Promise<{ id: string }> 
           <h1 className="pt-h1">Checkout</h1>
         </div>
       </div>
+      <CheckoutGuard
+        back={back}
+        draftProject={p && p.status === "awaiting_payment" ? p.id : null}
+      />
       <div className="pt-pay-grid">
         <aside className="pt-card pt-pay-sum" aria-label="Summary">
-          <span className="pt-eb">{inv.account}</span>
-          {p && <h2 className="pt-h2">{shortTitle(p.title)}</h2>}
-          <ul className="pt-summary">
-            {p && (
-              <li>
-                <span>Booking</span>
-                <span className="pt-mono">{p.ref}</span>
-              </li>
-            )}
-            {shoot && p?.shoot_date && (
-              <li>
-                <span>Preferred date and time</span>
-                <span>{whenLabel(p.shoot_date, p.start_time)}</span>
-              </li>
-            )}
-            {p && inv.stage === "deposit" && (
-              <li>
-                <span>Booking total</span>
-                <span>{money(inv.currency, Number(p.estimate))}</span>
-              </li>
-            )}
-            <li>
-              <span>Invoice</span>
-              <span className="pt-mono">{inv.number}</span>
-            </li>
-            <li>
-              <span>{STAGE[inv.stage ?? ""] ?? "Amount"}</span>
-              <b>{money(inv.currency, Number(inv.amount))}</b>
-            </li>
-          </ul>
-          {shoot && (
-            <p className="pt-note" data-testid="availability-note">
-              Your preferred date and time are subject to availability. We’ll review and email you
-              once confirmed.
-            </p>
-          )}
+          {summary}
         </aside>
         <section className="pt-card pt-pay-form" aria-label="Payment">
           {stripeReady() ? (
@@ -107,6 +125,11 @@ export default async function Pay({ params }: { params: Promise<{ id: string }> 
           )}
         </section>
       </div>
+      <PaySummaryBar
+        label={`${inv.number} · ${SHORT[inv.stage ?? ""] ?? "Due"} ${money(inv.currency, Number(inv.amount))}`}
+      >
+        {summary}
+      </PaySummaryBar>
     </div>
   );
 }

@@ -18,6 +18,7 @@ import {
   shortTitle,
   statusLabel,
   stepsFor,
+  visibleTo,
   type Project,
   type ProjectEvent,
   type ProjectFile,
@@ -33,6 +34,9 @@ import { ShootDeliveries, type DFile } from "@/components/portal/ShootDeliveries
 import { downloadUrl, presign, r2Ready } from "@/lib/r2";
 import { stripeReady } from "@/lib/stripe";
 import { ProposalBanner } from "@/components/portal/ProposalBanner";
+import { DraftBooking } from "@/components/portal/DraftBooking";
+import { portalAdminAs } from "@/lib/portal/admin";
+import type { ProjectPayment } from "@/lib/portal/payment-actions";
 import { projectWhen, whenLabel } from "@/lib/portal/when";
 import { thumbSrc } from "@/lib/portal/thumbs";
 import { zipName } from "@/lib/portal/zip-browser";
@@ -66,7 +70,7 @@ export default async function ShootPage({
 }) {
   const { ref } = await params;
   const { booked, paid, pay: payBack } = await searchParams;
-  const { db, current } = await requireAccount(`/portal/shoots/${ref}`);
+  const { db, user, current } = await requireAccount(`/portal/shoots/${ref}`);
   const admin = current.role === "owner" || current.role === "admin";
   const { data } = await db
     .from("projects")
@@ -76,6 +80,25 @@ export default async function ShootPage({
     .maybeSingle();
   if (!data) notFound();
   const p = data as Project;
+  // An unpaid draft is its booker's alone (owner, 27 Oct 2026).
+  if (!visibleTo(p, user.id)) notFound();
+  const draft = p.status === "awaiting_payment";
+  const draftPay = draft
+    ? await portalAdminAs(`client:${user.email ?? user.id}`)<ProjectPayment>(
+        "portal_admin_project_payment",
+        { p_project: p.id },
+      ).catch(() => null)
+    : null;
+  const draftInvoice = draftPay?.invoices.find(
+    (i) => i.stage && (i.status === "due" || i.status === "overdue"),
+  );
+  const draftExpires = p.meta.awaiting_since
+    ? new Date(new Date(p.meta.awaiting_since).getTime() + 7 * 864e5).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        timeZone: "Asia/Dubai",
+      })
+    : null;
   const [{ data: files }, { data: events }, { data: messages }, { data: items }, { data: deliv }] =
     await Promise.all([
       db
@@ -208,6 +231,12 @@ export default async function ShootPage({
               : ""}
           . Book again any time with Book media.
         </p>
+      ) : draft ? (
+        <DraftBooking
+          projectId={p.id}
+          payHref={draftInvoice ? `/portal/pay/${draftInvoice.id}` : null}
+          expires={draftExpires}
+        />
       ) : (
         <Stepper steps={stepsFor("shoot")} now={statusLabel(p.status)} />
       )}

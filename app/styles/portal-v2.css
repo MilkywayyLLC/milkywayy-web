@@ -1529,3 +1529,107 @@
     margin-top: auto;
   }
 }
+
+@layer components {
+  /* Invoices, compact (owner, 27 Oct 2026): "INV-1003 · AED 500 · Due" on one line, the month and due
+     date small under it; Pay now (pill) + PDF icon to the right; Breakdown, a small link under. */
+  .pt-ir {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 2px 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .pt-ir:last-child {
+    border-bottom: 0;
+  }
+  .pt-ir-info {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+  }
+  .pt-ir-l1 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .pt-ir-no {
+    font: 600 14px/1.2 var(--font-mono);
+    letter-spacing: 0.02em;
+  }
+  .pt-ir-amt {
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pt-ir-l1 .pt-badge {
+    flex: none;
+  }
+  .pt-ir-l2 {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .pt-ir-act {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  }
+  .pt-ir-act .btn {
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .pt-ir-act .pt-ir-pdf,
+  .pt-ir-act [aria-label^="Download invoice"] {
+    width: 32px;
+    padding: 0;
+    justify-content: center;
+  }
+  .pt-ir-bd {
+    grid-column: 1 / -1;
+  }
+  @media (max-width: 480px) {
+    .pt-ir-l1 {
+      gap: 6px;
+      overflow: hidden;
+    }
+    .pt-ir-no,
+    .pt-ir-amt {
+      font-size: 13px;
+    }
+    .pt-ir-act {
+      gap: 4px;
+    }
+    .pt-ir-act .btn {
+      min-height: 30px;
+      padding: 0 10px;
+      font-size: 12.5px;
+    }
+    .pt-ir-act .pt-ir-pdf,
+    .pt-ir-act [aria-label^="Download invoice"] {
+      width: 30px;
+      padding: 0;
+    }
+  }
+  .pt-ir-bd summary {
+    cursor: pointer;
+    list-style: none;
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--acc);
+  }
+  .pt-ir-bd summary::-webkit-details-marker {
+    display: none;
+  }
+  .pt-ir-bd[open] summary {
+    margin-bottom: 4px;
+  }
+}

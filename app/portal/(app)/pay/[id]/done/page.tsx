@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ThankYou } from "@/components/portal/BookFrame";
+import { ConfirmingPayment } from "@/components/portal/ConfirmingPayment";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
 import { money } from "@/lib/portal/billing";
 import { finishPayment } from "@/lib/portal/pay-actions";
@@ -10,8 +11,9 @@ import { whenLabel } from "@/lib/portal/when";
 export const metadata = { title: "Payment received" };
 
 /**
- * Back from Stripe (phase 1, 27 Oct 2026): the session is checked with Stripe on the server and the
- * invoice recorded if the webhook hasn't done it yet. A paid booking waits as "Pending confirmation".
+ * Back from Stripe (phase 1, 27 Oct 2026): the session is checked with Stripe on the server. The webhook
+ * records the payment (and sends the booking request), so until it lands the page says "Confirming
+ * payment…" and checks again. A paid booking waits as "Pending confirmation".
  */
 export default async function PayDone({
   params,
@@ -43,6 +45,19 @@ export default async function PayDone({
       </div>
     );
   const shoot = p?.type === "shoot";
+  if (r.state === "confirming")
+    return (
+      <div className="pt-pay pt-pay-done" data-testid="pay-confirming">
+        <ConfirmingPayment invoiceId={inv.id} sessionId={session_id ?? ""} />
+        <div className="pt-card" role="status" aria-live="polite">
+          <b>Confirming payment…</b>
+          <span className="pt-meta">
+            Stripe has your payment. We’re recording it now; this usually takes a few seconds. You
+            can leave this page: nothing will be charged twice.
+          </span>
+        </div>
+      </div>
+    );
   return (
     <div className="pt-pay pt-pay-done" data-testid="pay-done">
       {r.state === "processing" && <LiveRefresh />}

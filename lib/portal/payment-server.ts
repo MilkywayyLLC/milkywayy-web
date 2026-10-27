@@ -9,11 +9,20 @@ import {
   stripeReady,
   type CheckoutSession,
 } from "@/lib/stripe";
+import { getPropertyPricing } from "@/lib/data";
 import { portalAdminAs } from "./admin";
 import { dateLabel, money } from "./billing";
+import { SERVICE_LABEL, serviceSummary, type BookingService, type Slot } from "./booking";
 import { projectLink, type MessageEvent, type ProjectInfo } from "./messages";
-import { alertMilkywayy, notifyBilling, notifyClients, type Recipient } from "./notify";
+import {
+  alertMilkywayy,
+  notifyBilling,
+  notifyClients,
+  notifyMilkywayy,
+  type Recipient,
+} from "./notify";
 import type { Project } from "./projects";
+import { whenLabel } from "./when";
 
 /**
  * Payments on the server (owner, 24 Oct 2026): booking invoices, Stripe Checkout and refunds, and the
@@ -78,6 +87,8 @@ export const payPath = (invoiceId: string) => `/portal/pay/${invoiceId}`;
 /**
  * Right after a booking (shoot, edit or avatar video) is created: record the booking terms, issue the
  * 100% / 50% invoice by the client's term, email it, and (Stripe on) return the payment page.
+ * A shoot is then held as "Awaiting payment" (owner, 27 Oct 2026): a draft only the booker sees, with
+ * no emails, until it's paid or a bank receipt is uploaded (`held`).
  */
 export async function afterBooking(o: {
   rpc: Rpc;
@@ -89,7 +100,7 @@ export async function afterBooking(o: {
   email?: string | null;
   origin: string;
   actor: string;
-}): Promise<{ invoice: StageInvoice | null; payUrl: string | null }> {
+}): Promise<{ invoice: StageInvoice | null; payUrl: string | null; held: boolean }> {
   let invoice: StageInvoice | null = null;
   try {
     invoice = await o.rpc<StageInvoice | null>("portal_admin_booking_invoice", {
@@ -100,15 +111,72 @@ export async function afterBooking(o: {
   } catch (e) {
     // The booking stands; Milkywayy issues the invoice by hand.
     console.error("[payments] booking invoice:", e instanceof Error ? e.message : e);
-    return { invoice: null, payUrl: null };
+    return { invoice: null, payUrl: null, held: false };
   }
-  if (!invoice) return { invoice: null, payUrl: null };
-  await sendNewInvoices(o.rpc, o.projectId, o.origin, o.actor).catch((e) =>
-    console.error("[payments] invoice email:", e),
-  );
+  if (!invoice) return { invoice: null, payUrl: null, held: false };
+  const held =
+    o.type === "shoot" &&
+    (await o
+      .rpc<boolean>("portal_admin_hold_booking", { p_project: o.projectId })
+      .catch(
+        (e) => (console.error("[payments] hold:", e instanceof Error ? e.message : e), false),
+      ));
+  if (!held)
+    await sendNewInvoices(o.rpc, o.projectId, o.origin, o.actor).catch((e) =>
+      console.error("[payments] invoice email:", e),
+    );
   // Stripe on: our own checkout page (/portal/pay/…), where the session is made on load.
   const payUrl = stripeReady() && invoice.number ? payPath(invoice.id) : null;
-  return { invoice, payUrl };
+  return { invoice, payUrl, held: !!held };
+}
+
+/**
+ * "New booking request" to Milkywayy for a held booking, once it's released (paid, receipt uploaded,
+ * or sent to the company). Goes once: the database claims it. `extra` says how it was released.
+ */
+export async function emailBookingRequest(
+  rpc: Rpc,
+  projectId: string,
+  origin: string,
+  extra: string[],
+) {
+  const claimed = await rpc<boolean>("portal_admin_claim_request_email", {
+    p_project: projectId,
+  }).catch((e) => (console.error("[payments] claim request:", e), false));
+  if (!claimed) return false;
+  const d = await rpc<{ project: Project; account: { name: string; currency: string } | null }>(
+    "portal_admin_project",
+    { p_id: projectId },
+  );
+  const p = d.project;
+  const b = (p.meta?.booking ?? {}) as {
+    slot?: Slot;
+    start_time?: string | null;
+    services?: BookingService[];
+    estimate?: number | null;
+    location?: { address?: string; unit?: string };
+  };
+  const pricing = await getPropertyPricing();
+  const name = d.account?.name ?? "A client";
+  await notifyMilkywayy(
+    p.id,
+    "booking_requested",
+    `New booking request: ${name} · ${p.shoot_date ?? ""}`,
+    [
+      `${name} asked for a shoot on ${whenLabel(p.shoot_date ?? "", b.start_time ?? null, b.slot)}.`,
+      `Where: ${b.location?.address ?? p.title}${b.location?.unit ? ` · ${b.location.unit}` : ""}`,
+      ...(b.services ?? []).map(
+        (s) => `${SERVICE_LABEL[s.service]}: ${serviceSummary(s, pricing)}`,
+      ),
+      ...(b.estimate != null && d.account
+        ? [`Estimate at their rates: ${d.account.currency} ${b.estimate.toLocaleString("en-US")}`]
+        : []),
+      ...extra,
+      "Confirm the date and time in the admin, or propose another time.",
+    ],
+    `${origin}/admin/projects/${p.id}`,
+  ).catch((e) => console.error("[payments] booking request email:", e));
+  return true;
 }
 
 /** "Booking confirmed" to the client, once a payment confirmed it. */
@@ -276,6 +344,13 @@ export async function afterPaid(rpc: Rpc, out: Paid, origin: string) {
       "stripe",
     ).catch((e) => console.error("[payments] receipt email:", e));
   if (out.project_id) {
+    // A held booking goes through now: the full request, with the payment, instead of the short note.
+    if (
+      await emailBookingRequest(rpc, out.project_id, origin, [
+        `Paid by card: ${out.number}, ${money(out.currency!, out.amount!)}. Declining or cancelling refunds it in full.`,
+      ])
+    )
+      return;
     const d = await rpc<{ project: Project }>("portal_admin_project", { p_id: out.project_id });
     const p = d.project;
     if (p.type === "shoot" && p.status === "requested")

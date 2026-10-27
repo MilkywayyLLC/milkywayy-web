@@ -9,6 +9,7 @@ export const PIPELINES = {
 export type ProjectType = keyof typeof PIPELINES;
 
 export const STATUS_LABEL: Record<string, string> = {
+  awaiting_payment: "Draft · payment pending",
   requested: "Requested",
   confirmed: "Confirmed",
   shot: "Shot",
@@ -141,7 +142,13 @@ export type Project = {
     pay_by?: "company";
     /** When the booking invoice was paid (waiting for confirmation). */
     paid_at?: string;
+    /** Owner, 27 Oct 2026: an unpaid 100% / 50% upfront draft, since when (expires after 7 days). */
+    awaiting_since?: string;
+    /** A draft the booker discarded, or one that expired: hidden everywhere. */
+    discarded?: boolean;
   };
+  created_by?: string | null;
+  requested_by?: string | null;
   /** Agency teams: the Agent (contact) and teammates it's shared with. */
   agent_contact_id?: string | null;
   shared_with?: string[];
@@ -255,8 +262,21 @@ export const bytes = (n: number | null) =>
         ? `${Math.round(n / 1e6)} MB`
         : `${Math.max(1, Math.round(n / 1e3))} KB`;
 
-/** A client's projects of one type (RLS decides what they see). */
-export async function myProjects(db: SupabaseClient, accountId: string, type: ProjectType) {
+/**
+ * Who sees a project in lists (owner, 27 Oct 2026): an "Awaiting payment" draft only its booker, a
+ * discarded / expired draft nobody.
+ */
+export const visibleTo = (p: Project, userId: string) =>
+  !p.meta?.discarded &&
+  (p.status !== "awaiting_payment" || (p.requested_by ?? p.created_by) === userId);
+
+/** A client's projects of one type (RLS decides what they see; drafts only their booker). */
+export async function myProjects(
+  db: SupabaseClient,
+  accountId: string,
+  type: ProjectType,
+  userId: string,
+) {
   const { data, error } = await db
     .from("projects")
     .select("*")
@@ -264,7 +284,7 @@ export async function myProjects(db: SupabaseClient, accountId: string, type: Pr
     .eq("type", type)
     .order("created_at", { ascending: false });
   if (error) console.error("[portal] projects:", error.message);
-  return (data ?? []) as Project[];
+  return ((data ?? []) as Project[]).filter((p) => visibleTo(p, userId));
 }
 
 export const SHOOT_SERVICE_LABEL: Record<string, string> = {
