@@ -54,6 +54,13 @@ const nextConfig: NextConfig = {
       "https://cal.com",
       "https://*.cal.com",
       "https://vercel.live",
+      // Stripe embedded Checkout + 3-D Secure + Link (docs.stripe.com/security/guide#content-security-policy).
+      "https://js.stripe.com",
+      "https://*.js.stripe.com",
+      "https://checkout.stripe.com",
+      "https://hooks.stripe.com",
+      "https://link.com",
+      "https://*.link.com",
     ].join(" ");
     const headers = [{ key: "Content-Security-Policy", value: `frame-src ${frames}` }];
     // Staging lock (guide §12): belt and braces on top of the metadata robots tag.
