@@ -696,7 +696,7 @@ test("Pay page access: billing people and the booker see it; another teammate do
   const owner = await clientAccount(RUN, "payowner", "E2E Pay team");
   await admin("portal_admin_set_payment_terms", { p_account: owner.account, p_terms: "prepay" });
   const mates: { email: string; db: SupabaseClient; id: string }[] = [];
-  for (const n of ["booker", "other"]) {
+  for (const n of ["paybooker", "payother"]) {
     const email = await createUser(RUN, n);
     await must(
       owner.db.from("account_invites").insert({ account_id: owner.account, email, name: n }),
@@ -929,7 +929,7 @@ test("Stripe test mode, real API: customer, off-session charge on a saved card, 
     "needs a Stripe test key in .env.local",
   );
   process.env.STRIPE_SECRET_KEY = env.STRIPE_SECRET_KEY;
-  const c = clients.pkg2;
+  const c = clients.prepay;
   const cus = await createCustomer({
     accountId: `${c.account}-${RUN}`,
     name: "E2E Phase 1",

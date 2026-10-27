@@ -129,9 +129,12 @@ returns void
 language plpgsql security definer set search_path = '' as $$
 begin
   perform private.portal_admin_gate(p_secret, p_actor);
-  insert into private.stripe_customers (account_id, customer_id)
-    values (p_account, p ->> 'customer_id')
-    on conflict (account_id) do nothing;
+  -- Only a payload with a customer id can create the row (NOT NULL is checked before ON CONFLICT).
+  if p ->> 'customer_id' is not null then
+    insert into private.stripe_customers (account_id, customer_id)
+      values (p_account, p ->> 'customer_id')
+      on conflict (account_id) do nothing;
+  end if;
   update private.stripe_customers set
     customer_id = coalesce(p ->> 'customer_id', customer_id),
     pm_id = case when (p ->> 'clear_card')::boolean then null else coalesce(p ->> 'pm_id', pm_id) end,
