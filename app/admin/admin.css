@@ -1852,3 +1852,109 @@
 .ad-stage {
   text-decoration: none;
 }
+
+/* ---------- Projects list (admin redesign) ---------- */
+.ad-board {
+  grid-auto-columns: minmax(220px, 1fr);
+  align-items: start;
+}
+.ad-col {
+  max-height: none;
+}
+.ad-grow {
+  flex: 1 1 220px;
+  width: auto;
+}
+.ad-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 13px;
+  color: var(--muted);
+  background: var(--surface);
+}
+.ad-chip.on {
+  color: var(--bg);
+  background: var(--fg);
+  border-color: var(--fg);
+}
+.ad-next {
+  font-size: 13px;
+  color: var(--muted);
+}
+.ad-next.me {
+  color: var(--fg);
+  font-weight: 600;
+}
+.ad-next.me::before {
+  content: "● ";
+  color: var(--acc);
+}
+.ad-cell-link {
+  display: grid;
+  gap: 2px;
+  text-decoration: none;
+  white-space: normal;
+  min-width: 180px;
+}
+.ad-nowrap {
+  white-space: nowrap;
+}
+.ad-projects td {
+  white-space: normal;
+}
+.ad-projects tbody tr:hover td {
+  background: var(--bg);
+}
+.ad-status-menu > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.ad-status-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.ad-status-menu[open] > .ad-btns {
+  margin-top: 6px;
+  max-width: 320px;
+}
+/* Phones: each project is a card (label · value), no sideways scroll. */
+@media (max-width: 720px) {
+  .ad-projects,
+  .ad-projects tbody,
+  .ad-projects tr,
+  .ad-projects td {
+    display: block;
+  }
+  .ad-projects thead {
+    display: none;
+  }
+  .ad-projects tr {
+    padding: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .ad-projects td {
+    border: 0;
+    padding: 2px 0;
+  }
+  .ad-projects td:first-child {
+    position: static;
+    box-shadow: none;
+    padding-bottom: 6px;
+  }
+  .ad-projects td[data-label] {
+    display: flex;
+    gap: 12px;
+    font-size: 13px;
+  }
+  .ad-projects td[data-label]::before {
+    content: attr(data-label);
+    min-width: 64px;
+    font: 500 12px/1.6 var(--font-mono);
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+}

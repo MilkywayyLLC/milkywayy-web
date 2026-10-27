@@ -633,3 +633,9 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 - A website booking shows once: new leads whose ref already has a project are left out.
 - Warnings are one line with the fix (#19): no DB names; "Invoices are missing company details" links to Business & billing (TRN only once VAT registered).
 - Recent client activity has no events table read (none exists for admins without a new RPC): it's derived from project rows and messages. Receipts show in the action counts, not the feed (the queue has no submit time).
+
+**Phase E — Projects.**
+- List is the default (all types): Project (short title or brief kind, ref) · Client · When (date + start time; due date for batches/avatars) · Area · Stage pill · Next action · Status (the same status dialog, folded behind a button). Phones: each row becomes a labelled card.
+- Next action is a pure function of the row (`lib/portal/next-action.ts`): confirm/propose, shoot today, mark as shot, edit + deliver, waiting on files/script/client approval (days), revisions first. Sorted by urgency, then date. Quick filters: Open · Needs me · This week · Waiting on client · Done; plus search, type, stage.
+- Board is `?view=board`, every card shown (the 12-card cap is gone), columns scroll sideways. Calendar is the third tab. Old `?view=list` links still land on the list.
+- `nextAction` has no unit test this round (new tests limited to paid_at).
