@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Pill, type Tone } from "@/components/admin/Pill";
 import {
   NewInvoiceForm,
   PaymentReview,
@@ -59,6 +60,13 @@ const paymentStatus = (r: QueueRow) =>
             ? "Overdue"
             : "Unpaid";
 
+const PAY_TONE: Record<string, Tone> = {
+  Paid: "ok",
+  Overdue: "danger",
+  "Receipt uploaded": "warn",
+  Unpaid: "info",
+  Cancelled: "danger",
+};
 const FILTERS = [
   ["", "All"],
   ["open", "To review"],
@@ -109,6 +117,19 @@ export default async function InvoiceQueue({
     .map((c) => ({ id: c.id, name: c.name, currency: c.currency }))
     .sort((a, b) => a.name.localeCompare(b.name));
   const toReview = rows.filter((r) => r.status === "draft").length;
+  // Chip counts from every invoice (one more call only when a filter is on).
+  const every =
+    !error && (status || submitted)
+      ? await rpc<QueueRow[]>("portal_admin_invoice_queue", { p_status: null })
+      : rows;
+  const counts: Record<string, number> = {
+    "": every.length,
+    draft: every.filter((r) => r.status === "draft").length,
+    approved: every.filter((r) => r.status === "approved").length,
+    overdue: every.filter((r) => r.shown_status === "overdue").length,
+    paid: every.filter((r) => r.status === "paid").length,
+    submitted: every.filter((r) => r.payment_state === "submitted" && r.status !== "paid").length,
+  };
 
   return (
     <div className="ad-page">
@@ -128,28 +149,27 @@ export default async function InvoiceQueue({
           Draft deleted.
         </p>
       )}
-      <div className="ad-card" style={{ gap: 10 }}>
+      <div className="ad-card ad-gap-12">
         <div className="ad-row-between">
-          <h2 className="ad-h2" style={{ margin: 0 }}>
-            Invoice queue{toReview ? ` · ${toReview} to review` : ""}
-          </h2>
+          <h2 className="ad-h2 ad-m0">Invoice queue{toReview ? ` · ${toReview} to review` : ""}</h2>
           <GenerateDrafts />
         </div>
-        <nav className="ad-btns" aria-label="Filter invoices">
+        <nav className="ad-btns ad-chips" aria-label="Filter invoices">
           {FILTERS.map(([k, label]) => (
             <Link
               key={k}
               href={k ? `/admin/billing?status=${k}` : "/admin/billing"}
               prefetch={false}
-              className={k === status ? "ad-btn small" : "ad-btn small ghost"}
+              className={`ad-chip${k === status ? "on" : ""}`}
               aria-current={k === status ? "page" : undefined}
             >
               {label}
+              {counts[k] != null && <span className="ad-chip-n">{counts[k]}</span>}
             </Link>
           ))}
         </nav>
         {proofs.map((i) => (
-          <div key={i.id} className="ad-row ad-lead" style={{ display: "grid", gap: 6 }}>
+          <div key={i.id} className="ad-row ad-lead ad-stack-8">
             <span className="ad-row-title">
               {i.number} · {i.account_name} · {money(i.currency, i.amount)}
             </span>
@@ -190,22 +210,20 @@ export default async function InvoiceQueue({
                 {money(r.currency, Number(r.amount))}
               </span>
               <span role="cell" data-testid="payment-status">
-                <span
-                  className={`ad-pill ${r.status === "paid" ? "paid" : r.shown_status === "overdue" ? "overdue" : ""}`}
-                >
-                  {paymentStatus(r)}
-                </span>
+                <Pill tone={PAY_TONE[paymentStatus(r)] ?? "neutral"}>{paymentStatus(r)}</Pill>
                 {r.stage && <span className="ad-small ad-muted">{STAGE[r.stage]}</span>}
               </span>
               <span role="cell">
-                <span className={`ad-pill ${r.shown_status}`}>
-                  {r.payment_state === "submitted" && r.status !== "paid"
-                    ? "Payment submitted"
-                    : QUEUE_STATUS_LABEL[r.shown_status]}
-                </span>
+                {r.payment_state === "submitted" && r.status !== "paid" ? (
+                  <Pill status="receipt">Payment submitted</Pill>
+                ) : (
+                  <Pill status={r.shown_status}>{QUEUE_STATUS_LABEL[r.shown_status]}</Pill>
+                )}
                 {refunded[r.id] > 0 && (
-                  <span className="ad-pill" data-testid="refunded-pill">
-                    {refundState({ amount: Number(r.amount), refunded: refunded[r.id] })}
+                  <span data-testid="refunded-pill">
+                    <Pill tone="warn">
+                      {refundState({ amount: Number(r.amount), refunded: refunded[r.id] })}
+                    </Pill>
                   </span>
                 )}
                 {r.status === "approved" && r.publish_on && (

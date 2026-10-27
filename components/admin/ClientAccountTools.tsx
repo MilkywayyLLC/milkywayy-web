@@ -65,9 +65,7 @@ function InviteRound({ id, name, again }: { id: string; name: string; again: () 
       {state?.ok && state.share ? (
         <div className="ad-form" role="status">
           <p className="ad-note">Invited. Send them this so they know where to sign in:</p>
-          <p className="ad-small" style={{ whiteSpace: "pre-wrap" }}>
-            {state.share.text}
-          </p>
+          <p className="ad-small ad-pre">{state.share.text}</p>
           <div className="ad-btns">
             {state.share.whatsapp && (
               <a className="ad-btn" href={state.share.whatsapp} target="_blank" rel="noopener">

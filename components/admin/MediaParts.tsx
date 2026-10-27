@@ -4,7 +4,7 @@
 import { useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { startSiteVideoUpload } from "@/lib/admin/media-actions";
 import type { VideoFolder } from "@/lib/admin/fields";
-import { exportSize, isFileVideo, MEDIA, sizeWarnings, type MediaKind } from "@/lib/media-config";
+import { exportSize, MEDIA, sizeWarnings, type MediaKind } from "@/lib/media-config";
 import { compressVideo, mb, videoInfo, videoMaxBytes } from "@/lib/video-compress";
 
 /**
@@ -297,7 +297,3 @@ export function VideoUpload({
     </div>
   );
 }
-
-/** What a stored video reference is, for people. */
-export const describeVideo = (v: string, meta?: { bytes?: number }) =>
-  isFileVideo(v) ? `Uploaded video${meta?.bytes ? ` (${mb(meta.bytes)})` : ""}` : v;

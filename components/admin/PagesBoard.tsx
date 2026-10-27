@@ -174,7 +174,7 @@ const upload = (b: PBlock, slot: number) =>
 
 function Head({ b, children }: { b: PBlock; children?: React.ReactNode }) {
   return (
-    <div className="ad-row-side" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+    <div className="ad-row-side ad-between ad-wrap">
       <div>
         <h2 className="ad-h2">
           {b.title} {b.kind === "standalone" && <span className="ad-pill">Manual block</span>}

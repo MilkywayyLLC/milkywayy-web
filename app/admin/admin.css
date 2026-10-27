@@ -5,6 +5,11 @@
  */
 @layer components {
   .ad {
+    /* Admin redesign (27 Oct 2026): the portal V2 shapes on the light tone.
+       Type scale: 12 label · 13 meta · 15 body · 17 h3 · 20 h2 · 28 h1 (16px inputs, iOS zoom). */
+    --ad-r: 14px;
+    --ad-r-sm: 10px;
+    --ad-r-pill: 999px;
     min-height: 100dvh;
     background: var(--bg);
     color: var(--fg);
@@ -41,12 +46,12 @@
     letter-spacing: -0.01em;
   }
   .ad-h2 {
-    font: 700 18px/1.2 var(--font-display);
+    font: 700 20px/1.2 var(--font-display);
     font-variation-settings: "wdth" 85;
     text-transform: uppercase;
   }
   .ad-eb {
-    font: 500 11px/1.4 var(--font-mono);
+    font: 500 12px/1.4 var(--font-mono);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
@@ -89,7 +94,7 @@
     line-height: 0;
   }
   .ad-brand small {
-    font: 500 10px/1 var(--font-mono);
+    font: 500 12px/1 var(--font-mono);
     letter-spacing: 0.08em;
     color: var(--muted);
     margin-left: 6px;
@@ -202,7 +207,7 @@
       padding: 32px 32px 96px;
     }
     .ad-h1 {
-      font-size: 36px;
+      font-size: 28px;
     }
   }
 
@@ -223,6 +228,7 @@
     text-decoration: none;
     cursor: pointer;
     white-space: nowrap;
+    border-radius: var(--ad-r-sm);
   }
   .ad-btn.ghost {
     background: transparent;
@@ -304,7 +310,7 @@
   .ad-fieldset legend {
     padding: 0 6px;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 15px;
   }
   .ad-meter {
     display: block;
@@ -349,6 +355,7 @@
   .ad-card {
     background: var(--surface);
     border: 1px solid var(--line);
+    border-radius: var(--ad-r);
     padding: 16px;
     display: grid;
     align-content: start;
@@ -365,19 +372,14 @@
     gap: 6px;
     height: 24px;
     padding: 0 8px;
-    font: 500 10px/1 var(--font-mono);
+    font: 500 12px/1 var(--font-mono);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     border: 1px solid var(--fg);
+    border-radius: var(--ad-r-pill);
     white-space: nowrap;
   }
-  .ad-pill.live {
-    background: var(--fg);
-    color: var(--bg);
-  }
   .ad-pill.warn {
-    border-color: #b42318;
-    color: #b42318;
     height: auto;
     min-height: 24px;
     padding-block: 3px;
@@ -385,17 +387,13 @@
     justify-self: start;
     max-width: 100%;
   }
-  .ad-pill.draft {
-    border-style: dashed;
-    color: var(--muted);
-    border-color: var(--muted);
-  }
   .ad-note {
+    border-radius: var(--ad-r-sm);
     padding: 12px 14px;
     border: 1px solid var(--line);
     border-left: 3px solid var(--acc);
     background: var(--surface);
-    font-size: 14px;
+    font-size: 15px;
   }
   .ad-note.warn {
     border-left-color: #b42318;
@@ -419,13 +417,14 @@
     gap: 12px;
   }
   .ad-stat {
+    border-radius: var(--ad-r);
     background: var(--surface);
     border: 1px solid var(--line);
     padding: 14px 16px;
   }
   .ad-stat b {
     display: block;
-    font: 700 32px/1 var(--font-display);
+    font: 700 28px/1 var(--font-display);
     font-variation-settings: "wdth" 80;
     margin-top: 6px;
   }
@@ -444,7 +443,7 @@
   .ad-field > .ad-label,
   .ad-field > legend {
     font-weight: 600;
-    font-size: 14px;
+    font-size: 15px;
     color: var(--fg);
   }
   .ad-field .ad-help {
@@ -473,7 +472,7 @@
     color: var(--fg);
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 0;
+    border-radius: var(--ad-r-sm);
   }
   .ad textarea {
     resize: vertical;
@@ -652,6 +651,7 @@
 
   /* ---------- tables (leads, prices) ---------- */
   .ad-scroll {
+    border-radius: var(--ad-r);
     overflow-x: auto;
     border: 1px solid var(--line);
     background: var(--surface);
@@ -660,7 +660,7 @@
   .ad-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
+    font-size: 15px;
   }
   .ad-table th,
   .ad-table td {
@@ -671,7 +671,7 @@
     white-space: nowrap;
   }
   .ad-table th {
-    font: 500 11px/1.3 var(--font-mono);
+    font: 500 12px/1.3 var(--font-mono);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--muted);
@@ -730,6 +730,7 @@
 
   /* ---------- dialog ---------- */
   .ad-dialog {
+    border-radius: var(--ad-r);
     width: min(640px, calc(100vw - 24px));
     max-height: calc(100dvh - 48px);
     padding: 0;
@@ -757,7 +758,7 @@
     gap: 2px;
     padding: 8px 12px;
     border-top: 1px solid var(--line);
-    font-size: 14px;
+    font-size: 15px;
   }
   .ad-change:first-child {
     border-top: 0;
@@ -852,7 +853,7 @@
   }
   .ad-appears {
     margin: -4px 0 4px;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 500;
   }
   .ad-details > summary {
@@ -891,14 +892,14 @@
   .ad-warn {
     margin: 0;
     padding: 8px 10px 8px 26px;
-    font-size: 13.5px;
+    font-size: 13px;
     background: #fff4dc;
     color: #5a3d00;
     border: 1px solid #ecd19a;
   }
   .ad-row-flag {
     margin-top: 2px;
-    font-size: 12.5px;
+    font-size: 13px;
     color: #8a4b00;
   }
   .ad-video-up {
@@ -937,7 +938,7 @@
     background: var(--line);
   }
   .ad-photos input {
-    font-size: 14px;
+    font-size: 15px;
     padding: 6px 8px;
     min-height: 36px;
   }
@@ -1015,7 +1016,7 @@
     grid-template-columns: minmax(110px, auto) 1fr;
     gap: 8px 16px;
     margin: 0;
-    font-size: 14px;
+    font-size: 15px;
   }
   .ad-dl dt {
     color: var(--muted);
@@ -1039,6 +1040,7 @@
     background: rgb(17 17 16 / 0.5);
   }
   .ad-overlay-body {
+    border-radius: var(--ad-r);
     width: min(560px, 100%);
     max-height: calc(100dvh - 24px);
     overflow-y: auto;
@@ -1052,6 +1054,7 @@
     padding-bottom: 6px;
   }
   .ad-col {
+    border-radius: var(--ad-r);
     display: grid;
     gap: 8px;
     align-content: start;
@@ -1061,6 +1064,7 @@
     border: 1px solid var(--line);
   }
   .ad-ticket {
+    border-radius: var(--ad-r-sm);
     display: grid;
     gap: 3px;
     padding: 10px;
@@ -1120,7 +1124,7 @@
     }
   }
   .ad-h3 {
-    font: 700 15px/1.3 var(--font-sans);
+    font: 700 17px/1.3 var(--font-sans);
   }
   .ad-mono {
     font-family: var(--font-mono);
@@ -1129,28 +1133,12 @@
   .ad-warn-text {
     color: #8a4b00;
   }
-  .ad-pill.approved {
-    border-color: var(--fg);
-  }
-  .ad-pill.due {
-    background: #e6d3a3;
-    border-color: #e6d3a3;
-    color: #111;
-  }
-  .ad-pill.paid {
-    background: var(--fg);
-    color: var(--bg);
-  }
-  .ad-pill.overdue {
-    border-color: #b42318;
-    color: #b42318;
-  }
   .ad-history {
     margin: 6px 0 0;
     padding-left: 18px;
     display: grid;
     gap: 4px;
-    font-size: 13.5px;
+    font-size: 13px;
   }
   .ad-lines {
     list-style: none;
@@ -1187,7 +1175,7 @@
     justify-items: start;
   }
   .ad-queue-row.ad-th {
-    font: 500 11px/1 var(--font-mono);
+    font: 500 12px/1 var(--font-mono);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
@@ -1220,7 +1208,7 @@
     align-items: center;
   }
   .ad-inv-line.ad-th {
-    font: 500 11px/1 var(--font-mono);
+    font: 500 12px/1 var(--font-mono);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
@@ -1333,7 +1321,7 @@
   }
   .ad-cal-h {
     padding: 6px 8px;
-    font: 500 11px/1 var(--font-mono);
+    font: 500 12px/1 var(--font-mono);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
@@ -1421,13 +1409,13 @@
   }
   .ad-tag {
     padding: 2px 6px;
-    font: 500 10px/1.4 var(--font-mono);
+    font: 500 12px/1.4 var(--font-mono);
     border: 1px solid var(--line);
     color: var(--muted);
     white-space: nowrap;
   }
   .ad-pl-rule {
-    font: 500 11px/1.4 var(--font-mono);
+    font: 500 12px/1.4 var(--font-mono);
     color: var(--muted);
   }
   .ad-pl-slots {
@@ -1621,7 +1609,7 @@
   white-space: normal;
 }
 .ad-pl-field {
-  font: 500 11px/1.2 var(--font-mono);
+  font: 500 12px/1.2 var(--font-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
@@ -1629,7 +1617,7 @@
 .ad-pl-empty {
   display: grid;
   place-items: center;
-  font: 500 11px/1 var(--font-mono);
+  font: 500 12px/1 var(--font-mono);
   color: var(--muted);
 }
 .ad-pl-cardwrap {
@@ -1704,7 +1692,7 @@
   padding: 12px 16px;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: var(--ad-r, 0);
+  border-radius: var(--ad-r);
 }
 .ad-savebar.dirty {
   border-color: var(--fg);
@@ -1766,6 +1754,35 @@
   min-height: 0;
 }
 /* Status pills: one colour per meaning (components/admin/Pill.tsx). */
+/* Older modifiers, same colours: live/paid = ok, draft = neutral, approved/due = info,
+   overdue = danger, warn = warn. */
+.ad-pill.live,
+.ad-pill.paid {
+  border-color: #b9dfc6;
+  color: #1e6b3a;
+  background: #edf8f1;
+}
+.ad-pill.draft {
+  border-color: var(--line);
+  color: var(--muted);
+  background: var(--surface);
+}
+.ad-pill.approved,
+.ad-pill.due {
+  border-color: #b9c7e4;
+  color: #274a8a;
+  background: #eef2fa;
+}
+.ad-pill.overdue {
+  border-color: #f2c1bc;
+  color: #b42318;
+  background: #fdf0ee;
+}
+.ad-pill.warn {
+  border-color: #ecd29a;
+  color: #8a5a00;
+  background: #fdf5e3;
+}
 .ad-pill.t-neutral {
   border-color: var(--line);
   color: var(--muted);
@@ -1814,7 +1831,7 @@
   color: var(--muted);
 }
 .ad-actions a b {
-  font: 700 24px/1 var(--font-display);
+  font: 700 28px/1 var(--font-display);
 }
 .ad-actions a.on {
   color: var(--fg);
@@ -1957,4 +1974,37 @@
     color: var(--muted);
     text-transform: uppercase;
   }
+}
+.ad-chip-n {
+  margin-left: 6px;
+  font: 500 12px/1 var(--font-mono);
+  opacity: 0.7;
+}
+/* Shared helpers that replace one-off inline styles (admin redesign). */
+.ad-center {
+  align-items: center;
+}
+.ad-between {
+  justify-content: space-between;
+}
+.ad-wrap {
+  flex-wrap: wrap;
+}
+.ad-m0 {
+  margin: 0;
+}
+.ad-mt-8 {
+  margin-top: 8px;
+}
+.ad-mt-12 {
+  margin-top: 12px;
+}
+.ad-gap-12 {
+  gap: 12px;
+}
+.ad-w-auto {
+  width: auto;
+}
+.ad-break {
+  overflow-wrap: anywhere;
 }

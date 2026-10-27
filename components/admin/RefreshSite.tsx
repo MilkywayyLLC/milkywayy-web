@@ -8,7 +8,7 @@ export function RefreshSite() {
   const [msg, setMsg] = useState<string>();
   const [pending, start] = useTransition();
   return (
-    <div className="ad-btns" style={{ alignItems: "center" }}>
+    <div className="ad-btns ad-center">
       <button
         type="button"
         className="ad-btn quiet"

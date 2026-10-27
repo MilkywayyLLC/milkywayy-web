@@ -83,9 +83,7 @@ export function ServicesBlock({ account, s }: { account: string; s: ClientSetupD
             />
             <span>
               <b>{label}</b>
-              <span className="ad-help" style={{ display: "block" }}>
-                {hint}
-              </span>
+              <span className="ad-help ad-block">{hint}</span>
             </span>
           </label>
         ))}
@@ -187,9 +185,7 @@ export function PriceList({
   return (
     <section className="ad-card ad-form" aria-label="Client price list" data-testid="client-prices">
       <div className="ad-row-between">
-        <h2 className="ad-h2" style={{ margin: 0 }}>
-          Client price list · {data.currency}
-        </h2>
+        <h2 className="ad-h2 ad-m0">Client price list · {data.currency}</h2>
         <label className="ad-check ad-small">
           <input
             type="checkbox"
@@ -431,7 +427,7 @@ export function PlanBlock({
     <section className="ad-card ad-form" aria-label="Plan" data-testid="client-plan">
       <h2 className="ad-h2">Plan</h2>
       {p.mode === "budget" && (
-        <p className="ad-note" style={{ margin: 0 }}>
+        <p className="ad-note ad-m0">
           This client is on a budget package (below). Saving a plan here replaces it.
         </p>
       )}

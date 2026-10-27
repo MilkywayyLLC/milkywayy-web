@@ -143,9 +143,7 @@ export function HowTheyPay({
         <input type="checkbox" checked={bank} onChange={(e) => setBank(e.target.checked)} />
         <span>
           Allow bank transfer + receipt upload on every invoice
-          <span className="ad-help" style={{ display: "block" }}>
-            Off: card only (when payments are on).
-          </span>
+          <span className="ad-help ad-block">Off: card only (when payments are on).</span>
         </span>
       </label>
       {children}
@@ -231,7 +229,7 @@ export function ProjectPaymentAdmin({
   const latest = pay.acceptances[pay.acceptances.length - 1];
   return (
     <section className="ad-card ad-form" aria-label="Payment" data-testid="project-payment-admin">
-      <div className="ad-row" style={{ justifyContent: "space-between" }}>
+      <div className="ad-row ad-between">
         <h2 className="ad-h2">Payment</h2>
         <span className="ad-small ad-muted">
           {pay.terms ? TERMS_LABEL[pay.terms] : "—"}
@@ -394,7 +392,7 @@ export function ProjectPaymentAdmin({
           act(() => markProjectPaid(projectId));
         }}
       >
-        <p className="ad-small" style={{ margin: 0 }}>
+        <p className="ad-small ad-m0">
           {unpaid.length
             ? `${unpaid.map((i) => `${i.number} (${m(i.amount)})`).join(", ")} will be marked paid, the client is emailed “Payment received”, and a waiting shoot is confirmed.`
             : "Nothing is unpaid: the files are released."}
@@ -532,7 +530,7 @@ export function ChangeAdmin({
           />
         )}
         {q && (
-          <div className="ad-note" data-testid="admin-quote" style={{ margin: 0 }}>
+          <div className="ad-note ad-m0" data-testid="admin-quote">
             <b>
               {q.fee > 0
                 ? `Fee ${m(q.fee)}`
@@ -679,7 +677,7 @@ export function PaymentSettingsForm({ s }: { s: PaymentSettings }) {
         The Booking Terms text says 3 hours, 50% and AED 250: if you change these, tell me so the
         terms text (and its version) changes too.
       </span>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button type="submit" className="ad-btn small" disabled={pending}>
           Save
         </button>
@@ -860,7 +858,7 @@ export function PackageLimits({
         Each booking uses its value; content shoots also use their days (half day 0.5, full day 1).
         Reached when either runs out; after that, extras on the month-end invoice.
       </span>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button type="submit" className="ad-btn small" disabled={pending}>
           Save limits
         </button>
@@ -905,7 +903,7 @@ export function ProposeTime({
         <h2 className="ad-h2">{paid ? "Paid · waiting for you to confirm" : "Booking request"}</h2>
       )}
       {compact ? null : proposal ? (
-        <p className="ad-note" style={{ margin: 0 }}>
+        <p className="ad-note ad-m0">
           Proposed {proposal.date} · {proposal.start_time}. Waiting for the client to accept or
           decline (decline cancels with a full refund).
         </p>
@@ -949,7 +947,7 @@ export function ProposeTime({
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
-          <div className="ad-btns" style={{ alignItems: "center" }}>
+          <div className="ad-btns ad-center">
             <button
               type="button"
               className="ad-btn small"

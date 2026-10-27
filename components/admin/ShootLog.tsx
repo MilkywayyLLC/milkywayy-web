@@ -107,19 +107,17 @@ export function ShootLog({
   return (
     <section className="ad-card ad-form" aria-label="Log what we shot" data-testid="shoot-log">
       <div className="ad-row-between">
-        <h2 className="ad-h2" style={{ margin: 0 }}>
-          Log what we shot
-        </h2>
+        <h2 className="ad-h2 ad-m0">Log what we shot</h2>
         <span className="ad-small ad-muted">{logged ? "Logged" : "Not logged yet"}</span>
       </div>
-      <p className="ad-small ad-muted" style={{ margin: 0 }}>
+      <p className="ad-small ad-muted ad-m0">
         On a monthly package, items within what’s left of this month’s inclusions are saved as
         Included (AED 0); the rest are Extras at the client’s price. For a flexible booking add a
         day minimum: the videos at the client’s rates, or the minimum if that’s higher (never on a
         package).
       </p>
       {locked && (
-        <p className="ad-note" style={{ margin: 0 }}>
+        <p className="ad-note ad-m0">
           These items are already on an invoice. Change them on the invoice draft instead.
         </p>
       )}
@@ -237,7 +235,7 @@ export function ShootLog({
           );
         })}
       </div>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button
           type="button"
           className="ad-btn ghost small"
@@ -261,11 +259,11 @@ export function ShootLog({
         </span>
       </div>
       {preview.length > 0 && (
-        <p className="ad-small ad-muted" data-testid="deliverables-preview" style={{ margin: 0 }}>
+        <p className="ad-small ad-muted ad-m0" data-testid="deliverables-preview">
           Creates deliverables: {preview.map((d) => d.label).join(", ")}.
         </p>
       )}
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button
           type="button"
           className="ad-btn small"
@@ -323,7 +321,7 @@ export function DeliverablesAdmin({
     <section className="ad-card ad-form" aria-label="Deliverables" data-testid="deliverables-admin">
       <h2 className="ad-h2">Deliverables</h2>
       {list.length === 0 && (
-        <p className="ad-small ad-muted" style={{ margin: 0 }}>
+        <p className="ad-small ad-muted ad-m0">
           None yet. They’re created from “Log what we shot”, or add them here.
         </p>
       )}
@@ -429,7 +427,7 @@ export function DeliverablesAdmin({
           </div>
         );
       })}
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button
           type="button"
           className="ad-btn ghost small"

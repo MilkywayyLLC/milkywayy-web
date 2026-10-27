@@ -120,7 +120,7 @@ export default async function AdminListings({ searchParams }: Props) {
                 <span className="ad-row-meta">Reason: {r.disabled_reason}</span>
               )}
               {r.reports > 0 && (
-                <span className="ad-note warn" style={{ margin: 0 }}>
+                <span className="ad-note warn ad-m0">
                   {r.reports} report{r.reports === 1 ? "" : "s"}: “{r.last_report}”
                 </span>
               )}

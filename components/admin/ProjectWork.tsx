@@ -171,7 +171,7 @@ function Uploader({
   }
 
   return (
-    <div className="ad-form" style={{ gap: 10 }}>
+    <div className="ad-form ad-gap-12">
       <div
         className="ad-grid2"
         style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,2fr)", alignItems: "end" }}
@@ -202,7 +202,7 @@ function Uploader({
         </div>
       </div>
       {rows.map((r, i) => (
-        <div key={i} style={{ display: "grid", gap: 4 }}>
+        <div className="ad-stack-4" key={i}>
           <span className="ad-small">
             {r.name} · {bytes(r.size)} · {r.state}
             {r.state === "Uploading" || r.state === "Resuming"
@@ -277,7 +277,7 @@ function LinkForm({
           placeholder="https://…"
         />
       </div>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button type="submit" className="ad-btn small ghost" disabled={pending}>
           Add link
         </button>
@@ -329,7 +329,7 @@ export function Deliveries({
           className="ad-form"
           style={{ gap: 8, borderTop: "1px solid var(--line)", paddingTop: 10 }}
         >
-          <div className="ad-row-main" style={{ justifyContent: "space-between" }}>
+          <div className="ad-row-main ad-between">
             <b>{g.label}</b>
             <span className={`ad-pill ${g.published ? "live" : "draft"}`}>
               {g.published ? "Published" : "Not published yet"}
@@ -338,11 +338,11 @@ export function Deliveries({
           <div className="ad-list">
             {g.files.map((f) => (
               <div key={f.id} className="ad-row ad-lead">
-                <span className="ad-pill draft">{kindLabel(f.kind)}</span>
+                <span className="ad-tag">{kindLabel(f.kind)}</span>
                 <span className="ad-row-main">
                   <span>
                     <span className="ad-row-title">{f.label}</span>
-                    <span className="ad-row-meta" style={{ display: "block" }}>
+                    <span className="ad-row-meta ad-block">
                       {f.source === "link" ? f.url : bytes(f.bytes)}
                       {f.expires_at && f.source === "r2"
                         ? ` · kept until ${new Date(f.expires_at).toLocaleDateString("en-GB", {
@@ -397,7 +397,7 @@ export function Deliveries({
                 : "Email the client when published"
               : "Not in the portal yet: send the WhatsApp after publishing"}
           </label>
-          <div className="ad-btns" style={{ alignItems: "center" }}>
+          <div className="ad-btns ad-center">
             <button
               type="button"
               className="ad-btn"
@@ -439,7 +439,7 @@ export function Deliveries({
         </div>
       )}
       {published && (
-        <div className="ad-btns" style={{ alignItems: "center" }}>
+        <div className="ad-btns ad-center">
           <WhatsAppButton
             project={project}
             event={published === "revision_delivered" ? "revision_delivered" : "delivered"}
@@ -492,7 +492,7 @@ function RemoveFile({
           onConfirm={remove}
           onCancel={() => setSure(false)}
         >
-          <p style={{ margin: 0 }}>
+          <p className="ad-m0">
             This delivery is already published: the client loses access to this file straight away,
             and an uploaded file is deleted from storage. To send a corrected version, start a new
             delivery instead.
@@ -525,7 +525,7 @@ export function RevisionPanel({
           ? ` · ${state === "requested" ? "requested by the client" : state === "in_progress" ? "in progress" : "delivered"}`
           : ""}
       </span>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         {state === "requested" && (
           <button
             type="button"
@@ -593,7 +593,7 @@ export function Thread({
               timeZone: "Asia/Dubai",
             })}
           </span>
-          <span style={{ whiteSpace: "pre-wrap" }}>{m.body}</span>
+          <span className="ad-pre">{m.body}</span>
         </div>
       ))}
       <div className="ad-field">
@@ -615,7 +615,7 @@ export function Thread({
         />
         Email the client
       </label>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button
           type="button"
           className="ad-btn"
@@ -662,7 +662,7 @@ export function ProjectNotes({ projectId, notes: initial }: { projectId: string;
           onChange={(e) => setNotes(e.target.value)}
         />
       </div>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button
           type="button"
           className="ad-btn small"
@@ -737,7 +737,7 @@ function WebVersion({ projectId, file }: { projectId: string; file: ProjectFile 
           <label htmlFor={`poster-${file.id}`}>Poster (optional: taken from the video)</label>
           <input id={`poster-${file.id}`} name="poster" type="file" accept="image/jpeg" />
         </div>
-        <div className="ad-btns" style={{ alignItems: "center" }}>
+        <div className="ad-btns ad-center">
           <button type="submit" className="ad-btn small" disabled={busy}>
             {has ? "Replace" : "Upload"}
           </button>
@@ -770,7 +770,7 @@ function MakeWebVersions({ projectId }: { projectId: string }) {
   const [r, setR] = useState<{ ok: boolean; error?: string; notice?: string }>();
   const [pending, start] = useTransition();
   return (
-    <div className="ad-btns" style={{ alignItems: "center" }}>
+    <div className="ad-btns ad-center">
       <button
         type="button"
         className="ad-btn small ghost"

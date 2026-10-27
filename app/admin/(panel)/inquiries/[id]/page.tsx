@@ -58,7 +58,7 @@ export default async function AdminInquiry({ params }: { params: Promise<{ id: s
           </span>
         </div>
         <div className="ad-btns">
-          <span className={`ad-pill ${q.status === "open" ? "draft" : "live"}`}>
+          <span className={`ad-pill ${q.status === "open" ? "t-info" : "t-ok"}`}>
             {q.status === "open" ? "Open" : "Resolved"}
           </span>
           <InquiryStatus id={q.id} status={q.status} />

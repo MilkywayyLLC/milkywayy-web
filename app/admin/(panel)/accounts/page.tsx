@@ -49,12 +49,12 @@ export default async function Accounts({ searchParams }: Props) {
       </div>
       <form className="ad-filter" method="get" role="search">
         <input
+          className="ad-grow"
           type="search"
           name="q"
           defaultValue={f.q}
           placeholder="Name, email or phone"
           aria-label="Search clients"
-          style={{ flex: "1 1 220px", width: "auto" }}
         />
         <select name="service" defaultValue={f.service ?? ""} aria-label="Service">
           <option value="">All services</option>
@@ -87,11 +87,11 @@ export default async function Accounts({ searchParams }: Props) {
             className="ad-row ad-lead"
             prefetch={false}
           >
-            <span className="ad-pill draft">{r.type === "company" ? "Company" : "Individual"}</span>
+            <span className="ad-tag">{r.type === "company" ? "Company" : "Individual"}</span>
             <span className="ad-row-main">
               <span>
                 <span className="ad-row-title">{r.name}</span>
-                <span className="ad-row-meta" style={{ display: "block" }}>
+                <span className="ad-row-meta ad-block">
                   {[
                     r.type === "company" ? industryLabel(r.industry, r.industry_other) : null,
                     r.services_interest.map(serviceLabel).join(", ") || "No services chosen",

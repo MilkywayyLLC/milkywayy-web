@@ -639,3 +639,11 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 - Next action is a pure function of the row (`lib/portal/next-action.ts`): confirm/propose, shoot today, mark as shot, edit + deliver, waiting on files/script/client approval (days), revisions first. Sorted by urgency, then date. Quick filters: Open · Needs me · This week · Waiting on client · Done; plus search, type, stage.
 - Board is `?view=board`, every card shown (the 12-card cap is gone), columns scroll sideways. Calendar is the third tab. Old `?view=list` links still land on the list.
 - `nextAction` has no unit test this round (new tests limited to paid_at).
+
+**Phase F — design system.**
+- Light tone kept (all-day data tool; never confused with "View as client"). Portal V2 shapes: `--ad-r` 14px cards/tables/dialogs, `--ad-r-sm` 10px inputs/buttons/notes, pills fully round. Fonts unchanged (Archivo condensed headings, Archivo body, DM Mono labels = V2's).
+- Type scale: 12 label · 13 meta · 15 body · 17 h3 · 20 h2 · 28 h1 (desktop h1 no longer 36). Exceptions kept on purpose: 16px inputs (iOS zoom), icon glyphs (16/18) and the 24px two-factor code.
+- One status pill: `components/admin/Pill.tsx` (`STATUS_TONE`: accent = needs you, info = in progress, warn = look at it, danger = late/cancelled, ok = done, neutral). The older `.ad-pill.live/draft/due/…` modifiers now render the same colours, so every pill in the admin reads one way. Refs, account types and file kinds use `.ad-tag`, not pills.
+- Buttons: primary (filled, one per header), ghost (outline, secondary), quiet (tertiary), danger. Invoice filters and project quick filters are chips with counts, not buttons (#11).
+- Inline styles 163 → 68 via shared helpers (`ad-stack-*`, `ad-center`, `ad-between`, `ad-m0`, `ad-pre`, `ad-grow`…); what's left is one-off widths and drag transforms.
+- Dead code: `PlanForm` (BillingTools) and `describeVideo` (MediaParts) deleted. The `setPlan` server action is left in place (lib API, no caller now).

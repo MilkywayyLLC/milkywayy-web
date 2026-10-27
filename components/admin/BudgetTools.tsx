@@ -67,10 +67,8 @@ export function BudgetPanel({
   );
   const bm = h.budget_month;
   return (
-    <div className="ad-card" style={{ gap: 10 }} data-testid="budget-panel">
-      <h3 className="ad-h3" style={{ margin: 0 }}>
-        Budget package (legacy)
-      </h3>
+    <div className="ad-card ad-gap-12" data-testid="budget-panel">
+      <h3 className="ad-h3 ad-m0">Budget package (legacy)</h3>
       {h.mode === "budget" && bm.budget != null && (
         <div className="stack" style={{ gap: 4 }}>
           <span className="ad-small">

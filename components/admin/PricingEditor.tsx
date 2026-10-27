@@ -45,7 +45,7 @@ function Price({
   const off = value === null;
   return (
     <td className={cx("ad-num", value !== base && "ad-changed")}>
-      <div style={{ display: "grid", gap: 4 }}>
+      <div className="ad-stack-4">
         {!off && (
           <input
             type="number"
@@ -549,7 +549,7 @@ export function PricingEditor({
               </b>{" "}
               · {h.admin_email} · {h.summary}
             </summary>
-            <div className="ad-changes" style={{ marginTop: 8 }}>
+            <div className="ad-changes ad-mt-8">
               {h.details.map((c, j) => (
                 <div className="ad-change" key={j}>
                   <span className="ad-small ad-muted">{c.label}</span>

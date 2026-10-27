@@ -180,7 +180,7 @@ function FieldInput({
           <span>
             <b>{f.label}</b>
             {f.help && (
-              <span className="ad-help" style={{ display: "block" }} id={`${id}-help`}>
+              <span className="ad-help ad-block" id={`${id}-help`}>
                 {f.help}
               </span>
             )}

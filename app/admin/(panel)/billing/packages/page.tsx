@@ -51,9 +51,7 @@ export default async function Packages() {
       <PricesNav current="/admin/billing/packages" />
       <h2 className="ad-h2">New package</h2>
       <PackageEditor clients={list} />
-      <h2 className="ad-h2" style={{ marginTop: 12 }}>
-        Templates (internal, for suggestions)
-      </h2>
+      <h2 className="ad-h2 ad-mt-12">Templates (internal, for suggestions)</h2>
       {!pkgs.some((p) => !p.account_id) && (
         <p className="ad-empty">
           None yet. Choose “Template” as the client above: priced in AED and USD, never shown as a
@@ -80,9 +78,7 @@ export default async function Packages() {
             {rules.get(p.id) && <RolloverSettings packageId={p.id} data={rules.get(p.id)!} />}
           </section>
         ))}
-      <h2 className="ad-h2" style={{ marginTop: 12 }}>
-        Clients’ own packages
-      </h2>
+      <h2 className="ad-h2 ad-mt-12">Clients’ own packages</h2>
       {pkgs
         .filter((p) => p.account_id)
         .map((p) => (

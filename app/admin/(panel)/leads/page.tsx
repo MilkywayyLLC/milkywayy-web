@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Pill } from "@/components/admin/Pill";
 import { EmailAttachedBadge } from "@/components/admin/EmailAttachedBadge";
 import { requireAdmin } from "@/lib/admin/auth";
 import { dubai } from "@/lib/admin/format";
@@ -37,12 +38,12 @@ export default async function Leads({ searchParams }: Props) {
       </div>
       <form className="ad-filter" method="get" role="search">
         <input
+          className="ad-grow"
           type="search"
           name="q"
           defaultValue={f.q}
           placeholder="Name, email, phone or ref"
           aria-label="Search leads"
-          style={{ flex: "1 1 220px", width: "auto" }}
         />
         <select name="type" defaultValue={f.type ?? ""} aria-label="Type">
           <option value="">All types</option>
@@ -79,14 +80,14 @@ export default async function Leads({ searchParams }: Props) {
             prefetch={false}
             data-testid={`lead-${l.ref}`}
           >
-            <span className={`ad-pill ${l.status === "new" ? "live" : "draft"}`}>{l.status}</span>
+            <Pill status={l.status}>{l.status}</Pill>
             <span className="ad-row-main">
               <span>
                 <span className="ad-row-title">
                   {l.name || l.email || "No name"} · {LEAD_TYPES[l.type] ?? l.type}{" "}
                   {l.data?.attached_by_email === true && <EmailAttachedBadge />}
                 </span>
-                <span className="ad-row-meta" style={{ display: "block" }}>
+                <span className="ad-row-meta ad-block">
                   {l.ref} · {dubai(l.created_at)} · {l.preferred_reply ?? "—"}
                   {l.call_booked_at ? " · call booked" : ""} · {leadSummary(l)}
                 </span>

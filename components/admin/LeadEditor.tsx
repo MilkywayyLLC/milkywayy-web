@@ -56,7 +56,7 @@ export function LeadEditor({
           onChange={(e) => setNotes(e.target.value)}
         />
       </div>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
+      <div className="ad-btns ad-center">
         <button
           type="button"
           className="ad-btn"

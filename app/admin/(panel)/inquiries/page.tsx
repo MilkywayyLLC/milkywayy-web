@@ -88,7 +88,7 @@ export default async function AdminInquiries({
                 })}
               </div>
             </div>
-            <span className={`ad-pill ${r.status === "open" ? "draft" : "live"}`}>
+            <span className={`ad-pill ${r.status === "open" ? "t-info" : "t-ok"}`}>
               {r.status === "open" ? "Open" : "Resolved"}
             </span>
           </Link>

@@ -271,7 +271,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
                 className="ad-row ad-lead"
                 prefetch={false}
               >
-                <span className="ad-pill draft">{b.ref}</span>
+                <span className="ad-tag">{b.ref}</span>
                 <span className="ad-row-main">
                   <span>
                     <span className="ad-row-title">

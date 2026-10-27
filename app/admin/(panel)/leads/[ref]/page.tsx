@@ -135,7 +135,7 @@ export default async function LeadDetail({ params, searchParams }: Props) {
             {answers.map(([k, v]) => (
               <div key={k} style={{ display: "contents" }}>
                 <dt>{k}</dt>
-                <dd style={{ whiteSpace: "pre-wrap" }}>{String(v)}</dd>
+                <dd className="ad-pre">{String(v)}</dd>
               </div>
             ))}
           </dl>
