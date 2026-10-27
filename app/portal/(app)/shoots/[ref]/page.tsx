@@ -34,6 +34,7 @@ import { stripeReady } from "@/lib/stripe";
 import { ProposalBanner } from "@/components/portal/ProposalBanner";
 import { projectWhen, whenLabel } from "@/lib/portal/when";
 import { thumbSrc } from "@/lib/portal/thumbs";
+import { zipName } from "@/lib/portal/zip-browser";
 import { ShootMap } from "@/components/portal/ShootMap";
 import { AddToCalendar } from "@/components/portal/AddToCalendar";
 import { shootEventOf } from "@/lib/portal/shoot-calendar";
@@ -269,6 +270,10 @@ export default async function ShootPage({
         zipId={locked ? null : (zip?.id ?? null)}
         {...actionsFor(p)}
         hasDelivery={!!latest}
+        files={dfiles
+          .filter((f) => f.download)
+          .map((f, i) => ({ url: f.download!, name: zipName(f.label, i, f.kind) }))}
+        zipLabel={p.title}
       />
       {(p.status === "delivered" || p.status === "completed") &&
         (files ?? []).some((f) => f.kind === "photos" && f.source === "r2") && (

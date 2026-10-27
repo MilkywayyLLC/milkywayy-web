@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { requestDeliverableRevision } from "@/lib/portal/deliverable-actions";
+import { zipAndSave, zipName } from "@/lib/portal/zip-browser";
 import { useToast } from "./ui";
 
 // The zoom viewer (Motion) loads on the first photo opened.
@@ -27,10 +28,7 @@ export type DFile = {
   deliverableId: string | null;
 };
 
-const fileName = (f: DFile, i: number, ext: string) => {
-  const base = f.label.replace(/[\\/:*?"<>|]+/g, "-").trim() || `file-${i + 1}`;
-  return /\.[a-z0-9]{2,5}$/i.test(base) ? base : `${base}.${ext}`;
-};
+const fileName = (f: DFile, i: number, ext: string) => zipName(f.label, i, ext);
 
 /** "Download all": the files fetched one by one and zipped in the browser, with progress. */
 function DownloadAll({ files, name, ext }: { files: DFile[]; name: string; ext: string }) {
@@ -48,21 +46,11 @@ function DownloadAll({ files, name, ext }: { files: DFile[]; name: string; ext: 
           setErr("");
           setN(0);
           try {
-            const { downloadZip } = await import("client-zip");
-            async function* items() {
-              for (const [i, f] of list.entries()) {
-                const r = await fetch(f.download!);
-                if (!r.ok) throw new Error(String(r.status));
-                yield { name: fileName(f, i, ext), input: r };
-                setN(i + 1);
-              }
-            }
-            const blob = await downloadZip(items()).blob();
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = `${name}.zip`;
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+            await zipAndSave(
+              list.map((f, i) => ({ url: f.download!, name: fileName(f, i, ext) })),
+              name,
+              setN,
+            );
           } catch {
             setErr("Couldn’t make the zip. Download the files one by one, or try again.");
           }

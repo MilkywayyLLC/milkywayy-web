@@ -149,3 +149,69 @@
     background: var(--surface-2);
   }
 }
+
+@layer components {
+  /* ---------- delivery actions: Approve · Request revision · Download all ---------- */
+  .pt-deliv-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--sp-2);
+  }
+  .pt-deliv-actions .btn {
+    min-height: 44px;
+  }
+  .pt-icon-btn {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 999px;
+    justify-content: center;
+    flex: none;
+  }
+  .pt-icon-btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .pt-icon-btn[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--fg, #f5f3ee);
+    color: var(--bg);
+    font: var(--t-small);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+  .pt-icon-btn[data-tip]:is(:hover, :focus-visible)::after {
+    opacity: 1;
+  }
+  /* Phones: one full-width row, same order; the download stays a circle. */
+  @media (max-width: 699px) {
+    .pt-deliv-actions {
+      flex-wrap: nowrap;
+      justify-content: stretch;
+    }
+    .pt-deliv-actions .btn:not(.pt-icon-btn) {
+      flex: 1 1 0;
+      min-width: 0;
+      padding-inline: 10px;
+    }
+  }
+  @media (max-width: 420px) {
+    .pt-deliv-actions .pt-round {
+      display: none;
+    }
+  }
+}
