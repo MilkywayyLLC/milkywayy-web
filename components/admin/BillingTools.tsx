@@ -38,6 +38,7 @@ import {
   type PlanView,
 } from "@/lib/portal/billing";
 import { cx } from "@/lib/cx";
+import { useSaveSlot } from "./SaveGroup";
 import { uploadFile } from "@/lib/upload-browser";
 
 /** Admin → Billing (CLIENT_PORTAL_GUIDE §7.3): the client-side pieces. */
@@ -1228,81 +1229,55 @@ export function PlanForm({ account, billing }: { account: string; billing: Clien
   );
 }
 
-export function HideSuggestions({ account, hidden }: { account: string; hidden: boolean }) {
-  const router = useRouter();
-  const [r, setR] = useState<BillingResult>();
-  const [pending, start] = useTransition();
-  return (
-    <div className="ad-btns" style={{ alignItems: "center" }}>
-      <label className="ad-check">
-        <input
-          type="checkbox"
-          checked={hidden}
-          disabled={pending}
-          onChange={(e) =>
-            start(async () => {
-              const res = await hideSuggestions(account, e.target.checked);
-              setR(res);
-              if (res.ok) router.refresh();
-            })
-          }
-        />
-        Never show this client a package suggestion
-      </label>
-      <Note r={r} pending={pending} />
-    </div>
+/**
+ * Per client: package suggestions (admin redesign, 27 Oct 2026: saved with the tab). Pinned offer
+ * (`accounts.pinned_package_id`) replaces the templates; "never suggest" (`hide_suggestions`).
+ * Card vs bank moved to How they pay.
+ */
+export function ClientSuggestions({
+  account,
+  billing,
+}: {
+  account: string;
+  billing: ClientBilling;
+}) {
+  const pin0 = billing.pinned_package_id ?? "";
+  const [pin, setPin] = useState(pin0);
+  const [hide, setHide] = useState(billing.hide_suggestions);
+  useSaveSlot(
+    `sugg-${account}`,
+    "Suggestions",
+    60,
+    pin !== pin0 || hide !== billing.hide_suggestions,
+    async () => {
+      if (pin !== pin0) {
+        const r = await setClientBilling(account, { pinned_package_id: pin || null });
+        if (!r.ok) return r;
+      }
+      if (hide !== billing.hide_suggestions) return hideSuggestions(account, hide);
+      return { ok: true };
+    },
   );
-}
-
-/** Per client: pin a custom offer (replaces the templates in their suggestion); card or bank. */
-export function ClientOffer({ account, billing }: { account: string; billing: ClientBilling }) {
-  const router = useRouter();
-  const [r, setR] = useState<BillingResult>();
-  const [pending, start] = useTransition();
-  const save = (p: Parameters<typeof setClientBilling>[1]) =>
-    start(async () => {
-      const res = await setClientBilling(account, p);
-      setR(res);
-      if (res.ok) router.refresh();
-    });
   return (
     <div className="ad-form" style={{ gap: 10 }}>
-      <div className="ad-grid2">
-        <div className="ad-field">
-          <label htmlFor="pin-offer">Pinned offer (instead of the templates)</label>
-          <select
-            id="pin-offer"
-            value={billing.pinned_package_id ?? ""}
-            disabled={pending}
-            onChange={(e) => save({ pinned_package_id: e.target.value || null })}
-          >
-            <option value="">None: suggest from templates</option>
-            {billing.packages.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} · {money(p.currency, p.price)}/month{p.private ? "" : " (template)"}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="ad-field">
-          <label htmlFor="pay-online">How they pay</label>
-          <select
-            id="pay-online"
-            value={billing.pay_online == null ? "" : String(billing.pay_online)}
-            disabled={pending}
-            onChange={(e) =>
-              save({ pay_online: e.target.value === "" ? null : e.target.value === "true" })
-            }
-          >
-            <option value="">
-              Automatic ({billing.currency === "AED" ? "bank transfer for AED" : "card for USD"})
+      <div className="ad-field">
+        <label htmlFor="pin-offer">Pinned offer (instead of the templates)</label>
+        <select id="pin-offer" value={pin} onChange={(e) => setPin(e.target.value)}>
+          <option value="">None: suggest from templates</option>
+          {billing.packages.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name} · {money(p.currency, p.price)}/month{p.private ? "" : " (template)"}
             </option>
-            <option value="true">Card (Stripe “Pay now”)</option>
-            <option value="false">Bank transfer</option>
-          </select>
-        </div>
+          ))}
+        </select>
+        <span className="ad-help">
+          Affects the package suggestion on the client’s Billing page.
+        </span>
       </div>
-      <Note r={r} pending={pending} />
+      <label className="ad-check">
+        <input type="checkbox" checked={hide} onChange={(e) => setHide(e.target.checked)} />
+        Never show this client a package suggestion
+      </label>
     </div>
   );
 }

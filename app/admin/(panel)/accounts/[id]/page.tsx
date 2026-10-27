@@ -1,11 +1,7 @@
 import Link from "next/link";
 import "@/app/styles/portal.css";
-import {
-  BillingSwitches,
-  BudgetPanel,
-  ClientRateHistory,
-  type BillingHistory,
-} from "@/components/admin/BudgetTools";
+import { BillingSwitches, BudgetPanel, type BillingHistory } from "@/components/admin/BudgetTools";
+import { SaveGroup } from "@/components/admin/SaveGroup";
 import {
   PlanBlock,
   PriceList,
@@ -13,11 +9,7 @@ import {
   type ClientSetupData,
 } from "@/components/admin/ClientSetup";
 import { RolloverSettings, type RolloverView } from "@/components/admin/RolloverSettings";
-import {
-  BankTransferToggle,
-  PaymentTermsBlock,
-  type ClientPayments,
-} from "@/components/admin/PaymentAdmin";
+import { HowTheyPay, type ClientPayments } from "@/components/admin/PaymentAdmin";
 import { ValuePackageCard, type ValueMonth } from "@/components/portal/PaymentParts";
 import { getPropertyPricing } from "@/lib/data";
 import { notFound } from "next/navigation";
@@ -29,8 +21,7 @@ import {
   RetentionSelect,
 } from "@/components/admin/ClientAccountTools";
 import {
-  ClientOffer,
-  HideSuggestions,
+  ClientSuggestions,
   OfferPreview,
   Statements,
   type ClientBilling,
@@ -130,124 +121,124 @@ export default async function ClientPage({ params, searchParams }: Props) {
       )}
 
       <ServicesBlock account={a.id} s={setup.services} />
-      <PriceList account={a.id} data={setup} pricing={pricing} />
-      <PaymentTermsBlock account={a.id} data={payments} />
-      <BankTransferToggle
-        account={a.id}
-        on={(a as { bank_transfer?: boolean }).bank_transfer !== false}
-      />
-      <PlanBlock
-        account={a.id}
-        data={setup}
-        showBudgetSet={history.show_budget_set}
-        value={{
-          allowance: payments.package?.allowance ?? null,
-          half_day_cap: payments.package?.half_day_cap ?? null,
-          templates: payments.templates,
-        }}
-      />
-      {/* The same card the client sees on Billing (portal styles), with the money. */}
-      {valueMonth && (
-        <div className="pt" data-tone="light" style={{ background: "transparent", minHeight: 0 }}>
-          <ValuePackageCard v={valueMonth} admin />
-        </div>
-      )}
-      {rollover && <RolloverSettings account={id} data={rollover} />}
-
-      <div className="ad-grid2">
-        <section className="ad-card" aria-label="Details">
-          <h2 className="ad-h2">Details</h2>
-          <dl className="ad-dl">
-            <dt>Services</dt>
-            <dd>{a.services_interest.map(serviceLabel).join(", ") || "None chosen"}</dd>
-            <dt>Volume</dt>
-            <dd>{a.volume_note ?? "—"}</dd>
-            <dt>TRN</dt>
-            <dd>{a.trn ?? "—"}</dd>
-            <dt>Billing address</dt>
-            <dd style={{ whiteSpace: "pre-wrap" }}>{a.billing_address ?? "—"}</dd>
-            <dt>Members see</dt>
-            <dd>Set per member by the client (Team → Access)</dd>
-          </dl>
-          <RetentionSelect accountId={a.id} months={a.retention_months ?? 12} />
-        </section>
-        <ClientEditor id={a.id} currency={a.currency} notes={c.notes ?? ""} />
-      </div>
-
-      <section className="ad-card ad-form" aria-label="Billing" data-testid="client-billing">
-        <div className="ad-row-main" style={{ justifyContent: "space-between" }}>
-          <h2 className="ad-h2">Billing · {billing.currency}</h2>
-          <Link className="ad-btn ghost small" href="/admin/billing" prefetch={false}>
-            Invoices ({invoices.length})
-          </Link>
-          <Link
-            className="ad-btn ghost small"
-            href={`/admin/listings?account=${a.id}`}
-            prefetch={false}
-          >
-            Share pages
-          </Link>
-        </div>
-        {history.mode === "budget" ? null : billing.plan.package ? (
-          <div className="stack" style={{ gap: 8 }}>
-            <b>
-              {billing.plan.package.name} ·{" "}
-              {money(billing.plan.package.currency, billing.plan.package.price)}/month
-              {billing.plan.package.prorated
-                ? ` · first month pro-rated (${billing.plan.package.days}/${billing.plan.package.month_days} days)`
-                : billing.plan.package.term_months === 6
-                  ? ` · Month ${billing.plan.package.month_no} of 6${billing.plan.package.ends_on ? `, ends ${dateLabel(billing.plan.package.ends_on)}` : ""}`
-                  : ""}{" "}
-              · renews {dateLabel(billing.plan.package.renews_on)}
-            </b>
-            {billing.plan.package.usage.map((u) => (
-              <div key={u.key} className="stack" style={{ gap: 4 }}>
-                <span className="ad-small">
-                  {u.label}: {Number(u.used)} of {Number(u.qty)}
-                  {Number(u.over) > 0
-                    ? ` · ${Number(u.over)} over (${money(billing.plan.package!.currency, Number(u.overage))})`
-                    : ""}
-                </span>
-                <span className="ad-meter" aria-hidden="true">
-                  <i
-                    style={{
-                      width: `${Math.min(100, (Number(u.used) / Math.max(1, Number(u.qty))) * 100)}%`,
-                    }}
-                  />
-                </span>
-              </div>
-            ))}
-            <span className="ad-small">
-              This month, estimated:{" "}
-              {money(billing.plan.package.currency, Number(billing.plan.package.estimate))}
-            </span>
+      <SaveGroup label="billing">
+        <HowTheyPay
+          account={a.id}
+          data={payments}
+          bankTransfer={(a as { bank_transfer?: boolean }).bank_transfer !== false}
+        />
+        <PlanBlock
+          account={a.id}
+          data={setup}
+          showBudgetSet={history.show_budget_set}
+          value={{
+            allowance: payments.package?.allowance ?? null,
+            half_day_cap: payments.package?.half_day_cap ?? null,
+            templates: payments.templates,
+          }}
+        />
+        {/* The same card the client sees on Billing (portal styles), with the money. */}
+        {valueMonth && (
+          <div className="pt" data-tone="light" style={{ background: "transparent", minHeight: 0 }}>
+            <ValuePackageCard v={valueMonth} admin />
           </div>
-        ) : (
-          <span className="ad-small">
-            Pay as you go · this month so far {money(billing.currency, billing.payg.total)}{" "}
-            (estimate)
-            {billing.payg.last_month
-              ? ` · last month ${money(billing.currency, Number(billing.payg.last_month.total))}${billing.payg.last_month.final ? " (final)" : ""}`
-              : ""}
-          </span>
         )}
-        {history.mode === "budget" && (
-          <BudgetPanel account={a.id} currency={billing.currency} h={history} />
-        )}
-        <BillingSwitches account={a.id} h={history} />
-        <details>
-          <summary className="ad-small">Monthly statements</summary>
-          <Statements account={a.id} billing={billing} />
-        </details>
-        {/* Not needed at launch (AUDIT item 14): offers, suggestions and dated price history. */}
-        <details data-testid="billing-advanced">
-          <summary className="ad-small">Advanced: offers, suggestions, price history</summary>
-          <OfferPreview billing={billing} />
-          <HideSuggestions account={a.id} hidden={billing.hide_suggestions} />
-          <ClientOffer account={a.id} billing={billing} />
-          <ClientRateHistory account={a.id} currency={billing.currency} h={history} />
-        </details>
-      </section>
+        {rollover && <RolloverSettings account={id} data={rollover} />}
+        <PriceList account={a.id} data={setup} pricing={pricing} history={history.rates} />
+
+        <div className="ad-grid2">
+          <section className="ad-card" aria-label="Details">
+            <h2 className="ad-h2">Details</h2>
+            <dl className="ad-dl">
+              <dt>Services</dt>
+              <dd>{a.services_interest.map(serviceLabel).join(", ") || "None chosen"}</dd>
+              <dt>Volume</dt>
+              <dd>{a.volume_note ?? "—"}</dd>
+              <dt>TRN</dt>
+              <dd>{a.trn ?? "—"}</dd>
+              <dt>Billing address</dt>
+              <dd style={{ whiteSpace: "pre-wrap" }}>{a.billing_address ?? "—"}</dd>
+              <dt>Members see</dt>
+              <dd>Set per member by the client (Team → Access)</dd>
+            </dl>
+            <RetentionSelect accountId={a.id} months={a.retention_months ?? 12} />
+          </section>
+          <ClientEditor id={a.id} currency={a.currency} notes={c.notes ?? ""} />
+        </div>
+
+        <section className="ad-card ad-form" aria-label="Billing" data-testid="client-billing">
+          <div className="ad-row-main" style={{ justifyContent: "space-between" }}>
+            <h2 className="ad-h2">Billing · {billing.currency}</h2>
+            <Link className="ad-btn ghost small" href="/admin/billing" prefetch={false}>
+              Invoices ({invoices.length})
+            </Link>
+            <Link
+              className="ad-btn ghost small"
+              href={`/admin/listings?account=${a.id}`}
+              prefetch={false}
+            >
+              Share pages
+            </Link>
+          </div>
+          {history.mode === "budget" ? null : billing.plan.package ? (
+            <div className="stack" style={{ gap: 8 }}>
+              <b>
+                {billing.plan.package.name} ·{" "}
+                {money(billing.plan.package.currency, billing.plan.package.price)}/month
+                {billing.plan.package.prorated
+                  ? ` · first month pro-rated (${billing.plan.package.days}/${billing.plan.package.month_days} days)`
+                  : billing.plan.package.term_months === 6
+                    ? ` · Month ${billing.plan.package.month_no} of 6${billing.plan.package.ends_on ? `, ends ${dateLabel(billing.plan.package.ends_on)}` : ""}`
+                    : ""}{" "}
+                · renews {dateLabel(billing.plan.package.renews_on)}
+              </b>
+              {billing.plan.package.usage.map((u) => (
+                <div key={u.key} className="stack" style={{ gap: 4 }}>
+                  <span className="ad-small">
+                    {u.label}: {Number(u.used)} of {Number(u.qty)}
+                    {Number(u.over) > 0
+                      ? ` · ${Number(u.over)} over (${money(billing.plan.package!.currency, Number(u.overage))})`
+                      : ""}
+                  </span>
+                  <span className="ad-meter" aria-hidden="true">
+                    <i
+                      style={{
+                        width: `${Math.min(100, (Number(u.used) / Math.max(1, Number(u.qty))) * 100)}%`,
+                      }}
+                    />
+                  </span>
+                </div>
+              ))}
+              <span className="ad-small">
+                This month, estimated:{" "}
+                {money(billing.plan.package.currency, Number(billing.plan.package.estimate))}
+              </span>
+            </div>
+          ) : (
+            <span className="ad-small">
+              Pay as you go · this month so far {money(billing.currency, billing.payg.total)}{" "}
+              (estimate)
+              {billing.payg.last_month
+                ? ` · last month ${money(billing.currency, Number(billing.payg.last_month.total))}${billing.payg.last_month.final ? " (final)" : ""}`
+                : ""}
+            </span>
+          )}
+          {history.mode === "budget" && (
+            <BudgetPanel account={a.id} currency={billing.currency} h={history} />
+          )}
+          <BillingSwitches account={a.id} h={history} />
+          <details>
+            <summary className="ad-small">Monthly statements</summary>
+            <Statements account={a.id} billing={billing} />
+          </details>
+          {/* Not needed at launch (AUDIT item 14): offers, suggestions and dated price history. */}
+          <details data-testid="billing-advanced">
+            <summary className="ad-small">Advanced: package suggestions</summary>
+            <OfferPreview billing={billing} />
+            <ClientSuggestions account={a.id} billing={billing} />
+          </details>
+        </section>
+      </SaveGroup>
 
       <section className="ad-card ad-form" aria-label="Projects">
         <h2 className="ad-h2">Projects</h2>

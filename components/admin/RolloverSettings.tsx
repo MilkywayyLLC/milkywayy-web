@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { cx } from "@/lib/cx";
+import { useSaveSlot } from "./SaveGroup";
 import { setRollover } from "@/lib/portal/admin-payment-actions";
 import { ruleLabel, type RolloverRule } from "@/lib/portal/rollover";
 
@@ -46,6 +47,16 @@ export function RolloverSettings({
       setR(res);
       if (res.ok) router.refresh();
     });
+  const n0 = data.next;
+  const dirty =
+    on !== (n0.enabled && n0.months > 0) ||
+    months !== (n0.months || 1) ||
+    allowance !== n0.allowance ||
+    days !== n0.days;
+  // On a client page it saves with the tab (admin redesign); on Packages it keeps its own button.
+  const grouped = useSaveSlot(`rollover-${id}`, "Rollover", 30, dirty, () =>
+    setRollover({ packageId, account }, { enabled: on, months, allowance, days }),
+  );
   return (
     <form
       className="ad-card ad-form"
@@ -110,9 +121,11 @@ export function RolloverSettings({
         {account ? " This client’s rule beats the package’s." : ""}
       </span>
       <div className="ad-btns" style={{ alignItems: "center" }}>
-        <button type="submit" className="ad-btn small" disabled={pending}>
-          Save rollover
-        </button>
+        {!grouped && (
+          <button type="submit" className="ad-btn small" disabled={pending}>
+            Save rollover
+          </button>
+        )}
         {account && data.override && (
           <button
             type="button"

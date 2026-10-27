@@ -29,6 +29,8 @@ import {
   type PaymentTerms,
 } from "@/lib/portal/payments";
 import { Confirm } from "./Confirm";
+import { useSaveSlot } from "./SaveGroup";
+import { setClientBilling } from "@/lib/portal/admin-billing-actions";
 
 /**
  * Admin side of payment terms (owner, 24 Oct 2026): the client's term (set on the onboarding call),
@@ -61,66 +63,89 @@ export type ClientPayments = {
   templates: Record<string, { allowance: number | null; half_day_cap: number | null }>;
 };
 
-/** Admin → Client accounts → a client: Payment terms. */
-export function PaymentTermsBlock({ account, data }: { account: string; data: ClientPayments }) {
-  const router = useRouter();
+/**
+ * Admin → a client → Billing & payment: How they pay (admin redesign, 27 Oct 2026). One control per
+ * setting, saved with the tab: payment terms (`accounts.payment_terms`), card on month-end invoices
+ * (`accounts.pay_online`) and bank transfer as a second option (`accounts.bank_transfer`).
+ */
+export function HowTheyPay({
+  account,
+  data,
+  bankTransfer,
+}: {
+  account: string;
+  data: ClientPayments;
+  bankTransfer: boolean;
+}) {
+  const online0 = data.pay_online_set == null ? "" : String(data.pay_online_set);
   const [terms, setTerms] = useState<PaymentTerms>(data.payment_terms);
-  const [r, setR] = useState<R>();
-  const [pending, start] = useTransition();
+  const [online, setOnline] = useState(online0);
+  const [bank, setBank] = useState(bankTransfer);
+  const dirty = terms !== data.payment_terms || online !== online0 || bank !== bankTransfer;
+  useSaveSlot(`pay-${account}`, "How they pay", 10, dirty, async () => {
+    if (terms !== data.payment_terms) {
+      const r = await setPaymentTerms(account, terms);
+      if (!r.ok) return r;
+    }
+    if (online !== online0) {
+      const r = await setClientBilling(account, {
+        pay_online: online === "" ? null : online === "true",
+      });
+      if (!r.ok) return r;
+    }
+    if (bank !== bankTransfer) return setBankTransfer(account, bank);
+    return { ok: true };
+  });
   return (
-    <form
-      className="ad-card ad-form"
-      aria-label="Payment terms"
-      data-testid="payment-terms"
-      onSubmit={(e) => {
-        e.preventDefault();
-        start(async () => {
-          const res = await setPaymentTerms(account, terms);
-          setR(res);
-          if (res.ok) router.refresh();
-        });
-      }}
-    >
-      <h2 className="ad-h2">Payment terms</h2>
-      <div className="ad-field">
-        <label htmlFor="pay-terms">How this client pays</label>
-        <select
-          id="pay-terms"
-          value={terms}
-          onChange={(e) => setTerms(e.target.value as PaymentTerms)}
-        >
-          {(Object.keys(TERMS_LABEL) as PaymentTerms[]).map((k) => (
-            <option key={k} value={k}>
-              {TERMS_LABEL[k]}
+    <section className="ad-card ad-form" aria-label="How they pay" data-testid="payment-terms">
+      <h2 className="ad-h2">How they pay</h2>
+      <div className="ad-grid2">
+        <div className="ad-field">
+          <label htmlFor="pay-terms">Payment terms</label>
+          <select
+            id="pay-terms"
+            value={terms}
+            onChange={(e) => setTerms(e.target.value as PaymentTerms)}
+          >
+            {(Object.keys(TERMS_LABEL) as PaymentTerms[]).map((k) => (
+              <option key={k} value={k}>
+                {TERMS_LABEL[k]}
+              </option>
+            ))}
+          </select>
+          <span className="ad-help">
+            {terms === "month_end"
+              ? "Affects bookings: “Request booking”, everything on the month-end invoice."
+              : terms === "split"
+                ? "Affects bookings: 50% invoice at booking, balance on delivery; files unlock when paid."
+                : "Affects bookings: 100% invoice at booking; files unlock on delivery."}
+            {data.package && terms !== "month_end" ? " Ignored while on a monthly package." : ""}
+          </span>
+        </div>
+        <div className="ad-field">
+          <label htmlFor="pay-online">Card on month-end invoices</label>
+          <select id="pay-online" value={online} onChange={(e) => setOnline(e.target.value)}>
+            <option value="">
+              Automatic ({data.currency === "AED" ? "bank transfer for AED" : "card for USD"})
             </option>
-          ))}
-        </select>
-        <span className="ad-help">
-          {terms === "month_end"
-            ? "Books with “Request booking”; everything goes on the month-end invoice."
-            : terms === "split"
-              ? "Pays 50% when booking (then you confirm it, or propose another time); the balance invoice goes out on delivery and the files unlock when it’s paid."
-              : "Pays 100% when booking (then you confirm it, or propose another time); files unlock on delivery."}
+            <option value="true">Card (Stripe “Pay now”)</option>
+            <option value="false">Bank transfer</option>
+          </select>
+          <span className="ad-help">
+            Affects month-end invoices only. Booking invoices offer card whenever Stripe is on.
+          </span>
+        </div>
+      </div>
+      <label className="ad-check" data-testid="bank-transfer">
+        <input type="checkbox" checked={bank} onChange={(e) => setBank(e.target.checked)} />
+        <span>
+          Allow bank transfer + receipt upload on every invoice
+          <span className="ad-help" style={{ display: "block" }}>
+            Off: card only (when payments are on).
+          </span>
         </span>
-      </div>
-      {data.package && data.payment_terms !== "month_end" && (
-        <p className="ad-note" style={{ margin: 0 }}>
-          On a monthly package: bookings follow the package (nothing due at booking, extras at month
-          end), whatever is set here.
-        </p>
-      )}
-      <span className="ad-small ad-muted">
-        Card payments on month-end invoices: {data.pay_online ? "on" : "off (bank transfer / Wio)"}.
-        Change it with “Pay online” under Billing below. Booking invoices can always be paid by card
-        once Stripe is on. New self-sign-ups start on 100% before the shoot.
-      </span>
-      <div className="ad-btns" style={{ alignItems: "center" }}>
-        <button type="submit" className="ad-btn small" disabled={pending}>
-          Save terms
-        </button>
-        <Note r={r} pending={pending} />
-      </div>
-    </form>
+      </label>
+    </section>
   );
 }
 
@@ -842,40 +867,6 @@ export function PackageLimits({
 }
 
 /** Admin → a client: may they pay by bank transfer + receipt upload (phase 1; card is the main way). */
-export function BankTransferToggle({ account, on }: { account: string; on: boolean }) {
-  const router = useRouter();
-  const [v, setV] = useState(on);
-  const [r, setR] = useState<R>();
-  const [pending, start] = useTransition();
-  return (
-    <section className="ad-card ad-form" aria-label="Bank transfer" data-testid="bank-transfer">
-      <h2 className="ad-h2">Bank transfer</h2>
-      <label className="ad-check">
-        <input
-          type="checkbox"
-          checked={v}
-          disabled={pending}
-          onChange={(e) => {
-            const next = e.target.checked;
-            setV(next);
-            start(async () => {
-              const res = await setBankTransfer(account, next);
-              setR(res);
-              if (res.ok) router.refresh();
-              else setV(!next);
-            });
-          }}
-        />
-        <span>Allow bank transfer + receipt upload as a second option on every invoice</span>
-      </label>
-      <span className="ad-small ad-muted">
-        Card (Stripe) is always offered when payments are on. Off: card only.
-      </span>
-      <Note r={r} pending={pending} />
-    </section>
-  );
-}
-
 /**
  * Admin → a requested shoot: propose another date and time (phase 1). The client accepts (confirmed)
  * or declines (cancelled, full refund) on their shoot page.
