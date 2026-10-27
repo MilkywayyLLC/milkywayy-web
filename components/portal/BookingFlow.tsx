@@ -1,5 +1,6 @@
 "use client";
 
+import { whenLabel } from "@/lib/portal/when";
 import Link from "next/link";
 import { useEffect, useReducer, useRef, useState, useTransition } from "react";
 import {
@@ -29,7 +30,6 @@ import {
   normalizeServices,
   photosOnly,
   slotHours,
-  SLOTS,
   type BookingLocation,
   type BookingService,
   type ContentHours,
@@ -838,7 +838,6 @@ export function BookingFlow({
   );
 
   /* ---------- step 3: summary ---------- */
-  const slotLabel = SLOTS.find(([k]) => k === slot)?.[1] ?? "";
   const groups: { key: string; label: string; to: StepId; rows: string[] }[] = [
     ...(isProp && propOk
       ? [{ key: "property", label: "Property", to: "services" as const, rows: [pText] }]
@@ -861,9 +860,7 @@ export function BookingFlow({
       key: "when",
       label: "Date & time",
       to: "when",
-      rows: [
-        [dateLabel(date, { weekday: "short" }), startTime, slotLabel].filter(Boolean).join(" · "),
-      ],
+      rows: [whenLabel(date, startTime) || dateLabel(date, { weekday: "short" })],
     },
     {
       key: "where",

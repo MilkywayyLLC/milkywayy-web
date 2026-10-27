@@ -1,3 +1,5 @@
+import { projectWhen } from "./when";
+
 /**
  * What clients are told, by email (Resend) and in the ready-written WhatsApp the owner sends by
  * hand from the admin (owner, 3 Oct 2026: no WhatsApp templates). One place for the wording.
@@ -10,7 +12,13 @@ export type ProjectInfo = {
   status_note?: string | null;
   shoot_date?: string | null;
   slot?: string | null;
-  meta?: { area?: string; building?: string; unit?: string } | null;
+  meta?: {
+    area?: string;
+    building?: string;
+    unit?: string;
+    start_time?: string | null;
+    booking?: { start_time?: string | null } | null;
+  } | null;
 };
 export type MessageEvent =
   | "booking_confirmed"
@@ -42,19 +50,11 @@ const STATUS_TEXT: Record<string, string> = {
 const what = (p: ProjectInfo) =>
   p.type === "edit" ? "batch" : p.type === "avatar" ? "avatar video" : "shoot";
 
-const day = (d?: string | null) =>
-  d
-    ? new Date(`${d}T12:00:00`).toLocaleDateString("en-GB", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      })
-    : "";
 const place = (p: ProjectInfo) =>
   [p.meta?.unit && `Unit ${p.meta.unit}`, p.meta?.building, p.meta?.area]
     .filter(Boolean)
     .join(", ");
-const firstName = (name?: string | null) => (name ?? "").trim().split(/\s+/)[0] || "there";
+export const firstName = (name?: string | null) => (name ?? "").trim().split(/\s+/)[0] || "there";
 
 export const projectLink = (origin: string, ref: string) =>
   `${origin}/portal/p/${encodeURIComponent(ref)}`;
@@ -63,18 +63,32 @@ export const projectLink = (origin: string, ref: string) =>
 export function emailFor(
   event: MessageEvent,
   p: ProjectInfo,
-  o: { name?: string | null; link: string; label?: string; text?: string; expires?: string },
+  o: {
+    name?: string | null;
+    link: string;
+    label?: string;
+    text?: string;
+    expires?: string;
+    /** Confirmation emails (phase 1): Google Calendar and .ics links. */
+    calendar?: { google: string; ics: string | null } | null;
+  },
 ) {
   const hi = `Hi ${firstName(o.name)},`;
-  const when = [day(p.shoot_date), p.slot?.toLowerCase()].filter(Boolean).join(", ");
+  // The real date and start time (phase 1): "Wed 29 Oct · 10:15", never "morning".
+  const when = projectWhen(p);
   switch (event) {
     case "booking_confirmed":
       return {
-        subject: `Confirmed: your shoot${when ? ` on ${day(p.shoot_date)}` : ""} (${p.ref})`,
+        subject: `Confirmed: your shoot${when ? ` on ${when}` : ""} (${p.ref})`,
         lines: [
           hi,
           `Your shoot is confirmed.`,
           `${p.title}${place(p) ? `\n${place(p)}` : ""}${when ? `\n${when}` : ""}`,
+          ...(o.calendar
+            ? [
+                `Add it to your calendar:\nGoogle Calendar: ${o.calendar.google}${o.calendar.ics ? `\nApple / Outlook (.ics): ${o.calendar.ics}` : ""}`,
+              ]
+            : []),
           "We’ll see you there. Need to change anything? Reply to this email or WhatsApp us.",
         ],
         button: "View in your portal",
@@ -182,7 +196,8 @@ export function whatsappFor(
   o: { name?: string | null; link: string; label?: string; status?: string },
 ) {
   const hi = `Hi ${firstName(o.name)},`;
-  const when = [day(p.shoot_date), p.slot?.toLowerCase()].filter(Boolean).join(", ");
+  // The real date and start time (phase 1): "Wed 29 Oct · 10:15", never "morning".
+  const when = projectWhen(p);
   switch (event) {
     case "booking_confirmed":
       return `${hi} your shoot ${p.ref} is confirmed${when ? ` for ${when}` : ""}: ${p.title}${place(p) ? `, ${place(p)}` : ""}. Everything’s in your portal: ${o.link}`;

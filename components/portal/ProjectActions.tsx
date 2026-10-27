@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { approve, askRevision, fileLink, writeMessage } from "@/lib/portal/project-actions";
 import type { ProjectMessage } from "@/lib/portal/projects";
+import { zipAndSave, type ZipItem } from "@/lib/portal/zip-browser";
 import { Icon } from "./Icon";
 import { Sheet, useToast } from "./ui";
 
@@ -55,6 +56,8 @@ export function ProjectActions({
   round,
   hasDelivery,
   noun = "shoot",
+  files = [],
+  zipLabel = "files",
 }: {
   projectId: string;
   zipId: string | null;
@@ -64,42 +67,67 @@ export function ProjectActions({
   hasDelivery: boolean;
   /** What the client calls it: shoot, batch or video. */
   noun?: string;
+  /** Downloadable delivered files, zipped in the browser when there's no ready-made zip. */
+  files?: ZipItem[];
+  zipLabel?: string;
 }) {
   const [sheet, setSheet] = useState<null | "revision" | "approve">(null);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
   const [downloading, startDownload] = useTransition();
+  const [zipped, setZipped] = useState<number | null>(null);
   const [toast, say] = useToast();
   if (!hasDelivery) return null;
 
   return (
     <>
-      <div className="pt-btns">
-        {zipId && (
-          <button
-            type="button"
-            className="btn btn-p"
-            disabled={downloading}
-            onClick={() =>
-              startDownload(async () => {
-                const r = await fileLink(zipId);
-                if (r.ok && r.url) window.location.assign(r.url);
-                else say(r.error ?? "Couldn’t get the file.");
-              })
-            }
-          >
-            <Icon name="download" size={18} /> {downloading ? "Preparing…" : "Download all"}
+      {/* Approve · Request revision · Download all, right-aligned (phase 1); a full-width row on phones. */}
+      <div className="pt-deliv-actions" data-testid="delivery-actions">
+        {canApprove && (
+          <button type="button" className="btn btn-p" onClick={() => setSheet("approve")}>
+            <Icon name="check" size={18} /> Approve
           </button>
         )}
         {canRevise && (
           <button type="button" className="btn btn-g" onClick={() => setSheet("revision")}>
-            Request revision ({round.next} of {round.of})
+            <Icon name="revise" size={18} /> Request revision
+            <span className="pt-round">
+              ({round.next} of {round.of})
+            </span>
           </button>
         )}
-        {canApprove && (
-          <button type="button" className="btn btn-g" onClick={() => setSheet("approve")}>
-            <Icon name="check" size={18} /> Approve
+        {(zipId || files.length > 0) && (
+          <button
+            type="button"
+            className="btn btn-g pt-icon-btn"
+            aria-label={
+              zipped != null ? `Zipping ${zipped} of ${files.length}` : "Download all files"
+            }
+            data-tip={zipped != null ? `Zipping ${zipped} of ${files.length}…` : "Download all"}
+            aria-busy={downloading || zipped != null}
+            disabled={downloading || zipped != null}
+            data-testid="download-all"
+            onClick={() =>
+              startDownload(async () => {
+                if (zipId) {
+                  const r = await fileLink(zipId);
+                  if (r.ok && r.url) window.location.assign(r.url);
+                  else say(r.error ?? "Couldn’t get the file.");
+                  return;
+                }
+                setZipped(0);
+                try {
+                  await zipAndSave(files, zipLabel, setZipped);
+                } catch {
+                  say("Couldn’t make the zip. Download the files one by one, or try again.");
+                }
+                setZipped(null);
+              })
+            }
+          >
+            <Icon name="download" size={18} />
+            <span className="pt-icon-btn-label">Download all</span>
           </button>
         )}
       </div>

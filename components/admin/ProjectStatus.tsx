@@ -1,5 +1,7 @@
 "use client";
 
+import { dubaiToday, WhenPicker } from "@/components/portal/WhenPicker";
+import { projectStart } from "@/lib/portal/when";
 import { useState, useTransition } from "react";
 import { logWhatsApp, setStatus, type ActionResult } from "@/lib/portal/admin-project-actions";
 import {
@@ -117,7 +119,7 @@ function StatusDialog({
   const event = eventFor(to);
   const [notify, setNotify] = useState(project.inPortal);
   const [date, setDate] = useState(project.shoot_date ?? "");
-  const [slot, setSlot] = useState(project.slot ?? "Morning");
+  const [time, setTime] = useState(projectStart(project) ?? "");
   const [note, setNote] = useState("");
   const [result, setResult] = useState<ActionResult>();
   const [pending, start] = useTransition();
@@ -139,25 +141,14 @@ function StatusDialog({
         {!saved && (
           <>
             {to === "confirmed" && (
-              <div className="ad-grid2" style={{ gridTemplateColumns: "1fr 1fr" }}>
-                <div className="ad-field">
-                  <label htmlFor="st-date">Date</label>
-                  <input
-                    id="st-date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                  />
-                </div>
-                <div className="ad-field">
-                  <label htmlFor="st-slot">Slot</label>
-                  <select id="st-slot" value={slot} onChange={(e) => setSlot(e.target.value)}>
-                    {["Morning", "Afternoon", "Evening", "Twilight"].map((s) => (
-                      <option key={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <WhenPicker
+                admin
+                date={date}
+                time={time}
+                min={dubaiToday()}
+                onDate={setDate}
+                onTime={setTime}
+              />
             )}
             {to === "on_hold" && (
               <div className="ad-field">
@@ -199,7 +190,9 @@ function StatusDialog({
                       error: "Say what you’re waiting for: the client sees it.",
                     });
                   start(async () =>
-                    setResult(await setStatus(project.id, to, { date, slot, note, notify })),
+                    setResult(
+                      await setStatus(project.id, to, { date, startTime: time, note, notify }),
+                    ),
                   );
                 }}
               >
@@ -223,7 +216,16 @@ function StatusDialog({
                   status: to,
                   status_note: to === "on_hold" ? note : null,
                   shoot_date: date || project.shoot_date,
-                  slot: to === "confirmed" ? slot : project.slot,
+                  meta:
+                    to === "confirmed" && time
+                      ? {
+                          ...project.meta,
+                          start_time: time,
+                          booking: project.meta?.booking
+                            ? { ...project.meta.booking, start_time: time }
+                            : null,
+                        }
+                      : project.meta,
                 }}
                 event={event}
                 origin={origin}

@@ -1,0 +1,329 @@
+/*
+ * Phase 1 (27 Oct 2026): checkout, saved card, time proposals, calendar links, the shared date + time
+ * picker, delivery actions, the activity timeline. Loaded after portal-v2.css in the same layer.
+ */
+@layer components {
+  /* ---------- checkout ---------- */
+  .pt-pay {
+    display: grid;
+    gap: var(--sp-5);
+    max-width: 1040px;
+  }
+  .pt-pay-grid {
+    display: grid;
+    gap: var(--sp-4);
+    align-items: start;
+  }
+  @media (min-width: 900px) {
+    .pt-pay-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    }
+  }
+  .pt-pay-sum,
+  .pt-pay-form {
+    display: grid;
+    gap: var(--sp-3);
+  }
+  .pt-pay-sum dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--sp-2) var(--sp-4);
+    margin: 0;
+  }
+  .pt-pay-sum dd {
+    margin: 0;
+    text-align: right;
+  }
+  .pt-pay-done {
+    max-width: 620px;
+  }
+  .pt-stripe {
+    min-height: 360px;
+    border-radius: var(--pt-r-sm);
+    overflow: hidden;
+  }
+
+  /* ---------- pay myself / send to company ---------- */
+  .pt-paychoice {
+    display: grid;
+    gap: var(--sp-3);
+  }
+  .pt-choice-card {
+    display: grid;
+    gap: var(--sp-2);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--pt-r-sm);
+    background: var(--surface);
+  }
+
+  /* ---------- saved card ---------- */
+  .pt-savedcard {
+    display: grid;
+    gap: var(--sp-3);
+  }
+  .pt-cardrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+  }
+  .pt-cardchip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font: var(--t-num);
+  }
+  .pt-check.is-off {
+    opacity: 0.5;
+  }
+
+  /* ---------- new time proposed ---------- */
+  .pt-proposal {
+    display: grid;
+    gap: var(--sp-3);
+    border-color: var(--pt-gold);
+  }
+  .pt-proposal-when {
+    font: var(--t-sec);
+  }
+  .pt-proposal-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  /* ---------- calendar links ---------- */
+  .pt-cal-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-top: var(--sp-2);
+  }
+
+  /* ---------- date + arrival time: side by side on desktop, stacked on mobile ---------- */
+  @media (max-width: 699px) {
+    .pt-whenpick.bkp-2col {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+@layer components {
+  /* ---------- package rollover ---------- */
+  .pt-carried {
+    margin: 0;
+    font: var(--t-small);
+    color: var(--pt-gold);
+  }
+}
+
+@layer components {
+  .pt-lines-note {
+    color: var(--muted);
+    font: var(--t-small);
+  }
+}
+
+@layer components {
+  /* The shoot location map (Maps JS, still). */
+  .pt-shootmap {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .pt-staticmap:has(.pt-meta) {
+    display: grid;
+    place-items: center;
+  }
+}
+
+@layer components {
+  .pt-file-thumb {
+    width: 48px;
+    height: 48px;
+    flex: none;
+    object-fit: cover;
+    border-radius: var(--pt-r-sm);
+    background: var(--surface-2);
+  }
+}
+
+@layer components {
+  /* ---------- delivery actions: Approve · Request revision · Download all ---------- */
+  .pt-deliv-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--sp-2);
+  }
+  .pt-deliv-actions .btn {
+    min-height: 44px;
+  }
+  .pt-icon-btn {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 999px;
+    justify-content: center;
+    flex: none;
+  }
+  .pt-icon-btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .pt-icon-btn[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--fg, #f5f3ee);
+    color: var(--bg);
+    font: var(--t-small);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+  .pt-icon-btn[data-tip]:is(:hover, :focus-visible)::after {
+    opacity: 1;
+  }
+  /* Phones: one full-width row, same order; the download stays a circle. */
+  @media (max-width: 699px) {
+    .pt-deliv-actions {
+      flex-wrap: nowrap;
+      justify-content: stretch;
+    }
+    .pt-deliv-actions .btn:not(.pt-icon-btn) {
+      flex: 1 1 0;
+      min-width: 0;
+      padding-inline: 10px;
+    }
+  }
+  @media (max-width: 420px) {
+    .pt-deliv-actions .pt-round {
+      display: none;
+    }
+  }
+}
+
+@layer components {
+  /* ---------- activity timeline: compact rows, one line on desktop, two at most on phones ---------- */
+  .pt-act-compact :is(a, .pt-act-row) {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    color: inherit;
+    text-decoration: none;
+  }
+  .pt-act-compact .pt-act-row {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+  }
+  .pt-act-compact .pt-act-ic {
+    width: 24px;
+    height: 24px;
+  }
+  .pt-act-compact .pt-act-t {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font: var(--t-small);
+  }
+  .pt-act-compact time {
+    font: var(--t-mono);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  @media (max-width: 559px) {
+    .pt-act-compact :is(a, .pt-act-row) {
+      grid-template-columns: 24px minmax(0, 1fr);
+      row-gap: 0;
+    }
+    .pt-act-compact .pt-act-ic {
+      grid-row: span 2;
+      align-self: start;
+    }
+    .pt-act-compact .pt-act-ref {
+      display: none;
+    }
+    .pt-act-compact time {
+      grid-column: 2;
+    }
+  }
+}
+
+@layer components {
+  /* ---------- share page header preview (Settings → Branding) ---------- */
+  .pt-brandprev {
+    display: grid;
+    gap: var(--sp-2);
+  }
+  @media (min-width: 700px) {
+    .pt-brandprev {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .pt-brandprev-pane {
+    display: grid;
+    gap: 6px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--pt-r-sm);
+    background: var(--bg);
+    color: var(--fg);
+  }
+  .pt-brandprev-pane .pt-eb {
+    color: var(--muted);
+  }
+  /* The same header as share.css draws (kept in step with .sh-brand there). */
+  .pt-brandprev .sh-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 52px;
+    padding: 10px 16px;
+    font: 700 15px/1.2 var(--font-sans);
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .pt-brandprev .sh-brand-logo {
+    height: 32px;
+    width: auto;
+    max-width: 180px;
+    object-fit: contain;
+  }
+  .pt-brandprev .sh-brand-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border-radius: 6px;
+  }
+}
+
+@layer components {
+  /* Change quote: heading over its line. */
+  .pt-quote {
+    display: grid;
+    gap: 2px;
+  }
+}
+
+@layer components {
+  /* In a sheet the date and time panels open in place (the sheet scrolls; a floating panel was cut off). */
+  .pt-sheet .pt-pop-panel {
+    position: static;
+    margin-top: 6px;
+    box-shadow: none;
+  }
+}

@@ -204,6 +204,8 @@ export type StatementRow = {
     overage_total: number;
     extras_total: number;
     before_total: number;
+    /** Package rollover that month (phase 1): carried in, used, expired, carrying on. */
+    rollover?: import("./rollover").Carry | null;
   } | null;
   lines: (LineItem & { amount: number })[];
   overage: Usage[];
@@ -222,6 +224,14 @@ export const extraCount = (n: number, label: string) => {
 /** Today in Dubai, as YYYY-MM-DD. */
 export const dubaiToday = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" }).format(new Date());
+
+/** Money given back on a paid invoice (phase 1): "Refunded", "Part refunded", or null. */
+export const refundState = (i: { amount: number; refunded?: number | null }) =>
+  Number(i.refunded ?? 0) <= 0
+    ? null
+    : Number(i.refunded) >= Number(i.amount)
+      ? "Refunded"
+      : "Part refunded";
 
 /** Due becomes Overdue the day after the due date (the cron also records it). */
 export const shownStatus = (i: Pick<Invoice, "status" | "due_on">): InvoiceStatus =>

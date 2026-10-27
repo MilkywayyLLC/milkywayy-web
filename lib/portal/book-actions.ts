@@ -24,8 +24,9 @@ import { portalAdminAs } from "./admin";
 import { originFrom } from "./invite";
 import { notifyMilkywayy } from "./notify";
 import { applyMyChange } from "./payment-actions";
-import { afterBooking } from "./payment-server";
+import { afterBooking, companyRates } from "./payment-server";
 import { BOOKING_TERMS_VERSION } from "./payments";
+import { whenLabel } from "./when";
 
 /**
  * "Book a shoot" (owner, 10 Oct 2026): every client can book in the portal. The request becomes a
@@ -119,7 +120,12 @@ export async function bookShoot(b: {
   if (!services.length) return { ok: false, error: "Add at least one service." };
   const pricing = await getPropertyPricing();
   const { data: opts } = await db.rpc("my_booking_options", { p_account: current.account.id });
-  const rates = (opts as { rates: Rates | null } | null)?.rates ?? null;
+  // Teammates without price access still book at the company's rates (server-side only).
+  const rates = await companyRates<Rates>(
+    current.account.id,
+    (opts as { rates: Rates | null } | null)?.rates ?? null,
+    `client:${user.email ?? user.id}`,
+  );
   const est = rates ? estimate(services, rates, clientPricing(pricing, rates)) : null;
   const loc: BookingLocation = {
     address: b.location.address.trim(),
@@ -161,19 +167,18 @@ export async function bookShoot(b: {
     if (ae) console.error("[portal] set_project_agent:", ae.message);
   }
   const origin = originFrom(await headers());
-  const slot = SLOTS.find(([k]) => k === b.slot)![1];
   await notifyMilkywayy(
     out.id,
     "booking_requested",
     `New booking request: ${current.account.name} · ${b.date}`,
     [
-      `${current.account.name} asked for a shoot on ${b.date} (${slot}).`,
+      `${current.account.name} asked for a shoot on ${whenLabel(b.date, startTime(b.startTime), b.slot)}.`,
       `Where: ${loc.address}${loc.unit ? ` · ${loc.unit}` : ""}`,
       ...services.map((s) => `${SERVICE_LABEL[s.service]}: ${serviceSummary(s, pricing)}`),
       ...(est != null
         ? [`Estimate at their rates: ${current.account.currency} ${est.toLocaleString("en-US")}`]
         : []),
-      "Confirm the date and slot in the admin.",
+      "Confirm the date and time in the admin, or propose another time.",
     ],
     `${origin}/admin/projects/${out.id}`,
   ).catch((e) => console.error("[portal] booking alert:", e));
@@ -210,18 +215,19 @@ export async function bookShoot(b: {
     ok: true,
     ref: out.ref,
     payUrl: pay.payUrl,
-    invoice: pay.invoice
-      ? { number: pay.invoice.number, amount: pay.invoice.amount, currency: pay.invoice.currency }
-      : null,
+    // Teammates without price access never see amounts (they choose how to pay on the pay page).
+    invoice:
+      pay.invoice && can(current, "billing")
+        ? { number: pay.invoice.number, amount: pay.invoice.amount, currency: pay.invoice.currency }
+        : null,
   };
 }
 
 type BookingInput = Parameters<typeof bookShoot>[0];
-const slotLabel = (k: string | null | undefined) => SLOTS.find(([s]) => s === k)?.[1] ?? k ?? "";
 
 /** Edit a Requested shoot, or ask to change a Confirmed one (back to Requested). Admin is told. */
 export async function updateBooking(projectId: string, b: BookingInput): Promise<BookResult> {
-  const { db, current } = await requireAccount("/portal/shoots");
+  const { db, user, current } = await requireAccount("/portal/shoots");
   if (!can(current, "shoots"))
     return { ok: false, error: "Your access doesn’t include shoots. Ask the account owner." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return { ok: false, error: "Choose a date." };
@@ -251,7 +257,12 @@ export async function updateBooking(projectId: string, b: BookingInput): Promise
   }
   const pricing = await getPropertyPricing();
   const { data: opts } = await db.rpc("my_booking_options", { p_account: current.account.id });
-  const rates = (opts as { rates: Rates | null } | null)?.rates ?? null;
+  // Teammates without price access still book at the company's rates (server-side only).
+  const rates = await companyRates<Rates>(
+    current.account.id,
+    (opts as { rates: Rates | null } | null)?.rates ?? null,
+    `client:${user.email ?? user.id}`,
+  );
   const est = rates ? estimate(services, rates, clientPricing(pricing, rates)) : null;
   const loc: BookingLocation = {
     address: b.location.address.trim(),
@@ -296,8 +307,8 @@ export async function updateBooking(projectId: string, b: BookingInput): Promise
       .join("; ");
   const changes = [
     before.shoot_date !== b.date ? `Date: ${before.shoot_date ?? "—"} → ${b.date}` : "",
-    (before.slot ?? "") !== slotLabel(b.slot)
-      ? `Time: ${before.slot ?? "—"} → ${slotLabel(b.slot)}`
+    (before.meta?.booking?.start_time ?? "") !== (b.startTime ?? "")
+      ? `Start time: ${before.meta?.booking?.start_time ?? "—"} → ${b.startTime || "—"}`
       : "",
     (old?.location?.address ?? "") !== loc.address
       ? `Location: ${old?.location?.address ?? "—"} → ${loc.address}`

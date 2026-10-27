@@ -21,6 +21,21 @@ export function stripeKey() {
 /** PAYMENTS_ENABLED=false switches card payments off even with keys set (launch runs without Stripe). */
 export const stripeReady = () => process.env.PAYMENTS_ENABLED !== "false" && !!stripeKey();
 
+/**
+ * The publishable key for Embedded Checkout on our own page (phase 1, 27 Oct 2026). Same rule as the
+ * secret key: a live one only on production. Without it, Pay now falls back to Stripe's hosted page.
+ */
+export function publishableKey() {
+  const k = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
+  if (!k || !stripeKey()) return null;
+  const production =
+    process.env.VERCEL_ENV === "production" && process.env.NEXT_PUBLIC_SITE_ENV === "production";
+  if (/^pk_live_/.test(k) && !production) return null;
+  // Never mix modes: a test secret with a live publishable key (or the reverse) can't work.
+  if (/^pk_live_/.test(k) !== /^(sk|rk)_live_/.test(stripeKey()!)) return null;
+  return k;
+}
+
 /** Stripe's form encoding, nested keys included (line_items[0][price_data][currency]=aed). */
 function form(obj: Record<string, unknown>, prefix = ""): string[] {
   return Object.entries(obj).flatMap(([k, v]) => {
@@ -34,51 +49,215 @@ function form(obj: Record<string, unknown>, prefix = ""): string[] {
 /** Amounts in the currency's minor unit (AED and USD both have 2 decimals). */
 export const minor = (amount: number) => Math.round(Number(amount) * 100);
 
+/** One Stripe API call (form-encoded), throwing Stripe's message on failure. */
+async function api<T>(
+  path: string,
+  body?: Record<string, unknown>,
+  idem?: string,
+  method?: string,
+) {
+  const key = stripeKey();
+  if (!key) throw new Error("Stripe isn't set up here");
+  const r = await fetch(`${API}${path}`, {
+    method: method ?? (body ? "POST" : "GET"),
+    headers: {
+      Authorization: `Bearer ${key}`,
+      ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
+      ...(idem ? { "Idempotency-Key": idem } : {}),
+    },
+    body: body ? form(body).join("&") : undefined,
+  });
+  const out = (await r.json()) as T & {
+    error?: { message?: string; code?: string; decline_code?: string };
+  };
+  if (!r.ok)
+    throw Object.assign(
+      new Error(`Stripe ${r.status}: ${out.error?.message ?? "request refused"}`),
+      {
+        code: out.error?.decline_code ?? out.error?.code,
+      },
+    );
+  return out as T;
+}
+
+/**
+ * A Checkout session for one invoice. "embedded" (our own /portal/pay page, needs the publishable key)
+ * returns a client secret; "hosted" returns Stripe's page URL. With a customer, the company's saved card
+ * is offered and a new one can be saved.
+ */
 export async function createCheckout(o: {
   invoiceId: string;
   number: string;
   amount: number;
   currency: string;
   email?: string | null;
-  successUrl: string;
-  cancelUrl: string;
+  customer?: string | null;
+  ui?: "embedded" | "hosted";
+  /** Embedded: where Stripe sends the browser after paying ({CHECKOUT_SESSION_ID} is filled in). */
+  returnUrl?: string;
+  successUrl?: string;
+  cancelUrl?: string;
 }) {
-  const key = stripeKey();
-  if (!key) throw new Error("Stripe isn't set up here");
-  const body = form({
-    mode: "payment",
-    client_reference_id: o.invoiceId,
-    success_url: o.successUrl,
-    cancel_url: o.cancelUrl,
-    customer_email: o.email || undefined,
-    metadata: { invoice_id: o.invoiceId, invoice_number: o.number },
-    payment_intent_data: { metadata: { invoice_id: o.invoiceId, invoice_number: o.number } },
-    line_items: {
-      0: {
-        quantity: 1,
-        price_data: {
-          currency: o.currency.toLowerCase(),
-          unit_amount: minor(o.amount),
-          product_data: { name: `Milkywayy invoice ${o.number}` },
+  const embedded = o.ui === "embedded";
+  const out = await api<{ id?: string; url?: string; client_secret?: string }>(
+    "/checkout/sessions",
+    {
+      mode: "payment",
+      client_reference_id: o.invoiceId,
+      ...(embedded
+        ? { ui_mode: "embedded", return_url: o.returnUrl }
+        : { success_url: o.successUrl, cancel_url: o.cancelUrl }),
+      ...(o.customer
+        ? {
+            customer: o.customer,
+            saved_payment_method_options: { payment_method_save: "enabled" },
+          }
+        : { customer_email: o.email || undefined }),
+      metadata: { invoice_id: o.invoiceId, invoice_number: o.number },
+      payment_intent_data: { metadata: { invoice_id: o.invoiceId, invoice_number: o.number } },
+      line_items: {
+        0: {
+          quantity: 1,
+          price_data: {
+            currency: o.currency.toLowerCase(),
+            unit_amount: minor(o.amount),
+            product_data: { name: `Milkywayy invoice ${o.number}` },
+          },
         },
       },
     },
-  }).join("&");
-  const r = await fetch(`${API}/checkout/sessions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-      // One session per invoice per minute, however often the button is pressed.
-      "Idempotency-Key": `inv-${o.invoiceId}-${Math.floor(Date.now() / 60000)}`,
-    },
-    body,
-  });
-  const out = (await r.json()) as { id?: string; url?: string; error?: { message?: string } };
-  if (!r.ok || !out.id || !out.url)
-    throw new Error(`Stripe ${r.status}: ${out.error?.message ?? "no session"}`);
-  return { id: out.id, url: out.url };
+    // One session per invoice per minute (and per page type), however often the button is pressed.
+    `inv-${o.invoiceId}-${embedded ? "e" : "h"}-${Math.floor(Date.now() / 60000)}`,
+  );
+  if (!out.id || (embedded ? !out.client_secret : !out.url)) throw new Error("Stripe: no session");
+  return { id: out.id, url: out.url ?? null, clientSecret: out.client_secret ?? null };
 }
+
+export type CheckoutSession = {
+  id: string;
+  mode: "payment" | "setup";
+  status: "open" | "complete" | "expired";
+  payment_status: "paid" | "unpaid" | "no_payment_required";
+  amount_total: number | null;
+  currency: string | null;
+  client_reference_id: string | null;
+  customer: string | null;
+  metadata?: Record<string, string>;
+  setup_intent?: { id: string; payment_method?: PaymentMethod | null } | string | null;
+};
+export type PaymentMethod = {
+  id: string;
+  card?: { brand: string; last4: string; exp_month: number; exp_year: number };
+};
+
+export const getCheckout = (id: string) =>
+  api<CheckoutSession>(
+    `/checkout/sessions/${encodeURIComponent(id)}?expand[]=setup_intent.payment_method`,
+  );
+
+/** The company's Stripe customer (one per account), made the first time it's needed. */
+export const createCustomer = (o: {
+  accountId: string;
+  name: string;
+  email?: string | null;
+  replacing?: string;
+}) =>
+  api<{ id: string }>(
+    "/customers",
+    { name: o.name, email: o.email || undefined, metadata: { account_id: o.accountId } },
+    o.replacing ? `cust-${o.accountId}-${o.replacing}` : `cust-${o.accountId}`,
+  );
+
+/** Whether a stored customer still exists under this key (a test-mode id is unknown to live keys). */
+export async function customerExists(id: string) {
+  try {
+    const c = await api<{ deleted?: boolean }>(`/customers/${encodeURIComponent(id)}`);
+    return !c.deleted;
+  } catch (e) {
+    if (e instanceof Error && /^Stripe 404/.test(e.message)) return false;
+    throw e;
+  }
+}
+
+/** Save a card for later (Checkout in setup mode): on our page (embedded) or Stripe's. */
+export async function createSetupCheckout(o: {
+  customer: string;
+  accountId: string;
+  ui: "embedded" | "hosted";
+  returnUrl: string;
+  cancelUrl: string;
+}) {
+  const embedded = o.ui === "embedded";
+  const out = await api<{ id: string; url?: string; client_secret?: string }>(
+    "/checkout/sessions",
+    {
+      mode: "setup",
+      currency: "aed",
+      customer: o.customer,
+      payment_method_types: { 0: "card" },
+      metadata: { account_id: o.accountId, purpose: "save_card" },
+      setup_intent_data: { metadata: { account_id: o.accountId } },
+      ...(embedded
+        ? { ui_mode: "embedded", return_url: o.returnUrl }
+        : { success_url: o.returnUrl, cancel_url: o.cancelUrl }),
+    },
+  );
+  return { id: out.id, url: out.url ?? null, clientSecret: out.client_secret ?? null };
+}
+
+export const getPaymentMethod = (id: string) =>
+  api<PaymentMethod>(`/payment_methods/${encodeURIComponent(id)}`);
+
+export const detachPaymentMethod = (id: string) =>
+  api<PaymentMethod>(`/payment_methods/${encodeURIComponent(id)}/detach`, {});
+
+/** "Visa •••• 4242 · 12/28" pieces from a card. */
+export const cardOf = (pm: PaymentMethod | null | undefined) =>
+  pm?.card
+    ? {
+        pm_id: pm.id,
+        brand: pm.card.brand,
+        last4: pm.card.last4,
+        exp: `${String(pm.card.exp_month).padStart(2, "0")}/${String(pm.card.exp_year).slice(-2)}`,
+      }
+    : null;
+
+export type PaymentIntent = {
+  id: string;
+  status: string;
+  amount: number;
+  currency: string;
+  metadata?: Record<string, string>;
+  last_payment_error?: { message?: string; decline_code?: string } | null;
+};
+
+/**
+ * Charge the saved card for an invoice without the client present (automatic month-end payments).
+ * Stripe declines come back as a thrown error with the decline message.
+ */
+export const chargeSavedCard = (o: {
+  customer: string;
+  pm: string;
+  invoiceId: string;
+  number: string;
+  amount: number;
+  currency: string;
+  attempt: number;
+}) =>
+  api<PaymentIntent>(
+    "/payment_intents",
+    {
+      amount: minor(o.amount),
+      currency: o.currency.toLowerCase(),
+      customer: o.customer,
+      payment_method: o.pm,
+      off_session: "true",
+      confirm: "true",
+      description: `Milkywayy invoice ${o.number}`,
+      metadata: { invoice_id: o.invoiceId, invoice_number: o.number, autopay: "1" },
+    },
+    `autopay-${o.invoiceId}-${o.attempt}`,
+  );
 
 export type StripeEvent = {
   id: string;
@@ -134,17 +313,23 @@ export async function refundCheckout(o: {
   const key = stripeKey();
   if (!key) throw new Error("Stripe isn't set up here");
   const auth = { Authorization: `Bearer ${key}` };
-  const s = await fetch(`${API}/checkout/sessions/${encodeURIComponent(o.sessionId)}`, {
-    headers: auth,
-  });
-  const session = (await s.json()) as {
-    payment_intent?: string | null;
-    error?: { message?: string };
-  };
-  if (!s.ok || !session.payment_intent)
-    throw new Error(
-      `Stripe ${s.status}: ${session.error?.message ?? "no payment for that session"}`,
-    );
+  // A saved-card payment is refunded by its PaymentIntent directly (phase 1).
+  const session = o.sessionId.startsWith("pi_")
+    ? { payment_intent: o.sessionId }
+    : await (async () => {
+        const s = await fetch(`${API}/checkout/sessions/${encodeURIComponent(o.sessionId)}`, {
+          headers: auth,
+        });
+        const out = (await s.json()) as {
+          payment_intent?: string | null;
+          error?: { message?: string };
+        };
+        if (!s.ok || !out.payment_intent)
+          throw new Error(
+            `Stripe ${s.status}: ${out.error?.message ?? "no payment for that session"}`,
+          );
+        return out;
+      })();
   const r = await fetch(`${API}/refunds`, {
     method: "POST",
     headers: {

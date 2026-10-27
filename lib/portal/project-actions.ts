@@ -14,7 +14,7 @@ import {
   type AvatarFormat,
   type Rates,
 } from "./booking";
-import { afterBooking } from "./payment-server";
+import { afterBooking, companyRates } from "./payment-server";
 import { BOOKING_TERMS_VERSION } from "./payments";
 import { originFrom } from "./invite";
 import { projectLink } from "./messages";
@@ -259,7 +259,12 @@ export async function createProject(input: NewProject): Promise<
   const origin = originFrom(await headers());
   // What's due now by the client's term: the estimate from their own rates (price access only).
   const { data: opts } = await db.rpc("my_booking_options", { p_account: current.account.id });
-  const rates = (opts as { rates: Rates | null } | null)?.rates ?? null;
+  // Teammates without price access still book at the company's rates (server-side only).
+  const rates = await companyRates<Rates>(
+    current.account.id,
+    (opts as { rates: Rates | null } | null)?.rates ?? null,
+    `client:${user.email ?? user.id}`,
+  );
   const editRate = input.type === "edit" ? rates?.[EDIT_RATE[input.kind] ?? ""] : null;
   const est =
     input.type === "avatar" && av

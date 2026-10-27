@@ -14,6 +14,7 @@ import {
   money,
   monthLabel,
   QUEUE_STATUS_LABEL,
+  refundState,
   type InvoiceCategory,
   type InvoiceLine,
   type QueueStatus,
@@ -25,6 +26,7 @@ type Full = DraftData & {
   account_name: string;
   shown_status: QueueStatus;
   amount: number;
+  refunded?: number | null;
   subtotal: number | null;
   vat: number;
   issued_on: string;
@@ -84,6 +86,11 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         <span className={`ad-pill ${inv.shown_status}`} data-testid="invoice-status">
           {QUEUE_STATUS_LABEL[inv.shown_status]}
         </span>
+        {Number(inv.refunded ?? 0) > 0 && (
+          <span className="ad-pill" data-testid="invoice-refunded">
+            {refundState(inv)} · {money(inv.currency, Number(inv.refunded))}
+          </span>
+        )}
       </div>
 
       {editable ? (

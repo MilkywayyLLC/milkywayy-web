@@ -61,7 +61,7 @@ export default async function ViewAs({ params }: { params: Promise<{ id: string 
                       {p.unit ? ` · ${p.unit}` : ""}
                     </b>
                     <span className="pt-meta">
-                      {p.area} · {day(p.date)} · {p.slot} ·{" "}
+                      {p.area} · {day(p.date)} ·{" "}
                       {p.services.map((s) => SHOOT_SERVICES[s] ?? s).join(" · ")}
                       {p.subtotal != null
                         ? ` · ${a.currency} ${p.subtotal.toLocaleString("en-US")}`

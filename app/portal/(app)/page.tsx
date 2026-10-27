@@ -1,4 +1,5 @@
 import { dateLabel, money, shownStatus, type Invoice } from "@/lib/portal/billing";
+import { activityIcon, activityTime } from "@/lib/portal/activity";
 import type { BillingPayments } from "@/components/portal/PaymentParts";
 import { dayCount, packageSplitUsage } from "@/lib/portal/payments";
 import { Icon } from "@/components/portal/Icon";
@@ -137,20 +138,7 @@ export default async function PortalHome({
                       ? `${statusLabel("completed")}: ${t}`
                       : (e.note ?? e.kind);
   };
-  const eventIcon = (e: (typeof events)[number]) =>
-    e.kind === "delivery" || e.to_status === "delivered"
-      ? "download"
-      : e.kind === "created"
-        ? "calendar"
-        : e.kind === "files_added"
-          ? "upload"
-          : e.kind === "approved" || e.kind === "auto_completed"
-            ? "check"
-            : e.project.type === "avatar"
-              ? "avatars"
-              : e.project.type === "edit"
-                ? "editing"
-                : "shoots";
+  const eventIcon = (e: (typeof events)[number]) => activityIcon(e, e.project.type);
   const seen = new Set<string>();
   const activity = events
     .map((e) => ({ e, text: eventText(e) }))
@@ -417,7 +405,7 @@ export default async function PortalHome({
         </h2>
         <div className="pt-card pt-act">
           {activity.length ? (
-            <ul className="pt-act-list" data-testid="activity">
+            <ul className="pt-act-list pt-act-compact" data-testid="activity">
               {activity.map(({ e, text }) => (
                 <li key={e.id}>
                   <Link href={`/portal/p/${encodeURIComponent(e.project.ref)}`}>
@@ -426,13 +414,7 @@ export default async function PortalHome({
                     </span>
                     <span className="pt-act-t">{text}</span>
                     <span className="pt-act-ref pt-mono">{e.project.ref}</span>
-                    <time dateTime={e.at}>
-                      {new Date(e.at).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        timeZone: "Asia/Dubai",
-                      })}
-                    </time>
+                    <time dateTime={e.at}>{activityTime(e.at)}</time>
                   </Link>
                 </li>
               ))}

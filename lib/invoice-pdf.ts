@@ -19,6 +19,7 @@ export type PdfInvoice = {
     period_start: string | null;
     period_end: string | null;
     status: string;
+    refunded?: number | null;
   };
   account: { name: string; trn: string | null; billing_address: string | null };
   company: {
@@ -281,6 +282,11 @@ export function invoicePdf(d: PdfInvoice, opts: { payUrl?: string } = {}): Uint8
   } else {
     p.text(M, y, "PAID", 12, "B", 0.3);
     y -= 14;
+    // Money given back (cancellations), phase 1.
+    if (Number(i.refunded ?? 0) > 0) {
+      p.text(M, y, `REFUNDED ${money(cur, Number(i.refunded))}`, 10, "B", 0.45);
+      y -= 14;
+    }
   }
   if (i.note) {
     y -= 10;

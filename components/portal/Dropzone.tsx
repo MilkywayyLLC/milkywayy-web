@@ -211,7 +211,10 @@ export function usePicked() {
     setList((l) => {
       if (replace) l.forEach((p) => p.src && URL.revokeObjectURL(p.src));
       const next = files.map((file) => {
-        const src = /^image\//.test(file.type) ? URL.createObjectURL(file) : undefined;
+        // Only types every browser can draw (an iPhone HEIC showed as a broken image).
+        const src = /^image\/(jpeg|png|webp|gif|avif)$/.test(file.type)
+          ? URL.createObjectURL(file)
+          : undefined;
         if (src) urls.current.add(src);
         return {
           id: `${file.name}:${file.size}:${Math.random().toString(36).slice(2, 8)}`,
@@ -252,7 +255,10 @@ export function SingleFile({
   testId?: string;
 }) {
   const src = useMemo(
-    () => (file && /^image\//.test(file.type) ? URL.createObjectURL(file) : undefined),
+    () =>
+      file && /^image\/(jpeg|png|webp|gif|avif)$/.test(file.type)
+        ? URL.createObjectURL(file)
+        : undefined,
     [file],
   );
   useEffect(

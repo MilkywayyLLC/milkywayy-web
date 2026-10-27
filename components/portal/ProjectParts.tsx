@@ -1,5 +1,7 @@
 import { DownloadButton } from "@/components/portal/ProjectActions";
-import { presign, r2Ready } from "@/lib/r2";
+import { activityIcon, activityTime, tidyNote } from "@/lib/portal/activity";
+import { thumbSrc } from "@/lib/portal/thumbs";
+import { Icon } from "./Icon";
 import {
   bytes,
   day,
@@ -43,16 +45,27 @@ const when = (iso: string) =>
     timeZone: "Asia/Dubai",
   });
 
-export function ActivityList({ events }: { events: ProjectEvent[] }) {
+export function ActivityList({
+  events,
+  type = "shoot",
+}: {
+  events: ProjectEvent[];
+  type?: string;
+}) {
   return (
     <section className="pt-card">
       <h2 className="pt-h2">Activity</h2>
-      <ul className="pt-timeline" data-testid="activity">
+      <ul className="pt-act-list pt-act-compact" data-testid="activity">
         {events.map((e) => (
           <li key={e.id}>
-            <div style={{ display: "grid" }}>
-              <span>{(EVENT_TEXT[e.kind] ?? (() => e.kind))(e)}</span>
-              <span className="pt-meta pt-mono">{when(e.at)}</span>
+            <div className="pt-act-row">
+              <span className="pt-act-ic" aria-hidden="true">
+                <Icon name={activityIcon(e, type)} size={16} />
+              </span>
+              <span className="pt-act-t">
+                {tidyNote((EVENT_TEXT[e.kind] ?? (() => e.kind))(e))}
+              </span>
+              <time dateTime={e.at}>{activityTime(e.at)}</time>
             </div>
           </li>
         ))}
@@ -72,12 +85,12 @@ export function DeliveryList({
   files: ProjectFile[];
   locked?: boolean;
 }) {
-  const view = (key: string) => (r2Ready() ? presign("GET", key, 3600) : null);
   return (
     <>
       {deliveries(files).map((d) => {
-        const tiles = d.files.filter((f) => f.thumb_key);
-        const rows = d.files.filter((f) => !f.thumb_key);
+        // Every photo gets a tile: its preview is made on the server if it has none (phase 1).
+        const tiles = d.files.filter((f) => f.kind === "photos" && thumbSrc(f));
+        const rows = d.files.filter((f) => !tiles.includes(f));
         return (
           <section key={d.no} className="pt-card" aria-label={d.label} data-testid="delivery">
             <div className="pt-row">
@@ -92,7 +105,7 @@ export function DeliveryList({
             {tiles.length > 0 && (
               <ul className="pt-thumbs" aria-label="Photos">
                 {tiles.map((f) => {
-                  const src = locked ? `/api/portal/preview/${f.id}?s=t` : view(f.thumb_key!);
+                  const src = locked ? `/api/portal/preview/${f.id}?s=t` : thumbSrc(f);
                   const big = locked ? `/api/portal/preview/${f.id}` : src;
                   return (
                     <li key={f.id}>
@@ -160,6 +173,16 @@ export function FilesInList({ files }: { files: ProjectFile[] }) {
     <div className="pt-list" data-testid="files-in">
       {ins.map((f) => (
         <div key={f.id} className="pt-file">
+          {thumbSrc(f) && (
+            // eslint-disable-next-line @next/next/no-img-element -- signed, short-lived R2 URL
+            <img
+              className="pt-file-thumb"
+              src={thumbSrc(f)!}
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+          )}
           <div style={{ minWidth: 0 }}>
             <b style={{ overflowWrap: "anywhere" }}>{f.label}</b>
             <div className="pt-meta" style={{ overflowWrap: "anywhere" }}>

@@ -1,3 +1,4 @@
+import { carrySummary } from "@/lib/portal/rollover";
 import { cx } from "@/lib/cx";
 import { InvoiceDownload } from "@/components/portal/InvoiceDownload";
 import {
@@ -10,6 +11,7 @@ import {
   type BillingPayments,
 } from "@/components/portal/PaymentParts";
 import { TERMS_LABEL } from "@/lib/portal/payments";
+import { SavedCard, type PaymentOptions } from "@/components/portal/SavedCard";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
 import { ActivityList, BudgetCard } from "@/components/portal/Budget";
 import { Badge } from "@/components/portal/ui";
@@ -22,6 +24,7 @@ import {
   money,
   monthLabel,
   shownStatus,
+  refundState,
   STATUS_LABEL,
   type Invoice,
   type InvoiceLine,
@@ -48,9 +51,9 @@ export const metadata = { title: "Billing" };
 export default async function Billing({
   searchParams,
 }: {
-  searchParams: Promise<{ paid?: string }>;
+  searchParams: Promise<{ paid?: string; card?: string }>;
 }) {
-  const { paid } = await searchParams;
+  const { paid, card: cardDone } = await searchParams;
   const { db, current } = await requireAccount("/portal/billing");
   if (!seesMoney(current))
     return (
@@ -65,13 +68,21 @@ export default async function Billing({
     { data: invoiceRows },
     { data: statementRows },
     { data: payments },
+    { data: options },
   ] = await Promise.all([
     db.rpc("my_billing", { p_account: a.id }),
     db.from("invoices").select("*").eq("account_id", a.id),
     db.from("statements").select("*").eq("account_id", a.id),
     db.rpc("my_billing_payments", { p_account: a.id }),
+    db.rpc("my_payment_options", { p_account: a.id }),
   ]);
-  const bp = payments as BillingPayments | null;
+  const opts = options as PaymentOptions | null;
+  const bp = payments
+    ? ({
+        ...(payments as BillingPayments),
+        bank_transfer: opts?.bank_transfer ?? true,
+      } as BillingPayments)
+    : null;
   if (error) console.error("[portal] my_billing:", error.message);
   const b = billing as MyBilling | null;
   const cardPay = stripeReady();
@@ -130,6 +141,7 @@ export default async function Billing({
           chat={chatLink(`Hi, I have a question about billing for ${a.name}.`)}
         />
       )}
+      {cardPay && opts && <SavedCard opts={opts} saved={cardDone === "saved"} />}
       {bp?.value && <PackageBookings v={bp.value} />}
 
       {b?.budget && <BudgetCard b={b.budget} currency={b.currency} />}
@@ -299,6 +311,9 @@ export default async function Billing({
                         {monthLabel(month)} · due {dateLabel(i.due_on)}
                         {i.paid_via === "stripe" ? " · paid by card" : ""}
                         {i.paid_via === "bank" ? " · paid by bank transfer" : ""}
+                        {Number(i.refunded ?? 0) > 0
+                          ? ` · ${money(i.currency, Number(i.refunded))} refunded`
+                          : ""}
                       </div>
                       {open && i.payment_state === "rejected" && (
                         <div className="pt-meta pt-warn-text">
@@ -319,14 +334,18 @@ export default async function Billing({
                               : "gold"
                       }
                     >
-                      {submitted ? "Payment submitted" : STATUS_LABEL[st]}
+                      {submitted
+                        ? "Payment submitted"
+                        : st === "paid" && refundState(i)
+                          ? refundState(i)
+                          : STATUS_LABEL[st]}
                     </Badge>
                     <span className="pt-inv-actions">
                       {open && !submitted && bp && (
                         <PayActions
                           inv={i}
                           card={cardPay}
-                          payOnline={bp.pay_online}
+                          bank={bp.bank_transfer !== false}
                           wio={bp.wio_link}
                         />
                       )}
@@ -390,7 +409,7 @@ export default async function Billing({
           </div>
         )}
       </section>
-      {bp && (unpaid || bp.value || bp.terms === "month_end") && (
+      {bp && bp.bank_transfer !== false && (unpaid || bp.value || bp.terms === "month_end") && (
         <BankBox bank={bp.bank} wio={bp.wio_link} />
       )}
     </>
@@ -426,6 +445,13 @@ function Breakdown({ s }: { s: StatementRow }) {
         <li key={n}>
           <span>{label}</span>
           <span className="pt-mono">{money(c, amount)}</span>
+        </li>
+      ))}
+      {/* Package rollover (phase 1): carried in, used, expired, carrying on. No money. */}
+      {carrySummary(c, s.package?.rollover).map((r) => (
+        <li key={r.key} className="pt-lines-note" data-testid="statement-rollover">
+          <span>{r.label}</span>
+          <span className="pt-mono">{r.value}</span>
         </li>
       ))}
       {Number(s.vat) > 0 && (

@@ -1,3 +1,4 @@
+import { BackfillInvoices } from "@/components/admin/BackfillInvoices";
 import { BillingNav } from "@/components/admin/BillingNav";
 import { BillingSettingsForm } from "@/components/admin/BillingTools";
 import { PaymentSettingsForm, type PaymentSettings } from "@/components/admin/PaymentAdmin";
@@ -34,19 +35,19 @@ export default async function BillingSettingsPage() {
       ) : (
         <p className="ad-note warn">PORTAL_ADMIN_SECRET isn’t set for this deployment.</p>
       )}
+      {s && <BackfillInvoices />}
       {turnaround.length > 0 && <TurnaroundForm rows={turnaround} />}
       <section className="ad-card ad-form" aria-label="Card payments">
         <h2 className="ad-h2">Card payments (Stripe)</h2>
         <span className="ad-small">
           {stripeReady()
-            ? "Set up: USD clients (and any you switch on) see “Pay now” on unpaid invoices."
+            ? "Set up: every client sees “Pay now” on open invoices (checkout on our site), can save a card and opt in to automatic month-end payments."
             : "Not set up here: add STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET (test keys on previews)."}
         </span>
         <span className="ad-small ad-muted">
-          Webhook endpoint: /api/stripe/webhook, events checkout.session.completed,
-          checkout.session.async_payment_succeeded and refund.created / refund.updated /
-          refund.failed. Paid invoices email “Payment received”; a paid booking invoice confirms the
-          booking.
+          Webhook endpoint: /api/stripe/webhook (events and keys: docs/STRIPE_SETUP.md). Paid
+          invoices email “Payment received”; a paid booking waits as “Pending confirmation” until
+          you confirm it or propose another time.
         </span>
       </section>
     </div>

@@ -15,7 +15,6 @@ import {
   clientStatus,
   deliveries,
   SHOOT_SERVICE_LABEL,
-  shootDay,
   statusLabel,
   stepsFor,
   type Project,
@@ -32,6 +31,15 @@ import type { Slot } from "@/lib/portal/booking";
 import { ShootDeliveries, type DFile } from "@/components/portal/ShootDeliveries";
 import { downloadUrl, presign, r2Ready } from "@/lib/r2";
 import { stripeReady } from "@/lib/stripe";
+import { ProposalBanner } from "@/components/portal/ProposalBanner";
+import { projectWhen, whenLabel } from "@/lib/portal/when";
+import { thumbSrc } from "@/lib/portal/thumbs";
+import { zipName } from "@/lib/portal/zip-browser";
+import { ShootMap } from "@/components/portal/ShootMap";
+import { AddToCalendar } from "@/components/portal/AddToCalendar";
+import { shootEventOf } from "@/lib/portal/shoot-calendar";
+import { originFrom } from "@/lib/portal/invite";
+import { headers } from "next/headers";
 import {
   ProjectPaymentCard,
   type BillingPayments,
@@ -140,8 +148,8 @@ export default async function ShootPage({
       thumb:
         locked && f.kind === "photos" && f.source === "r2"
           ? `/api/portal/preview/${f.id}?s=t`
-          : r2 && f.thumb_key
-            ? presign("GET", f.thumb_key, 3600)
+          : r2
+            ? thumbSrc(f)
             : null,
       deliverableId: f.deliverable_id ?? null,
     })),
@@ -167,13 +175,12 @@ export default async function ShootPage({
     contactName(db, p.agent_contact_id),
     admin ? teammates(db, current.account.id) : Promise.resolve([]),
   ]);
-  const when = [
-    shootDay(p.shoot_date),
-    p.slot,
-    booking?.start_time ? `preferred start ${booking.start_time}` : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  // The real date and start time, never Morning / Afternoon (phase 1).
+  const when = projectWhen(p);
+  const origin = originFrom(await headers());
+  const proposal = (
+    p.meta as { proposal?: { date: string; start_time: string; note?: string | null } }
+  ).proposal;
   const total = (items ?? []).reduce((t, i) => t + Number(i.qty) * Number(i.unit_price), 0);
 
   return (
@@ -188,7 +195,7 @@ export default async function ShootPage({
           </span>
           <h1 className="pt-h1">{p.title}</h1>
         </div>
-        <Badge tone={p.status === "delivered" ? "gold" : undefined}>{clientStatus(p)}</Badge>
+        <Badge tone={p.status === "delivered" ? "gold" : undefined}>{clientStatus(p, pay)}</Badge>
       </div>
       {p.status === "cancelled" ? (
         <p className="pt-note" role="status">
@@ -222,10 +229,19 @@ export default async function ShootPage({
           }}
         />
       )}
+      {proposal && p.status !== "cancelled" && can(current, "shoots") && (
+        <ProposalBanner
+          projectId={p.id}
+          when={whenLabel(proposal.date, proposal.start_time)}
+          was={when}
+          note={proposal.note}
+          paid={!!pay?.invoices?.some((i) => i.stage && i.status === "paid")}
+        />
+      )}
       {booked && (
         <p className="pt-note" role="status">
-          Requested. We’ll confirm the date and slot shortly; you’ll get an email when it’s
-          confirmed.
+          Requested. Your preferred date and time are subject to availability. We’ll review and
+          email you once confirmed.
         </p>
       )}
       {!!(agentName || p.shared_with?.length) && (
@@ -254,6 +270,10 @@ export default async function ShootPage({
         zipId={locked ? null : (zip?.id ?? null)}
         {...actionsFor(p)}
         hasDelivery={!!latest}
+        files={dfiles
+          .filter((f) => f.download)
+          .map((f, i) => ({ url: f.download!, name: zipName(f.label, i, f.kind) }))}
+        zipLabel={p.title}
       />
       {(p.status === "delivered" || p.status === "completed") &&
         (files ?? []).some((f) => f.kind === "photos" && f.source === "r2") && (
@@ -331,21 +351,11 @@ export default async function ShootPage({
                 </div>
               ))}
           </dl>
+          {p.shoot_date && ["requested", "confirmed"].includes(p.status) && (
+            <AddToCalendar {...calendarLinks(shootEventOf(p, origin))} />
+          )}
           {booking?.location.lat != null && booking.location.lng != null && MAPS_KEY && (
-            <a
-              className="pt-staticmap"
-              href={`https://www.google.com/maps/search/?api=1&query=${booking.location.lat},${booking.location.lng}`}
-              target="_blank"
-              rel="noopener"
-              aria-label="Open the shoot location in Google Maps"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                alt=""
-                loading="lazy"
-                src={`https://maps.googleapis.com/maps/api/staticmap?center=${booking.location.lat},${booking.location.lng}&zoom=16&size=600x240&scale=2&markers=color:0x111110%7C${booking.location.lat},${booking.location.lng}&key=${encodeURIComponent(MAPS_KEY)}`}
-              />
-            </a>
+            <ShootMap lat={booking.location.lat} lng={booking.location.lng} />
           )}
         </section>
         <ActivityList events={(events ?? []) as ProjectEvent[]} />
@@ -361,3 +371,5 @@ export default async function ShootPage({
     </>
   );
 }
+
+const calendarLinks = (e: ReturnType<typeof shootEventOf>) => ({ google: e.google, ics: e.icsUrl });

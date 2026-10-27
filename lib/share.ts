@@ -16,7 +16,12 @@ export type ShareContact = {
   brn: string | null;
   photo: string | null;
 };
-export type ShareBrand = { name: string | null; logo: string | null } | null;
+export type ShareBrand = {
+  name: string | null;
+  logo: string | null;
+  /** How the header shows it (phase 1): logo, icon_name, name; null = both, as before. */
+  layout?: "logo" | "icon_name" | "name" | null;
+} | null;
 export type SharePhoto = {
   id: string;
   key: string;

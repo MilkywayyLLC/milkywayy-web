@@ -1,8 +1,18 @@
-import { createCheckout, refundCheckout, stripeReady } from "@/lib/stripe";
+import {
+  cardOf,
+  createCheckout,
+  createCustomer,
+  customerExists,
+  getCheckout,
+  publishableKey,
+  refundCheckout,
+  stripeReady,
+  type CheckoutSession,
+} from "@/lib/stripe";
 import { portalAdminAs } from "./admin";
 import { dateLabel, money } from "./billing";
 import { projectLink, type MessageEvent, type ProjectInfo } from "./messages";
-import { notifyBilling, notifyClients, type Recipient } from "./notify";
+import { alertMilkywayy, notifyBilling, notifyClients, type Recipient } from "./notify";
 import type { Project } from "./projects";
 
 /**
@@ -16,6 +26,24 @@ const PAGE = { shoot: "shoots", edit: "editing", avatar: "avatars" } as const;
 /** The project's own page (the /portal/p link redirects and would drop ?paid=1). */
 export const pagePath = (origin: string, type: keyof typeof PAGE, ref: string) =>
   `${origin}/portal/${PAGE[type] ?? "shoots"}/${encodeURIComponent(ref)}`;
+
+/**
+ * The company's rates for pricing a booking on the server (phase 1, 27 Oct 2026). A teammate without
+ * price access gets no rates from my_booking_options, which left their bookings with no estimate and so
+ * no invoice. Uses the client's own view when it has the rates, else the gated admin function; the
+ * rates stay on the server either way.
+ */
+export async function companyRates<R>(accountId: string, own: R | null, actor: string) {
+  if (own) return own;
+  try {
+    return (await portalAdminAs(actor)<R | null>("portal_admin_account_rates", {
+      p_account: accountId,
+    })) as R | null;
+  } catch (e) {
+    console.error("[payments] company rates:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
 
 export type StageInvoice = {
   id: string;
@@ -44,25 +72,8 @@ export async function sendNewInvoices(rpc: Rpc, projectId: string, origin: strin
   return sent;
 }
 
-/** A Stripe Checkout page for an invoice; the webhook marks it paid. Null when Stripe is off. */
-export async function checkoutFor(
-  rpc: Rpc,
-  inv: Pick<StageInvoice, "id" | "number" | "amount" | "currency">,
-  o: { email?: string | null; successUrl: string; cancelUrl: string },
-) {
-  if (!stripeReady() || !inv.number) return null;
-  const s = await createCheckout({
-    invoiceId: inv.id,
-    number: inv.number,
-    amount: inv.amount,
-    currency: inv.currency,
-    email: o.email,
-    successUrl: o.successUrl,
-    cancelUrl: o.cancelUrl,
-  });
-  await rpc("portal_admin_set_stripe_session", { p_invoice: inv.id, p_session: s.id });
-  return s.url;
-}
+/** Our own checkout page for an invoice (phase 1, 27 Oct 2026): Stripe Embedded Checkout inside it. */
+export const payPath = (invoiceId: string) => `/portal/pay/${invoiceId}`;
 
 /**
  * Right after a booking (shoot, edit or avatar video) is created: record the booking terms, issue the
@@ -95,16 +106,8 @@ export async function afterBooking(o: {
   await sendNewInvoices(o.rpc, o.projectId, o.origin, o.actor).catch((e) =>
     console.error("[payments] invoice email:", e),
   );
-  let payUrl: string | null = null;
-  try {
-    payUrl = await checkoutFor(o.rpc, invoice, {
-      email: o.email,
-      successUrl: `${pagePath(o.origin, o.type, o.ref)}?paid=1`,
-      cancelUrl: `${pagePath(o.origin, o.type, o.ref)}?pay=1`,
-    });
-  } catch (e) {
-    console.error("[payments] checkout:", e instanceof Error ? e.message : e);
-  }
+  // Stripe on: our own checkout page (/portal/pay/…), where the session is made on load.
+  const payUrl = stripeReady() && invoice.number ? payPath(invoice.id) : null;
   return { invoice, payUrl };
 }
 
@@ -171,3 +174,136 @@ export async function runRefunds(rpc: Rpc, refunds: RefundRow[], retry = false) 
   }
   return { sent, failed };
 }
+
+/* ---------- phase 1 (27 Oct 2026): checkout on our site, saved cards ---------- */
+
+type Paid = {
+  already: boolean;
+  account: string;
+  project_id?: string | null;
+  number?: string;
+  amount?: number;
+  currency?: string;
+  due_on?: string;
+  recipients: Recipient[];
+};
+
+/** The company's Stripe customer, made the first time (so cards can be saved and offered again). */
+export async function customerFor(
+  rpc: Rpc,
+  accountId: string,
+  name: string,
+  email?: string | null,
+) {
+  const c = await rpc<{ customer_id: string } | null>("portal_admin_stripe_customer", {
+    p_account: accountId,
+  });
+  if (c?.customer_id && (await customerExists(c.customer_id))) return c.customer_id;
+  // None yet, or the stored one is gone (deleted, or made with test keys before live): a new one,
+  // and the old saved card goes with it.
+  const made = await createCustomer({
+    accountId,
+    name,
+    email,
+    replacing: c?.customer_id ?? undefined,
+  });
+  await rpc("portal_admin_set_stripe_customer", {
+    p_account: accountId,
+    p: c?.customer_id ? { customer_id: made.id, clear_card: true } : { customer_id: made.id },
+  });
+  return made.id;
+}
+
+/**
+ * A Checkout session for an invoice on our pay page: embedded with the publishable key, else Stripe's
+ * hosted page. `customer` (company payers) offers and can save the company card; a teammate paying
+ * with their own card pays as themselves.
+ */
+export async function startCheckout(
+  rpc: Rpc,
+  inv: { id: string; number: string; amount: number; currency: string },
+  o: { origin: string; email?: string | null; customer?: string | null; back: string },
+) {
+  const pk = publishableKey();
+  const s = await createCheckout({
+    invoiceId: inv.id,
+    number: inv.number,
+    amount: inv.amount,
+    currency: inv.currency,
+    email: o.email,
+    customer: o.customer,
+    ui: pk ? "embedded" : "hosted",
+    returnUrl: `${o.origin}${payPath(inv.id)}/done?session_id={CHECKOUT_SESSION_ID}`,
+    successUrl: `${o.origin}${payPath(inv.id)}/done?session_id={CHECKOUT_SESSION_ID}`,
+    cancelUrl: o.back,
+  });
+  await rpc("portal_admin_set_stripe_session", { p_invoice: inv.id, p_session: s.id });
+  return { publishableKey: pk, clientSecret: s.clientSecret, url: s.url };
+}
+
+/**
+ * A paid Checkout session (the webhook, or the return page if it gets there first): marks the invoice
+ * paid in the database (which checks the session, amount and currency), then "Payment received" to the
+ * company's billing people and, for a booking, a note to Milkywayy to confirm it. Safe to run twice.
+ */
+export async function recordCheckoutPaid(rpc: Rpc, s: CheckoutSession, origin: string) {
+  const invoice = s.client_reference_id ?? s.metadata?.invoice_id;
+  if ((s.mode && s.mode !== "payment") || s.payment_status !== "paid" || !invoice) return null;
+  const out = await rpc<Paid>("portal_admin_stripe_paid", {
+    p_invoice: invoice,
+    p_session: s.id,
+    p_amount_minor: s.amount_total ?? -1,
+    p_currency: s.currency ?? "",
+  });
+  await afterPaid(rpc, out, origin);
+  return out;
+}
+
+/** Emails after any card payment: the receipt, and "confirm this booking" to Milkywayy. */
+export async function afterPaid(rpc: Rpc, out: Paid, origin: string) {
+  if (out.already) return;
+  if (out.recipients.length)
+    await notifyBilling(
+      out.account,
+      "payment_received",
+      {
+        number: out.number!,
+        amount: money(out.currency!, out.amount!),
+        due: dateLabel(out.due_on),
+      },
+      out.recipients,
+      `${origin}/portal/billing`,
+      "stripe",
+    ).catch((e) => console.error("[payments] receipt email:", e));
+  if (out.project_id) {
+    const d = await rpc<{ project: Project }>("portal_admin_project", { p_id: out.project_id });
+    const p = d.project;
+    if (p.type === "shoot" && p.status === "requested")
+      await alertMilkywayy(
+        `Paid, confirm the booking: ${p.ref}`,
+        [
+          `${p.ref} ${p.title} is paid (${out.number}, ${money(out.currency!, out.amount!)}).`,
+          `Preferred: ${p.shoot_date ?? "—"}${p.meta?.booking?.start_time ? ` · ${p.meta.booking.start_time}` : ""}.`,
+          "Confirm it, or propose another time. Declining or cancelling refunds the card in full.",
+        ],
+        `${origin}/admin/projects/${p.id}`,
+      ).catch((e) => console.error("[payments] confirm alert:", e));
+  }
+}
+
+/** A finished "save a card" Checkout: store the card (brand, last 4, expiry) for the company. */
+export async function recordCardSaved(rpc: Rpc, s: CheckoutSession, accountId?: string) {
+  const account = accountId ?? s.metadata?.account_id;
+  if (s.mode !== "setup" || s.status !== "complete" || !account) return null;
+  const si = typeof s.setup_intent === "object" ? s.setup_intent : null;
+  const card = cardOf(si?.payment_method ?? null);
+  if (!card) return null;
+  await rpc("portal_admin_set_stripe_customer", {
+    p_account: account,
+    p: { customer_id: s.customer, ...card },
+  });
+  return card;
+}
+
+/** Look a session up at Stripe (the return page doesn't trust the browser's word that it's paid). */
+export const checkoutSession = (id: string) => getCheckout(id);

@@ -8,3 +8,5 @@ Launched without Stripe: `PAYMENTS_ENABLED=false` in Vercel Production hides "Pa
 3. Delete `PAYMENTS_ENABLED` in Vercel Production (or set it to `true`), then redeploy.
 4. Admin → Billing → Settings should say "Set up". Pay one small real invoice and refund it.
 5. Live keys are refused anywhere but production (`lib/stripe.ts`); previews only ever get test keys.
+
+> Superseded by docs/STRIPE_SETUP.md (27 Oct 2026).

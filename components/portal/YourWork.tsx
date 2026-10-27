@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { projectWhen } from "@/lib/portal/when";
 import type { RequestConfig } from "@/lib/portal/requests";
 import {
   briefKindLabel,
@@ -6,7 +7,6 @@ import {
   day,
   PIPELINES,
   SHOOT_SERVICE_LABEL,
-  shootDay,
   shortTitle,
   statusLabel,
   TYPE_PATH,
@@ -146,7 +146,7 @@ export function YourWork({ projects, cfg }: { projects: Project[]; cfg: RequestC
             <ul className="pt-work-items">
               {shown.map((p) => {
                 const when =
-                  p.type === "shoot" && p.shoot_date ? shootDay(p.shoot_date) : day(p.created_at);
+                  p.type === "shoot" && p.shoot_date ? projectWhen(p) : day(p.created_at);
                 return (
                   <li key={p.id}>
                     <Link

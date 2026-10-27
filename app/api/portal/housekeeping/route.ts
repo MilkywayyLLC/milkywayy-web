@@ -5,6 +5,7 @@ import { projectLink } from "@/lib/portal/messages";
 import { alertMilkywayy, notifyClients, type Recipient } from "@/lib/portal/notify";
 import { refreshInstagramToken } from "@/lib/instagram";
 import { emailPublished } from "@/lib/portal/invoice-actions";
+import { runAutopay } from "@/lib/portal/autopay";
 import { deleteObject, r2Ready } from "@/lib/r2";
 
 /**
@@ -17,7 +18,8 @@ import { deleteObject, r2Ready } from "@/lib/r2";
  *   6. the website's Instagram token is renewed once a week (lib/instagram.ts);
  *   7. invoices (owner, 10 Oct 2026): from the 25th, month-end drafts for review (Milkywayy is
  *      emailed when new ones are ready); approved invoices whose date has come are published and
- *      the client gets the "New invoice" email.
+ *      the client gets the "New invoice" email;
+ *   8. automatic payments (phase 1, 27 Oct 2026): due month-end invoices charged to the saved card.
  * Vercel calls it with `Authorization: Bearer $CRON_SECRET`.
  */
 export const dynamic = "force-dynamic";
@@ -107,7 +109,11 @@ export async function GET(req: NextRequest) {
   }));
   if ("error" in instagram) console.error("[housekeeping] instagram token:", instagram.error);
 
+  const autopay = await runAutopay(env.siteUrl).catch(
+    (e) => (console.error("[housekeeping] autopay:", e), { charged: 0, failed: 0 }),
+  );
   return NextResponse.json({
+    autopay,
     instagram,
     drafts_created: drafts.created,
     invoices_published: published.length,

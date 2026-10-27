@@ -2,8 +2,20 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { getPropertyPricing } from "@/lib/data";
 import { portalAdminAction } from "./admin";
+import {
+  clientPricing,
+  estimate,
+  estimateLines,
+  normalizeServices,
+  type BookingService,
+  type Rates,
+} from "./booking";
 import { originFrom } from "./invite";
+import { firstName, projectLink } from "./messages";
+import { notifyPeople } from "./notify";
+import { whenLabel } from "./when";
 import type { Recipient } from "./notify";
 import type { ProjectPayment } from "./payment-actions";
 import { emailConfirmed, runRefunds, sendNewInvoices, type RefundRow } from "./payment-server";
@@ -185,6 +197,8 @@ export async function adminApplyChange(
   c: AdminChange,
 ): Promise<Result> {
   try {
+    // Phase 1: an admin cancellation (Milkywayy's reason) always refunds in full.
+    if (kind === "cancel" && c.reason === "admin") c = { ...c, waive: true, fee: null };
     const { rpc, q } = await quoteAdmin(projectId, kind, c);
     if (!q.allowed) return { ok: false, error: q.blocked };
     if (kind === "reschedule" && !c.date) return { ok: false, error: "Choose the new date." };
@@ -265,5 +279,178 @@ export async function emailIssuedInvoices(projectId: string) {
   } catch (e) {
     console.error("[admin/payments] invoice email:", e instanceof Error ? e.message : e);
     return 0;
+  }
+}
+
+export type UnpricedBooking = {
+  id: string;
+  ref: string;
+  account_id: string;
+  account: string;
+  status: string;
+  title: string;
+  services: BookingService[] | null;
+  terms: PaymentTerms;
+  estimate: number | null;
+  has_invoice: boolean;
+};
+
+/**
+ * Phase 1 part 1 backfill (27 Oct 2026): bookings a teammate made without price access had no estimate
+ * and no invoice. Prices each at the company's rates and, on 50% / 100% terms while it's still
+ * requested or confirmed, issues the booking invoice (emailed to the company's billing people).
+ * Delivered work is only priced (month-end and per-project drafts pick it up), never auto-invoiced.
+ * `dry` lists what it would do.
+ */
+export async function backfillBookingInvoices(dry = true): Promise<Result & { rows?: string[] }> {
+  try {
+    const rpc = await portalAdminAction();
+    const list = await rpc<UnpricedBooking[]>("portal_admin_unpriced_bookings", {});
+    const pricing = await getPropertyPricing();
+    const origin = originFrom(await headers());
+    const rows: string[] = [];
+    for (const b of list ?? []) {
+      const rates = await rpc<Rates | null>("portal_admin_account_rates", {
+        p_account: b.account_id,
+      });
+      const services = normalizeServices(b.services ?? []);
+      const cp = clientPricing(pricing, rates);
+      const est = b.estimate ?? (rates && services.length ? estimate(services, rates, cp) : null);
+      const invoice =
+        !b.has_invoice &&
+        ["prepay", "split"].includes(b.terms) &&
+        ["requested", "confirmed"].includes(b.status) &&
+        !!est;
+      rows.push(
+        `${b.ref} · ${b.account} · ${b.status} · ${b.terms} · estimate ${est ?? "—"}${invoice ? " · issue invoice" : ""}`,
+      );
+      if (dry || est == null) continue;
+      if (b.estimate == null)
+        await rpc("portal_admin_set_estimate", { p_project: b.id, p_estimate: est });
+      if (invoice && rates) {
+        await rpc("portal_admin_booking_invoice", {
+          p_project: b.id,
+          p_lines: estimateLines(services, rates, cp)
+            .filter((l) => l.amount != null && l.amount > 0)
+            .map((l) => ({
+              description: l.label,
+              qty: l.qty,
+              unit_price: Math.round((Number(l.amount) / l.qty) * 100) / 100,
+            })),
+          p_estimate: est,
+        });
+        await sendNewInvoices(rpc, b.id, origin, "backfill");
+      }
+    }
+    if (!dry) revalidatePath("/admin/billing");
+    return {
+      ok: true,
+      rows,
+      notice: rows.length
+        ? dry
+          ? `${rows.length} booking${rows.length === 1 ? "" : "s"} to fix.`
+          : `Fixed ${rows.length}.`
+        : "Nothing to fix.",
+    };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Per client: may they pay by bank transfer + receipt upload (phase 1; Stripe is the main way). */
+export async function setBankTransfer(account: string, on: boolean): Promise<Result> {
+  try {
+    const rpc = await portalAdminAction();
+    await rpc("portal_admin_set_bank_transfer", { p_account: account, p_on: on });
+    revalidatePath(`/admin/accounts/${account}`);
+    revalidatePath("/portal", "layout");
+    return { ok: true, notice: on ? "Bank transfer allowed." : "Card only." };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/**
+ * Propose another time for a requested shoot (phase 1): the client is emailed and sees Accept /
+ * Decline on the shoot page. Accept confirms it; decline cancels with a full refund.
+ */
+export async function proposeTime(
+  projectId: string,
+  date: string,
+  startTime: string,
+  note: string,
+): Promise<Result> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "Choose the date." };
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime)) return { ok: false, error: "Choose a time." };
+  try {
+    const rpc = await portalAdminAction();
+    const out = await rpc<{
+      ref: string;
+      title: string;
+      recipients: { email: string; name?: string | null }[];
+    }>("portal_admin_propose_time", {
+      p_project: projectId,
+      p_date: date,
+      p_start: startTime,
+      p_note: note.trim() || null,
+    });
+    const when = whenLabel(date, startTime);
+    await notifyPeople({
+      projectId,
+      template: "time_proposed",
+      recipients: out.recipients,
+      subject: `New time proposed for ${out.ref}: ${when}`,
+      lines: (name) => [
+        `Hi ${firstName(name)},`,
+        `Your preferred time for ${out.title} (${out.ref}) isn’t available. We can do ${when} instead.`,
+        ...(note.trim() ? [note.trim()] : []),
+        "Accept it on the shoot page and it’s confirmed. If it doesn’t suit you, decline and you get a full refund.",
+      ],
+      button: "Accept or decline",
+      link: projectLink(originFrom(await headers()), out.ref),
+      actor: "admin",
+    });
+    return doneProject(projectId, { ok: true, notice: `Proposed ${when}. The client is emailed.` });
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/**
+ * Package rollover (phase 1 part 4): a template's or a client's rule. Saved rules apply from the next
+ * month; credit already carried keeps its expiry. `useTemplate` drops a client's own rule.
+ */
+export async function setRollover(
+  target: { packageId?: string; account?: string },
+  rule:
+    { enabled: boolean; months: number; allowance: boolean; days: boolean } | { useTemplate: true },
+): Promise<Result> {
+  try {
+    const rpc = await portalAdminAction();
+    const p =
+      "useTemplate" in rule
+        ? { use_template: true }
+        : {
+            enabled: rule.enabled && rule.months > 0,
+            months: Math.max(0, Math.min(3, Math.round(rule.months))),
+            allowance: rule.allowance,
+            days: rule.days,
+          };
+    if (!("useTemplate" in rule) && p.enabled && !rule.allowance && !rule.days)
+      return { ok: false, error: "Tick allowance, shoot days or both." };
+    const from = await rpc<string>("portal_admin_set_rollover", {
+      p_package: target.account ? null : (target.packageId ?? null),
+      p_account: target.account ?? null,
+      p,
+    });
+    if (target.account) revalidatePath(`/admin/accounts/${target.account}`);
+    revalidatePath("/admin/billing/packages");
+    const month = new Date(`${from}T12:00:00`).toLocaleDateString("en-GB", {
+      month: "long",
+      year: "numeric",
+    });
+    return { ok: true, notice: `Saved. Applies from ${month}.` };
+  } catch (e) {
+    return fail(e);
   }
 }

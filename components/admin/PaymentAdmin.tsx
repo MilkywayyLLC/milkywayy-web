@@ -1,5 +1,6 @@
 "use client";
 
+import { dubaiToday, WhenPicker } from "@/components/portal/WhenPicker";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { cx } from "@/lib/cx";
@@ -13,6 +14,8 @@ import {
   savePaymentSettings,
   setPackageValue,
   setPaymentTerms,
+  setBankTransfer,
+  proposeTime,
 } from "@/lib/portal/admin-payment-actions";
 import { money } from "@/lib/portal/billing";
 import type { ProjectPayment } from "@/lib/portal/payment-actions";
@@ -96,8 +99,8 @@ export function PaymentTermsBlock({ account, data }: { account: string; data: Cl
           {terms === "month_end"
             ? "Books with “Request booking”; everything goes on the month-end invoice."
             : terms === "split"
-              ? "Pays 50% when booking (that confirms it); the balance invoice goes out on delivery and the files unlock when it’s paid."
-              : "Pays 100% when booking (that confirms it); files unlock on delivery."}
+              ? "Pays 50% when booking (then you confirm it, or propose another time); the balance invoice goes out on delivery and the files unlock when it’s paid."
+              : "Pays 100% when booking (then you confirm it, or propose another time); files unlock on delivery."}
         </span>
       </div>
       {data.package && data.payment_terms !== "month_end" && (
@@ -412,7 +415,8 @@ export function ChangeAdmin({
   /** A worked-out quote to show without asking the server (screenshots). */
   preview?: ChangeQuote;
 }) {
-  const [reason, setReason] = useState<ChangeReason>("client");
+  // Phase 1: an admin cancellation defaults to Milkywayy's reason, which refunds in full.
+  const [reason, setReason] = useState<ChangeReason>(kind === "cancel" ? "admin" : "client");
   const [waive, setWaive] = useState(false);
   const [fee, setFee] = useState("");
   const [keep, setKeep] = useState("");
@@ -488,26 +492,15 @@ export function ChangeAdmin({
           </div>
         )}
         {kind === "reschedule" && (
-          <div className="ad-grid2">
-            <div className="ad-field">
-              <label htmlFor="ch-date">New date</label>
-              <input
-                id="ch-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </div>
-            <div className="ad-field">
-              <label htmlFor="ch-time">Start time</label>
-              <input
-                id="ch-time"
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-              />
-            </div>
-          </div>
+          <WhenPicker
+            admin
+            date={date}
+            time={time}
+            min={dubaiToday()}
+            onDate={setDate}
+            onTime={setTime}
+            dateLabel="New date"
+          />
         )}
         {q && (
           <div className="ad-note" data-testid="admin-quote" style={{ margin: 0 }}>
@@ -845,5 +838,129 @@ export function PackageLimits({
         <Note r={r} pending={pending} />
       </div>
     </form>
+  );
+}
+
+/** Admin → a client: may they pay by bank transfer + receipt upload (phase 1; card is the main way). */
+export function BankTransferToggle({ account, on }: { account: string; on: boolean }) {
+  const router = useRouter();
+  const [v, setV] = useState(on);
+  const [r, setR] = useState<R>();
+  const [pending, start] = useTransition();
+  return (
+    <section className="ad-card ad-form" aria-label="Bank transfer" data-testid="bank-transfer">
+      <h2 className="ad-h2">Bank transfer</h2>
+      <label className="ad-check">
+        <input
+          type="checkbox"
+          checked={v}
+          disabled={pending}
+          onChange={(e) => {
+            const next = e.target.checked;
+            setV(next);
+            start(async () => {
+              const res = await setBankTransfer(account, next);
+              setR(res);
+              if (res.ok) router.refresh();
+              else setV(!next);
+            });
+          }}
+        />
+        <span>Allow bank transfer + receipt upload as a second option on every invoice</span>
+      </label>
+      <span className="ad-small ad-muted">
+        Card (Stripe) is always offered when payments are on. Off: card only.
+      </span>
+      <Note r={r} pending={pending} />
+    </section>
+  );
+}
+
+/**
+ * Admin → a requested shoot: propose another date and time (phase 1). The client accepts (confirmed)
+ * or declines (cancelled, full refund) on their shoot page.
+ */
+export function ProposeTime({
+  projectId,
+  proposal,
+  paid,
+}: {
+  projectId: string;
+  proposal: { date: string; start_time: string } | null;
+  paid: boolean;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [note, setNote] = useState("");
+  const [r, setR] = useState<R>();
+  const [pending, start] = useTransition();
+  return (
+    <section className="ad-card ad-form" aria-label="Confirm or propose" data-testid="propose-time">
+      <h2 className="ad-h2">{paid ? "Paid · waiting for you to confirm" : "Booking request"}</h2>
+      {proposal ? (
+        <p className="ad-note" style={{ margin: 0 }}>
+          Proposed {proposal.date} · {proposal.start_time}. Waiting for the client to accept or
+          decline (decline cancels with a full refund).
+        </p>
+      ) : (
+        <span className="ad-small ad-muted">
+          Confirm it with Status → Confirmed, or propose another time. The client accepts it
+          (confirmed) or declines it (cancelled{paid ? ", full card refund" : ""}).
+        </span>
+      )}
+      {!open ? (
+        <div className="ad-btns">
+          <button type="button" className="ad-btn small" onClick={() => setOpen(true)}>
+            {proposal ? "Propose a different time" : "Propose a new time"}
+          </button>
+        </div>
+      ) : (
+        <>
+          <WhenPicker
+            admin
+            date={date}
+            time={time}
+            min={dubaiToday()}
+            onDate={setDate}
+            onTime={setTime}
+          />
+          <div className="ad-field">
+            <label htmlFor="pt-note">Note to the client (optional)</label>
+            <input
+              id="pt-note"
+              value={note}
+              maxLength={300}
+              placeholder="e.g. The morning is fully booked; this is the closest slot."
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </div>
+          <div className="ad-btns" style={{ alignItems: "center" }}>
+            <button
+              type="button"
+              className="ad-btn small"
+              disabled={pending || !date || !time}
+              onClick={() =>
+                start(async () => {
+                  const res = await proposeTime(projectId, date, time, note);
+                  setR(res);
+                  if (res.ok) {
+                    setOpen(false);
+                    router.refresh();
+                  }
+                })
+              }
+            >
+              Send proposal
+            </button>
+            <button type="button" className="ad-btn ghost small" onClick={() => setOpen(false)}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+      <Note r={r} pending={pending} />
+    </section>
   );
 }

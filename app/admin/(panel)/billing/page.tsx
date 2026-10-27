@@ -13,6 +13,7 @@ import {
   money,
   monthLabel,
   QUEUE_STATUS_LABEL,
+  refundState,
   type InvoiceCategory,
   type QueueStatus,
 } from "@/lib/portal/billing";
@@ -90,10 +91,11 @@ export default async function InvoiceQueue({
   let rows: QueueRow[] = [];
   let clients: ClientListRow[] = [];
   let proofs: InvoiceRowData[] = [];
+  let refunded: Record<string, number> = {};
   let error = "";
   if (!portalAdminReady()) error = "PORTAL_ADMIN_SECRET isn’t set for this deployment.";
   else
-    [rows, clients, proofs] = await Promise.all([
+    [rows, clients, proofs, refunded] = await Promise.all([
       rpc<QueueRow[]>("portal_admin_invoice_queue", {
         p_status: submitted ? null : status || null,
       }),
@@ -101,6 +103,7 @@ export default async function InvoiceQueue({
       submitted
         ? rpc<InvoiceRowData[]>("portal_admin_invoices", { p_account: null, p_status: "submitted" })
         : Promise.resolve([]),
+      rpc<Record<string, number>>("portal_admin_refunded_invoices", {}),
     ]);
   if (submitted) rows = rows.filter((r) => proofs.some((i) => i.id === r.id));
   const list = clients
@@ -202,6 +205,11 @@ export default async function InvoiceQueue({
                     ? "Payment submitted"
                     : QUEUE_STATUS_LABEL[r.shown_status]}
                 </span>
+                {refunded[r.id] > 0 && (
+                  <span className="ad-pill" data-testid="refunded-pill">
+                    {refundState({ amount: Number(r.amount), refunded: refunded[r.id] })}
+                  </span>
+                )}
                 {r.status === "approved" && r.publish_on && (
                   <span className="ad-small ad-muted"> publishes {dateLabel(r.publish_on)}</span>
                 )}

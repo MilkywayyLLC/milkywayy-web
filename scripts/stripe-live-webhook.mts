@@ -20,6 +20,10 @@ const URL_ = "https://milkywayy.com/api/stripe/webhook";
 const EVENTS = [
   "checkout.session.completed",
   "checkout.session.async_payment_succeeded",
+  // Saved cards and automatic month-end payments (phase 1, 27 Oct 2026).
+  "payment_intent.succeeded",
+  "payment_intent.payment_failed",
+  "setup_intent.succeeded",
   // Refunds on cancellations (payment terms, 24 Oct 2026).
   "refund.created",
   "refund.updated",

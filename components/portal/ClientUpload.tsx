@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Dropzone } from "@/components/portal/Dropzone";
 import { Sheet } from "@/components/portal/ui";
 import {
@@ -75,10 +75,19 @@ export function FilePicker({
   maxGb: number;
   disabled?: boolean;
 }) {
+  // Previews for photos the browser can show (phase 1: they showed as blank file tiles).
+  const srcs = useMemo(
+    () =>
+      files.map((f) =>
+        /^image\/(jpeg|png|webp|gif|avif)$/.test(f.type) ? URL.createObjectURL(f) : undefined,
+      ),
+    [files],
+  );
+  useEffect(() => () => srcs.forEach((u) => u && URL.revokeObjectURL(u)), [srcs]);
   return (
     <>
       <Dropzone
-        items={files.map((f, i) => ({ id: String(i), name: f.name, size: f.size }))}
+        items={files.map((f, i) => ({ id: String(i), name: f.name, size: f.size, src: srcs[i] }))}
         onAdd={(add) => onChange([...files, ...add])}
         onRemove={(id) => onChange(files.filter((_, j) => String(j) !== id))}
         accept=""

@@ -1,7 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { portalAdminReady, portalAdminSystem, type ProjectListRow } from "@/lib/portal/admin";
-import { calendarToken, icsFeed } from "@/lib/portal/calendar";
+import { calendarToken, icsFeed, shootHours } from "@/lib/portal/calendar";
+import { projectStart } from "@/lib/portal/when";
 
 /** The private ICS feed of shoot bookings (see lib/portal/calendar.ts). */
 export const dynamic = "force-dynamic";
@@ -29,6 +30,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
       status: r.status,
       shoot_date: r.shoot_date!.slice(0, 10),
       slot: r.slot,
+      start: projectStart(r),
+      hours: shootHours(r),
       client: r.account_name ?? r.client_name,
       address:
         r.meta.booking?.location.address ??

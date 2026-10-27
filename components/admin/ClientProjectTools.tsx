@@ -1,5 +1,6 @@
 "use client";
 
+import { WhenPicker } from "@/components/portal/WhenPicker";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
@@ -41,6 +42,8 @@ export function AdminNewProject({
   const [account, setAccount] = useState(initial ?? "");
   const [type, setType] = useState<"shoot" | "edit" | "avatar">("shoot");
   const [services, setServices] = useState<string[]>(["photo"]);
+  const [shootDate, setShootDate] = useState("");
+  const [shootTime, setShootTime] = useState("");
   const [r, setR] = useState<ActionResult>();
   const [pending, start] = useTransition();
   const kinds = type === "avatar" ? AVATAR_LENGTHS : EDIT_KINDS;
@@ -62,8 +65,8 @@ export function AdminNewProject({
             quantity: Number(s("quantity")) || null,
             notes: s("notes"),
             due: s("due"),
-            shootDate: s("date"),
-            slot: s("slot"),
+            shootDate,
+            startTime: shootTime || undefined,
             area: s("area"),
             building: s("building"),
             unit: s("unit"),
@@ -155,20 +158,17 @@ export function AdminNewProject({
               </div>
             </div>
           </div>
-          <div className="ad-grid2">
-            <div className="ad-field">
-              <label htmlFor="np-date">Date (optional; confirm it to email the client)</label>
-              <input id="np-date" name="date" type="date" />
-            </div>
-            <div className="ad-field">
-              <label htmlFor="np-slot">Slot</label>
-              <select id="np-slot" name="slot" defaultValue="Morning">
-                {["Morning", "Afternoon", "Evening", "Twilight"].map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <span className="ad-small ad-muted">
+            Date and arrival time are optional; confirm the shoot to email the client.
+          </span>
+          <WhenPicker
+            admin
+            date={shootDate}
+            time={shootTime}
+            min="2020-01-01"
+            onDate={setShootDate}
+            onTime={setShootTime}
+          />
         </>
       ) : (
         <div className="ad-grid2">

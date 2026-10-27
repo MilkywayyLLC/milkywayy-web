@@ -178,14 +178,17 @@ test("the calendar feed: one event per shoot, in Dubai time", () => {
         status: "requested",
         shoot_date: "2026-10-20",
         slot: "Morning",
+        start: "10:15",
+        hours: 4,
         client: "Budget Realty",
         address: "Marina Gate 1, Dubai Marina",
       },
     ],
     "https://milkywayy.com",
   );
-  expect(ics).toContain("DTSTART:20261020T050000Z"); // 09:00 Dubai
-  expect(ics).toContain("DTEND:20261020T090000Z");
+  // The real start time (phase 1): 10:15 Dubai, 4 hours on site.
+  expect(ics).toContain("DTSTART:20261020T061500Z");
+  expect(ics).toContain("DTEND:20261020T101500Z");
   expect(ics).toContain("SUMMARY:[Requested] Budget Realty: Shoot · Marina Gate 1");
   expect(ics).toContain("LOCATION:Marina Gate 1\\, Dubai Marina");
   expect(ics).toContain("STATUS:TENTATIVE");
