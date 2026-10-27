@@ -1,6 +1,12 @@
 import { expect, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { chargeSavedCard, createCustomer, refundCheckout, signWebhook } from "@/lib/stripe";
+import {
+  chargeSavedCard,
+  createCustomer,
+  customerExists,
+  refundCheckout,
+  signWebhook,
+} from "@/lib/stripe";
 import {
   quoteChange,
   BOOKING_TERMS_VERSION,
@@ -936,6 +942,9 @@ test("Stripe test mode, real API: customer, off-session charge on a saved card, 
     email: c.email,
   });
   expect(cus.id).toMatch(/^cus_/);
+  // A stored id Stripe doesn't know (made with other keys, or deleted) is replaced at checkout.
+  expect(await customerExists(cus.id)).toBe(true);
+  expect(await customerExists(`cus_missing_${RUN}`)).toBe(false);
   // Attach Stripe's test Visa (what a saved card from Checkout setup mode becomes).
   const attach = await fetch("https://api.stripe.com/v1/payment_methods/pm_card_visa/attach", {
     method: "POST",

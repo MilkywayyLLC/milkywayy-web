@@ -125,7 +125,10 @@ function ChangeDialog({
         )}
         {quote?.allowed && (
           <>
-            <div className={charge ? "pt-hold" : "pt-note"} data-testid="change-quote">
+            <div
+              className={`${charge ? "pt-hold" : "pt-note"} pt-quote`}
+              data-testid="change-quote"
+            >
               <b>
                 {charge
                   ? quote.halfDays
@@ -135,7 +138,8 @@ function ChangeDialog({
                     ? "Free cancellation"
                     : "Free reschedule"}
               </b>
-              <span>{quote.summary}</span>
+              {/* The heading already says it's free: "More than 3 hours before the shoot." */}
+              <span>{quote.summary.replace(/^Free: (.)/, (_, c: string) => c.toUpperCase())}</span>
             </div>
             {kind === "cancel" && (quote.paid > 0 || quote.refund > 0) && (
               <ul className="pt-lines" aria-label="Refund">

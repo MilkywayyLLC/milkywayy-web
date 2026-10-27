@@ -310,3 +310,20 @@
     border-radius: 6px;
   }
 }
+
+@layer components {
+  /* Change quote: heading over its line. */
+  .pt-quote {
+    display: grid;
+    gap: 2px;
+  }
+}
+
+@layer components {
+  /* In a sheet the date and time panels open in place (the sheet scrolls; a floating panel was cut off). */
+  .pt-sheet .pt-pop-panel {
+    position: static;
+    margin-top: 6px;
+    box-shadow: none;
+  }
+}

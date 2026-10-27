@@ -156,12 +156,28 @@ export const getCheckout = (id: string) =>
   );
 
 /** The company's Stripe customer (one per account), made the first time it's needed. */
-export const createCustomer = (o: { accountId: string; name: string; email?: string | null }) =>
+export const createCustomer = (o: {
+  accountId: string;
+  name: string;
+  email?: string | null;
+  replacing?: string;
+}) =>
   api<{ id: string }>(
     "/customers",
     { name: o.name, email: o.email || undefined, metadata: { account_id: o.accountId } },
-    `cust-${o.accountId}`,
+    o.replacing ? `cust-${o.accountId}-${o.replacing}` : `cust-${o.accountId}`,
   );
+
+/** Whether a stored customer still exists under this key (a test-mode id is unknown to live keys). */
+export async function customerExists(id: string) {
+  try {
+    const c = await api<{ deleted?: boolean }>(`/customers/${encodeURIComponent(id)}`);
+    return !c.deleted;
+  } catch (e) {
+    if (e instanceof Error && /^Stripe 404/.test(e.message)) return false;
+    throw e;
+  }
+}
 
 /** Save a card for later (Checkout in setup mode): on our page (embedded) or Stripe's. */
 export async function createSetupCheckout(o: {

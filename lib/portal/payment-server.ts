@@ -2,6 +2,7 @@ import {
   cardOf,
   createCheckout,
   createCustomer,
+  customerExists,
   getCheckout,
   publishableKey,
   refundCheckout,
@@ -197,11 +198,18 @@ export async function customerFor(
   const c = await rpc<{ customer_id: string } | null>("portal_admin_stripe_customer", {
     p_account: accountId,
   });
-  if (c?.customer_id) return c.customer_id;
-  const made = await createCustomer({ accountId, name, email });
+  if (c?.customer_id && (await customerExists(c.customer_id))) return c.customer_id;
+  // None yet, or the stored one is gone (deleted, or made with test keys before live): a new one,
+  // and the old saved card goes with it.
+  const made = await createCustomer({
+    accountId,
+    name,
+    email,
+    replacing: c?.customer_id ?? undefined,
+  });
   await rpc("portal_admin_set_stripe_customer", {
     p_account: accountId,
-    p: { customer_id: made.id },
+    p: c?.customer_id ? { customer_id: made.id, clear_card: true } : { customer_id: made.id },
   });
   return made.id;
 }
