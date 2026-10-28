@@ -11,9 +11,12 @@ import {
   avatarEstimate,
   avatarKind,
   avatarLength,
+  EDIT_LISTING_MAX,
+  editItemLines,
   editLongPrice,
   isLongLength,
   type AvatarFormat,
+  type EditItems,
   type Rates,
 } from "./booking";
 import { afterBooking, companyRates } from "./payment-server";
@@ -147,6 +150,8 @@ export type NewProject = {
   quantity?: number | null;
   /** Long-form edits (28 Oct 2026): each video's length in minutes (5–30). */
   minutes?: number;
+  /** Edit only (28 Oct 2026): one request, one line per item. Replaces kind/quantity/minutes. */
+  items?: EditItems;
   notes?: string;
   references?: string[];
   scriptBy?: "milkywayy" | "client";
@@ -209,13 +214,46 @@ export async function createProject(input: NewProject): Promise<
   if (!title) return { ok: false, error: "Give it a title." };
   if (input.type === "edit" && input.kind === "other" && !input.kindOther?.trim())
     return { ok: false, error: "Say what type of edit." };
-  const kind = av ? avatarKind(av.format, av.length) : input.kind;
+  // Edit only, one request with several lines: clean the items; the project's kind is the first type.
+  const items: EditItems | null =
+    input.type === "edit" && input.items
+      ? {
+          short: Math.max(0, Math.min(10000, Math.round(Number(input.items.short) || 0))),
+          longs: (input.items.longs ?? []).filter(isLongLength).map(Number).slice(0, 50),
+          listings: (input.items.listings ?? [])
+            .slice(0, EDIT_LISTING_MAX)
+            .map((l) => ({
+              name: String(l.name ?? "")
+                .trim()
+                .slice(0, 120),
+              count: Math.round(Number(l.count) || 0),
+            }))
+            .filter((l) => l.count >= 1 && l.count <= 10000),
+        }
+      : null;
+  if (items && !items.short && !items.longs.length && !items.listings.length)
+    return { ok: false, error: "Add at least one edit." };
+  const itemsKind = items
+    ? items.short
+      ? "short_form"
+      : items.longs.length
+        ? "long_form"
+        : "hdr_photos"
+    : "";
+  const kind = av ? avatarKind(av.format, av.length) : items ? itemsKind : input.kind;
   const minutes =
-    input.type === "edit" && input.kind === "long_form" && isLongLength(input.minutes)
+    !items && input.type === "edit" && input.kind === "long_form" && isLongLength(input.minutes)
       ? Number(input.minutes)
       : null;
+  const itemLines = items ? editItemLines(items, null) : [];
   const notes = [
     minutes ? `Length: ${minutes} min each` : "",
+    ...(items
+      ? [
+          "Requested:",
+          ...itemLines.map((l) => `• ${l.label} × ${l.qty}${l.sub ? ` (${l.sub})` : ""}`),
+        ]
+      : []),
     av ? `Format: ${AVATAR_FORMATS[av.format].label} · ${avatarLength(av.format, av.length)}` : "",
     input.type === "edit" && input.kind === "other"
       ? `Type of edit: ${input.kindOther!.trim()}`
@@ -232,7 +270,9 @@ export async function createProject(input: NewProject): Promise<
     p_type: input.type,
     p_title: title,
     p_kind: kind,
-    p_quantity: input.quantity || null,
+    p_quantity: items
+      ? items.short + items.longs.length + items.listings.reduce((n, l) => n + l.count, 0)
+      : input.quantity || null,
     p_notes: notes || null,
     p_references: (input.references ?? []).map((r) => r.trim()).filter(Boolean),
     p_due: null,
@@ -281,25 +321,36 @@ export async function createProject(input: NewProject): Promise<
       : minutes
         ? editLongPrice(minutes, rates)
         : rates?.[EDIT_RATE[input.kind] ?? ""];
+  const priced = items ? editItemLines(items, rates) : [];
   const est =
     input.type === "avatar" && av
       ? avatarEstimate(av.format, av.length, rates)
-      : editRate != null && input.quantity
-        ? Math.round(Number(editRate) * input.quantity * 100) / 100
-        : null;
+      : items
+        ? priced.length && priced.every((l) => l.amount != null)
+          ? Math.round(priced.reduce((n, l) => n + Number(l.amount), 0) * 100) / 100
+          : null
+        : editRate != null && input.quantity
+          ? Math.round(Number(editRate) * input.quantity * 100) / 100
+          : null;
   const pay = est
     ? await afterBooking({
         rpc: portalAdminAs(`client:${user.email ?? user.id}`),
         projectId: out.id,
         ref: out.ref,
         type: input.type,
-        lines: [
-          {
-            description: `${title} · ${avLabel || briefKindLabel(input.type as ProjectType, kind)}${minutes ? ` · ${minutes} min` : ""}`,
-            qty: input.type === "edit" ? input.quantity || 1 : 1,
-            unit_price: input.type === "edit" ? Number(editRate) : est,
-          },
-        ],
+        lines: items
+          ? priced.map((l) => ({
+              description: `${title} · ${l.label}`,
+              qty: l.qty,
+              unit_price: Number(l.unit),
+            }))
+          : [
+              {
+                description: `${title} · ${avLabel || briefKindLabel(input.type as ProjectType, kind)}${minutes ? ` · ${minutes} min` : ""}`,
+                qty: input.type === "edit" ? input.quantity || 1 : 1,
+                unit_price: input.type === "edit" ? Number(editRate) : est,
+              },
+            ],
         estimate: est,
         email: user.email,
         origin,
@@ -326,7 +377,8 @@ export async function createProject(input: NewProject): Promise<
         charNames.length
           ? `Presenter${charNames.length > 1 ? "s" : ""}: ${charNames.join(", ")}`
           : "",
-        input.quantity ? `Quantity: ${input.quantity}` : "",
+        items ? itemLines.map((l) => `${l.label} × ${l.qty}`).join("\n") : "",
+        !items && input.quantity ? `Quantity: ${input.quantity}` : "",
         links.length ? `${links.length} link${links.length === 1 ? "" : "s"} to raw files` : "",
       ]
         .filter(Boolean)

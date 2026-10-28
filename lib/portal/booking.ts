@@ -188,6 +188,50 @@ export function editLongPrice(min: number, rates: Rates | null | undefined) {
   const base = longPrice(min, num(rates?.[longKey(min)]));
   return base == null ? null : base + (num(rates?.[EDIT_LONG_EXTRA]) ?? 0);
 }
+/** An edit-only request (28 Oct 2026): short-form count, each long-form's length, listing batches. */
+export type EditItems = {
+  short: number;
+  longs: number[];
+  listings: { name: string; count: number }[];
+};
+export const EDIT_LISTING_MAX = 10;
+/** The request's lines at the client's rates (reel, long-form by length + add-on, photo per image).
+ *  `unit`/`amount` are null while a rate is missing. */
+export function editItemLines(items: EditItems, rates: Rates | null | undefined): EstimateLine[] {
+  const out: EstimateLine[] = [];
+  const row = (key: string, label: string, qty: number, unit: number | null, sub?: string) =>
+    out.push({
+      key,
+      label,
+      qty,
+      unit,
+      amount: unit == null ? null : Math.round(unit * qty * 100) / 100,
+      ...(sub ? { sub } : {}),
+    });
+  if (items.short > 0)
+    row("reel", "Short-form edits", items.short, num(rates?.reel), "Up to 60 sec");
+  const byLen = new Map<number, number>();
+  for (const m of items.longs) byLen.set(m, (byLen.get(m) ?? 0) + 1);
+  for (const [m, n] of [...byLen].sort((a, b) => a[0] - b[0]))
+    row(
+      "long_form",
+      `Long-form edit · ${m} min`,
+      n,
+      editLongPrice(m, rates),
+      `${n > 1 ? `${n} × ` : ""}${m} min`,
+    );
+  items.listings.forEach((l, i) =>
+    row(
+      "photo",
+      `${l.name.trim() || `Listing ${i + 1}`} · ${l.count} photo${l.count === 1 ? "" : "s"}`,
+      l.count,
+      num(rates?.photo),
+      "Listing photos · HDR",
+    ),
+  );
+  return out;
+}
+
 /** Hours of shooting the edits need (1 per short-form, 2 per long-form). */
 export const hoursNeeded = (short: number, longs: number) =>
   short * SHOOT_HOURS_PER.short + longs * SHOOT_HOURS_PER.long;
@@ -434,6 +478,8 @@ export type EstimateLine = {
   amount: number | null;
   /** A flexible booking's minimum: billed per finished video, or this if that's less. */
   minimum?: boolean;
+  /** A small grey line under it (edit-only requests). */
+  sub?: string;
 };
 
 /** The Videos card's estimate lines. */

@@ -7,16 +7,20 @@ import {
   AVATAR_FORMATS,
   avatarEstimate,
   avatarLength,
+  EDIT_LISTING_MAX,
+  editItemLines,
   editLongPrice,
   LONG_LENGTHS,
   type AvatarFormat,
+  type EditItems,
 } from "@/lib/portal/booking";
 import { createProject, updateAvatarBrief } from "@/lib/portal/project-actions";
-import { EDIT_KINDS, TYPE_PATH } from "@/lib/portal/projects";
+import { TYPE_PATH } from "@/lib/portal/projects";
 import type { RequestConfig } from "@/lib/portal/requests";
 import { money } from "@/lib/portal/billing";
-import { BookStep, ServiceCard, ThankYou } from "./BookFrame";
-import { confirmText, DueNow, TermsCheck } from "./BookingTerms";
+import { BookStep, Counter, ThankYou } from "./BookFrame";
+import { BookingPanel, priceView, type PanelLine } from "./bookPrice";
+import { confirmText, DueNow, PanelTerms, TermsCheck } from "./BookingTerms";
 import { PriceBlock } from "./PriceBlock";
 import {
   DraftOffer,
@@ -28,24 +32,6 @@ import {
   useFormCheck,
   useLeaveGuard,
 } from "./forms";
-
-/** Edit type cards (owner, 18 Oct 2026): title, one line, the rate card key for the price. The
- *  stored labels stay in EDIT_KINDS. */
-const KIND_CARD: Record<
-  (typeof EDIT_KINDS)[number][0],
-  { title: string; line: string; rate?: string; per?: string }
-> = {
-  short_form: { title: "Short-form", line: "Vertical reels · 9:16", rate: "reel" },
-  long_form: { title: "Long-form", line: "Horizontal YouTube · 16:9", rate: "long_form" },
-  hdr_photos: {
-    title: "Listing photo edits",
-    line: "HDR property photos",
-    rate: "photo",
-    per: " / photo",
-  },
-  other: { title: "Other", line: "Tell us what you need" },
-};
-const KIND_ORDER = ["short_form", "long_form", "hdr_photos", "other"] as const;
 
 type Link2 = { label: string; url: string };
 type Snap = {
@@ -64,6 +50,10 @@ type Snap = {
   presenters?: string[];
   /** Long-form edits (28 Oct 2026): each video's length, priced by length. */
   minutes?: number;
+  /** Edit only (28 Oct 2026): one Edits card. */
+  short?: number;
+  longs?: number[];
+  listings?: { name: string; count: string }[];
 };
 /** "Edit request" on an avatar video we haven't started (owner, 17 Oct 2026): its brief. */
 export type AvatarEdit = {
@@ -82,12 +72,6 @@ export type AvatarEdit = {
 /** An approved character, as the video form's presenter picker shows it. */
 export type Presenter = { id: string; name: string; src: string | null };
 const isHttps = (u: string) => /^https:\/\/\S+$/.test(u.trim());
-const QTY_FOR: Record<string, number> = { hdr_photos: 50, short_form: 5, long_form: 2 };
-const EDIT_TURNAROUND: Record<string, string> = {
-  hdr_photos: "hdr_edit",
-  short_form: "short_edit",
-  long_form: "long_edit",
-};
 
 /**
  * "Edit my files" (on the Book media page, 18 Oct 2026) and "AI avatar video" (a modal). Editing: the type (Other
@@ -127,6 +111,9 @@ export function ProjectRequestModal({
     title: edit?.title ?? "",
     quantity: "",
     minutes: 10,
+    short: 0,
+    longs: [],
+    listings: [],
     notes: edit?.notes ?? "",
     reference: edit?.reference ?? "",
     links: [{ label: avatar ? "Logo and assets" : "Raw files", url: "" }],
@@ -176,25 +163,27 @@ export function ProjectRequestModal({
   const fmt = s.format ? AVATAR_FORMATS[s.format] : null;
   const length = fmt ? fmt.stops[Math.min(s.stop, fmt.stops.length - 1)] : 0;
   const est = s.format ? avatarEstimate(s.format, length, cfg.price.rates) : null;
-  // What's due now (payment terms): the avatar estimate, or an edit's rate × quantity.
-  const editRate = !avatar ? KIND_CARD[s.kind as (typeof KIND_ORDER)[number]]?.rate : undefined;
-  // Long-form is priced by length (per-minute table + the edit-only add-on), the rest per item.
-  const editUnit =
-    s.kind === "long_form"
-      ? editLongPrice(s.minutes ?? 10, cfg.price.rates)
-      : editRate && cfg.price.rates?.[editRate] != null
-        ? Number(cfg.price.rates[editRate])
-        : null;
-  const reqEst = avatar
-    ? est
-    : editUnit != null && Number(s.quantity) > 0
-      ? editUnit * Number(s.quantity)
+  // Edit only: the request's items at the client's rates (null while one is unpriced).
+  const items: EditItems = {
+    short: s.short ?? 0,
+    longs: s.longs ?? [],
+    listings: (s.listings ?? []).map((l) => ({ name: l.name, count: Number(l.count) || 0 })),
+  };
+  const itemLines = editItemLines(
+    { ...items, listings: items.listings.filter((l) => l.count > 0) },
+    cfg.price.rates,
+  );
+  const hasItems = itemLines.length > 0;
+  const itemsEst =
+    hasItems && itemLines.every((l) => l.amount != null)
+      ? itemLines.reduce((n, l) => n + Number(l.amount), 0)
       : null;
+  // What's due now (payment terms): the avatar estimate, or the edit request's total.
+  const reqEst = avatar ? est : itemsEst;
   const sendLabel = edit ? null : confirmText(cfg.terms, reqEst, cfg.card, cfg.price.currency);
 
   const form = useFormCheck(() => ({
-    kind: !avatar && !s.kind && "Choose the type of edit.",
-    kindOther: !avatar && s.kind === "other" && !s.kindOther.trim() && "Say what type of edit.",
+    kind: !avatar && !hasItems && "Add at least one edit.",
     // An older video edited with no approved character to pick keeps going without one.
     presenters:
       avatar &&
@@ -203,10 +192,12 @@ export function ProjectRequestModal({
       "Choose your AI avatar.",
     format: avatar && !s.format && "Choose short form or long form.",
     title: !avatar && !s.title.trim() && "Give it a title.",
-    quantity:
-      s.quantity !== "" &&
-      !(Number(s.quantity) >= 1 && Number(s.quantity) <= 10000) &&
-      "A number from 1.",
+    listings:
+      !avatar &&
+      (s.listings ?? []).some(
+        (l) => l.count !== "" && !(Number(l.count) >= 1 && Number(l.count) <= 10000),
+      ) &&
+      "Photos per listing: a number from 1.",
     reference:
       s.reference.trim() && !isHttps(s.reference) && "Paste a full link starting with https://",
     files: !avatar
@@ -252,11 +243,11 @@ export function ProjectRequestModal({
     const r = await createProject({
       type,
       title: s.title,
-      kind: avatar ? "" : s.kind,
-      kindOther: s.kindOther,
+      kind: "",
       ...(avatar && s.format ? { avatar: { format: s.format, length } } : {}),
-      quantity: Number(s.quantity) || null,
-      ...(s.kind === "long_form" ? { minutes: s.minutes ?? 10 } : {}),
+      ...(avatar
+        ? {}
+        : { items: { ...items, listings: items.listings.filter((l) => l.count > 0) } }),
       notes: s.notes,
       references: [s.reference],
       scriptBy: s.scriptBy,
@@ -283,24 +274,14 @@ export function ProjectRequestModal({
     ? s.format
       ? cfg.turnaround[s.format === "short" ? "avatar_short" : "avatar_long"]
       : ""
-    : cfg.turnaround[EDIT_TURNAROUND[s.kind] ?? ""];
+    : "";
 
   const m = (n: number) => money(cfg.price.currency, n);
-  /** A card's price: "Included in your package" while a package covers it, else the rate. */
-  const kindPrice = (k: (typeof KIND_ORDER)[number]) => {
-    const c = KIND_CARD[k];
-    if (!c.rate) return null;
-    const l = cfg.price.mode === "package" ? cfg.price.left?.[c.rate] : null;
-    if (l && Number(l.remaining) > 0)
-      return <span className="bkp-muted">Included in your package</span>;
-    const rates = cfg.price.rates;
-    if (k === "long_form") {
-      const from = editLongPrice(LONG_LENGTHS[0], rates);
-      return from == null ? null : <span className="bkp-price">{`from ${m(from)}`}</span>;
-    }
-    if (!rates || rates[c.rate] == null) return null;
-    return <span className="bkp-price">{`${m(Number(rates[c.rate]))}${c.per ?? ""}`}</span>;
-  };
+  const rates = cfg.price.rates;
+  const rate = (k: string) => (rates?.[k] == null ? null : Number(rates[k]));
+  const set2 = (patch: Partial<Snap>) => set(patch);
+  const listings = s.listings ?? [];
+  const longs = s.longs ?? [];
 
   if (made && !avatar && !edit)
     return (
@@ -371,7 +352,6 @@ export function ProjectRequestModal({
       </Modal>
     );
 
-  const kindLabel = s.kind ? KIND_CARD[s.kind as (typeof KIND_ORDER)[number]]?.title : "";
   const buttons = (
     <>
       <button
@@ -524,92 +504,174 @@ export function ProjectRequestModal({
         </>
       ) : (
         <>
-          <div
-            className="bkp-cards bkp-cards-4"
-            data-field="kind"
-            role="group"
-            aria-label="Type of edit"
-          >
-            {KIND_ORDER.map((k) => (
-              <ServiceCard
-                key={k}
-                title={KIND_CARD[k].title}
-                line={KIND_CARD[k].line}
-                meta={k === "other" ? null : cfg.turnaround[EDIT_TURNAROUND[k] ?? ""]}
-                price={kindPrice(k)}
-                on={s.kind === k}
-                onToggle={() =>
+          <Field name="title" label="Title" required error={form.errors.title}>
+            <input
+              type="text"
+              maxLength={160}
+              value={s.title}
+              placeholder="e.g. Willow Creek: October listings"
+              onChange={(e) => set({ title: e.target.value })}
+            />
+          </Field>
+          <div className="bkp-box-card bkp-edits" data-field="kind">
+            <div className="bkp-row">
+              <span className="bkp-body">Edits</span>
+            </div>
+            <div className="bkp-row">
+              <span className="bkp-check-t">
+                Short-form edits
+                <span className="bkp-muted">
+                  Reels, up to 60 sec{rate("reel") != null ? ` · ${m(rate("reel")!)} each` : ""}
+                </span>
+              </span>
+              <Counter
+                label="Short-form edits"
+                value={s.short ?? 0}
+                min={0}
+                max={10000}
+                onChange={(n) => set({ short: n })}
+              />
+            </div>
+            <div className="bkp-row">
+              <span className="bkp-check-t">
+                Long-form edits
+                <span className="bkp-muted">YouTube, priced by length · over 30 min, we quote</span>
+              </span>
+              <Counter
+                label="Long-form edits"
+                value={longs.length}
+                min={0}
+                max={50}
+                onChange={(n) =>
                   set({
-                    kind: s.kind === k ? "" : k,
-                    // A starting quantity per type; theirs to change (empty for Other).
-                    quantity: s.kind === k ? "" : String(QTY_FOR[k] ?? ""),
+                    longs:
+                      n > longs.length
+                        ? [...longs, ...Array.from({ length: n - longs.length }, () => 10)]
+                        : longs.slice(0, n),
                   })
                 }
               />
+            </div>
+            {longs.map((min, i) => {
+              const at = Math.max(0, LONG_LENGTHS.indexOf(min as (typeof LONG_LENGTHS)[number]));
+              const price = editLongPrice(min, rates);
+              return (
+                <div className="bkp-lform" key={i}>
+                  <span className="bkp-muted">Long-form {i + 1}</span>
+                  <input
+                    type="range"
+                    className="bkp-slider"
+                    min={0}
+                    max={LONG_LENGTHS.length - 1}
+                    step={1}
+                    value={at}
+                    aria-label={`Long-form ${i + 1} length`}
+                    aria-valuetext={`${min} min`}
+                    style={{ ["--pct" as string]: `${(at / (LONG_LENGTHS.length - 1)) * 100}%` }}
+                    onChange={(e) =>
+                      set({
+                        longs: longs.map((x, j) =>
+                          j === i ? LONG_LENGTHS[Number(e.target.value)] : x,
+                        ),
+                      })
+                    }
+                  />
+                  <b className="bkp-lform-v">
+                    {min} min{price != null ? ` · ${m(price)}` : ""}
+                    {price != null && (
+                      <small className="bkp-muted">
+                        {" "}
+                        · {m(Math.round((price / min) * 100) / 100)}/min
+                      </small>
+                    )}
+                  </b>
+                </div>
+              );
+            })}
+            <div className="bkp-row">
+              <span className="bkp-check-t">
+                Listing photo edits
+                <span className="bkp-muted">
+                  HDR{rate("photo") != null ? ` · ${m(rate("photo")!)} / photo` : ""} · one batch
+                  per listing
+                </span>
+              </span>
+            </div>
+            {listings.map((l, i) => (
+              <div className="bkp-listing" key={i}>
+                <input
+                  type="text"
+                  maxLength={120}
+                  aria-label={`Listing ${i + 1} name or address`}
+                  value={l.name}
+                  placeholder={`Listing ${i + 1} · name or address`}
+                  onChange={(e) =>
+                    set({
+                      listings: listings.map((x, j) =>
+                        j === i ? { ...x, name: e.target.value } : x,
+                      ),
+                    })
+                  }
+                />
+                <Counter
+                  label={`Listing ${i + 1} photos`}
+                  value={Math.max(0, Number(l.count) || 0)}
+                  min={1}
+                  max={10000}
+                  onChange={(n) =>
+                    set({
+                      listings: listings.map((x, j) => (j === i ? { ...x, count: String(n) } : x)),
+                    })
+                  }
+                />
+                <input
+                  type="number"
+                  className="bkp-listing-n"
+                  min={1}
+                  max={10000}
+                  inputMode="numeric"
+                  aria-label={`Listing ${i + 1} photo count`}
+                  value={l.count}
+                  onChange={(e) =>
+                    set({
+                      listings: listings.map((x, j) =>
+                        j === i ? { ...x, count: e.target.value } : x,
+                      ),
+                    })
+                  }
+                />
+                <button
+                  type="button"
+                  className="lnk pt-small"
+                  onClick={() => set({ listings: listings.filter((_, j) => j !== i) })}
+                >
+                  Remove
+                </button>
+              </div>
             ))}
+            {listings.length < EDIT_LISTING_MAX && (
+              <button
+                type="button"
+                className="lnk pt-small"
+                style={{ justifySelf: "start" }}
+                onClick={() => set2({ listings: [...listings, { name: "", count: "25" }] })}
+              >
+                + Add listing
+              </button>
+            )}
+            {form.errors.listings && (
+              <span className="pt-field-msg" role="alert">
+                {form.errors.listings}
+              </span>
+            )}
+            <p className="bkp-muted" style={{ margin: 0 }}>
+              Something else? Tell us in the notes and we’ll quote.
+            </p>
             {form.errors.kind && (
-              <span className="pt-field-msg bkp-wide" role="alert">
+              <span className="pt-field-msg" role="alert">
                 {form.errors.kind}
               </span>
             )}
-          </div>
-          {s.kind === "long_form" && (
-            <Field name="minutes" label="Length of each video" group>
-              <div className="bkp-chips" role="group" aria-label="Length of each video">
-                {LONG_LENGTHS.map((l) => (
-                  <button
-                    key={l}
-                    type="button"
-                    aria-pressed={(s.minutes ?? 10) === l}
-                    onClick={() => set({ minutes: l })}
-                  >
-                    <span>{l} min</span>
-                    {editLongPrice(l, cfg.price.rates) != null && (
-                      <span className="bkp-muted">{m(editLongPrice(l, cfg.price.rates)!)}</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-              <span className="bkp-muted">Over 30 minutes? We quote it: say so in the notes.</span>
-            </Field>
-          )}
-          {s.kind === "other" && (
-            <Field
-              name="kindOther"
-              label="What type of edit?"
-              required
-              error={form.errors.kindOther}
-            >
-              <input
-                type="text"
-                maxLength={120}
-                value={s.kindOther}
-                placeholder="e.g. Drone footage colour grade"
-                onChange={(e) => set({ kindOther: e.target.value })}
-              />
-            </Field>
-          )}
-          <div className="pt-grid2" style={{ gridTemplateColumns: "2fr 1fr" }}>
-            <Field name="title" label="Title" required error={form.errors.title}>
-              <input
-                type="text"
-                maxLength={160}
-                value={s.title}
-                placeholder="e.g. Willow Creek: October listings"
-                onChange={(e) => set({ title: e.target.value })}
-              />
-            </Field>
-            <Field name="quantity" label="Quantity" error={form.errors.quantity}>
-              <input
-                type="number"
-                min={1}
-                max={10000}
-                inputMode="numeric"
-                value={s.quantity}
-                placeholder={s.kind === "hdr_photos" ? "e.g. 120" : "e.g. 6"}
-                onChange={(e) => set({ quantity: e.target.value })}
-              />
-            </Field>
           </div>
         </>
       )}
@@ -749,7 +811,18 @@ export function ProjectRequestModal({
       </Modal>
     );
   // Editing (owner, 18 Oct 2026): on the Book media page, type cards, "Your request" alongside.
-  const price = s.kind ? kindPrice(s.kind as (typeof KIND_ORDER)[number]) : null;
+  const panelLines: PanelLine[] = itemLines.map((l) => ({
+    key: l.key,
+    label:
+      l.key === "reel"
+        ? `Short-form edits × ${l.qty}`
+        : l.key === "long_form"
+          ? `Long-form edits × ${l.qty}`
+          : l.label,
+    sub: l.sub,
+  }));
+  const v = priceView(cfg, itemLines);
+  const barText = v.total?.value ?? (itemLines.length ? "Request" : "Nothing yet");
   return (
     <div data-testid={`${type}-page`}>
       <BookStep
@@ -776,30 +849,16 @@ export function ProjectRequestModal({
           disabled: saving || busy,
         }}
         panelTitle="Your request"
-        barText={kindLabel || "Nothing yet"}
+        barText={barText}
         panel={
-          kindLabel ? (
-            <ul className="bkp-lines">
-              <li>
-                <span>
-                  {kindLabel}
-                  {s.kind === "other" && s.kindOther && (
-                    <small className="bkp-muted">{s.kindOther}</small>
-                  )}
-                  {s.quantity && <small className="bkp-muted">Quantity {s.quantity}</small>}
-                </span>
-                {price}
-              </li>
-              {ta && (
-                <li>
-                  <span>Delivery</span>
-                  <span className="bkp-muted">{ta}</span>
-                </li>
-              )}
-            </ul>
-          ) : (
-            <p className="bkp-muted">Nothing yet</p>
-          )
+          <>
+            <BookingPanel
+              lines={panelLines}
+              v={v}
+              note="Long-form is priced by length · over 30 min, we quote"
+            />
+            <PanelTerms terms={cfg.terms} estimate={itemsEst} currency={cfg.price.currency} />
+          </>
         }
       >
         <div className="pt-form">{form_}</div>

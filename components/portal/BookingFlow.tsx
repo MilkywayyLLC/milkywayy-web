@@ -21,8 +21,6 @@ import {
   CONTENT_HOURS,
   CONTENT_KEY,
   CONTENT_LONG_MAX_V2,
-  contentPrices,
-  contentSummary,
   DAY_LABEL,
   estimate,
   hoursNeeded,
@@ -722,9 +720,7 @@ export function BookingFlow({
   // by quantity (each long-form with its length), a live summary, then the brief.
   const at8 = CONTENT_HOURS.indexOf(hours);
   const priceOf = (key: string) => (v.rates && rate(key) != null ? m(rate(key)!) : null);
-  const cp = contentPrices(rates ?? {}, hours);
   const longOf = (min: number) => (v.rates ? longPrice(min, rate(longKey(min))) : null);
-  const summary = v.rates && plan ? contentSummary(plan, cp, cfg.price.currency) : null;
   const setLong = touch((i: number, min: number) =>
     setLongs((ls) => ls.map((x, j) => (j === i ? min : x))),
   );
@@ -826,15 +822,13 @@ export function BookingFlow({
               />
               <b className="bkp-lform-v">
                 {min} min{longOf(min) != null ? ` · ${m(longOf(min)!)}` : ""}
+                {v.rates && rate(longKey(min)) != null && (
+                  <small className="bkp-muted"> · {m(rate(longKey(min))!)}/min</small>
+                )}
               </b>
             </div>
           );
         })}
-        {summary && (
-          <p className="bkp-muted" data-testid="content-summary" aria-live="polite">
-            {summary}
-          </p>
-        )}
       </div>
       <label className="pt-field">
         Brief

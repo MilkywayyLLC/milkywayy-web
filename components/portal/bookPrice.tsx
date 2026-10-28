@@ -145,7 +145,7 @@ export function lineName(key: string | undefined, qty: number, fallback = "") {
   }
 }
 
-const isLongEdit = (k?: string) => !!k && /^content_long_\d+$/.test(k);
+const isLongEdit = (k?: string) => !!k && (/^content_long_\d+$/.test(k) || k === "long_form");
 /** The raw-files note under a content shoot's line. */
 const isShootLine = (k?: string) => !!k && /^content_\d+h$/.test(k);
 
@@ -200,10 +200,13 @@ export function BookingPanel({
   lines,
   v,
   empty = "Nothing yet",
+  note,
 }: {
   lines: PanelLine[];
   v: PriceView;
   empty?: string;
+  /** The small grey line under the lines (default: the content shoot's). */
+  note?: string;
 }) {
   if (!lines.length) return <p className="bkp-muted">{empty}</p>;
   if (!v.pkg) {
@@ -215,7 +218,11 @@ export function BookingPanel({
       if (at < 0) return void rows.push({ l, s });
       const r = rows[at].s;
       rows[at] = {
-        l: { ...rows[at].l, label: `Long-form edits × ${r.qty + s.qty}` },
+        l: {
+          ...rows[at].l,
+          label: `Long-form edits × ${r.qty + s.qty}`,
+          sub: [rows[at].l.sub, l.sub].filter(Boolean).join(", ") || undefined,
+        },
         s: {
           ...r,
           qty: r.qty + s.qty,
@@ -223,7 +230,8 @@ export function BookingPanel({
         },
       };
     });
-    const hasEdits = rows.some(({ s }) => s.key === "content_short_edit" || isLongEdit(s.key));
+    const hasEdits =
+      !!note || rows.some(({ s }) => s.key === "content_short_edit" || isLongEdit(s.key));
     return (
       <>
         <ul className="bkp-lines">
@@ -240,7 +248,7 @@ export function BookingPanel({
         </ul>
         {hasEdits && (
           <p className="bkp-muted">
-            Short-form up to 60 sec · Long-form up to the length you picked
+            {note ?? "Short-form up to 60 sec · Long-form up to the length you picked"}
           </p>
         )}
         {v.total && (
