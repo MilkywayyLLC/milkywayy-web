@@ -1,5 +1,4 @@
 import {
-  cardOf,
   createCheckout,
   createCustomer,
   customerExists,
@@ -243,7 +242,7 @@ export async function runRefunds(rpc: Rpc, refunds: RefundRow[], retry = false) 
   return { sent, failed };
 }
 
-/* ---------- phase 1 (27 Oct 2026): checkout on our site, saved cards ---------- */
+/* ---------- phase 1 (27 Oct 2026): checkout on our site ---------- */
 
 type Paid = {
   already: boolean;
@@ -256,7 +255,7 @@ type Paid = {
   recipients: Recipient[];
 };
 
-/** The company's Stripe customer, made the first time (so cards can be saved and offered again). */
+/** The company's Stripe customer, made the first time (payments and receipts sit on it). */
 export async function customerFor(
   rpc: Rpc,
   accountId: string,
@@ -364,20 +363,6 @@ export async function afterPaid(rpc: Rpc, out: Paid, origin: string) {
         `${origin}/admin/projects/${p.id}`,
       ).catch((e) => console.error("[payments] confirm alert:", e));
   }
-}
-
-/** A finished "save a card" Checkout: store the card (brand, last 4, expiry) for the company. */
-export async function recordCardSaved(rpc: Rpc, s: CheckoutSession, accountId?: string) {
-  const account = accountId ?? s.metadata?.account_id;
-  if (s.mode !== "setup" || s.status !== "complete" || !account) return null;
-  const si = typeof s.setup_intent === "object" ? s.setup_intent : null;
-  const card = cardOf(si?.payment_method ?? null);
-  if (!card) return null;
-  await rpc("portal_admin_set_stripe_customer", {
-    p_account: account,
-    p: { customer_id: s.customer, ...card },
-  });
-  return card;
 }
 
 /** Look a session up at Stripe (the return page doesn't trust the browser's word that it's paid). */

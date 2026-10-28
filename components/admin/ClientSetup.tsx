@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import type { PropertyPricing } from "@/content/types";
 import { dateLabel, money } from "@/lib/portal/billing";
 import { setClientRate } from "@/lib/portal/budget-actions";
@@ -10,8 +10,11 @@ import {
   saveClientPrices,
   setPayg,
   setServices,
+  switchPreview,
+  type SwitchPreview,
 } from "@/lib/portal/client-setup-actions";
 import { cx } from "@/lib/cx";
+import { Confirm } from "./Confirm";
 
 /**
  * The client page's top blocks (owner, 17 Oct 2026): Services enabled, the client's price list
@@ -41,6 +44,10 @@ export type ClientSetupData = {
     started_on: string | null;
     ends_on: string | null;
     advance: boolean;
+    /** Package invoice mode (28 Oct 2026). */
+    billing?: "usage" | "upfront";
+    minimum?: number | null;
+    upfront_from?: string | null;
   };
   templates: {
     id: string;
@@ -312,14 +319,33 @@ export function PriceList({
 
 /* ---------------- plan ---------------- */
 
-type Inc = { key: string; label: string; qty: string };
+/**
+ * The plan type picked on the client page right now (unsaved too), for blocks that depend on it:
+ * How they pay hides Payment terms on a package.
+ */
+const PlanMode = createContext<{ mode: "payg" | "package"; set: (m: "payg" | "package") => void }>({
+  mode: "payg",
+  set: () => {},
+});
+export const usePlanMode = () => useContext(PlanMode).mode;
+
+export function PlanModeProvider({
+  initial,
+  children,
+}: {
+  initial: "payg" | "package" | "budget";
+  children: ReactNode;
+}) {
+  const [mode, set] = useState<"payg" | "package">(initial === "package" ? "package" : "payg");
+  return <PlanMode.Provider value={{ mode, set }}>{children}</PlanMode.Provider>;
+}
 
 const nextMonth = () => {
   const d = new Date(Date.now() + 4 * 3600_000);
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
 };
 
-/** Today in Dubai (YYYY-MM-DD): "Start now" pro-rates this month from today. */
+/** Today in Dubai (YYYY-MM-DD). */
 const dubaiToday = () => new Date(Date.now() + 4 * 3600_000).toISOString().slice(0, 10);
 
 export type PackageValue = {
@@ -329,11 +355,44 @@ export type PackageValue = {
   templates: Record<string, { allowance: number | null; half_day_cap: number | null }>;
 };
 
+/** What a switch from pay as you go moves (portal_admin_switch_preview), in a few lines. */
+function SwitchSummary({ s, currency }: { s: SwitchPreview; currency: string }) {
+  const m = (n: number) => money(currency, Number(n));
+  const voided = s.voids.reduce((t, v) => t + Number(v.amount), 0);
+  return (
+    <ul className="ad-small ad-stack-4" data-testid="switch-summary">
+      <li>
+        {s.projects.length
+          ? `${s.projects.length} booking${s.projects.length === 1 ? "" : "s"} this month (${m(s.usage_total)}) count toward the package: ${s.projects.map((p) => p.ref).join(", ")}.`
+          : "Nothing booked this month yet."}
+      </li>
+      {s.credits.filter((c) => c.paid).length > 0 && (
+        <li>
+          Paid at booking, credited on the month-end invoice:{" "}
+          {s.credits
+            .filter((c) => c.paid)
+            .map((c) => `${c.number ?? "invoice"} (${m(c.amount)})`)
+            .join(", ")}
+          .
+        </li>
+      )}
+      {s.voids.length > 0 && (
+        <li>
+          Voided and moved onto the package’s month-end invoice:{" "}
+          {s.voids.map((v) => `${v.number ?? "draft"} · ${v.ref}`).join(", ")} ({m(voided)}).
+        </li>
+      )}
+      {s.payg_drafts.length > 0 && <li>This month’s pay-as-you-go draft is voided.</li>}
+    </ul>
+  );
+}
+
 export function PlanBlock({
   account,
   data,
   showBudgetSet,
   value,
+  rollover,
 }: {
   account: string;
   data: ClientSetupData;
@@ -341,8 +400,11 @@ export function PlanBlock({
   showBudgetSet: boolean | null;
   /** The value model (owner, 24 Oct 2026): monthly allowance + half-day cap. */
   value?: PackageValue;
+  /** The client's rollover settings: shown inside the plan when it's billed upfront. */
+  rollover?: ReactNode;
 }) {
   const p = data.plan;
+  const pm = useContext(PlanMode);
   const init = {
     mode: (p.mode === "package" ? "package" : "payg") as "payg" | "package",
     name: p.name ?? "",
@@ -350,27 +412,32 @@ export function PlanBlock({
     term: (p.term ?? 1) as 1 | 6,
     started: p.started_on ?? nextMonth(),
     ends: p.ends_on ?? "",
-    advance: p.advance,
+    billing: (p.billing ?? "usage") as "usage" | "upfront",
+    minimum: p.minimum != null ? String(Number(p.minimum)) : "",
     payg: data.payg_invoicing,
     allowance: value?.allowance != null ? String(Number(value.allowance)) : "",
     // Shoot days in full days (owner, 24 Oct 2026); stored as half-days.
     cap: value?.half_day_cap != null ? String(Number(value.half_day_cap) / 2) : "",
   };
-  const [mode, setMode] = useState(init.mode);
+  const [mode, setModeLocal] = useState(init.mode);
+  const setMode = (m: "payg" | "package") => {
+    setModeLocal(m);
+    pm.set(m);
+  };
   const [template, setTemplate] = useState("");
   const [name, setName] = useState(init.name);
   const [amount, setAmount] = useState(init.amount);
   const [term, setTerm] = useState<1 | 6>(init.term);
   const [started, setStarted] = useState(init.started);
   const [ends, setEnds] = useState(init.ends);
-  const [advance, setAdvance] = useState(init.advance);
-  const [inc, setInc] = useState<Inc[]>(
-    p.inclusions.map((i) => ({ key: i.key, label: i.label, qty: String(Number(i.qty)) })),
-  );
+  const [billing, setBilling] = useState(init.billing);
+  const [minimum, setMinimum] = useState(init.minimum);
   const [payg, setPaygInv] = useState(init.payg);
   const [allowance, setAllowance] = useState(init.allowance);
   const [cap, setCap] = useState(init.cap);
-  const now = { mode, name, amount, term, started, ends, advance, payg, allowance, cap };
+  // The switch summary, waiting for the admin's OK (resolves the save).
+  const [ask, setAsk] = useState<{ s: SwitchPreview; done: (ok: boolean) => void } | null>(null);
+  const now = { mode, name, amount, term, started, ends, billing, minimum, payg, allowance, cap };
   const dirty =
     !!template ||
     (Object.keys(init) as (keyof typeof init)[]).some((k) =>
@@ -380,14 +447,6 @@ export function PlanBlock({
           : false
         : k !== "payg" && now[k] !== init[k],
     );
-  // What an inclusion can count: a whole property shoot, or any listed service but property parts.
-  const options = [
-    { key: "shoot", label: "Property shoot (shot & edited)" },
-    ...data.prices
-      .filter((x) => x.grp !== "property" && !RETIRED.has(x.key))
-      .map((x) => ({ key: x.key, label: x.label })),
-  ];
-  const labelOf = (k: string) => options.find((o) => o.key === k)?.label ?? k;
   const fromTemplate = (id: string) => {
     setTemplate(id);
     const t = data.templates.find((x) => x.id === id);
@@ -397,32 +456,36 @@ export function PlanBlock({
     const tv = value?.templates[id];
     setAllowance(String(Number(tv?.allowance ?? t.price)));
     setCap(tv?.half_day_cap != null ? String(Number(tv.half_day_cap) / 2) : "");
-    setInc(
-      t.inclusions
-        .filter((i) => options.some((o) => o.key === i.key))
-        .map((i) => ({ key: i.key, label: labelOf(i.key), qty: String(Number(i.qty)) })),
-    );
   };
 
-  useSaveSlot(`plan-${account}`, "Plan", 20, dirty, () =>
-    mode === "payg"
-      ? setPayg(account, payg, showBudgetSet)
-      : saveClientPackage(account, {
-          template_id: template || null,
-          name: name.trim(),
-          amount: amount.trim() === "" ? NaN : Number(amount),
-          term,
-          started,
-          ends: term === 6 ? ends || null : null,
-          advance,
-          inclusions: inc
-            .filter((i) => i.key)
-            .map((i) => ({ key: i.key, label: labelOf(i.key), qty: Number(i.qty) })),
-          allowance: allowance.trim() === "" ? null : Number(allowance),
-          half_day_cap: cap.trim() === "" ? null : Math.round(Number(cap) * 2),
-        }),
-  );
+  useSaveSlot(`plan-${account}`, "Plan", 5, dirty, async () => {
+    if (mode === "payg") return setPayg(account, payg, showBudgetSet);
+    // From pay as you go: show what moves onto the package before saving.
+    if (p.mode !== "package" && started <= dubaiToday()) {
+      const s = await switchPreview(account, started);
+      if (s && (s.projects.length || s.voids.length || s.payg_drafts.length)) {
+        const ok = await new Promise<boolean>((done) => setAsk({ s, done }));
+        setAsk(null);
+        if (!ok) return { ok: false, error: "Not saved." };
+      }
+    }
+    return saveClientPackage(account, {
+      template_id: template || null,
+      name: name.trim(),
+      amount: amount.trim() === "" ? NaN : Number(amount),
+      term,
+      started,
+      ends: term === 6 ? ends || null : null,
+      billing,
+      minimum: billing === "usage" && minimum.trim() !== "" ? Number(minimum) : null,
+      // Old inclusions aren't edited any more; whatever is stored stays as it is.
+      inclusions: p.inclusions.map((i) => ({ key: i.key, label: i.label, qty: Number(i.qty) })),
+      allowance: allowance.trim() === "" ? null : Number(allowance),
+      half_day_cap: cap.trim() === "" ? null : Math.round(Number(cap) * 2),
+    });
+  });
 
+  const switching = p.mode !== "package" && mode === "package" && started <= dubaiToday();
   return (
     <section className="ad-card ad-form" aria-label="Plan" data-testid="client-plan">
       <h2 className="ad-h2">Plan</h2>
@@ -511,6 +574,37 @@ export function PlanBlock({
               />
             </div>
             <div className="ad-field">
+              <label htmlFor="plan-billing">Package invoice</label>
+              <select
+                id="plan-billing"
+                value={billing}
+                onChange={(e) => setBilling(e.target.value as "usage" | "upfront")}
+              >
+                <option value="usage">Month end — pay for what you use</option>
+                <option value="upfront">Start of month — pay upfront</option>
+              </select>
+              <span className="ad-help">
+                {billing === "usage"
+                  ? "The allowance is a tracker: the month-end invoice is the month’s work at their prices, minus what they paid at booking. Work beyond it goes on the same invoice. No rollover."
+                  : "The monthly amount is invoiced on the 1st. Unused allowance and days roll over (below); work beyond them goes on next month’s invoice."}
+              </span>
+            </div>
+            {billing === "usage" ? (
+              <div className="ad-field">
+                <label htmlFor="plan-minimum">Minimum monthly amount ({data.currency})</label>
+                <input
+                  id="plan-minimum"
+                  inputMode="decimal"
+                  value={minimum}
+                  placeholder="Blank: usage only"
+                  onChange={(e) => setMinimum(e.target.value)}
+                />
+                <span className="ad-help">Billed when the month’s work comes to less.</span>
+              </div>
+            ) : (
+              <div />
+            )}
+            <div className="ad-field">
               <label htmlFor="plan-term">Term</label>
               <select
                 id="plan-term"
@@ -537,7 +631,7 @@ export function PlanBlock({
                   data-testid="plan-start-now"
                   onClick={() => setStarted(dubaiToday())}
                 >
-                  Start now (pro-rated)
+                  Start now
                 </button>
               )}
             </div>
@@ -552,21 +646,14 @@ export function PlanBlock({
                 />
               </div>
             )}
-            <div className="ad-field">
-              <label htmlFor="plan-billing">Package invoice</label>
-              <select
-                id="plan-billing"
-                value={advance ? "advance" : "month_end"}
-                onChange={(e) => setAdvance(e.target.value === "advance")}
-              >
-                <option value="month_end">At month end: package + extras</option>
-                <option value="advance">In advance: package on the 1st, extras at month end</option>
-              </select>
-            </div>
           </div>
-          <span className="ad-small ad-muted">
-            Packages run by calendar month and renew on the 1st. Starting mid-month pro-rates the
-            first month (price and inclusions by days).
+          <span className="ad-small ad-muted" data-testid="plan-months-note">
+            Calendar months, no pro-rating: every month has the full allowance and shoot days, the
+            first one too.
+            {billing === "upfront" &&
+            (switching || started.slice(8) !== "01" || p.billing !== "upfront")
+              ? " Starting mid-month, this month is billed on usage at month end; upfront billing starts on the 1st."
+              : ""}
           </span>
 
           <div className="ad-grid2" data-testid="package-value">
@@ -599,26 +686,26 @@ export function PlanBlock({
           </div>
           <span className="ad-small ad-muted">
             Content shoots: fixed quantity = quantity × price; by the day = the larger of that and
-            the half/full-day rate. Property shoots count their price, not shoot days. Used up when
-            either the allowance or the shoot days run out; the rest is an extra on the month-end
-            invoice.
+            the half/full-day rate. Property shoots count their price, not shoot days.
           </span>
-          {inc.length > 0 && (
-            <details>
-              <summary className="ad-small ad-muted">
-                Old inclusions ({inc.length}), kept for reference
-              </summary>
-              <ul className="ad-small">
-                {inc.map((i, n) => (
-                  <li key={n}>
-                    {Number(i.qty)} × {labelOf(i.key)}
-                  </li>
-                ))}
-              </ul>
-            </details>
+          {switching && (
+            <span className="ad-small" data-testid="plan-switch-note">
+              Switching from pay as you go: this month’s work counts toward the package. You’ll see
+              what moves before it saves.
+            </span>
           )}
+          {billing === "upfront" && rollover}
         </>
       )}
+      <Confirm
+        open={!!ask}
+        title="Move this month onto the package?"
+        confirmLabel="Save and move"
+        onConfirm={() => ask?.done(true)}
+        onCancel={() => ask?.done(false)}
+      >
+        {ask && <SwitchSummary s={ask.s} currency={data.currency} />}
+      </Confirm>
     </section>
   );
 }

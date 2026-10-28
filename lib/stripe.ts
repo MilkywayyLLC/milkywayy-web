@@ -93,8 +93,8 @@ async function api<T>(
 
 /**
  * A Checkout session for one invoice. "embedded" (our own /portal/pay page, needs the publishable key)
- * returns a client secret; "hosted" returns Stripe's page URL. With a customer, the company's saved card
- * is offered and a new one can be saved.
+ * returns a client secret; "hosted" returns Stripe's page URL. With a customer, the payment and its
+ * receipt sit on the company's Stripe customer (cards aren't saved: owner, 28 Oct 2026).
  */
 export async function createCheckout(o: {
   invoiceId: string;
@@ -118,12 +118,7 @@ export async function createCheckout(o: {
       ...(embedded
         ? { ui_mode: "embedded_page", return_url: o.returnUrl, branding_settings: BRAND }
         : { success_url: o.successUrl, cancel_url: o.cancelUrl }),
-      ...(o.customer
-        ? {
-            customer: o.customer,
-            saved_payment_method_options: { payment_method_save: "enabled" },
-          }
-        : { customer_email: o.email || undefined }),
+      ...(o.customer ? { customer: o.customer } : { customer_email: o.email || undefined }),
       metadata: { invoice_id: o.invoiceId, invoice_number: o.number },
       payment_intent_data: { metadata: { invoice_id: o.invoiceId, invoice_number: o.number } },
       line_items: {
@@ -146,7 +141,7 @@ export async function createCheckout(o: {
 
 export type CheckoutSession = {
   id: string;
-  mode: "payment" | "setup";
+  mode: "payment";
   status: "open" | "complete" | "expired";
   payment_status: "paid" | "unpaid" | "no_payment_required";
   amount_total: number | null;
@@ -154,17 +149,10 @@ export type CheckoutSession = {
   client_reference_id: string | null;
   customer: string | null;
   metadata?: Record<string, string>;
-  setup_intent?: { id: string; payment_method?: PaymentMethod | null } | string | null;
-};
-export type PaymentMethod = {
-  id: string;
-  card?: { brand: string; last4: string; exp_month: number; exp_year: number };
 };
 
 export const getCheckout = (id: string) =>
-  api<CheckoutSession>(
-    `/checkout/sessions/${encodeURIComponent(id)}?expand[]=setup_intent.payment_method`,
-  );
+  api<CheckoutSession>(`/checkout/sessions/${encodeURIComponent(id)}`);
 
 /** The company's Stripe customer (one per account), made the first time it's needed. */
 export const createCustomer = (o: {
@@ -189,86 +177,6 @@ export async function customerExists(id: string) {
     throw e;
   }
 }
-
-/** Save a card for later (Checkout in setup mode): on our page (embedded) or Stripe's. */
-export async function createSetupCheckout(o: {
-  customer: string;
-  accountId: string;
-  ui: "embedded" | "hosted";
-  returnUrl: string;
-  cancelUrl: string;
-}) {
-  const embedded = o.ui === "embedded";
-  const out = await api<{ id: string; url?: string; client_secret?: string }>(
-    "/checkout/sessions",
-    {
-      mode: "setup",
-      currency: "aed",
-      customer: o.customer,
-      payment_method_types: { 0: "card" },
-      metadata: { account_id: o.accountId, purpose: "save_card" },
-      setup_intent_data: { metadata: { account_id: o.accountId } },
-      ...(embedded
-        ? { ui_mode: "embedded_page", return_url: o.returnUrl, branding_settings: BRAND }
-        : { success_url: o.returnUrl, cancel_url: o.cancelUrl }),
-    },
-  );
-  return { id: out.id, url: out.url ?? null, clientSecret: out.client_secret ?? null };
-}
-
-export const getPaymentMethod = (id: string) =>
-  api<PaymentMethod>(`/payment_methods/${encodeURIComponent(id)}`);
-
-export const detachPaymentMethod = (id: string) =>
-  api<PaymentMethod>(`/payment_methods/${encodeURIComponent(id)}/detach`, {});
-
-/** "Visa •••• 4242 · 12/28" pieces from a card. */
-export const cardOf = (pm: PaymentMethod | null | undefined) =>
-  pm?.card
-    ? {
-        pm_id: pm.id,
-        brand: pm.card.brand,
-        last4: pm.card.last4,
-        exp: `${String(pm.card.exp_month).padStart(2, "0")}/${String(pm.card.exp_year).slice(-2)}`,
-      }
-    : null;
-
-export type PaymentIntent = {
-  id: string;
-  status: string;
-  amount: number;
-  currency: string;
-  metadata?: Record<string, string>;
-  last_payment_error?: { message?: string; decline_code?: string } | null;
-};
-
-/**
- * Charge the saved card for an invoice without the client present (automatic month-end payments).
- * Stripe declines come back as a thrown error with the decline message.
- */
-export const chargeSavedCard = (o: {
-  customer: string;
-  pm: string;
-  invoiceId: string;
-  number: string;
-  amount: number;
-  currency: string;
-  attempt: number;
-}) =>
-  api<PaymentIntent>(
-    "/payment_intents",
-    {
-      amount: minor(o.amount),
-      currency: o.currency.toLowerCase(),
-      customer: o.customer,
-      payment_method: o.pm,
-      off_session: "true",
-      confirm: "true",
-      description: `Milkywayy invoice ${o.number}`,
-      metadata: { invoice_id: o.invoiceId, invoice_number: o.number, autopay: "1" },
-    },
-    `autopay-${o.invoiceId}-${o.attempt}`,
-  );
 
 export type StripeEvent = {
   id: string;

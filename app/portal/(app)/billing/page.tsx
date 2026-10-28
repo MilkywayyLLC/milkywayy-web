@@ -13,7 +13,7 @@ import {
   type BillingPayments,
 } from "@/components/portal/PaymentParts";
 import { TERMS_LABEL } from "@/lib/portal/payments";
-import { SavedCard, type PaymentOptions } from "@/components/portal/SavedCard";
+import { BILLING_LABEL, monthMode } from "@/lib/portal/plan";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
 import { ActivityList, BudgetCard } from "@/components/portal/Budget";
 import { Badge } from "@/components/portal/ui";
@@ -53,9 +53,9 @@ export const metadata = { title: "Billing" };
 export default async function Billing({
   searchParams,
 }: {
-  searchParams: Promise<{ paid?: string; card?: string }>;
+  searchParams: Promise<{ paid?: string }>;
 }) {
-  const { paid, card: cardDone } = await searchParams;
+  const { paid } = await searchParams;
   const { db, current } = await requireAccount("/portal/billing");
   if (!seesMoney(current))
     return (
@@ -78,7 +78,7 @@ export default async function Billing({
     db.rpc("my_billing_payments", { p_account: a.id }),
     db.rpc("my_payment_options", { p_account: a.id }),
   ]);
-  const opts = options as PaymentOptions | null;
+  const opts = options as { bank_transfer?: boolean } | null;
   const bp = payments
     ? ({
         ...(payments as BillingPayments),
@@ -111,7 +111,9 @@ export default async function Billing({
           <h1 className="pt-h1">Billing</h1>
           {bp && (
             <span className="pt-meta" data-testid="terms">
-              {bp.value ? "Monthly package · one invoice at month end" : TERMS_LABEL[bp.terms]}
+              {bp.value
+                ? `Monthly package · ${BILLING_LABEL[monthMode(bp.value)].toLowerCase()}`
+                : TERMS_LABEL[bp.terms]}
               {upcomingText(bp.upcoming) ? ` · ${upcomingText(bp.upcoming)}` : ""}
             </span>
           )}
@@ -143,7 +145,6 @@ export default async function Billing({
           chat={chatLink(`Hi, I have a question about billing for ${a.name}.`)}
         />
       )}
-      {cardPay && opts && <SavedCard opts={opts} saved={cardDone === "saved"} />}
       {bp?.value && <PackageBookings v={bp.value} />}
 
       {b?.budget && <BudgetCard b={b.budget} currency={b.currency} />}

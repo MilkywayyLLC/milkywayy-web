@@ -30,6 +30,7 @@ import {
 } from "@/lib/portal/payments";
 import { Confirm } from "./Confirm";
 import { useSaveSlot } from "./SaveGroup";
+import { usePlanMode } from "./ClientSetup";
 import { setClientBilling } from "@/lib/portal/admin-billing-actions";
 
 /**
@@ -84,6 +85,8 @@ export function HowTheyPay({
   const [terms, setTerms] = useState<PaymentTerms>(data.payment_terms);
   const [online, setOnline] = useState(online0);
   const [bank, setBank] = useState(bankTransfer);
+  // Package clients are invoiced by the package (month end or upfront): booking terms don't apply.
+  const pkg = usePlanMode() === "package";
   const dirty = terms !== data.payment_terms || online !== online0 || bank !== bankTransfer;
   useSaveSlot(`pay-${account}`, "How they pay", 10, dirty, async () => {
     if (terms !== data.payment_terms) {
@@ -103,30 +106,33 @@ export function HowTheyPay({
     <section className="ad-card ad-form" aria-label="How they pay" data-testid="payment-terms">
       <h2 className="ad-h2">How they pay</h2>
       <div className="ad-grid2">
+        {!pkg && (
+          <div className="ad-field">
+            <label htmlFor="pay-terms">Payment terms</label>
+            <select
+              id="pay-terms"
+              value={terms}
+              onChange={(e) => setTerms(e.target.value as PaymentTerms)}
+            >
+              {(Object.keys(TERMS_LABEL) as PaymentTerms[]).map((k) => (
+                <option key={k} value={k}>
+                  {TERMS_LABEL[k]}
+                </option>
+              ))}
+            </select>
+            <span className="ad-help">
+              {terms === "month_end"
+                ? "Affects bookings: “Request booking”, everything on the month-end invoice."
+                : terms === "split"
+                  ? "Affects bookings: 50% invoice at booking, balance on delivery; files unlock when paid."
+                  : "Affects bookings: 100% invoice at booking; files unlock on delivery."}
+            </span>
+          </div>
+        )}
         <div className="ad-field">
-          <label htmlFor="pay-terms">Payment terms</label>
-          <select
-            id="pay-terms"
-            value={terms}
-            onChange={(e) => setTerms(e.target.value as PaymentTerms)}
-          >
-            {(Object.keys(TERMS_LABEL) as PaymentTerms[]).map((k) => (
-              <option key={k} value={k}>
-                {TERMS_LABEL[k]}
-              </option>
-            ))}
-          </select>
-          <span className="ad-help">
-            {terms === "month_end"
-              ? "Affects bookings: “Request booking”, everything on the month-end invoice."
-              : terms === "split"
-                ? "Affects bookings: 50% invoice at booking, balance on delivery; files unlock when paid."
-                : "Affects bookings: 100% invoice at booking; files unlock on delivery."}
-            {data.package && terms !== "month_end" ? " Ignored while on a monthly package." : ""}
-          </span>
-        </div>
-        <div className="ad-field">
-          <label htmlFor="pay-online">Card on month-end invoices</label>
+          <label htmlFor="pay-online">
+            {pkg ? "Card on package invoices" : "Card on month-end invoices"}
+          </label>
           <select id="pay-online" value={online} onChange={(e) => setOnline(e.target.value)}>
             <option value="">
               Automatic ({data.currency === "AED" ? "bank transfer for AED" : "card for USD"})
@@ -135,7 +141,9 @@ export function HowTheyPay({
             <option value="false">Bank transfer</option>
           </select>
           <span className="ad-help">
-            Affects month-end invoices only. Booking invoices offer card whenever Stripe is on.
+            {pkg
+              ? "Affects the package’s invoices."
+              : "Affects month-end invoices only. Booking invoices offer card whenever Stripe is on."}
           </span>
         </div>
       </div>

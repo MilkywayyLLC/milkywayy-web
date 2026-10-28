@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
+import { PackagesThisMonth, type PlanSummaryRow } from "@/components/admin/PackagesThisMonth";
 import { Pill } from "@/components/admin/Pill";
 import { ProposeTime } from "@/components/admin/PaymentAdmin";
 import { StatusButtons } from "@/components/admin/ProjectStatus";
@@ -85,29 +86,31 @@ export default async function Today({
     }
   };
 
-  const [rows, queue, inquiries, revenue, settings, leads, changes, drafts] = await Promise.all([
-    // One call for every type: the RPC syncs bookings on each call.
-    rpc ? safe(rpc<Row[]>("portal_admin_projects", {})) : null,
-    rpc ? safe(rpc<QueueRow[]>("portal_admin_invoice_queue", { p_status: null })) : null,
-    rpc ? safe(rpc<Inquiry[]>("portal_admin_inquiries", { p_status: null })) : null,
-    rpc ? safe(rpc<Revenue>("portal_admin_revenue", {})) : null,
-    rpc ? safe(rpc<Record<string, unknown>>("portal_admin_billing_settings", {})) : null,
-    owner
-      ? db
-          .from("leads")
-          .select("ref, type, name, created_at, status")
-          .eq("status", "new")
-          .order("created_at", { ascending: false })
-          .limit(20)
-      : null,
-    db
-      .from("change_log")
-      .select("at, admin_email, summary")
-      .not("admin_email", "like", TEST_ACCOUNTS)
-      .order("at", { ascending: false })
-      .limit(8),
-    db.from("drafts").select("key, updated_at"),
-  ]);
+  const [rows, queue, inquiries, revenue, settings, leads, changes, drafts, plans] =
+    await Promise.all([
+      // One call for every type: the RPC syncs bookings on each call.
+      rpc ? safe(rpc<Row[]>("portal_admin_projects", {})) : null,
+      rpc ? safe(rpc<QueueRow[]>("portal_admin_invoice_queue", { p_status: null })) : null,
+      rpc ? safe(rpc<Inquiry[]>("portal_admin_inquiries", { p_status: null })) : null,
+      rpc ? safe(rpc<Revenue>("portal_admin_revenue", {})) : null,
+      rpc ? safe(rpc<Record<string, unknown>>("portal_admin_billing_settings", {})) : null,
+      owner
+        ? db
+            .from("leads")
+            .select("ref, type, name, created_at, status")
+            .eq("status", "new")
+            .order("created_at", { ascending: false })
+            .limit(20)
+        : null,
+      db
+        .from("change_log")
+        .select("at, admin_email, summary")
+        .not("admin_email", "like", TEST_ACCOUNTS)
+        .order("at", { ascending: false })
+        .limit(8),
+      db.from("drafts").select("key, updated_at"),
+      rpc ? safe(rpc<PlanSummaryRow[]>("portal_admin_plan_summaries", {})) : null,
+    ]);
 
   const origin = originFrom(await headers());
   const now = new Date();
@@ -467,6 +470,7 @@ export default async function Today({
                 </div>
               )}
             </section>
+            <PackagesThisMonth rows={plans} />
 
             <section className="ad-card" aria-label="Recent client activity">
               <h2 className="ad-h2">Recent client activity</h2>

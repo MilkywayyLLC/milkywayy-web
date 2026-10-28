@@ -1,12 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  chargeSavedCard,
-  createCustomer,
-  customerExists,
-  refundCheckout,
-  signWebhook,
-} from "@/lib/stripe";
+import { createCustomer, customerExists, signWebhook } from "@/lib/stripe";
 import {
   quoteChange,
   BOOKING_TERMS_VERSION,
@@ -386,15 +380,17 @@ test("what the client sees: plan card, segmented meters, How you pay, sidebar pl
   await page.goto("/portal/billing");
   const card = page.getByTestId("value-package");
   await expect(card).toContainText("E2E Value");
-  await expect(card.getByTestId("plan-amount")).toContainText("AED 3,000 a month");
+  await expect(card.getByTestId("plan-amount")).toContainText("up to AED 3,000 / month");
   // Refinement round (25 Oct 2026): full-width bars with a label row under each.
   await expect(card.getByTestId("meter-allowance")).toContainText("AED 3,000 of AED 3,000");
   await expect(card.getByTestId("meter-allowance")).toContainText("AED 3,000 booked · AED 0 left");
   await expect(card.getByTestId("meter-shoot-days")).toContainText(
     "0.5 days booked · 4.5 days left",
   );
-  await expect(card.getByTestId("value-statement")).toContainText("AED 3,600");
-  await expect(card.getByTestId("value-extras")).toContainText("AED 600");
+  // Month end (28 Oct 2026): all of the month's work at client prices, on one invoice.
+  await expect(card.getByTestId("plan-bill")).toContainText(
+    /billed AED\s?3,600 on \d+ \w+ \(so far\)/,
+  );
   await expect(page.getByTestId("value-bookings")).toContainText("Package + extra AED 600");
   await expect(page.getByTestId("how-you-pay")).toContainText("billed at the end of each month");
   await expect(page.getByTestId("how-you-pay")).toContainText("WhatsApp us");
@@ -830,106 +826,28 @@ test("Propose a new time: accept confirms at that time; decline cancels with a f
   expect(await status(c, d.id)).toBe("cancelled");
 });
 
-test("Saved card + automatic payment: signed payment_intent events, failures recorded, 3 tries max", async ({
+test("No saved card or automatic payments (28 Oct 2026): nothing due, card events ignored", async ({
   request,
 }) => {
-  const c = clients.monthend;
-  await admin("portal_admin_set_stripe_customer", {
-    p_account: c.account,
-    p: {
-      customer_id: `cus_test_${RUN}`,
-      pm_id: `pm_test_${RUN}`,
-      brand: "visa",
-      last4: "4242",
-      exp: "12/30",
+  expect(await admin<unknown[]>("portal_admin_autopay_due", {})).toEqual([]);
+  const body = JSON.stringify({
+    id: `evt_pi_${RUN}`,
+    type: "payment_intent.succeeded",
+    data: {
+      object: { id: `pi_${RUN}`, object: "payment_intent", status: "succeeded", amount: 100 },
     },
   });
-  await admin("portal_admin_set_stripe_customer", {
-    p_account: c.account,
-    p: { autopay: true, by: c.email },
+  const res = await request.post("/api/stripe/webhook", {
+    data: body,
+    headers: {
+      "stripe-signature": signWebhook(body, WEBHOOK_SECRET),
+      "content-type": "application/json",
+    },
   });
-  expect(await must(c.db.rpc("my_payment_options", { p_account: c.account }))).toMatchObject({
-    card: { brand: "visa", last4: "4242" },
-    autopay: true,
-  });
-  // A month-end invoice, due today.
-  const number = `INV-AP-${RUN.slice(-5).toUpperCase()}`;
-  const created = await admin<{ id: string }>("portal_admin_create_invoice", {
-    p_account: c.account,
-    p_number: number,
-    p_issued: today(),
-    p_due: today(),
-    p_amount: 450,
-    p_currency: "AED",
-    p_status: "due",
-    p_pdf_key: null,
-  });
-  await admin("portal_admin_approve_invoice", { p_id: created.id, p_publish_now: true });
-  const inv = { id: created.id, number };
-  const due = await admin<{ id: string }[]>("portal_admin_autopay_due", {});
-  expect(due.map((r) => r.id)).toContain(inv.id);
-
-  // A declined try: recorded, still due, shown to the client.
-  const r1 = await admin<{ attempts: number }>("portal_admin_autopay_result", {
-    p_invoice: inv.id,
-    p_pi: `pi_fail_${RUN}`,
-    p_error: "Your card was declined.",
-  });
-  expect(r1.attempts).toBe(1);
-  expect(await must(c.db.rpc("my_payment_options", { p_account: c.account }))).toMatchObject({
-    failed: [{ number: inv.number, error: "Your card was declined." }],
-  });
-  // Not retried within 20 hours.
-  expect(
-    (await admin<{ id: string }[]>("portal_admin_autopay_due", {})).map((r) => r.id),
-  ).not.toContain(inv.id);
-
-  // The next try succeeds: the signed webhook marks it paid (intent and amount must match).
-  const pi = `pi_ok_${RUN}`;
-  await admin("portal_admin_autopay_result", { p_invoice: inv.id, p_pi: pi, p_error: null });
-  const event = (amount: number) =>
-    JSON.stringify({
-      id: `evt_pi_${RUN}_${amount}`,
-      type: "payment_intent.succeeded",
-      data: {
-        object: {
-          id: pi,
-          object: "payment_intent",
-          status: "succeeded",
-          amount,
-          currency: "aed",
-          metadata: { invoice_id: inv.id, autopay: "1" },
-        },
-      },
-    });
-  const post = (body: string) =>
-    request.post("/api/stripe/webhook", {
-      data: body,
-      headers: {
-        "stripe-signature": signWebhook(body, WEBHOOK_SECRET),
-        "content-type": "application/json",
-      },
-    });
-  expect(await (await post(event(100))).json()).toMatchObject({ error: "not recorded" });
-  expect(await (await post(event(45000))).json()).toMatchObject({ received: true, paid: true });
-  expect(await (await post(event(45000))).json()).toMatchObject({ received: true, paid: false });
-  const [after] = await must<{ status: string }[]>(
-    c.db.from("invoices").select("status").eq("id", inv.id),
-  );
-  expect(after.status).toBe("paid");
-
-  // Remove the card: autopay goes off with it.
-  await admin("portal_admin_set_stripe_customer", {
-    p_account: c.account,
-    p: { clear_card: true },
-  });
-  expect(await must(c.db.rpc("my_payment_options", { p_account: c.account }))).toMatchObject({
-    card: null,
-    autopay: false,
-  });
+  expect(await res.json()).toMatchObject({ received: true, ignored: "payment_intent.succeeded" });
 });
 
-test("Stripe test mode, real API: customer, off-session charge on a saved card, refund by intent", async () => {
+test("Stripe test mode, real API: customer for receipts, refund", async () => {
   test.skip(
     !/^sk_test_/.test(env.STRIPE_SECRET_KEY ?? ""),
     "needs a Stripe test key in .env.local",
@@ -945,44 +863,6 @@ test("Stripe test mode, real API: customer, off-session charge on a saved card, 
   // A stored id Stripe doesn't know (made with other keys, or deleted) is replaced at checkout.
   expect(await customerExists(cus.id)).toBe(true);
   expect(await customerExists(`cus_missing_${RUN}`)).toBe(false);
-  // Attach Stripe's test Visa (what a saved card from Checkout setup mode becomes).
-  const attach = await fetch("https://api.stripe.com/v1/payment_methods/pm_card_visa/attach", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: `customer=${cus.id}`,
-  });
-  const pm = (await attach.json()) as { id: string };
-  expect(pm.id).toMatch(/^pm_/);
-  const b = await book(c, { estimate: 300 });
-  const charged = await chargeSavedCard({
-    customer: cus.id,
-    pm: pm.id,
-    invoiceId: b.inv!.id,
-    number: b.inv!.number,
-    amount: 300,
-    currency: "AED",
-    attempt: 1,
-  });
-  expect(charged).toMatchObject({ status: "succeeded", amount: 30000, currency: "aed" });
-  await admin("portal_admin_set_payment_intent", { p_invoice: b.inv!.id, p_pi: charged.id });
-  const out = await admin<{ already: boolean; project_id: string }>("portal_admin_stripe_pi_paid", {
-    p_invoice: b.inv!.id,
-    p_pi: charged.id,
-    p_amount_minor: charged.amount,
-    p_currency: charged.currency,
-  });
-  expect(out).toMatchObject({ already: false, project_id: b.id });
-  expect(await status(c, b.id)).toBe("requested"); // pending confirmation, never auto-confirmed
-  const refund = await refundCheckout({
-    sessionId: charged.id,
-    amount: 300,
-    refundId: `e2e-${RUN}`,
-  });
-  expect(refund.id).toMatch(/^re_/);
-  expect(["succeeded", "pending"]).toContain(refund.status);
 });
 
 test("Invoices: issued at booking, Due → Paid → Refunded, PDF for owner / billing teammate / admin only", async () => {

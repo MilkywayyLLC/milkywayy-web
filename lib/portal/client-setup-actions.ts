@@ -68,7 +68,10 @@ export type PackageInput = {
   term: 1 | 6;
   started: string;
   ends: string | null;
-  advance: boolean;
+  /** Package invoice: month end on usage, or upfront on the 1st (28 Oct 2026). */
+  billing: "usage" | "upfront";
+  /** Usage mode: the minimum monthly amount (null: usage only). */
+  minimum: number | null;
   inclusions: { key: string; label: string; qty: number }[];
   /** Value packages: the monthly allowance and the half-day cap (both, or neither). */
   allowance?: number | null;
@@ -77,6 +80,8 @@ export type PackageInput = {
 
 export async function saveClientPackage(account: string, p: PackageInput): Promise<SetupResult> {
   if (!(p.amount >= 0)) return { ok: false, error: "Enter the monthly amount." };
+  if (p.minimum != null && !(p.minimum >= 0))
+    return { ok: false, error: "The minimum is 0 or more (blank: usage only)." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(p.started)) return { ok: false, error: "Choose the start date." };
   try {
     const rpc = await portalAdminAction();
@@ -91,6 +96,36 @@ export async function saveClientPackage(account: string, p: PackageInput): Promi
     return done(account, "Saved.");
   } catch (e) {
     return fail(e);
+  }
+}
+
+/** What a switch from pay as you go moves onto the package (shown before saving). */
+export type SwitchPreview = {
+  month: string;
+  projects: { ref: string; title: string | null; value: number }[];
+  usage_total: number;
+  credits: {
+    description: string;
+    amount: number;
+    number: string | null;
+    ref: string | null;
+    paid: boolean;
+  }[];
+  voids: { id: string; number: string | null; amount: number; stage: string | null; ref: string }[];
+  payg_drafts: { id: string; amount: number }[];
+};
+
+export async function switchPreview(account: string, start: string): Promise<SwitchPreview | null> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return null;
+  try {
+    const rpc = await portalAdminAction();
+    return await rpc<SwitchPreview | null>("portal_admin_switch_preview", {
+      p_account: account,
+      p_start: start,
+    });
+  } catch (e) {
+    console.error("[admin/client-setup] switch preview:", e instanceof Error ? e.message : e);
+    return null;
   }
 }
 

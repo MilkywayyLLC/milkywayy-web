@@ -384,11 +384,10 @@ test("a 6-month package: Month n of 6, end date, usage left, overage and the mon
   });
 });
 
-test("calendar months: a mid-month start pro-rates the first month (price and inclusions); earlier work is pay as you go; the statement matches", async () => {
+test("calendar months: a mid-month start gets the full first month (no pro-rating, 28 Oct 2026); earlier work is pay as you go; the statement matches", async () => {
   const pro = await clientAccount(RUN, "pro", "Pro Realty");
   const last = monthStart(1);
   const ym = last.slice(0, 8);
-  const dim = new Date(Date.UTC(+last.slice(0, 4), +last.slice(5, 7), 0)).getUTCDate();
   const p = await pkg({
     p_account: pro.account,
     p_name: `Pro Monthly ${TAG}`,
@@ -421,15 +420,14 @@ test("calendar months: a mid-month start pro-rates the first month (price and in
     package: { prorated: boolean; price: number; full_price: number; before_total: number };
     overage: { key: string; qty: number; used: number; over: number }[];
   }>("portal_admin_statement", { p_account: pro.account, p_month: last });
-  const frac = (dim - 15) / dim;
-  const price = Math.round(3100 * frac * 100) / 100;
-  const reels = Math.round(10 * frac);
+  const price = 3100;
+  const reels = 10;
   expect(st.mode).toBe("package");
-  expect(st.package).toMatchObject({ prorated: true, full_price: 3100, price, before_total: 300 });
+  expect(st.package).toMatchObject({ prorated: false, full_price: 3100, price, before_total: 300 });
   // The 4 reels were Included (AED 0); the avatar video is an Extra at its price.
   expect(st.overage[0]).toMatchObject({ key: "reel", qty: reels, used: 4, over: 0 });
   expect(Number(st.total)).toBeCloseTo(price + 900 + 300, 2);
-  // This month is the first full one: full price, full inclusions.
+  // This month too: full price, full inclusions.
   const now = await must<{
     mode: string;
     plan: { prorated: boolean; month_no: number };

@@ -1,5 +1,8 @@
 import Link from "next/link";
 import "@/app/styles/portal.css";
+// The plan card is the client's own component: it needs the portal's card styles too.
+import "@/app/styles/portal-v2.css";
+import "@/app/styles/portal-phase1.css";
 import { BillingSwitches, BudgetPanel, type BillingHistory } from "@/components/admin/BudgetTools";
 import { SaveGroup } from "@/components/admin/SaveGroup";
 import { ClientTabs } from "@/components/admin/ClientTabs";
@@ -7,6 +10,7 @@ import { Pill } from "@/components/admin/Pill";
 import { TERMS_LABEL } from "@/lib/portal/payments";
 import {
   PlanBlock,
+  PlanModeProvider,
   PriceList,
   ServicesBlock,
   type ClientSetupData,
@@ -32,6 +36,7 @@ import {
   type InvoiceRowData,
 } from "@/components/admin/BillingTools";
 import { dateLabel, money } from "@/lib/portal/billing";
+import { BILLING_LABEL, billLine, monthMode, planTitle } from "@/lib/portal/plan";
 import { AttachBooking, MemberPhone } from "@/components/admin/ClientProjectTools";
 import { dubai } from "@/lib/admin/format";
 import { portalAdminPage, type ClientDetail } from "@/lib/portal/admin";
@@ -86,9 +91,17 @@ export default async function ClientPage({ params, searchParams }: Props) {
   const planChip =
     history.mode === "budget"
       ? "Budget package"
-      : pkg
-        ? `${pkg.name} · ${money(pkg.currency, pkg.price)}/mo`
-        : "Pay as you go";
+      : valueMonth
+        ? planTitle(valueMonth)
+        : pkg
+          ? `${pkg.name} · ${money(pkg.currency, pkg.price)}/mo`
+          : "Pay as you go";
+  // The client's plan card (the same component and numbers as their Billing page).
+  const planCard = valueMonth && (
+    <div className="pt ad-portal-card" data-tone="light">
+      <ValuePackageCard v={valueMonth} admin />
+    </div>
+  );
 
   const overview = (
     <SaveGroup label="overview">
@@ -111,6 +124,26 @@ export default async function ClientPage({ params, searchParams }: Props) {
         </section>
         <ClientNotes id={a.id} notes={c.notes ?? ""} />
       </div>
+      {valueMonth && (
+        <section
+          className="ad-card ad-stack-8"
+          aria-label="Plan this month"
+          data-testid="overview-plan"
+        >
+          <div className="ad-row-between">
+            <h2 className="ad-h2 ad-m0">Plan this month</h2>
+            <Link
+              className="ad-btn ghost small"
+              href={`/admin/accounts/${a.id}?tab=billing`}
+              prefetch={false}
+            >
+              Billing & payment
+            </Link>
+          </div>
+          <span className="ad-small ad-muted">{BILLING_LABEL[monthMode(valueMonth)]}</span>
+          {planCard}
+        </section>
+      )}
       <ServicesBlock account={a.id} s={setup.services} />
       <section className="ad-card" aria-label="Contacts">
         <h2 className="ad-h2">Their listing contacts</h2>
@@ -125,36 +158,38 @@ export default async function ClientPage({ params, searchParams }: Props) {
     </SaveGroup>
   );
 
+  // Plan first (rollover inside it), then how they pay (fields for that plan), the client's card,
+  // and the price list collapsed (28 Oct 2026).
   const billingTab = (
     <SaveGroup label="billing & payment">
-      <HowTheyPay
-        account={a.id}
-        data={payments}
-        bankTransfer={(a as { bank_transfer?: boolean }).bank_transfer !== false}
-      >
-        <CurrencyField id={a.id} currency={a.currency} />
-      </HowTheyPay>
-      <PlanBlock
-        account={a.id}
-        data={setup}
-        showBudgetSet={history.show_budget_set}
-        value={{
-          allowance: payments.package?.allowance ?? null,
-          half_day_cap: payments.package?.half_day_cap ?? null,
-          templates: payments.templates,
-        }}
-      />
+      <PlanModeProvider initial={setup.plan.mode}>
+        <PlanBlock
+          account={a.id}
+          data={setup}
+          showBudgetSet={history.show_budget_set}
+          value={{
+            allowance: payments.package?.allowance ?? null,
+            half_day_cap: payments.package?.half_day_cap ?? null,
+            templates: payments.templates,
+          }}
+          rollover={rollover && <RolloverSettings account={id} data={rollover} />}
+        />
+        <HowTheyPay
+          account={a.id}
+          data={payments}
+          bankTransfer={(a as { bank_transfer?: boolean }).bank_transfer !== false}
+        >
+          <CurrencyField id={a.id} currency={a.currency} />
+        </HowTheyPay>
+      </PlanModeProvider>
       {history.mode === "budget" && (
         <BudgetPanel account={a.id} currency={billing.currency} h={history} />
       )}
-      {rollover && <RolloverSettings account={id} data={rollover} />}
-      {/* The same card the client sees on Billing (portal styles), with the money. */}
-      {valueMonth && (
-        <div className="pt ad-portal-card" data-tone="light">
-          <ValuePackageCard v={valueMonth} admin />
-        </div>
-      )}
-      <PriceList account={a.id} data={setup} pricing={pricing} history={history.rates} />
+      {planCard}
+      <details className="ad-card" data-testid="price-list-toggle">
+        <summary className="ad-h2">Client price list</summary>
+        <PriceList account={a.id} data={setup} pricing={pricing} history={history.rates} />
+      </details>
 
       <section className="ad-card ad-form" aria-label="This month" data-testid="client-billing">
         <div className="ad-row-between">
@@ -163,7 +198,11 @@ export default async function ClientPage({ params, searchParams }: Props) {
             Invoices ({invoices.length})
           </Link>
         </div>
-        {history.mode === "budget" ? null : pkg ? (
+        {history.mode === "budget" ? null : valueMonth ? (
+          <span className="ad-small" data-testid="client-billing-plan">
+            {planTitle(valueMonth)} · {billLine(valueMonth)}
+          </span>
+        ) : pkg ? (
           <div className="ad-stack-8">
             <b>
               {pkg.name} · {money(pkg.currency, pkg.price)}/month

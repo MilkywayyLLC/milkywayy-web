@@ -142,7 +142,15 @@ test("a client's month: carried credit adds to the pool; rule changes wait for n
     "01";
   const pkg = await admin<string>("portal_admin_save_client_package", {
     p_account: c.account,
-    p: { name: "E2E Roll", amount: 5000, term: 1, started: first, advance: false, inclusions: [] },
+    // Only start-of-month (upfront) months carry (28 Oct 2026).
+    p: {
+      name: "E2E Roll",
+      amount: 5000,
+      term: 1,
+      started: first,
+      billing: "upfront",
+      inclusions: [],
+    },
   });
   await admin("portal_admin_set_package_value", { p_package: pkg, p_allowance: 5000, p_cap: 4 });
   const next = new Date(`${first}T00:00:00Z`);

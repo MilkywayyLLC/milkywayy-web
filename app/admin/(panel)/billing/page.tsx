@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PackagesThisMonth, type PlanSummaryRow } from "@/components/admin/PackagesThisMonth";
 import { Pill, type Tone } from "@/components/admin/Pill";
 import {
   NewInvoiceForm,
@@ -99,10 +100,11 @@ export default async function InvoiceQueue({
   let clients: ClientListRow[] = [];
   let proofs: InvoiceRowData[] = [];
   let refunded: Record<string, number> = {};
+  let plans: PlanSummaryRow[] = [];
   let error = "";
   if (!portalAdminReady()) error = "PORTAL_ADMIN_SECRET isn’t set for this deployment.";
   else
-    [rows, clients, proofs, refunded] = await Promise.all([
+    [rows, clients, proofs, refunded, plans] = await Promise.all([
       rpc<QueueRow[]>("portal_admin_invoice_queue", {
         p_status: submitted ? null : status || null,
       }),
@@ -111,6 +113,7 @@ export default async function InvoiceQueue({
         ? rpc<InvoiceRowData[]>("portal_admin_invoices", { p_account: null, p_status: "submitted" })
         : Promise.resolve([]),
       rpc<Record<string, number>>("portal_admin_refunded_invoices", {}),
+      rpc<PlanSummaryRow[]>("portal_admin_plan_summaries", {}),
     ]);
   if (submitted) rows = rows.filter((r) => proofs.some((i) => i.id === r.id));
   const list = clients
@@ -149,6 +152,7 @@ export default async function InvoiceQueue({
           Draft deleted.
         </p>
       )}
+      <PackagesThisMonth rows={plans} />
       <div className="ad-card ad-gap-12">
         <div className="ad-row-between">
           <h2 className="ad-h2 ad-m0">Invoice queue{toReview ? ` · ${toReview} to review` : ""}</h2>

@@ -1,5 +1,5 @@
 /*
- * Phase 1 (27 Oct 2026): checkout, saved card, time proposals, calendar links, the shared date + time
+ * Phase 1 (27 Oct 2026): checkout, time proposals, calendar links, the shared date + time
  * picker, delivery actions, the activity timeline. Loaded after portal-v2.css in the same layer.
  */
 @layer components {
@@ -57,28 +57,6 @@
     background: var(--surface);
   }
 
-  /* ---------- saved card ---------- */
-  .pt-savedcard {
-    display: grid;
-    gap: var(--sp-3);
-  }
-  .pt-cardrow {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-3);
-  }
-  .pt-cardchip {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--sp-2);
-    font: var(--t-num);
-  }
-  .pt-check.is-off {
-    opacity: 0.5;
-  }
-
   /* ---------- new time proposed ---------- */
   .pt-proposal {
     display: grid;
@@ -116,6 +94,18 @@
     margin: 0;
     font: var(--t-small);
     color: var(--pt-gold);
+  }
+  /* Package billing modes (28 Oct 2026): the next invoice line and the carry-over notice. */
+  .pt-plan-bill {
+    margin: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+    font-weight: 600;
+  }
+  .pt-carry-notice {
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--pt-gold) 45%, transparent);
+    border-radius: var(--pt-r-sm, 10px);
   }
 }
 

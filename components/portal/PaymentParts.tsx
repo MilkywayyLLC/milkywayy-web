@@ -2,9 +2,17 @@ import { dateLabel, money } from "@/lib/portal/billing";
 import { shortTitle } from "@/lib/portal/projects";
 import { carriedLines, carrySummary, type Carry } from "@/lib/portal/rollover";
 import {
+  BILLING_LABEL,
+  billLine,
+  carryNoticeLine,
+  monthMode,
+  planAmount,
+  upfrontLater,
+  type PlanMoney,
+} from "@/lib/portal/plan";
+import {
   aed0,
   dayCount,
-  monthEndSoFar,
   packageSplitUsage,
   shootDays,
   TERMS_LABEL,
@@ -47,7 +55,8 @@ export type BillingPayments = {
 
 export type PlanUpcoming = { name: string; starts_on: string; price: number; currency: string };
 
-export type ValueMonth = {
+/** A package month, as private.plan_summary returns it (the same for the client and the admin). */
+export type ValueMonth = PlanMoney & {
   name: string;
   price: number;
   currency: string;
@@ -303,31 +312,30 @@ export const upcomingText = (u: PlanUpcoming | null | undefined) =>
   u ? `${u.name} starts ${dateLabel(u.starts_on, { year: undefined })}` : null;
 
 /**
- * A value package's month (owner, 25 Oct 2026): name, monthly amount, renewal, the allowance and
- * shoot-day bars, extras this month, and the month-end invoice so far, line by line.
+ * A value package's month (owner, 28 Oct 2026): the plan and how it's billed, the allowance and
+ * shoot-day bars (with carried credit on upfront), the next invoice so far, and in the last 7 days of
+ * an upfront month what carries over. `admin`: the rollover lines and the credits too.
  */
 export function ValuePackageCard({ v, admin = false }: { v: ValueMonth; admin?: boolean }) {
   const m = (n: number) => money(v.currency, n);
   const u = packageSplitUsage(v);
+  const mode = monthMode(v);
+  const later = upfrontLater(v);
+  const notice = carryNoticeLine(v);
   const extras = aed0(v.extras_total);
-  const so = monthEndSoFar(v);
-  const LINE: Record<string, string> = {
-    package: `${v.name}${v.prorated ? " (pro-rated)" : ""}`,
-    extras: "Extras so far",
-    before: "Work before the package started",
-  };
   return (
     <section className="pt-card pt-plancard" aria-labelledby="vp-h" data-testid="value-package">
       <div className="pt-plan-head">
         <div>
-          <span className="pt-eb">Your plan{v.prorated ? " · first month, pro-rated" : ""}</span>
+          <span className="pt-eb" data-testid="plan-mode">
+            Your plan · {BILLING_LABEL[mode]}
+          </span>
           <h2 id="vp-h" className="pt-h2">
             {v.name}
           </h2>
         </div>
         <div className="pt-plan-amt" data-testid="plan-amount">
-          <b className="pt-mono">{m(Number(v.price))}</b>{" "}
-          <span className="pt-meta">a month · renews {dateLabel(v.renews_on)}</span>
+          <b className="pt-mono">{planAmount(v)}</b>
         </div>
       </div>
       <Meter label="Allowance" part={u.aed} fmt={(n) => m(n)} />
@@ -351,22 +359,51 @@ export function ValuePackageCard({ v, admin = false }: { v: ValueMonth; admin?: 
           ))}
         </ul>
       )}
-      <div className="pt-plan-row" data-testid="value-extras">
-        <span>Extras this month</span>
-        <span className="pt-mono">{extras > 0 ? m(extras) : "None"}</span>
-      </div>
-      <ul className="pt-lines" aria-label="Month-end invoice so far" data-testid="value-statement">
-        {so.lines.map((l) => (
-          <li key={l.key}>
-            <span>{LINE[l.key]}</span>
-            <span className="pt-mono">{m(l.amount)}</span>
+      {mode === "upfront" && (
+        <div className="pt-plan-row" data-testid="value-extras">
+          <span>Extras this month (on next month’s invoice)</span>
+          <span className="pt-mono">{extras > 0 ? m(extras) : "None"}</span>
+        </div>
+      )}
+      {admin && mode === "usage" && (
+        <ul
+          className="pt-lines"
+          aria-label="Month-end invoice so far"
+          data-testid="value-statement"
+        >
+          <li>
+            <span>Work this month at their prices</span>
+            <span className="pt-mono">{m(aed0(v.usage_total ?? 0))}</span>
           </li>
-        ))}
-        <li className="pt-lines-total">
-          <b>Month-end invoice so far{admin ? "" : " (before VAT)"}</b>
-          <b className="pt-mono">{m(so.total)}</b>
-        </li>
-      </ul>
+          {Number(v.minimum ?? 0) > Number(v.usage_total ?? 0) && (
+            <li>
+              <span>Minimum monthly amount (top-up)</span>
+              <span className="pt-mono">
+                {m(aed0(Number(v.minimum) - Number(v.usage_total ?? 0)))}
+              </span>
+            </li>
+          )}
+          {(v.credits ?? []).map((c) => (
+            <li key={`${c.number}-${c.ref}`}>
+              <span>{c.description}</span>
+              <span className="pt-mono">− {m(aed0(c.amount))}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="pt-plan-bill" data-testid="plan-bill">
+        {billLine(v)}
+      </p>
+      {later && (
+        <span className="pt-meta" data-testid="plan-upfront-later">
+          {later}
+        </span>
+      )}
+      {notice && (
+        <p className="pt-carried pt-carry-notice" role="status" data-testid="carry-notice">
+          {notice}
+        </p>
+      )}
     </section>
   );
 }
@@ -429,7 +466,9 @@ export function HowYouPay({
       ? `${ways.slice(0, -1).join(", ")} or ${ways[ways.length - 1]}`
       : (ways[0] ?? "bank transfer");
   const text = bp.value
-    ? "Your package is billed at the end of each month, with any extras on the same invoice. Nothing is due when you book."
+    ? monthMode(bp.value) === "upfront"
+      ? "Your package is invoiced on the 1st of each month; anything beyond it goes on the next month’s invoice. Nothing is due when you book."
+      : "Your package is billed at the end of each month for the work you used. Nothing is due when you book."
     : bp.terms === "month_end"
       ? "You book and we invoice everything at the end of the month. Nothing is due when you book."
       : bp.terms === "split"

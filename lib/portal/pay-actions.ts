@@ -2,12 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import {
-  detachPaymentMethod,
-  publishableKey,
-  createSetupCheckout,
-  stripeReady,
-} from "@/lib/stripe";
+import { stripeReady } from "@/lib/stripe";
 import { can } from "./access";
 import { portalAdminAs } from "./admin";
 import { requireAccount } from "./auth";
@@ -20,7 +15,6 @@ import {
   customerFor,
   emailBookingRequest,
   pagePath,
-  recordCardSaved,
   recordCheckoutPaid,
   runRefunds,
   startCheckout,
@@ -30,8 +24,7 @@ import { quoteChange } from "./payments";
 import type { ProjectPayment } from "./payment-actions";
 
 /**
- * Card payments on our own site (phase 1, 27 Oct 2026): the /portal/pay page, saving a card,
- * automatic payments, a teammate sending a booking to the company, and the client's answer to a new
+ * Card payments on our own site (phase 1, 27 Oct 2026): the /portal/pay page, a teammate sending a booking to the company, and the client's answer to a new
  * time Milkywayy proposed. Every database step goes through the gated portal_admin_* functions as the
  * signed-in person, after checking what they may see.
  */
@@ -90,7 +83,7 @@ export async function startPayment(
   if (!inv.unpaid) return { ok: false, error: "That invoice is already paid." };
   const origin = originFrom(await headers());
   try {
-    // Billing people pay as the company (its saved card is offered); a teammate pays as themselves.
+    // Billing people pay as the company's Stripe customer (receipts); a teammate pays as themselves.
     const customer = inv.billing
       ? await customerFor(rpc, inv.account_id, current.account.name, user.email)
       : null;
@@ -220,92 +213,6 @@ export async function discardDraft(projectId: string): Promise<Result> {
 async function invoiceOf(rpc: ReturnType<typeof portalAdminAs>, _user: string, projectId: string) {
   const pay = await rpc<ProjectPayment>("portal_admin_project_payment", { p_project: projectId });
   return pay.invoices.find((i) => i.stage && i.status !== "paid")?.id ?? "";
-}
-
-/* ---------- saved card and automatic payments (billing people) ---------- */
-
-async function billingMe() {
-  const m = await me();
-  if (!can(m.current, "billing")) throw new Error("no billing access");
-  return m;
-}
-
-/** "Save a card": Checkout in setup mode, on our page (embedded) or Stripe's. */
-export async function startCardSetup(): Promise<
-  Result & { clientSecret?: string | null; url?: string | null; pk?: string | null }
-> {
-  if (!stripeReady()) return { ok: false, error: "Card payments aren’t switched on yet." };
-  try {
-    const { user, current, rpc } = await billingMe();
-    const customer = await customerFor(rpc, current.account.id, current.account.name, user.email);
-    const origin = originFrom(await headers());
-    const pk = publishableKey();
-    const s = await createSetupCheckout({
-      customer,
-      accountId: current.account.id,
-      ui: pk ? "embedded" : "hosted",
-      returnUrl: `${origin}/portal/billing/card?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${origin}/portal/billing`,
-    });
-    return { ok: true, clientSecret: s.clientSecret, url: s.url, pk };
-  } catch (e) {
-    console.error("[pay] card setup:", e instanceof Error ? e.message : e);
-    return { ok: false, error: "Couldn’t open the card form. Try again." };
-  }
-}
-
-/** Back from saving a card: check it at Stripe and store brand / last 4. */
-export async function finishCardSetup(sessionId: string) {
-  if (!/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return null;
-  const { current, rpc } = await billingMe();
-  const s = await checkoutSession(sessionId);
-  if (s.metadata?.account_id !== current.account.id) return null;
-  const card = await recordCardSaved(rpc, s, current.account.id);
-  revalidatePath("/portal/billing");
-  return card;
-}
-
-export async function removeCard(): Promise<Result> {
-  try {
-    const { current, rpc } = await billingMe();
-    const c = await rpc<{ pm_id: string | null } | null>("portal_admin_stripe_customer", {
-      p_account: current.account.id,
-    });
-    if (c?.pm_id) await detachPaymentMethod(c.pm_id).catch(() => null);
-    await rpc("portal_admin_set_stripe_customer", {
-      p_account: current.account.id,
-      p: { clear_card: true },
-    });
-    revalidatePath("/portal/billing");
-    return { ok: true, notice: "Card removed. Automatic payments are off." };
-  } catch (e) {
-    console.error("[pay] remove card:", e instanceof Error ? e.message : e);
-    return { ok: false, error: "Couldn’t remove the card. Try again." };
-  }
-}
-
-export async function setAutopay(on: boolean): Promise<Result> {
-  try {
-    const { user, current, rpc } = await billingMe();
-    const c = await rpc<{ pm_id: string | null } | null>("portal_admin_stripe_customer", {
-      p_account: current.account.id,
-    });
-    if (on && !c?.pm_id) return { ok: false, error: "Save a card first." };
-    await rpc("portal_admin_set_stripe_customer", {
-      p_account: current.account.id,
-      p: { autopay: on, by: user.email ?? user.id },
-    });
-    revalidatePath("/portal/billing");
-    return {
-      ok: true,
-      notice: on
-        ? "Month-end invoices will be paid with this card when they’re due."
-        : "Automatic payments are off.",
-    };
-  } catch (e) {
-    console.error("[pay] autopay:", e instanceof Error ? e.message : e);
-    return { ok: false, error: "Couldn’t save that. Try again." };
-  }
 }
 
 /* ---------- a new time proposed by Milkywayy ---------- */
