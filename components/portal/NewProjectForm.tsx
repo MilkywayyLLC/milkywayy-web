@@ -7,6 +7,8 @@ import {
   AVATAR_FORMATS,
   avatarEstimate,
   avatarLength,
+  editLongPrice,
+  LONG_LENGTHS,
   type AvatarFormat,
 } from "@/lib/portal/booking";
 import { createProject, updateAvatarBrief } from "@/lib/portal/project-actions";
@@ -60,6 +62,8 @@ type Snap = {
   scriptBy: "milkywayy" | "client";
   /** Avatar videos: the approved character(s) presenting it. */
   presenters?: string[];
+  /** Long-form edits (28 Oct 2026): each video's length, priced by length. */
+  minutes?: number;
 };
 /** "Edit request" on an avatar video we haven't started (owner, 17 Oct 2026): its brief. */
 export type AvatarEdit = {
@@ -122,6 +126,7 @@ export function ProjectRequestModal({
     kindOther: "",
     title: edit?.title ?? "",
     quantity: "",
+    minutes: 10,
     notes: edit?.notes ?? "",
     reference: edit?.reference ?? "",
     links: [{ label: avatar ? "Logo and assets" : "Raw files", url: "" }],
@@ -173,10 +178,17 @@ export function ProjectRequestModal({
   const est = s.format ? avatarEstimate(s.format, length, cfg.price.rates) : null;
   // What's due now (payment terms): the avatar estimate, or an edit's rate × quantity.
   const editRate = !avatar ? KIND_CARD[s.kind as (typeof KIND_ORDER)[number]]?.rate : undefined;
+  // Long-form is priced by length (per-minute table + the edit-only add-on), the rest per item.
+  const editUnit =
+    s.kind === "long_form"
+      ? editLongPrice(s.minutes ?? 10, cfg.price.rates)
+      : editRate && cfg.price.rates?.[editRate] != null
+        ? Number(cfg.price.rates[editRate])
+        : null;
   const reqEst = avatar
     ? est
-    : editRate && cfg.price.rates?.[editRate] != null && Number(s.quantity) > 0
-      ? Number(cfg.price.rates[editRate]) * Number(s.quantity)
+    : editUnit != null && Number(s.quantity) > 0
+      ? editUnit * Number(s.quantity)
       : null;
   const sendLabel = edit ? null : confirmText(cfg.terms, reqEst, cfg.card, cfg.price.currency);
 
@@ -244,6 +256,7 @@ export function ProjectRequestModal({
       kindOther: s.kindOther,
       ...(avatar && s.format ? { avatar: { format: s.format, length } } : {}),
       quantity: Number(s.quantity) || null,
+      ...(s.kind === "long_form" ? { minutes: s.minutes ?? 10 } : {}),
       notes: s.notes,
       references: [s.reference],
       scriptBy: s.scriptBy,
@@ -281,6 +294,10 @@ export function ProjectRequestModal({
     if (l && Number(l.remaining) > 0)
       return <span className="bkp-muted">Included in your package</span>;
     const rates = cfg.price.rates;
+    if (k === "long_form") {
+      const from = editLongPrice(LONG_LENGTHS[0], rates);
+      return from == null ? null : <span className="bkp-price">{`from ${m(from)}`}</span>;
+    }
     if (!rates || rates[c.rate] == null) return null;
     return <span className="bkp-price">{`${m(Number(rates[c.rate]))}${c.per ?? ""}`}</span>;
   };
@@ -536,6 +553,26 @@ export function ProjectRequestModal({
               </span>
             )}
           </div>
+          {s.kind === "long_form" && (
+            <Field name="minutes" label="Length of each video" group>
+              <div className="bkp-chips" role="group" aria-label="Length of each video">
+                {LONG_LENGTHS.map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    aria-pressed={(s.minutes ?? 10) === l}
+                    onClick={() => set({ minutes: l })}
+                  >
+                    <span>{l} min</span>
+                    {editLongPrice(l, cfg.price.rates) != null && (
+                      <span className="bkp-muted">{m(editLongPrice(l, cfg.price.rates)!)}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <span className="bkp-muted">Over 30 minutes? We quote it: say so in the notes.</span>
+            </Field>
+          )}
           {s.kind === "other" && (
             <Field
               name="kindOther"

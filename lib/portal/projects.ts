@@ -146,6 +146,14 @@ export type Project = {
     awaiting_since?: string;
     /** A draft the booker discarded, or one that expired: hidden everywhere. */
     discarded?: boolean;
+    /** Confirm what we shot (28 Oct 2026): the client's note on what changed after the shoot. */
+    shot_update?: {
+      note: string | null;
+      at: string;
+      diff: number;
+      outcome: string;
+      currency: string;
+    };
   };
   created_by?: string | null;
   requested_by?: string | null;

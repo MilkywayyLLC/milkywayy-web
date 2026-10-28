@@ -59,7 +59,7 @@ export type StageInvoice = {
   amount: number;
   currency: string;
   status: string;
-  stage: "full" | "deposit" | "balance" | "fee" | null;
+  stage: "full" | "deposit" | "balance" | "fee" | "adjustment" | null;
 };
 
 /** Email every invoice of the project nobody has been told about yet ("New invoice …"). */
@@ -113,6 +113,8 @@ export async function afterBooking(o: {
     return { invoice: null, payUrl: null, held: false };
   }
   if (!invoice) return { invoice: null, payUrl: null, held: false };
+  // Covered in full by account credit (28 Oct 2026): already paid, nothing to hold or pay.
+  if (invoice.status === "paid") return { invoice: null, payUrl: null, held: false };
   const held =
     o.type === "shoot" &&
     (await o

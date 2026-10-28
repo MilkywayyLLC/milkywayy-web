@@ -45,7 +45,7 @@ export type Invoice = {
   period_start?: string | null;
   pdf_source?: "generated" | "ledger";
   /** Booking invoices (payment terms, 24 Oct 2026). */
-  stage?: "full" | "deposit" | "balance" | "fee" | null;
+  stage?: "full" | "deposit" | "balance" | "fee" | "adjustment" | null;
   project_id?: string | null;
   refunded?: number;
 };

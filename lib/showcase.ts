@@ -21,7 +21,7 @@ export type ShowcaseRates = {
     tour: number;
     reel: number;
     long: number;
-    /** "from" on Property shoot (the lowest photo price) and Content shoot (a reel). */
+    /** "from" on Property shoot (the lowest photo price) and Content shoot (a 2-hour shoot). */
     from: number;
     contentFrom: number;
     delivery: PropertyPricing["delivery"];
@@ -37,6 +37,9 @@ export type ShowcaseRates = {
  * yet, so the base amounts live here; change both together.
  */
 export const VIDEO_RATES = { reel: 400, long: 1000 } as const;
+/** Content shoot "from" (owner, 28 Oct 2026): a 2-hour shoot, raw files (`content_2h`). Change it
+ *  with the rate card. */
+export const CONTENT_FROM = 500;
 
 export function showcaseRates(property?: PropertyPricing, other?: OtherPricing): ShowcaseRates {
   const post = other?.postProduction;
@@ -59,7 +62,7 @@ export function showcaseRates(property?: PropertyPricing, other?: OtherPricing):
       reel: VIDEO_RATES.reel,
       long: VIDEO_RATES.long,
       from: lowestShootPrice(property),
-      contentFrom: VIDEO_RATES.reel,
+      contentFrom: CONTENT_FROM,
       delivery: property.delivery,
     },
     edit,

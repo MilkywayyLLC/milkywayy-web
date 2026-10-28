@@ -11,6 +11,8 @@ import {
   avatarEstimate,
   avatarKind,
   avatarLength,
+  editLongPrice,
+  isLongLength,
   type AvatarFormat,
   type Rates,
 } from "./booking";
@@ -143,6 +145,8 @@ export type NewProject = {
   /** Avatar videos: the format and length (owner, 10 Oct 2026). */
   avatar?: { format: AvatarFormat; length: number };
   quantity?: number | null;
+  /** Long-form edits (28 Oct 2026): each video's length in minutes (5–30). */
+  minutes?: number;
   notes?: string;
   references?: string[];
   scriptBy?: "milkywayy" | "client";
@@ -206,7 +210,12 @@ export async function createProject(input: NewProject): Promise<
   if (input.type === "edit" && input.kind === "other" && !input.kindOther?.trim())
     return { ok: false, error: "Say what type of edit." };
   const kind = av ? avatarKind(av.format, av.length) : input.kind;
+  const minutes =
+    input.type === "edit" && input.kind === "long_form" && isLongLength(input.minutes)
+      ? Number(input.minutes)
+      : null;
   const notes = [
+    minutes ? `Length: ${minutes} min each` : "",
     av ? `Format: ${AVATAR_FORMATS[av.format].label} · ${avatarLength(av.format, av.length)}` : "",
     input.type === "edit" && input.kind === "other"
       ? `Type of edit: ${input.kindOther!.trim()}`
@@ -265,7 +274,13 @@ export async function createProject(input: NewProject): Promise<
     (opts as { rates: Rates | null } | null)?.rates ?? null,
     `client:${user.email ?? user.id}`,
   );
-  const editRate = input.type === "edit" ? rates?.[EDIT_RATE[input.kind] ?? ""] : null;
+  // Long-form by length: the per-minute table plus the edit-only add-on (28 Oct 2026).
+  const editRate =
+    input.type !== "edit"
+      ? null
+      : minutes
+        ? editLongPrice(minutes, rates)
+        : rates?.[EDIT_RATE[input.kind] ?? ""];
   const est =
     input.type === "avatar" && av
       ? avatarEstimate(av.format, av.length, rates)
@@ -280,7 +295,7 @@ export async function createProject(input: NewProject): Promise<
         type: input.type,
         lines: [
           {
-            description: `${title} · ${avLabel || briefKindLabel(input.type as ProjectType, kind)}`,
+            description: `${title} · ${avLabel || briefKindLabel(input.type as ProjectType, kind)}${minutes ? ` · ${minutes} min` : ""}`,
             qty: input.type === "edit" ? input.quantity || 1 : 1,
             unit_price: input.type === "edit" ? Number(editRate) : est,
           },

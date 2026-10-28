@@ -18,9 +18,13 @@ import { Deliveries, ProjectNotes, RevisionPanel, Thread } from "@/components/ad
 import { dubai } from "@/lib/admin/format";
 import { portalAdminPage, type ClientListRow, type ProjectDetail } from "@/lib/portal/admin";
 import { DeliverablesAdmin, ShootLog, type RateOption } from "@/components/admin/ShootLog";
+import { ConfirmShot, type ShotConfirmation } from "@/components/admin/ConfirmShot";
 import { getPropertyPricing } from "@/lib/data";
 import {
+  bookedShot,
   clientPricing,
+  contentPrices,
+  isContentHours,
   logPrefill,
   normalizeServices,
   SERVICE_LABEL,
@@ -205,6 +209,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       basis: "client_rate",
       minimum: true,
     });
+
+  // A v2 content shoot (28 Oct 2026): "Confirm what we shot" instead of the log.
+  const contentV2 = flexible?.by === "hours" && flexible.v === 2 ? flexible : null;
+  const shotDone =
+    contentV2 && work
+      ? await rpc<ShotConfirmation | null>("portal_admin_shoot_confirmation", {
+          p_project: p.id,
+        }).catch(() => null)
+      : null;
 
   return (
     <div className="ad-page">
@@ -460,19 +473,38 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         />
       </div>
 
+      {work && contentV2 && (
+        <ConfirmShot
+          key={`confirm-${p.id}`}
+          project={p.id}
+          currency={d.account?.currency ?? "AED"}
+          booked={shotDone?.booked ?? bookedShot(contentV2)}
+          prices={
+            contentV2.priced ??
+            contentPrices(
+              Object.fromEntries(work.rates.map((r) => [r.key, r.amount])),
+              isContentHours(contentV2.hours) ? contentV2.hours : 4,
+            )
+          }
+          done={shotDone}
+          terms={payment?.on_package ? "package" : (payment?.terms ?? null)}
+        />
+      )}
       {work && (
         <>
-          <ShootLog
-            key={`log-${p.id}`}
-            project={p.id}
-            currency={d.account?.currency ?? "AED"}
-            rates={work.rates}
-            initial={logLines}
-            logged={work.logged.length > 0}
-            hasDeliverables={work.deliverables.length > 0}
-            onPackage={work.plan_mode === "package"}
-            locked={work.logged.some((l) => l.billed_invoice_id)}
-          />
+          {!contentV2 && (
+            <ShootLog
+              key={`log-${p.id}`}
+              project={p.id}
+              currency={d.account?.currency ?? "AED"}
+              rates={work.rates}
+              initial={logLines}
+              logged={work.logged.length > 0}
+              hasDeliverables={work.deliverables.length > 0}
+              onPackage={work.plan_mode === "package"}
+              locked={work.logged.some((l) => l.billed_invoice_id)}
+            />
+          )}
           <DeliverablesAdmin
             // Remounts only when the list itself changes (new ids), not on a status change.
             key={work.deliverables.map((x) => x.id).join()}

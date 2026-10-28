@@ -49,6 +49,7 @@ export default async function BookMediaPage({
       },
       services,
       note: booking?.note ?? "",
+      estimate: booking?.estimate ?? null,
       // A booking with a property (or none) is a property shoot; videos alone, a content shoot.
       kind:
         normalizeServices(services).some((s) => s.service === "property") || !services.length

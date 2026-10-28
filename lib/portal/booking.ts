@@ -60,6 +60,12 @@ export type VideoPlan = {
   long?: number;
   /** Long-form minutes beyond 5, all long-form videos together. */
   extra_min?: number;
+  /** By length, v2 (28 Oct 2026): each long-form edit's length in minutes (5–30, 5-min steps). */
+  longs?: number[];
+  /** By length: 2 = today's pricing (shoot only + edits by quantity, long-form by length). */
+  v?: 2;
+  /** By length, v2: the prices it was booked at (set by the server, never the browser). */
+  priced?: ContentPrices;
   /** By time: a half day (morning or afternoon) or a full day. */
   day?: "half" | "full";
   /** By time or by length: raw files, no editing. */
@@ -119,7 +125,8 @@ export const KEY = {
   raw: { half: "half_day", full: "full_day" },
   min: { half: "min_half_day", full: "min_full_day" },
 } as const;
-/** Content shoot by length (owner, 25 Oct 2026): three lengths, edits on top. */
+/** Content shoot by length (owner, 25 Oct 2026; pricing v2, 28 Oct 2026): three lengths, shoot
+ *  only (raw), edits added by quantity, nothing included. */
 export const CONTENT_HOURS = [2, 4, 8] as const;
 export type ContentHours = (typeof CONTENT_HOURS)[number];
 export const CONTENT_KEY = {
@@ -127,15 +134,63 @@ export const CONTENT_KEY = {
   4: "content_4h",
   8: "content_8h",
   short: "content_short_edit",
+  /** Older bookings (before v2): a flat price per long-form edit. */
   long: "content_long_edit",
+  /** Per 30 minutes beyond the booked length. */
+  overtime: "content_overtime",
 } as const;
+/** Long-form lengths (minutes): one per-minute rate per length, applied to every minute. Longer
+ *  than 30 minutes is a custom quote. */
+export const LONG_LENGTHS = [5, 10, 15, 20, 25, 30] as const;
+export type LongLength = (typeof LONG_LENGTHS)[number];
+export const longKey = (min: number) => `content_long_${min}`;
+/** Edit only (you send the files): long-form at the same table plus this, short-form at `reel`. */
+export const EDIT_LONG_EXTRA = "edit_long_extra";
+export const isLongLength = (n: unknown): n is LongLength =>
+  LONG_LENGTHS.includes(Number(n) as LongLength);
+/** A finished length rounds up to the next 5-minute step; null above 30 (custom quote). */
+export const roundUpLength = (min: number): LongLength | null => {
+  const m = Math.max(5, Math.ceil((Number(min) || 0) / 5) * 5);
+  return isLongLength(m) ? m : null;
+};
 /** Half-days a content shoot uses on a value package: 2 h a quarter day, 4 h a half, 8 h a full. */
 export const CONTENT_HALF_DAYS: Record<ContentHours, number> = { 2: 0.5, 4: 1, 8: 2 };
-/** Default short-form edits follow the length: 2 h → 2, 4 h → 4, 8 h → 8. */
-export const CONTENT_DEFAULT_SHORT: Record<ContentHours, number> = { 2: 2, 4: 4, 8: 8 };
+/** Older bookings: up to 3 long-form edits; v2: up to 10, each with its length. */
 export const CONTENT_LONG_MAX = 3;
+export const CONTENT_LONG_MAX_V2 = 10;
+/** Capacity check at booking: a short-form edit takes 1 hour of shooting, a long-form 2. */
+export const SHOOT_HOURS_PER = { short: 1, long: 2 } as const;
 export const isContentHours = (n: unknown): n is ContentHours =>
   CONTENT_HOURS.includes(Number(n) as ContentHours);
+
+/** The prices a v2 content shoot was booked at (client's rates on the day). */
+export type ContentPrices = {
+  shoot: number | null;
+  short: number | null;
+  /** Per-minute rate by length. */
+  long: Partial<Record<LongLength, number | null>>;
+  overtime: number | null;
+};
+const num = (x: unknown) => (x == null || x === "" ? null : Number(x));
+export function contentPrices(rates: Rates, hours: ContentHours): ContentPrices {
+  return {
+    shoot: num(rates[CONTENT_KEY[hours]]),
+    short: num(rates[CONTENT_KEY.short]),
+    long: Object.fromEntries(LONG_LENGTHS.map((m) => [m, num(rates[longKey(m)])])),
+    overtime: num(rates[CONTENT_KEY.overtime]),
+  };
+}
+/** One long-form edit: its length × that length's per-minute rate (null when unset). */
+export const longPrice = (min: number, perMin: number | null | undefined) =>
+  perMin == null ? null : Math.round(Number(perMin) * min * 100) / 100;
+/** Edit only, long-form: the same table plus the edit-only add-on. */
+export function editLongPrice(min: number, rates: Rates | null | undefined) {
+  const base = longPrice(min, num(rates?.[longKey(min)]));
+  return base == null ? null : base + (num(rates?.[EDIT_LONG_EXTRA]) ?? 0);
+}
+/** Hours of shooting the edits need (1 per short-form, 2 per long-form). */
+export const hoursNeeded = (short: number, longs: number) =>
+  short * SHOOT_HOURS_PER.short + longs * SHOOT_HOURS_PER.long;
 
 /** What counts toward a flexible booking's minimum: the finished videos. */
 export const VIDEO_KEYS: readonly string[] = [KEY.short, KEY.long, KEY.extra];
@@ -224,6 +279,20 @@ export function normalizeServices(list: BookingService[]): BookingService[] {
 export function cleanVideos(v: VideoPlan): VideoPlan {
   if (v.by === "hours") {
     const hours = isContentHours(v.hours) ? (Number(v.hours) as ContentHours) : 4;
+    if (v.v === 2) {
+      // v2: shoot only unless edits are added; no edits = the raw files.
+      const short = int(v.short, 100);
+      const longs = (v.longs ?? []).filter(isLongLength).slice(0, CONTENT_LONG_MAX_V2);
+      return {
+        by: "hours",
+        v: 2,
+        hours,
+        ...(short ? { short } : {}),
+        ...(longs.length ? { long: longs.length, longs: longs.map(Number) } : {}),
+        ...(v.raw || (!short && !longs.length) ? { raw: true } : {}),
+        ...(v.priced ? { priced: v.priced } : {}),
+      };
+    }
     if (v.raw) return { by: "hours", hours, raw: true };
     const short = int(v.short, 100);
     const long = int(v.long, CONTENT_LONG_MAX);
@@ -297,7 +366,9 @@ export function videoSummary(v: VideoPlan): string {
     if (v.raw) return `${head} · raw files only`;
     const edits = [
       v.short ? plural(v.short, "short-form edit") : "",
-      v.long ? plural(v.long, "long-form edit") : "",
+      v.long
+        ? `${plural(v.long, "long-form edit")}${v.longs?.length ? ` (${v.longs.join(", ")} min)` : ""}`
+        : "",
     ].filter(Boolean);
     return [head, edits.join(" · ") || "no edits"].join(" · ");
   }
@@ -379,6 +450,27 @@ export function videoLines(v: VideoPlan, rates: Rates): EstimateLine[] {
       ...(minimum ? { minimum } : {}),
     });
   };
+  if (v.by === "hours" && v.v === 2) {
+    const h = isContentHours(v.hours) ? (Number(v.hours) as ContentHours) : 4;
+    // The frozen prices once booked, else the client's rates now.
+    const p = v.priced ?? contentPrices(rates, h);
+    const fixed = (key: string, label: string, qty: number, unit: number | null) =>
+      out.push({
+        key,
+        label,
+        qty,
+        unit,
+        amount: unit == null ? null : Math.round(unit * qty * 100) / 100,
+      });
+    fixed(CONTENT_KEY[h], `Content shoot · ${h} hours (raw files)`, 1, p.shoot);
+    if (v.short) fixed(CONTENT_KEY.short, "Short-form edit (up to 60 sec)", v.short, p.short);
+    // Long-form grouped by length: "Long-form edit · 10 min" × 2.
+    const byLen = new Map<number, number>();
+    for (const m of v.longs ?? []) byLen.set(m, (byLen.get(m) ?? 0) + 1);
+    for (const [m, n] of [...byLen].sort((a, b) => a[0] - b[0]))
+      fixed(longKey(m), `Long-form edit · ${m} min`, n, longPrice(m, p.long[m as LongLength]));
+    return out;
+  }
   if (v.by === "hours") {
     const h = isContentHours(v.hours) ? (Number(v.hours) as ContentHours) : 4;
     line(CONTENT_KEY[h], `Content shoot · ${h} hours${v.raw ? " · raw files" : ""}`, 1);
@@ -492,6 +584,171 @@ export function minimumTopUp(
     .filter((l) => VIDEO_KEYS.includes(l.key))
     .reduce((n, l) => n + Number(l.unit ?? 0) * l.qty, 0);
   return Math.max(0, Math.round((Number(minimum) - videos) * 100) / 100);
+}
+
+/* ---------- content shoot v2: summary, capacity, confirm what we shot (28 Oct 2026) ---------- */
+
+const fmtN = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+const hoursText = (h: number) => `${fmtN(h)}h`;
+
+/** "4h shoot 900 + 4 short × 150 + 1 long (10 min) 750 = AED 2,250 · ≈ 450 per video"; null while
+ *  a price is missing. */
+export function contentSummary(v: VideoPlan, p: ContentPrices, currency: string): string | null {
+  if (v.by !== "hours" || p.shoot == null) return null;
+  const parts = [`${v.hours}h shoot ${fmtN(p.shoot)}`];
+  let total = p.shoot;
+  const short = v.short ?? 0;
+  const longs = v.longs ?? [];
+  if (short) {
+    if (p.short == null) return null;
+    parts.push(`${short} short × ${fmtN(p.short)}`);
+    total += short * p.short;
+  }
+  if (longs.length) {
+    let sum = 0;
+    for (const m of longs) {
+      const x = longPrice(m, p.long[m as LongLength]);
+      if (x == null) return null;
+      sum += x;
+    }
+    parts.push(
+      `${longs.length} long (${[...longs].sort((a, b) => a - b).join(", ")} min) ${fmtN(sum)}`,
+    );
+    total += sum;
+  }
+  const videos = short + longs.length;
+  return `${parts.join(" + ")} = ${currency} ${fmtN(total)}${
+    videos ? ` · ≈ ${fmtN(Math.round(total / videos))} per video` : ""
+  }`;
+}
+
+/** What was booked or shot, for "Confirm what we shot": hours in 30-minute steps. */
+export type ShotPlan = {
+  hours: number;
+  short: number;
+  /** Each long-form edit's length (5-minute steps up to 30). */
+  longs: number[];
+  raw: boolean;
+  /** Anything else (a custom quote, e.g. long-form over 30 min). Actual only. */
+  extra?: { description: string; amount: number } | null;
+};
+/** A line on the confirmation: what differs (negative = credit). */
+export type AdjustLine = { description: string; qty: number; unit_price: number; kind?: "credit" };
+/** The actual, priced: the project's line items. */
+export type ConfirmItem = { key: string; description: string; qty: number; unit_price: number };
+
+export const bookedShot = (v: VideoPlan): ShotPlan => ({
+  hours: Number(v.hours ?? 4),
+  short: v.short ?? 0,
+  longs: [...(v.longs ?? [])],
+  raw: !!v.raw,
+});
+
+/** Overtime in 30-minute steps beyond the booked length. */
+export const overtimeSteps = (booked: number, actual: number) =>
+  Math.max(0, Math.ceil((actual - booked) * 2 - 1e-9));
+
+/** The actual, priced at the booking's prices. Throws on a missing price. */
+export function shotItems(actual: ShotPlan, booked: ShotPlan, p: ContentPrices): ConfirmItem[] {
+  const need = (n: number | null | undefined, what: string) => {
+    if (n == null) throw new Error(`No price for ${what}: set it in Prices & packages.`);
+    return Number(n);
+  };
+  const h = isContentHours(booked.hours) ? (booked.hours as ContentHours) : 4;
+  const out: ConfirmItem[] = [
+    {
+      key: CONTENT_KEY[h],
+      description: `Content shoot · ${h} hours (raw files)`,
+      qty: 1,
+      unit_price: need(p.shoot, "the shoot"),
+    },
+  ];
+  const steps = overtimeSteps(booked.hours, actual.hours);
+  if (steps)
+    out.push({
+      key: CONTENT_KEY.overtime,
+      description: "Overtime · per 30 min",
+      qty: steps,
+      unit_price: need(p.overtime, "overtime"),
+    });
+  if (actual.short)
+    out.push({
+      key: CONTENT_KEY.short,
+      description: "Short-form edit (up to 60 sec)",
+      qty: actual.short,
+      unit_price: need(p.short, "short-form edits"),
+    });
+  const byLen = new Map<number, number>();
+  for (const m of actual.longs) byLen.set(m, (byLen.get(m) ?? 0) + 1);
+  for (const [m, n] of [...byLen].sort((a, b) => a[0] - b[0]))
+    out.push({
+      key: longKey(m),
+      description: `Long-form edit · ${m} min`,
+      qty: n,
+      unit_price: need(longPrice(m, p.long[m as LongLength]), `${m}-min long-form`),
+    });
+  if (actual.extra && actual.extra.amount > 0)
+    out.push({
+      key: "custom",
+      description: actual.extra.description.trim() || "Custom",
+      qty: 1,
+      unit_price: Math.round(actual.extra.amount * 100) / 100,
+    });
+  return out;
+}
+
+const itemsTotal = (items: ConfirmItem[]) =>
+  Math.round(items.reduce((t, i) => t + i.qty * i.unit_price, 0) * 100) / 100;
+
+/**
+ * Booked vs actual (owner, 28 Oct 2026): overtime in 30-minute steps (a shorter shoot isn't
+ * credited: the time was booked), short-form by count, each long-form by its final length,
+ * long-forms added or dropped. Throws on a missing price.
+ */
+export function shotDiff(booked: ShotPlan, actual: ShotPlan, p: ContentPrices) {
+  const bookedItems = shotItems(booked, booked, p);
+  const items = shotItems(actual, booked, p);
+  const lines: AdjustLine[] = [];
+  const add = (description: string, amount: number) => {
+    const a = Math.round(amount * 100) / 100;
+    if (!a) return;
+    lines.push(
+      a > 0
+        ? { description, qty: 1, unit_price: a }
+        : { description, qty: 1, unit_price: a, kind: "credit" },
+    );
+  };
+  const steps = overtimeSteps(booked.hours, actual.hours);
+  if (steps) add(`+${steps * 30} min overtime`, steps * Number(p.overtime));
+  const ds = actual.short - booked.short;
+  if (ds)
+    add(
+      `${ds > 0 ? "+" : "−"}${Math.abs(ds)} short edit${Math.abs(ds) === 1 ? "" : "s"}`,
+      ds * Number(p.short),
+    );
+  const lp = (m: number) => Number(longPrice(m, p.long[m as LongLength]));
+  for (let i = 0; i < Math.max(booked.longs.length, actual.longs.length); i++) {
+    const b = booked.longs[i];
+    const a = actual.longs[i];
+    if (b != null && a != null && a !== b) add(`Long-form ${i + 1}: ${b}→${a} min`, lp(a) - lp(b));
+    else if (b == null && a != null) add(`+1 long-form edit (${a} min)`, lp(a));
+    else if (b != null && a == null) add(`−1 long-form edit (${b} min)`, -lp(b));
+  }
+  if (actual.extra && actual.extra.amount > 0)
+    add(`+${actual.extra.description.trim() || "Custom"}`, actual.extra.amount);
+  const bookedTotal = itemsTotal(bookedItems);
+  const actualTotal = itemsTotal(items);
+  return { lines, items, bookedTotal, actualTotal, diff: actualTotal - bookedTotal };
+}
+
+/** The client's note: "Updated after the shoot: 4h → 4.5h, +1 short edit". */
+export function shotNote(booked: ShotPlan, actual: ShotPlan, lines: AdjustLine[]) {
+  const parts = [
+    actual.hours !== booked.hours ? `${hoursText(booked.hours)} → ${hoursText(actual.hours)}` : "",
+    ...lines.filter((l) => !/overtime$/.test(l.description)).map((l) => l.description),
+    actual.raw !== booked.raw ? (actual.raw ? "raw files added" : "no raw files") : "",
+  ].filter(Boolean);
+  return parts.length ? `Updated after the shoot: ${parts.join(", ")}` : "";
 }
 
 /* ---------- AI avatar videos (owner, 10 Oct 2026) ---------- */

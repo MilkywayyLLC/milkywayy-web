@@ -367,7 +367,7 @@ export function quoteChange(c: ChangeInput): ChangeQuote {
 /* ---------- booking terms ---------- */
 
 /** Bump when the text below changes: clients accept the current version on their next booking. */
-export const BOOKING_TERMS_VERSION = "2026-10-24";
+export const BOOKING_TERMS_VERSION = "2026-10-28";
 
 export const BOOKING_TERMS: { title: string; text: string }[] = [
   {
@@ -377,6 +377,14 @@ export const BOOKING_TERMS: { title: string; text: string }[] = [
   {
     title: "Cancellation",
     text: "Cancel or reschedule free up to 3 hours before the shoot. Within 3 hours, if our crew is already on the way, or if we can’t access the property on arrival, 50% of the booking is charged (minimum AED 250). Package clients use half a shoot day instead.",
+  },
+  {
+    title: "Content shoot overtime",
+    text: "If a content shoot runs past the booked length, overtime is AED 150 per 30 minutes.",
+  },
+  {
+    title: "After-shoot adjustments",
+    text: "Content shoots are charged or credited for what we actually shot and edited: more than booked is invoiced separately, less is taken off your balance or credited to your account (or refunded to your card). Files unlock once everything is paid.",
   },
   {
     title: "Editing and AI avatars",

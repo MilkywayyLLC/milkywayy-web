@@ -76,6 +76,7 @@ export default async function Billing({
     { data: payments },
     { data: options },
     { data: monthLines },
+    { data: creditRows },
   ] = await Promise.all([
     db.rpc("my_billing", { p_account: a.id }),
     db.from("invoices").select("*").eq("account_id", a.id),
@@ -89,7 +90,19 @@ export default async function Billing({
       .select("qty, unit_price")
       .eq("account_id", a.id)
       .eq("delivered_month", `${dubaiToday().slice(0, 8)}01`),
+    // After-shoot credits (28 Oct 2026): what comes off the next invoice.
+    db.rpc("my_account_credits", { p_account: a.id }),
   ]);
+  const credits = (creditRows ?? []) as {
+    id: string;
+    amount: number;
+    remaining: number;
+    currency: string;
+    status: "open" | "applied";
+    created_at: string;
+    ref: string | null;
+    applied: { number: string | null; amount: number }[];
+  }[];
   const opts = options as { bank_transfer?: boolean } | null;
   const bp = payments
     ? ({
@@ -454,6 +467,28 @@ export default async function Billing({
           <p className="pt-meta" style={{ margin: 0 }}>
             No invoices yet. They appear here, with a PDF, as soon as we issue them.
           </p>
+        )}
+        {credits.length > 0 && (
+          <div className="stack" style={{ gap: 6 }} data-testid="credits">
+            <span className="pt-eb">Account credit</span>
+            <ul className="pt-lines" aria-label="Account credit">
+              {credits.map((c) => (
+                <li key={c.id}>
+                  <span>
+                    {c.ref ? `Updated after the shoot · ${c.ref}` : "Credit"} ·{" "}
+                    {dateLabel(c.created_at)}
+                  </span>
+                  <span className="pt-mono">
+                    {c.status === "open"
+                      ? `${money(c.currency, Number(c.remaining))} off your next invoice`
+                      : `${money(c.currency, Number(c.amount))} · used${c.applied
+                          .map((x) => (x.number ? ` on ${x.number}` : ""))
+                          .join(",")}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         {!!bp?.refunds.length && (
           <div className="stack" style={{ gap: 6 }} data-testid="refunds">

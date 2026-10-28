@@ -16,6 +16,7 @@ const STAGE: Record<string, string> = {
   deposit: "Deposit (50%)",
   balance: "Balance (50%)",
   fee: "Change fee",
+  adjustment: "After-shoot update",
 };
 /** The phone summary bar's short word ("INV-1010 · Deposit AED 225"). */
 const SHORT: Record<string, string> = {
@@ -23,6 +24,7 @@ const SHORT: Record<string, string> = {
   deposit: "Deposit",
   balance: "Balance",
   fee: "Fee",
+  adjustment: "Update",
 };
 
 /**

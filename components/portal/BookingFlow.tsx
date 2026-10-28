@@ -18,15 +18,21 @@ import { bookShoot, updateBooking } from "@/lib/portal/book-actions";
 import { dateLabel } from "@/lib/portal/billing";
 import {
   cleanVideos,
-  CONTENT_DEFAULT_SHORT,
   CONTENT_HOURS,
   CONTENT_KEY,
-  CONTENT_LONG_MAX,
+  CONTENT_LONG_MAX_V2,
+  contentPrices,
+  contentSummary,
   DAY_LABEL,
   estimate,
+  hoursNeeded,
   isContentHours,
+  isLongLength,
   estimateLines,
   KEY,
+  LONG_LENGTHS,
+  longKey,
+  longPrice,
   normalizeServices,
   photosOnly,
   slotHours,
@@ -42,7 +48,15 @@ import { halfDaysOf } from "@/lib/portal/payments";
 import { BookingPanel, lineName, PriceTag, priceView, type PanelLine } from "./bookPrice";
 import { confirmText, DueLine, DueNow, PanelTerms, TermsCheck } from "./BookingTerms";
 import { BookStep, Check, Counter, Seg, ServiceCard, ThankYou } from "./BookFrame";
-import { DraftOffer, Field, FormBanner, useDraft, useFormCheck, useLeaveGuard } from "./forms";
+import {
+  ChoiceDialog,
+  DraftOffer,
+  Field,
+  FormBanner,
+  useDraft,
+  useFormCheck,
+  useLeaveGuard,
+} from "./forms";
 import { DatePicker, TimeWheel } from "./Pickers";
 import { PlacesField } from "./PlacesField";
 
@@ -65,6 +79,8 @@ export type BookingEdit = {
   location: BookingLocation;
   services: BookingService[];
   note: string;
+  /** The total it was booked at (frozen prices); kept unless the services change. */
+  estimate?: number | null;
 };
 
 const toConfig = (p: BookingProperty): PropertyConfig => ({
@@ -131,7 +147,9 @@ function videoText(v: VideoPlan) {
         ? "raw files only"
         : [
             v.short ? plural(v.short, "short-form edit") : "",
-            v.long ? plural(v.long, "long-form edit") : "",
+            v.long
+              ? `${plural(v.long, "long-form edit")}${v.longs?.length ? ` (${v.longs.join(", ")} min)` : ""}`
+              : "",
           ]
             .filter(Boolean)
             .join(" · ") || "no edits",
@@ -161,11 +179,13 @@ type Snap = {
   pv?: Counts;
   brief?: string;
   refs?: string;
-  /** Content shoot by length (25 Oct 2026). */
+  /** Content shoot by length (25 Oct 2026; v2 28 Oct 2026: edits by quantity, long-form lengths). */
   hours?: ContentHours;
   raw?: boolean;
   shortN?: number | null;
+  /** Older drafts: how many long-form edits (no lengths). */
   longN?: number;
+  longs?: number[];
   startTime?: string;
   date: string;
   slot: Slot | "";
@@ -230,8 +250,9 @@ export function BookingFlow({
   const n0 = splitNote(edit?.note ?? "");
   const [brief, setBrief] = useState(n0.brief);
   const [refs, setRefs] = useState(n0.refs);
-  // A content shoot (owner, 25 Oct 2026): a length, edits on top, or raw files only. An older
-  // content booking (by count or by time) opens in this shape.
+  // A content shoot (owner, 25 Oct 2026; pricing v2, 28 Oct 2026): a length (shoot only, raw files),
+  // then short-form and long-form edits by quantity, nothing included. An older content booking (by
+  // count, by time, or by length before v2) opens in this shape.
   const c0 = p0 ? undefined : v0;
   const [hours, setHours] = useState<ContentHours>(
     c0?.by === "hours" && isContentHours(c0.hours)
@@ -240,14 +261,16 @@ export function BookingFlow({
         ? 8
         : 4,
   );
-  const [raw, setRaw] = useState(!!c0 && c0.by !== "count" && !!c0.raw);
-  /** Short-form edits; null follows the length (2 → 2, 4 → 4, 8 → 8) until changed. */
-  const [shortN, setShortN] = useState<number | null>(
-    c0 && c0.by !== "time" ? (c0.short ?? 0) : null,
+  const [shortN, setShortN] = useState(c0 && c0.by !== "time" && !c0.raw ? (c0.short ?? 0) : 0);
+  /** Each long-form edit's length (minutes); older bookings without lengths open at 10 min. */
+  const [longs, setLongs] = useState<number[]>(
+    c0 && c0.by !== "time" && !c0.raw
+      ? (c0.longs ?? Array.from({ length: c0.long ?? 0 }, () => 10)).slice(0, CONTENT_LONG_MAX_V2)
+      : [],
   );
-  const [longN, setLongN] = useState(
-    c0 && c0.by !== "time" ? Math.min(CONTENT_LONG_MAX, c0.long ?? 0) : 0,
-  );
+  /** "Can you fit this in 4 hours?" (asked once per length; never blocks). */
+  const [fitAsk, setFitAsk] = useState(false);
+  const [fitOk, setFitOk] = useState<ContentHours | null>(null);
   const [date, setDate] = useState(edit?.date ?? "");
   const [startTime, setStartTime] = useState(edit?.startTime ?? "");
   const [loc, setLoc] = useState<BookingLocation>(edit?.location ?? { address: "" });
@@ -281,12 +304,11 @@ export function BookingFlow({
   const isProp = kind === "property";
   const propOk = prop.photo || prop.tour;
   const pVideo = pv.short > 0 || pv.long > 0;
-  const shortEdits = shortN ?? CONTENT_DEFAULT_SHORT[hours];
   const counted = (c: Counts): VideoPlan =>
     cleanVideos({ by: "count", short: c.short, long: c.long, extra_min: c.extra_min });
   const plan: VideoPlan | null = isProp
     ? (keepPlan ?? (pVideo ? counted(pv) : null))
-    : cleanVideos({ by: "hours", hours, raw, short: shortEdits, long: longN });
+    : cleanVideos({ by: "hours", v: 2, hours, short: shortN, longs });
   const services: BookingService[] = [
     ...(isProp && propOk
       ? [{ service: "property" as const, property: photosOnly(toConfig(prop)) }]
@@ -295,6 +317,12 @@ export function BookingFlow({
       ? [{ service: "videos" as const, videos: plan }]
       : []),
   ];
+  // Changing a booking (owner, 28 Oct 2026): date, time, place or notes keep the prices it was booked
+  // at; only a change to the services or quantities re-prices it (at today's rates).
+  const servicesKey = JSON.stringify(services);
+  const [initialServices] = useState(servicesKey);
+  const repriced = !!edit && servicesKey !== initialServices;
+  const keepPrice = !!edit && !repriced;
   // No slot picker (owner, 18 Oct 2026): the slot follows the start time; a full day is Full day.
   const slot: Slot | "" =
     (plan?.by === "time" && plan.day === "full") || (plan?.by === "hours" && plan.hours === 8)
@@ -327,9 +355,8 @@ export function BookingFlow({
     brief,
     refs,
     hours,
-    raw,
     shortN,
-    longN,
+    longs,
     startTime,
     date,
     slot,
@@ -350,9 +377,14 @@ export function BookingFlow({
     setBrief(d.brief ?? "");
     setRefs(d.refs ?? "");
     if (isContentHours(d.hours)) setHours(d.hours);
-    if (d.raw != null) setRaw(d.raw);
-    if (d.shortN !== undefined) setShortN(d.shortN);
-    if (d.longN != null) setLongN(d.longN);
+    setShortN(d.raw ? 0 : (d.shortN ?? 0));
+    setLongs(
+      d.raw
+        ? []
+        : (d.longs ?? Array.from({ length: d.longN ?? 0 }, () => 10))
+            .filter(isLongLength)
+            .slice(0, CONTENT_LONG_MAX_V2),
+    );
     setStartTime(d.startTime ?? "");
     setDate(d.date ?? "");
     setLoc(d.loc ?? { address: "" });
@@ -431,11 +463,19 @@ export function BookingFlow({
       <span className="bkp-price">{m(rate(key)!)}</span>
     ) : null;
 
+  const needed = hoursNeeded(shortN, longs.length);
+  const fitsIn = CONTENT_HOURS.find((h) => h >= needed) ?? 8;
   function next() {
     if (!form.check()) return;
     form.reset();
+    // Content shoot: 1 hour per short-form edit, 2 per long-form. Over the length, ask once.
+    if (!isProp && step === "services" && needed > hours && fitOk !== hours) {
+      setFitAsk(true);
+      return;
+    }
     onStep(STEPS[Math.min(at + 1, STEPS.length - 1)]);
   }
+
   function back() {
     form.reset();
     if (at > 0) return onStep(STEPS[at - 1]);
@@ -458,7 +498,7 @@ export function BookingFlow({
     };
     start(async () => {
       const r = edit
-        ? await updateBooking(edit.projectId, b)
+        ? await updateBooking(edit.projectId, { ...b, keepServices: keepPrice })
         : await bookShoot({ ...b, agent, termsAccepted: agreed });
       if (!r.ok) return form.fail(r.error ?? "Couldn’t send the booking. Try again.");
       // 50% / 100% with card payments on: straight to Stripe (paid = confirmed).
@@ -677,11 +717,17 @@ export function BookingFlow({
     </>
   );
 
-  /* ---------- step 1: content shoot (owner, 25 Oct 2026) ---------- */
-  // One screen: the length (2 / 4 / 8 h), editing (short-form edits follow the length, long-form
-  // on request) or raw files only, then the brief. Total = length + edits.
+  /* ---------- step 1: content shoot (owner, 25 Oct 2026; pricing v2, 28 Oct 2026) ---------- */
+  // One screen: the length (2 / 4 / 8 h, shoot only, raw files), then short-form and long-form edits
+  // by quantity (each long-form with its length), a live summary, then the brief.
   const at8 = CONTENT_HOURS.indexOf(hours);
   const priceOf = (key: string) => (v.rates && rate(key) != null ? m(rate(key)!) : null);
+  const cp = contentPrices(rates ?? {}, hours);
+  const longOf = (min: number) => (v.rates ? longPrice(min, rate(longKey(min))) : null);
+  const summary = v.rates && plan ? contentSummary(plan, cp, cfg.price.currency) : null;
+  const setLong = touch((i: number, min: number) =>
+    setLongs((ls) => ls.map((x, j) => (j === i ? min : x))),
+  );
   const contentStep = (
     <>
       <div className="bkp-group" data-testid="content-length">
@@ -691,6 +737,7 @@ export function BookingFlow({
             {hours} hours{priceOf(CONTENT_KEY[hours]) ? ` · ${priceOf(CONTENT_KEY[hours])}` : ""}
           </b>
         </div>
+        <span className="bkp-muted">Shoot only: you get the raw files. Add edits below.</span>
         <input
           type="range"
           className="bkp-slider"
@@ -720,51 +767,69 @@ export function BookingFlow({
           ))}
         </div>
       </div>
-      <div className="bkp-box-card bkp-edits" data-off={raw ? "" : undefined}>
+      <div className="bkp-box-card bkp-edits">
         <div className="bkp-row">
-          <span className="bkp-body">Editing</span>
+          <span className="bkp-body">Edits</span>
         </div>
-        <div className="bkp-row" inert={raw}>
+        <div className="bkp-row">
           <span className="bkp-check-t">
             Short-form edits
             <span className="bkp-muted">
-              Reels, 30–90 sec
+              Reels, up to 60 sec
               {priceOf(CONTENT_KEY.short) ? ` · ${priceOf(CONTENT_KEY.short)} each` : ""}
             </span>
           </span>
           <Counter
             label="Short-form edits"
-            value={raw ? 0 : shortEdits}
+            value={shortN}
             min={0}
             onChange={touch((n: number) => setShortN(n))}
           />
         </div>
-        <div className="bkp-row" inert={raw}>
-          <Check
+        <div className="bkp-row">
+          <span className="bkp-check-t">
+            Long-form edits
+            <span className="bkp-muted">YouTube, priced by length · over 30 min, we quote</span>
+          </span>
+          <Counter
             label="Long-form edits"
-            sub={`YouTube, up to 5 min${priceOf(CONTENT_KEY.long) ? ` · ${priceOf(CONTENT_KEY.long)} each` : ""}`}
-            checked={!raw && longN > 0}
-            onChange={touch(() => setLongN(longN > 0 ? 0 : 1))}
+            value={longs.length}
+            min={0}
+            max={CONTENT_LONG_MAX_V2}
+            onChange={touch((n: number) =>
+              setLongs((ls) =>
+                n > ls.length
+                  ? [...ls, ...Array.from({ length: n - ls.length }, () => 10)]
+                  : ls.slice(0, n),
+              ),
+            )}
           />
-          {!raw && longN > 0 && (
-            <Counter
-              label="Long-form edits"
-              value={longN}
-              min={1}
-              max={CONTENT_LONG_MAX}
-              onChange={touch((n: number) => setLongN(n))}
-            />
-          )}
         </div>
-      </div>
-      <div className="bkp-box-card" data-on={raw ? "" : undefined}>
-        <Check
-          label="Raw files only"
-          sub="No editing: you get the footage"
-          checked={raw}
-          testId="raw-only"
-          onChange={touch(() => setRaw(!raw))}
-        />
+        {longs.map((min, i) => (
+          <div className="bkp-group" key={i}>
+            <span className="bkp-muted">
+              Long-form {i + 1}: length{longOf(min) != null ? ` · ${m(longOf(min)!)}` : ""}
+            </span>
+            <div className="bkp-chips" role="group" aria-label={`Long-form ${i + 1} length`}>
+              {LONG_LENGTHS.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  aria-pressed={min === l}
+                  onClick={() => setLong(i, l)}
+                >
+                  <span>{l} min</span>
+                  {longOf(l) != null && <span className="bkp-muted">{m(longOf(l)!)}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        {summary && (
+          <p className="bkp-muted" data-testid="content-summary" aria-live="polite">
+            {summary}
+          </p>
+        )}
       </div>
       <label className="pt-field">
         Brief
@@ -916,10 +981,21 @@ export function BookingFlow({
           </div>
         )}
       </dl>
+      {edit && v.rates && (
+        <p className="pt-note" role="status" data-testid="edit-price">
+          {repriced
+            ? `You changed the services, so this booking is priced at today’s rates: new total ${
+                est != null ? m(est) : "priced on confirmation"
+              }${edit.estimate != null ? ` (was ${m(Number(edit.estimate))})` : ""}.`
+            : `Prices stay as booked${edit.estimate != null ? `: ${m(Number(edit.estimate))}` : ""}. Changing the services re-prices it.`}
+        </p>
+      )}
       {/* Phones: the side panel isn't shown, so the prices go here. */}
-      <div className="bkp-box-card bkp-phone-only">
-        <BookingPanel lines={panelLines} v={v} />
-      </div>
+      {!keepPrice && (
+        <div className="bkp-box-card bkp-phone-only">
+          <BookingPanel lines={panelLines} v={v} />
+        </div>
+      )}
       {!edit && (
         <>
           <DueNow
@@ -950,9 +1026,11 @@ export function BookingFlow({
         ? "Save changes"
         : confirmText(cfg.terms, est, cfg.card, cfg.price.currency);
   const barText =
-    v.pkg && v.due != null
-      ? m(v.due)
-      : (v.total?.value ?? (lines.length ? plural(lines.length, "item") : "Nothing yet"));
+    keepPrice && v.rates && edit?.estimate != null
+      ? m(Number(edit.estimate))
+      : v.pkg && v.due != null
+        ? m(v.due)
+        : (v.total?.value ?? (lines.length ? plural(lines.length, "item") : "Nothing yet"));
 
   return (
     <>
@@ -972,7 +1050,14 @@ export function BookingFlow({
         }
         panel={
           <>
-            <BookingPanel lines={panelLines} v={v} />
+            {keepPrice ? (
+              <p className="bkp-muted">
+                {v.rates && edit?.estimate != null ? `Booked at ${m(Number(edit.estimate))}. ` : ""}
+                Prices stay as booked unless you change the services.
+              </p>
+            ) : (
+              <BookingPanel lines={panelLines} v={v} />
+            )}
             {!edit && <PanelTerms terms={cfg.terms} estimate={est} currency={cfg.price.currency} />}
           </>
         }
@@ -988,6 +1073,44 @@ export function BookingFlow({
         {step === "when" && whenStep}
         {step === "review" && reviewStep}
       </BookStep>
+      {fitAsk && (
+        <ChoiceDialog
+          title={`Can you fit this in ${hours} hours?`}
+          body={
+            <p>
+              {rate(CONTENT_KEY.overtime) != null
+                ? `If we run over, it’s ${m(rate(CONTENT_KEY.overtime)!)} per 30 min.`
+                : "If we run over, overtime is charged per 30 min."}
+            </p>
+          }
+          onDismiss={() => setFitAsk(false)}
+          choices={[
+            {
+              label: `Yes, keep ${hours}h`,
+              onClick: () => {
+                setFitAsk(false);
+                setFitOk(hours);
+                onStep("when");
+              },
+            },
+            ...(fitsIn > hours
+              ? [
+                  {
+                    label: `Switch to ${fitsIn}h`,
+                    primary: true,
+                    onClick: () => {
+                      setFitAsk(false);
+                      setTouched(true);
+                      setHours(fitsIn);
+                      setFitOk(fitsIn);
+                      onStep("when");
+                    },
+                  },
+                ]
+              : []),
+          ]}
+        />
+      )}
       {leave}
     </>
   );

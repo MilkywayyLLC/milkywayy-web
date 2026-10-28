@@ -301,6 +301,20 @@ export default async function ShootPage({
       {admin && team.length > 1 && (
         <ShareWith kind="p" id={p.id} team={team} chosen={p.shared_with ?? []} />
       )}
+      {p.meta.shot_update?.note && (
+        <p className="pt-note" role="status" data-testid="shot-update">
+          {p.meta.shot_update.note}
+          {pay?.sees_money && p.meta.shot_update.diff
+            ? p.meta.shot_update.outcome === "invoice"
+              ? ". The difference is on a separate invoice below."
+              : p.meta.shot_update.outcome === "credit"
+                ? ". The difference is credit on your account: it comes off your next invoice."
+                : p.meta.shot_update.outcome === "balance"
+                  ? ". Your balance invoice follows what we shot."
+                  : "."
+            : ""}
+        </p>
+      )}
       {pay && (
         <ProjectPaymentCard
           pay={pay}

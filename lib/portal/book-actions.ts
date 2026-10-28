@@ -8,6 +8,8 @@ import { requireAccount } from "./auth";
 import {
   cleanVideos,
   clientPricing,
+  contentPrices,
+  isContentHours,
   estimate,
   estimateLines,
   normalizeServices,
@@ -72,7 +74,9 @@ function cleanService(s: BookingService): BookingService | null {
   if (s.service === "property")
     return s.property ? { service: "property", property: photosOnly(s.property) } : null;
   if (s.service === "videos" && s.videos) {
-    const videos = cleanVideos(s.videos);
+    // The booked prices are the server's to set (withPrices), never the browser's.
+    const { priced: _drop, ...videos } = cleanVideos(s.videos);
+    void _drop;
     if (videos.by === "count" && !videos.short && !videos.long) return null;
     return { service: "videos", videos };
   }
@@ -92,6 +96,20 @@ const cleanServices = (list: BookingService[]) =>
         ]
       : [];
   });
+/** A v2 content shoot carries the prices it was booked at (owner, 28 Oct 2026): what "Confirm what
+ *  we shot" prices the actual from, whatever the rate card says later. */
+const withPrices = (list: BookingService[], rates: Rates | null): BookingService[] =>
+  list.map((s) =>
+    s.service === "videos" && s.videos?.by === "hours" && s.videos.v === 2 && rates
+      ? {
+          ...s,
+          videos: {
+            ...s.videos,
+            priced: contentPrices(rates, isContentHours(s.videos.hours) ? s.videos.hours : 4),
+          },
+        }
+      : s,
+  );
 const startTime = (t?: string) => (t && /^([01]\d|2[0-3]):[0-5]\d$/.test(t) ? t : null);
 
 export async function bookShoot(b: {
@@ -117,8 +135,8 @@ export async function bookShoot(b: {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return { ok: false, error: "Choose a date." };
   if (!SLOTS.some(([k]) => k === b.slot)) return { ok: false, error: "Choose a time slot." };
   if (!b.location.address?.trim()) return { ok: false, error: "Add the location." };
-  const services = cleanServices(b.services);
-  if (!services.length) return { ok: false, error: "Add at least one service." };
+  const cleaned = cleanServices(b.services);
+  if (!cleaned.length) return { ok: false, error: "Add at least one service." };
   const pricing = await getPropertyPricing();
   const { data: opts } = await db.rpc("my_booking_options", { p_account: current.account.id });
   // Teammates without price access still book at the company's rates (server-side only).
@@ -127,6 +145,7 @@ export async function bookShoot(b: {
     (opts as { rates: Rates | null } | null)?.rates ?? null,
     `client:${user.email ?? user.id}`,
   );
+  const services = withPrices(cleaned, rates);
   const est = rates ? estimate(services, rates, clientPricing(pricing, rates)) : null;
   const loc: BookingLocation = {
     address: b.location.address.trim(),
@@ -228,22 +247,33 @@ export async function bookShoot(b: {
 
 type BookingInput = Parameters<typeof bookShoot>[0];
 
-/** Edit a Requested shoot, or ask to change a Confirmed one (back to Requested). Admin is told. */
-export async function updateBooking(projectId: string, b: BookingInput): Promise<BookResult> {
+/**
+ * Edit a Requested shoot, or ask to change a Confirmed one (back to Requested). Admin is told.
+ * `keepServices` (owner, 28 Oct 2026): only the date, time, place or notes changed, so the booking
+ * keeps its services and the prices it was booked at exactly as stored (whatever the browser sent);
+ * otherwise the services are re-priced at today's rates.
+ */
+export async function updateBooking(
+  projectId: string,
+  b: BookingInput & { keepServices?: boolean },
+): Promise<BookResult> {
   const { db, user, current } = await requireAccount("/portal/shoots");
   if (!can(current, "shoots"))
     return { ok: false, error: "Your access doesn’t include shoots. Ask the account owner." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return { ok: false, error: "Choose a date." };
   if (!SLOTS.some(([k]) => k === b.slot)) return { ok: false, error: "Choose a time slot." };
   if (!b.location.address?.trim()) return { ok: false, error: "Add the location." };
-  const services = cleanServices(b.services);
-  if (!services.length) return { ok: false, error: "Add at least one service." };
   const { data: before } = await db
     .from("projects")
     .select("ref, title, shoot_date, slot, meta")
     .eq("id", projectId)
     .maybeSingle();
   if (!before) return { ok: false, error: "You don’t have access to that shoot." };
+  const stored = before.meta?.booking as
+    { services?: BookingService[]; estimate?: number | null } | undefined;
+  const keep = !!b.keepServices && !!stored?.services?.length;
+  const cleaned = keep ? [] : cleanServices(b.services);
+  if (!keep && !cleaned.length) return { ok: false, error: "Add at least one service." };
   const moved =
     before.shoot_date !== b.date ||
     (before.meta?.booking?.start_time ?? "") !== (b.startTime ?? "");
@@ -266,7 +296,12 @@ export async function updateBooking(projectId: string, b: BookingInput): Promise
     (opts as { rates: Rates | null } | null)?.rates ?? null,
     `client:${user.email ?? user.id}`,
   );
-  const est = rates ? estimate(services, rates, clientPricing(pricing, rates)) : null;
+  const services = keep ? stored!.services! : withPrices(cleaned, rates);
+  const est = keep
+    ? (stored?.estimate ?? null)
+    : rates
+      ? estimate(services, rates, clientPricing(pricing, rates))
+      : null;
   const loc: BookingLocation = {
     address: b.location.address.trim(),
     ...(b.location.lat != null && b.location.lng != null

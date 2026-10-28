@@ -38,7 +38,7 @@ type QueueRow = {
   advance: boolean;
   changed: boolean;
   payment_state: "submitted" | "rejected" | null;
-  stage?: "full" | "deposit" | "balance" | "fee" | null;
+  stage?: "full" | "deposit" | "balance" | "fee" | "adjustment" | null;
 };
 
 const STAGE: Record<string, string> = {
@@ -46,6 +46,7 @@ const STAGE: Record<string, string> = {
   deposit: "Deposit 50%",
   balance: "Balance",
   fee: "Late fee",
+  adjustment: "After-shoot",
 };
 /** The payment column (owner, 24 Oct 2026): what the client owes on it. */
 const paymentStatus = (r: QueueRow) =>

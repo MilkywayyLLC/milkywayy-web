@@ -198,6 +198,7 @@ const STAGE: Record<string, string> = {
   deposit: "Deposit 50%",
   balance: "Balance",
   fee: "Late fee",
+  adjustment: "After-shoot",
 };
 const when = (t: string | null) =>
   t

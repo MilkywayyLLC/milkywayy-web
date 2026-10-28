@@ -518,7 +518,7 @@ export type MyProjectPayment = {
     | {
         id: string;
         number: string | null;
-        stage: "full" | "deposit" | "balance" | "fee";
+        stage: "full" | "deposit" | "balance" | "fee" | "adjustment";
         amount: number;
         currency: string;
         status: "due" | "paid" | "overdue";
@@ -534,6 +534,7 @@ const STAGE: Record<string, string> = {
   deposit: "Deposit (50%)",
   balance: "Balance",
   fee: "Late change fee",
+  adjustment: "After-shoot update",
 };
 
 /** A project's payment card: what's due, how to pay, the lock, and refunds. */

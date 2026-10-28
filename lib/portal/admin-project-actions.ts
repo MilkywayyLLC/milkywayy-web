@@ -49,6 +49,8 @@ const fail = (e: unknown): ActionResult => {
     return { ok: false, error: "The portal admin key isn’t set up (PORTAL_ADMIN_SECRET)." };
   if (/add files to this delivery first/.test(m))
     return { ok: false, error: "Add at least one file to this delivery first." };
+  if (/confirm what we shot first/.test(m))
+    return { ok: false, error: "Confirm what we shot first (under Confirm what we shot)." };
   if (/approves the script first/.test(m))
     return { ok: false, error: "The client approves the script first (post it under Script)." };
   if (/post the script first/.test(m))
