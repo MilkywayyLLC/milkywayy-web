@@ -19,7 +19,7 @@ import { TYPE_PATH } from "@/lib/portal/projects";
 import type { RequestConfig } from "@/lib/portal/requests";
 import { money } from "@/lib/portal/billing";
 import { BookStep, Counter, ThankYou } from "./BookFrame";
-import { BookingPanel, deliveryLine, priceView, type PanelLine } from "./bookPrice";
+import { BookingPanel, priceView, type PanelLine } from "./bookPrice";
 import { confirmText, DueNow, PanelTerms, TermsCheck } from "./BookingTerms";
 import { PriceBlock } from "./PriceBlock";
 import {
@@ -521,8 +521,8 @@ export function ProjectRequestModal({
               <span className="bkp-check-t">
                 Short-form edits
                 <span className="bkp-muted">
-                  Short-form, up to 60 sec
-                  {rate("reel") != null ? ` · ${m(rate("reel")!)} each` : ""}
+                  Up to 60 sec
+                  {rate("reel") != null ? ` · ${m(rate("reel")!)} each` : ""} · within 48 h
                 </span>
               </span>
               <Counter
@@ -536,7 +536,9 @@ export function ProjectRequestModal({
             <div className="bkp-row">
               <span className="bkp-check-t">
                 Long-form edits
-                <span className="bkp-muted">YouTube, priced by length · over 30 min, we quote</span>
+                <span className="bkp-muted">
+                  YouTube, priced by length · 48–72 h · over 30 min, we quote
+                </span>
               </span>
               <Counter
                 label="Long-form edits"
@@ -593,8 +595,8 @@ export function ProjectRequestModal({
               <span className="bkp-check-t">
                 Listing photo edits
                 <span className="bkp-muted">
-                  HDR{rate("photo") != null ? ` · ${m(rate("photo")!)} / photo` : ""} · one batch
-                  per listing
+                  HDR{rate("photo") != null ? ` · ${m(rate("photo")!)} / photo` : ""} · within 24 h,
+                  often same day · one batch per listing
                 </span>
               </span>
             </div>
@@ -775,7 +777,7 @@ export function ProjectRequestModal({
       {ta && avatar && <span className="pt-turnaround">Usual turnaround: {ta}</span>}
       {!edit && (
         <>
-          <DueNow terms={cfg.terms} estimate={reqEst} currency={cfg.price.currency} />
+          <DueNow terms={cfg.terms} estimate={reqEst} currency={cfg.price.currency} noShoot />
           <TermsCheck
             checked={agreed}
             onChange={(x) => {
@@ -848,10 +850,8 @@ export function ProjectRequestModal({
               estimate={itemsEst}
               currency={cfg.price.currency}
               changes={false}
+              noShoot
             />
-            <p className="bkp-muted" data-testid="delivery-times">
-              {deliveryLine(cfg.turnaround)}
-            </p>
           </>
         }
       >

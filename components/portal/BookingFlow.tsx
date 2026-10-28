@@ -46,7 +46,6 @@ import type { RequestConfig } from "@/lib/portal/requests";
 import { halfDaysOf } from "@/lib/portal/payments";
 import {
   BookingPanel,
-  deliveryLine,
   lineName,
   PriceTag,
   priceView,
@@ -816,7 +815,8 @@ export function BookingFlow({
             Short-form edits
             <span className="bkp-muted">
               Up to 60 sec
-              {priceOf(CONTENT_KEY.short) ? ` · ${priceOf(CONTENT_KEY.short)} each` : ""}
+              {priceOf(CONTENT_KEY.short) ? ` · ${priceOf(CONTENT_KEY.short)} each` : ""} · within
+              48 h
             </span>
           </span>
           <Counter
@@ -829,7 +829,9 @@ export function BookingFlow({
         <div className="bkp-row">
           <span className="bkp-check-t">
             Long-form edits
-            <span className="bkp-muted">YouTube, priced by length · over 30 min, we quote</span>
+            <span className="bkp-muted">
+              YouTube, priced by length · 48–72 h · over 30 min, we quote
+            </span>
           </span>
           <Counter
             label="Long-form edits"
@@ -873,9 +875,6 @@ export function BookingFlow({
             </div>
           );
         })}
-        <p className="bkp-muted" data-testid="delivery-times">
-          {deliveryLine(cfg.turnaround)}
-        </p>
       </div>
       <label className="pt-field">
         Brief

@@ -940,6 +940,15 @@
     border-radius: 12px;
     background: var(--surface);
   }
+  /* Labels dead centre, whatever the chip holds. */
+  .bkp-chips button {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    padding: 8px 12px;
+    text-align: center;
+    line-height: 1.2;
+  }
   .bkp-card,
   .bkp-box-card {
     background: var(--surface);
@@ -994,14 +1003,24 @@
     overflow: hidden;
     border-color: var(--line);
   }
-  .bkp-count input {
+  .bkp-count {
+    grid-template-columns: 44px auto 44px;
+  }
+  .bkp-count output {
+    min-width: 2.5rem;
+    padding: 0 4px;
+  }
+  .bkp-count input[type="number"] {
     box-sizing: content-box;
-    width: calc(4ch + 24px);
-    min-width: 4.5rem;
+    width: calc(4ch + 8px);
+    min-width: 3.5rem;
+    height: 44px;
     min-height: 44px;
     padding: 0 4px;
     border: 0;
+    border-radius: 0;
     background: none;
+    box-shadow: none;
     color: inherit;
     font: inherit;
     text-align: center;

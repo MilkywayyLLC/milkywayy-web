@@ -190,18 +190,6 @@ export function PriceTag({ s, v }: { s: Shown | undefined; v: PriceView }) {
   }
 }
 
-/** "Short-form up to 48 h · Long-form 48–72 h · Listing photos within 24 h": the admin's turnaround
- *  texts (short_edit, long_edit, hdr_edit), "hours" shortened; the usual times when none is set. */
-export function deliveryLine(t: Record<string, string> | undefined) {
-  const h = (key: string, usual: string) =>
-    (t?.[key]?.trim() || usual).replace(/\s*hours?\b/gi, " h");
-  return [
-    `Short-form ${h("short_edit", "up to 48 h")}`,
-    `Long-form ${h("long_edit", "48–72 h")}`,
-    `Listing photos ${h("hdr_edit", "within 24 h")}`,
-  ].join(" · ");
-}
-
 export type PanelLine = { key?: string; label: string; sub?: string };
 
 /**

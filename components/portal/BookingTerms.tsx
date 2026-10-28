@@ -96,6 +96,7 @@ export function DueNow({
   currency,
   halfDays = 0,
   flexible = false,
+  noShoot,
 }: {
   terms: TermsView;
   /** The estimate (null without price access). */
@@ -104,6 +105,8 @@ export function DueNow({
   halfDays?: number;
   /** A flexible booking's estimate is the minimum ("from"). */
   flexible?: boolean;
+  /** Edit-only and avatar requests: nothing is shot, so "100% upfront". */
+  noShoot?: boolean;
 }) {
   const m = (n: number) => money(currency, n);
   if (terms.package) {
@@ -140,7 +143,11 @@ export function DueNow({
         <b className="bkp-price">{m(d.total)}</b>
       </div>
       <span className="bkp-muted">
-        {d.pct === 100 ? "100% before the shoot" : "50% now, the balance when it’s delivered"}
+        {d.pct === 100
+          ? noShoot
+            ? "100% upfront"
+            : "100% before the shoot"
+          : "50% now, the balance when it’s delivered"}
         {d.vat ? ` · incl. VAT ${m(d.vat)}` : ""}
         {flexible ? " · from the minimum; the final total follows the shoot" : ""}. Your booking is
         confirmed once it’s paid.
@@ -199,7 +206,10 @@ export function PanelTerms({
   estimate,
   currency,
   changes = true,
+  noShoot,
 }: {
+  /** Edit-only and avatar requests: nothing is shot, so "100% upfront". */
+  noShoot?: boolean;
   terms: TermsView;
   estimate: number | null;
   currency: string;
@@ -222,7 +232,8 @@ export function PanelTerms({
     </span>
   ) : d?.total ? (
     <span>
-      <b>Due now {m(d.total)}</b> · {d.pct === 100 ? "100% before the shoot" : "50% now"}
+      <b>Due now {m(d.total)}</b> ·{" "}
+      {d.pct === 100 ? (noShoot ? "100% upfront" : "100% before the shoot") : "50% now"}
     </span>
   ) : null;
   return (
