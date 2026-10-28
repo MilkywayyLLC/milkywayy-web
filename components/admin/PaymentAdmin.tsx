@@ -238,7 +238,7 @@ export function ProjectPaymentAdmin({
   const latest = pay.acceptances[pay.acceptances.length - 1];
   return (
     <section className="ad-card ad-form" aria-label="Payment" data-testid="project-payment-admin">
-      <div className="ad-row ad-between">
+      <div className="ad-head-split">
         <h2 className="ad-h2">Payment</h2>
         <span className="ad-small ad-muted">
           {pay.terms ? TERMS_LABEL[pay.terms] : "—"}

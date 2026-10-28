@@ -33,16 +33,33 @@ const isTestAddress = (e: string) => /@example\.com$/i.test(e);
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+/**
+ * A line may hold text links written [[label|url]]: the HTML part shows a hyperlink, the plain-text
+ * part "label (url)" (plain text has no hyperlinks).
+ */
+const LINK = /\[\[([^|\]]+)\|([^\]]+)\]\]/g;
+const linesText = (l: string) => l.replace(LINK, (_, label, url) => `${label} (${url})`);
+const linesHtml = (l: string) => {
+  let out = "";
+  let at = 0;
+  for (const m of l.matchAll(LINK)) {
+    out += esc(l.slice(at, m.index)).replace(/\n/g, "<br>");
+    out += `<a href="${esc(m[2])}" style="color:#111110">${esc(m[1])}</a>`;
+    at = m.index + m[0].length;
+  }
+  return out + esc(l.slice(at)).replace(/\n/g, "<br>");
+};
+
 /** Plain, light Viewfinder-style email: text first, one button. */
 export function renderEmail(lines: string[], button: string, link: string) {
-  const text = [...lines, "", `${button}: ${link}`, "", "Milkywayy · Dubai · milkywayy.com"].join(
+  const text = [...lines.map(linesText), "", `${button}: ${link}`, "", "Milkywayy · Dubai · milkywayy.com"].join(
     "\n\n",
   );
   const html = `<!doctype html><html><body style="margin:0;background:#f5f4f0;font-family:Helvetica,Arial,sans-serif;color:#111110">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f4f0;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #dad6cd">
 <tr><td style="padding:22px 24px 6px;font-weight:700;letter-spacing:.04em;font-size:15px"><span style="color:#e5484d">●</span> MILKYWAYY</td></tr>
-<tr><td style="padding:6px 24px 4px;font-size:15px;line-height:1.55">${lines.map((l) => `<p style="margin:0 0 14px">${esc(l).replace(/\n/g, "<br>")}</p>`).join("")}</td></tr>
+<tr><td style="padding:6px 24px 4px;font-size:15px;line-height:1.55">${lines.map((l) => `<p style="margin:0 0 14px">${linesHtml(l)}</p>`).join("")}</td></tr>
 <tr><td style="padding:2px 24px 26px"><a href="${esc(link)}" style="display:inline-block;background:#111110;color:#f5f4f0;text-decoration:none;font-weight:600;padding:13px 20px">${esc(button)}</a></td></tr>
 </table>
 <p style="font-size:12px;color:#5f5a52;margin:14px 0 0">Milkywayy · Dubai · <a href="https://milkywayy.com" style="color:#5f5a52">milkywayy.com</a> · Reply to this email to reach us.</p>

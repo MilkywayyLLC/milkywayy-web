@@ -1,3 +1,4 @@
+import { shortTitle } from "./projects";
 import { projectWhen } from "./when";
 
 /**
@@ -54,6 +55,9 @@ const place = (p: ProjectInfo) =>
   [p.meta?.unit && `Unit ${p.meta.unit}`, p.meta?.building, p.meta?.area]
     .filter(Boolean)
     .join(", ");
+/** Shoots carry an address in the title; batches and avatar videos keep theirs as written. */
+const shortened = (p: ProjectInfo): ProjectInfo =>
+  p.type === "edit" || p.type === "avatar" ? p : { ...p, title: shortTitle(p.title) };
 export const firstName = (name?: string | null) => (name ?? "").trim().split(/\s+/)[0] || "there";
 
 export const projectLink = (origin: string, ref: string) =>
@@ -76,6 +80,8 @@ export function emailFor(
   const hi = `Hi ${firstName(o.name)},`;
   // The real date and start time (phase 1): "Wed 29 Oct · 10:15", never "morning".
   const when = projectWhen(p);
+  // The short location title ("Dubai Marina Mall Tram Station, Dubai Marina"), not the full address.
+  p = shortened(p);
   switch (event) {
     case "booking_confirmed":
       return {
@@ -86,7 +92,7 @@ export function emailFor(
           `${p.title}${place(p) ? `\n${place(p)}` : ""}${when ? `\n${when}` : ""}`,
           ...(o.calendar
             ? [
-                `Add it to your calendar:\nGoogle Calendar: ${o.calendar.google}${o.calendar.ics ? `\nApple / Outlook (.ics): ${o.calendar.ics}` : ""}`,
+                `Add to calendar: [[Google Calendar|${o.calendar.google}]]${o.calendar.ics ? ` · [[Apple / Outlook|${o.calendar.ics}]]` : ""}`,
               ]
             : []),
           "We’ll see you there. Need to change anything? Reply to this email or WhatsApp us.",
@@ -198,6 +204,7 @@ export function whatsappFor(
   const hi = `Hi ${firstName(o.name)},`;
   // The real date and start time (phase 1): "Wed 29 Oct · 10:15", never "morning".
   const when = projectWhen(p);
+  p = shortened(p);
   switch (event) {
     case "booking_confirmed":
       return `${hi} your shoot ${p.ref} is confirmed${when ? ` for ${when}` : ""}: ${p.title}${place(p) ? `, ${place(p)}` : ""}. Everything’s in your portal: ${o.link}`;

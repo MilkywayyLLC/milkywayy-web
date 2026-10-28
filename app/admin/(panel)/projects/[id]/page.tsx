@@ -9,6 +9,7 @@ import {
 } from "@/components/admin/PaymentAdmin";
 import { AddToCalendar } from "@/components/portal/AddToCalendar";
 import { shootEventOf } from "@/lib/portal/shoot-calendar";
+import { shortTitle } from "@/lib/portal/projects";
 import { projectWhen } from "@/lib/portal/when";
 import { LineItems } from "@/components/admin/BillingTools";
 import { AttachToClient } from "@/components/admin/ClientProjectTools";
@@ -226,7 +227,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           <Link className="ad-eb" href="/admin/projects" prefetch={false}>
             ← Projects
           </Link>
-          <h1 className="ad-h1">{p.title}</h1>
+          <h1 className="ad-h1">{p.type === "shoot" ? shortTitle(p.title) : p.title}</h1>
           {p.meta.attached_by_email && <EmailAttachedBadge />}
           {p.meta.past && (
             <p className="ad-note" data-testid="past-note" style={{ margin: "6px 0" }}>

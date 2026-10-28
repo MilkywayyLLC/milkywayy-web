@@ -2023,6 +2023,14 @@
 .ad-between {
   justify-content: space-between;
 }
+/* A card heading with a label on the right; wraps instead of overlapping on narrow cards. */
+.ad-head-split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
 .ad-wrap {
   flex-wrap: wrap;
 }
