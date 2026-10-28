@@ -120,9 +120,9 @@ export function lineName(key: string | undefined, qty: number, fallback = "") {
     case KEY.photos:
       return "Property shoot";
     case KEY.short:
-      return `Short-form × ${qty}`;
+      return qty > 1 ? `Short-form reel × ${qty}` : "Short-form reel";
     case KEY.long:
-      return `Long-form × ${qty}`;
+      return qty > 1 ? `Long-form walkthrough × ${qty}` : "Long-form walkthrough";
     case KEY.extra:
       return `Extra minutes × ${qty}`;
     case KEY.min.half:

@@ -732,28 +732,22 @@ export function BookingFlow({
           <div className="bkp-row">
             <Check
               label="Short-form reel"
-              sub={`Shot + edited at the property · 30–90 sec · ${DELIVERY.short.toLowerCase()}`}
+              sub={`Shot + edited · 30–90 sec · ${DELIVERY.short.toLowerCase()}`}
               checked={pv.short > 0}
               right={pv.short > 0 ? <PriceTag s={shown(KEY.short)} v={v} /> : offPrice(KEY.short)}
               onChange={() => setP({ short: pv.short > 0 ? 0 : 1 })}
             />
-            {pv.short > 0 && !keepPlan && (
-              <Counter label="Short-form" value={pv.short} onChange={(n) => setP({ short: n })} />
-            )}
           </div>
         </div>
         <div className="bkp-box-card" data-on={pv.long > 0 ? "" : undefined}>
           <div className="bkp-row">
             <Check
               label="Long-form walkthrough"
-              sub={`Up to ${LONG_FORM_MINUTES} min · shot + edited at the property · ${DELIVERY.long}`}
+              sub={`Up to ${LONG_FORM_MINUTES} min · shot + edited · ${DELIVERY.long}`}
               checked={pv.long > 0}
               right={pv.long > 0 ? <PriceTag s={shown(KEY.long)} v={v} /> : offPrice(KEY.long)}
               onChange={() => setP(pv.long > 0 ? { long: 0, extra_min: 0 } : { long: 1 })}
             />
-            {pv.long > 0 && !keepPlan && (
-              <Counter label="Long-form" value={pv.long} onChange={(n) => setP({ long: n })} />
-            )}
           </div>
         </div>
         {form.errors.property && (
