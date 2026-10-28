@@ -21,6 +21,7 @@ import {
 import type { ReactNode } from "react";
 import { Icon } from "./Icon";
 import { PaidByTransfer, PayNow } from "./InvoicePay";
+import { splitLabel } from "@/lib/portal/package-builder";
 import { Badge } from "./ui";
 
 /**
@@ -73,6 +74,15 @@ export type ValueMonth = PlanMoney & {
   carry?: Carry | null;
   base_allowance?: number;
   base_half_day_cap?: number;
+  /** Built packages (28 Oct 2026): hours (a half day is 4 h) and edits, included and used. */
+  hours_included?: number | null;
+  hours_used?: number | null;
+  base_hours?: number | null;
+  hours_split?: { full: number; half: number } | null;
+  edits_included?: number | null;
+  edits_used?: number | null;
+  /** Package rate: extras (and pay-for-what-you-use months) at this discount. */
+  rate_pct?: number | null;
   bookings: {
     project_id: string;
     ref: string | null;
@@ -323,6 +333,19 @@ export function ValuePackageCard({ v, admin = false }: { v: ValueMonth; admin?: 
   const later = upfrontLater(v);
   const notice = carryNoticeLine(v);
   const extras = aed0(v.extras_total);
+  // A built package (hours + edits); older value packages keep allowance + shoot days.
+  const built = v.hours_included != null;
+  // A half day is 4 hours.
+  const hours = {
+    done: u.hd.done * 4,
+    booked: u.hd.booked * 4,
+    rest: u.hd.rest * 4,
+    total: u.hd.total * 4,
+  };
+  const eTotal = Number(v.edits_included ?? 0);
+  const eUsed = Number(v.edits_used ?? 0);
+  const edits = { done: 0, booked: eUsed, rest: Math.max(eTotal - eUsed, 0), total: eTotal };
+  const rate = Number(v.rate_pct ?? 0);
   return (
     <section className="pt-card pt-plancard" aria-labelledby="vp-h" data-testid="value-package">
       <div className="pt-plan-head">
@@ -338,12 +361,29 @@ export function ValuePackageCard({ v, admin = false }: { v: ValueMonth; admin?: 
           <b className="pt-mono">{planAmount(v)}</b>
         </div>
       </div>
-      <Meter label="Allowance" part={u.aed} fmt={(n) => m(n)} />
-      <Meter
-        label="Shoot days"
-        part={u.hd}
-        fmt={(n) => `${dayCount(n)} ${n === 2 ? "day" : "days"}`}
-      />
+      {built ? (
+        <>
+          <Meter label="Shoot hours" part={hours} fmt={(n) => `${Math.round(n * 10) / 10} h`} />
+          {v.hours_split && (v.hours_split.full > 0 || v.hours_split.half > 0) && (
+            <span className="pt-meta" data-testid="plan-split">
+              {splitLabel(v.hours_split.full, v.hours_split.half)} a month
+            </span>
+          )}
+          {Number(v.edits_included ?? 0) > 0 && (
+            <Meter label="Edits" part={edits} fmt={(n) => String(n)} />
+          )}
+          <Meter label="Value used" part={u.aed} fmt={(n) => m(n)} />
+        </>
+      ) : (
+        <>
+          <Meter label="Allowance" part={u.aed} fmt={(n) => m(n)} />
+          <Meter
+            label="Shoot days"
+            part={u.hd}
+            fmt={(n) => `${dayCount(n)} ${n === 2 ? "day" : "days"}`}
+          />
+        </>
+      )}
       {carriedLines(v.currency, v.carry).map((l) => (
         <p key={l} className="pt-carried" data-testid="value-carried">
           {l}
@@ -361,7 +401,10 @@ export function ValuePackageCard({ v, admin = false }: { v: ValueMonth; admin?: 
       )}
       {mode === "upfront" && (
         <div className="pt-plan-row" data-testid="value-extras">
-          <span>Extras this month (on next month’s invoice)</span>
+          <span>
+            Extras this month{rate > 0 ? ` at package rates (${rate}% off)` : ""} (on next month’s
+            invoice)
+          </span>
           <span className="pt-mono">{extras > 0 ? m(extras) : "None"}</span>
         </div>
       )}
@@ -372,7 +415,9 @@ export function ValuePackageCard({ v, admin = false }: { v: ValueMonth; admin?: 
           data-testid="value-statement"
         >
           <li>
-            <span>Work this month at their prices</span>
+            <span>
+              Work this month at {rate > 0 ? `package rates (${rate}% off)` : "their prices"}
+            </span>
             <span className="pt-mono">{m(aed0(v.usage_total ?? 0))}</span>
           </li>
           {Number(v.minimum ?? 0) > Number(v.usage_total ?? 0) && (

@@ -647,3 +647,16 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 - Buttons: primary (filled, one per header), ghost (outline, secondary), quiet (tertiary), danger. Invoice filters and project quick filters are chips with counts, not buttons (#11).
 - Inline styles 163 → 68 via shared helpers (`ad-stack-*`, `ad-center`, `ad-between`, `ad-m0`, `ad-pre`, `ad-grow`…); what's left is one-off widths and drag transforms.
 - Dead code: `PlanForm` (BillingTools) and `describeVideo` (MediaParts) deleted. The `setPlan` server action is left in place (lib API, no caller now).
+
+## Monthly package builder (28 Oct 2026) — migration `20261113090000_monthly_package_builder`
+
+- A built package is stored as a value package: allowance = the month's pay-as-you-go value (what the hours + edits + property shoots cost at the client's prices), half-day cap = hours / 4, plus `edit_cap` (tracker) and `rate_pct` (the volume discount). The AED allowance stays the binding limit; hours cap the shoot days as before; edits are tracked, not capped. Old value and inclusions packages compute exactly as before (rate_pct / edit_cap null).
+- "Package rates": the discount applies to extras beyond the package (ledger rows' extra × (1 − rate)) and to pay-for-what-you-use months (a "Package rate · N% off" line on the month-end invoice).
+- Carry-over: allowance (AED) and hours carry; edits carry as value, not as a separate count (carry_step tracks allowance + half-days only). 6-month prepay overrides the rollover rule so month 1–6 credit lasts until month 7.
+- Pay for what you use = `package_billing 'upfront'` + `account_plans.usage_from` (month 2). New `private.plan_month_mode` wraps `month_mode` with it; `package_month` and `package_carry` call it.
+- 6 months = `term_months 6` + `six_prepay`: the fee is 3 × the discounted month in months 1 and 4 and nothing in months 2, 3, 5, 6 (`private.fee_due`); the advance invoice line reads "Name · Nov to Jan (6-month plan, 10% off)". Paid by bank transfer like any invoice.
+- Start date: a 1st, default next month. This month's 1st only if nothing is booked this month (no mid-month switch to untangle). A package set for a later 1st leaves the current month on pay as you go: `booking_terms` counts the package only from its start, and `month_end_lines` bills that month as pay as you go (month-end invoicing clients only; per-booking clients were invoiced at booking).
+- Accept → the client's own package, the plan and the first invoice, published at once (draft → due) and emailed. The admin can't edit an accepted offer from the builder; change the package on the client page as before.
+- "7-day notice" read as: change or stop the upfront package with 7 days' notice before the 1st (shown as text; nothing enforces it). The existing carry-over notice still shows in the last 7 days.
+- The builder's numbers all come from `private.build_offer` (preview and publish), so the screen and the saved offer can't disagree. Rates: the client's own price, else the price list in their currency (`private.package_rate`). Long-form edits price at the per-minute rate × typical length.
+- Scripting/strategy: a flag on the request and in the admin email only.

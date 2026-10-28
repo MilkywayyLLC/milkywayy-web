@@ -16,6 +16,8 @@ import Link from "next/link";
 import { TERMS_LABEL } from "@/lib/portal/payments";
 import { BILLING_LABEL, monthMode, nextInvoice } from "@/lib/portal/plan";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
+import { MonthlyPackage } from "@/components/portal/MonthlyPackage";
+import type { MyPackageOffer } from "@/lib/portal/package-builder";
 import { ActivityList, BudgetCard } from "@/components/portal/Budget";
 import { Badge } from "@/components/portal/ui";
 import { requireAccount } from "@/lib/portal/auth";
@@ -77,6 +79,7 @@ export default async function Billing({
     { data: options },
     { data: monthLines },
     { data: creditRows },
+    { data: packageOffer },
   ] = await Promise.all([
     db.rpc("my_billing", { p_account: a.id }),
     db.from("invoices").select("*").eq("account_id", a.id),
@@ -92,6 +95,8 @@ export default async function Billing({
       .eq("delivered_month", `${dubaiToday().slice(0, 8)}01`),
     // After-shoot credits (28 Oct 2026): what comes off the next invoice.
     db.rpc("my_account_credits", { p_account: a.id }),
+    // Build a monthly package (28 Oct 2026): the request / offer, and this month at package rates.
+    db.rpc("my_package_offer", { p_account: a.id }),
   ]);
   const credits = (creditRows ?? []) as {
     id: string;
@@ -221,6 +226,7 @@ export default async function Billing({
           chat={chatLink(`Hi, I have a question about billing for ${a.name}.`)}
         />
       )}
+      {packageOffer && <MonthlyPackage p={packageOffer as MyPackageOffer} />}
       {bp?.value && <PackageBookings v={bp.value} />}
 
       {b?.budget && <BudgetCard b={b.budget} currency={b.currency} />}

@@ -34,6 +34,7 @@ const NAV: Entry[] = [
         label: "Prices & packages",
         also: ["/admin/billing/packages", "/admin/pricing"],
       },
+      { href: "/admin/billing/package-requests", label: "Package requests" },
       { href: "/admin/billing/refunds", label: "Refunds" },
     ],
   },
@@ -68,9 +69,14 @@ const NAV: Entry[] = [
 
 const under = (path: string, href: string) => path === href || path.startsWith(`${href}/`);
 /** The billing sub-pages have their own entries, so Invoices doesn't claim them. */
-const BILLING_OWN = ["rates", "packages", "refunds", "settings", "suggestions"].map(
-  (x) => `/admin/billing/${x}`,
-);
+const BILLING_OWN = [
+  "rates",
+  "packages",
+  "package-requests",
+  "refunds",
+  "settings",
+  "suggestions",
+].map((x) => `/admin/billing/${x}`);
 const current = (path: string, i: Item) =>
   i.href === "/admin"
     ? path === "/admin"

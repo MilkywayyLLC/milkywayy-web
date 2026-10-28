@@ -39,6 +39,11 @@ export type PlanMoney = {
   next_invoice_on?: string;
   next_invoice_amount?: number;
   carry_notice?: CarryNotice | null;
+  /** Built packages (28 Oct 2026): next month's billing, the 6-month prepay and the month number. */
+  next_mode?: PlanBilling;
+  six_prepay?: boolean;
+  month_no?: number;
+  fee_due?: number;
 };
 
 const monthName = (d: string) =>
@@ -57,6 +62,8 @@ export const BILLING_LABEL: Record<PlanBilling, string> = {
 /** "up to AED 10,000 / month" (usage) or "AED 10,000 paid for October" (upfront). */
 export function planAmount(v: PlanMoney) {
   const m = (n: number) => money(v.currency, Number(n));
+  if (v.six_prepay)
+    return `${m(v.price)} / month · 6-month plan, month ${Math.min(v.month_no ?? 1, 6)} of 6`;
   return monthMode(v) === "upfront"
     ? `${m(v.price)} paid for ${monthName(v.month)}`
     : `up to ${m(v.base_allowance ?? v.allowance)} / month`;
@@ -82,6 +89,14 @@ export function billLine(v: PlanMoney) {
   const n = nextInvoice(v);
   if (monthMode(v) === "usage") return `You’ll be billed ${m(n.amount)} on ${short(n.on)} (so far)`;
   const extras = Number(v.extras_total);
+  // Upfront this month, pay for what you use from next month: the next invoice is next month's end.
+  if (v.next_mode === "usage")
+    return `From ${monthName(n.on)} you pay for what you use, billed ${short(n.on)}${
+      extras > 0 ? ` (+ ${m(extras)} extras from ${monthName(v.month)} so far)` : ""
+    }`;
+  // 6-month prepay: months 2, 3, 5 and 6 are paid; only extras are due.
+  if (v.six_prepay && n.amount - extras <= 0)
+    return `${monthName(n.on)} is prepaid${extras > 0 ? ` · ${m(extras)} extras due ${short(n.on)} (so far)` : ""}`;
   return `Next invoice ${short(n.on)}: ${m(n.amount)} (${monthName(n.on)}’s package${
     extras > 0 ? ` + ${m(extras)} extras so far` : ""
   })`;

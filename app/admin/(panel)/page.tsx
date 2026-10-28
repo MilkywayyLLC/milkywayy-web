@@ -86,7 +86,7 @@ export default async function Today({
     }
   };
 
-  const [rows, queue, inquiries, revenue, settings, leads, changes, drafts, plans] =
+  const [rows, queue, inquiries, revenue, settings, leads, changes, drafts, plans, pkgRequests] =
     await Promise.all([
       // One call for every type: the RPC syncs bookings on each call.
       rpc ? safe(rpc<Row[]>("portal_admin_projects", {})) : null,
@@ -110,6 +110,10 @@ export default async function Today({
         .limit(8),
       db.from("drafts").select("key, updated_at"),
       rpc ? safe(rpc<PlanSummaryRow[]>("portal_admin_plan_summaries", {})) : null,
+      // Monthly package requests and 6-month plans to confirm (28 Oct 2026).
+      rpc
+        ? safe(rpc<{ status: string }[]>("portal_admin_package_requests", { p_status: null }))
+        : null,
     ]);
 
   const origin = originFrom(await headers());
@@ -171,6 +175,11 @@ export default async function Today({
     [overdue.length, "overdue invoices", "/admin/billing?status=overdue"],
     [unread.length, "unread messages", "/admin/inquiries"],
     [newLeads.length, "new leads", "/admin/leads?status=new"],
+    [
+      (pkgRequests ?? []).filter((r) => r.status === "new" || r.status === "six_requested").length,
+      "package requests",
+      "/admin/billing/package-requests",
+    ],
   ];
 
   // Recent client activity: what clients did, newest first (bookings, approvals, revisions,
