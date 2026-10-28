@@ -1615,9 +1615,15 @@
     grid-column: 1 / -1;
   }
   @media (max-width: 480px) {
+    /* Phones: Pay now drops under the info, so number, amount and badge are never clipped. */
+    .pt-ir {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .pt-ir-act {
+      margin: 6px 0 0;
+    }
     .pt-ir-l1 {
       gap: 6px;
-      overflow: hidden;
     }
     .pt-ir-no,
     .pt-ir-amt {

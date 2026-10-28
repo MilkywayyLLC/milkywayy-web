@@ -240,11 +240,20 @@ export const refundState = (i: { amount: number; refunded?: number | null }) =>
 export const shownStatus = (i: Pick<Invoice, "status" | "due_on">): InvoiceStatus =>
   i.status === "due" && i.due_on < dubaiToday() ? "overdue" : i.status;
 
+/** The last day of this month in Dubai, as YYYY-MM-DD: when month-end work is invoiced. */
+export function dubaiMonthEnd() {
+  const [y, m] = dubaiToday().split("-").map(Number);
+  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+}
+
 /** What's waiting for payment, for the Home card and Billing's summary: count, total, currency. */
-export function dueSummary<T extends Pick<Invoice, "status" | "amount" | "currency">>(
-  invoices: T[],
-) {
-  const open = invoices.filter((i) => i.status !== "paid");
+export function dueSummary<
+  T extends Pick<Invoice, "status" | "amount" | "currency"> & { project_id?: string | null },
+>(invoices: T[], drafts: ReadonlySet<string> = new Set()) {
+  // A payment-pending draft booking is paid through its own Finish payment button, not as "due".
+  const open = invoices.filter(
+    (i) => i.status !== "paid" && !(i.project_id && drafts.has(i.project_id)),
+  );
   return {
     open,
     count: open.length,

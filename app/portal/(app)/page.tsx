@@ -66,10 +66,17 @@ export default async function PortalHome({
     Invoice,
     "id" | "number" | "due_on" | "status" | "amount" | "currency" | "project_id"
   >[];
-  const due = dueSummary(invoices);
+  const draftIds = new Set(
+    ((projectRows ?? []) as Project[])
+      .filter((p) => p.status === "awaiting_payment")
+      .map((p) => p.id),
+  );
+  const due = dueSummary(invoices, draftIds);
   // A draft booking's checkout: its own unpaid invoice.
   const payHrefs = Object.fromEntries(
-    due.open.filter((i) => i.project_id).map((i) => [i.project_id!, `/portal/pay/${i.id}`]),
+    invoices
+      .filter((i) => i.status !== "paid" && i.project_id)
+      .map((i) => [i.project_id!, `/portal/pay/${i.id}`]),
   );
   const projects = ((projectRows ?? []) as Project[]).filter((p) => visibleTo(p, user.id));
   const waiting = projects.filter(

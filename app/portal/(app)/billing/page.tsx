@@ -22,6 +22,8 @@ import { requireAccount } from "@/lib/portal/auth";
 import {
   chatLink,
   dateLabel,
+  dubaiMonthEnd,
+  dubaiToday,
   dueSummary,
   extraCount,
   inclusionsText,
@@ -73,12 +75,20 @@ export default async function Billing({
     { data: statementRows },
     { data: payments },
     { data: options },
+    { data: monthLines },
   ] = await Promise.all([
     db.rpc("my_billing", { p_account: a.id }),
     db.from("invoices").select("*").eq("account_id", a.id),
     db.from("statements").select("*").eq("account_id", a.id),
     db.rpc("my_billing_payments", { p_account: a.id }),
     db.rpc("my_payment_options", { p_account: a.id }),
+    // This month's logged work at the client's prices: what a month-end invoice will carry (the same
+    // lines private.budget_month adds up).
+    db
+      .from("line_items")
+      .select("qty, unit_price")
+      .eq("account_id", a.id)
+      .eq("delivered_month", `${dubaiToday().slice(0, 8)}01`),
   ]);
   const opts = options as { bank_transfer?: boolean } | null;
   const bp = payments
@@ -101,17 +111,33 @@ export default async function Billing({
     return px ? y.issued_on.localeCompare(x.issued_on) : x.due_on.localeCompare(y.due_on);
   });
   const unpaid = invoices.some((i) => i.status !== "paid");
-  const due = dueSummary(invoices);
   const dueList = invoices.filter((i) => i.status !== "paid");
   const paidList = invoices.filter((i) => i.status === "paid");
   // Each booking invoice names its booking (MW-xxxx).
   const projectIds = [...new Set(invoices.map((i) => i.project_id).filter(Boolean))] as string[];
   const { data: refRows } = projectIds.length
-    ? await db.from("projects").select("id, ref").in("id", projectIds)
+    ? await db.from("projects").select("id, ref, status").in("id", projectIds)
     : { data: [] };
   const refOf = new Map((refRows ?? []).map((r) => [r.id, r.ref as string]));
+  const due = dueSummary(
+    invoices,
+    new Set((refRows ?? []).filter((r) => r.status === "awaiting_payment").map((r) => r.id)),
+  );
   // End-of-month clients: the month so far, from the plan's own next-invoice numbers.
-  const soFar = bp?.value && monthMode(bp.value) === "usage" ? nextInvoice(bp.value) : null;
+  const soFar =
+    bp?.value && monthMode(bp.value) === "usage"
+      ? {
+          amount: nextInvoice(bp.value).amount,
+          on: nextInvoice(bp.value).on,
+          currency: bp.value.currency,
+        }
+      : bp && !bp.value && bp.terms === "month_end" && monthLines?.length
+        ? {
+            amount: monthLines.reduce((t, l) => t + Number(l.qty) * Number(l.unit_price), 0),
+            on: dubaiMonthEnd(),
+            currency: b?.currency ?? "AED",
+          }
+        : null;
   // A value package (allowance + half-days) has its own card; the old inclusions card otherwise.
   const plan = bp?.value ? null : b?.plan;
   const anyOver = !!plan?.usage.some((u) => Number(u.over) > 0);
@@ -153,10 +179,10 @@ export default async function Billing({
               </Link>
             </div>
           )}
-          {soFar && bp?.value && (
+          {soFar && (
             <div className="pt-sum" data-testid="month-so-far">
               <span className="pt-eb">This month so far</span>
-              <b className="pt-mono">{money(bp.value.currency, soFar.amount)}</b>
+              <b className="pt-mono">{money(soFar.currency, soFar.amount)}</b>
               <span className="pt-meta">invoiced {dateLabel(soFar.on, { year: undefined })}</span>
             </div>
           )}
