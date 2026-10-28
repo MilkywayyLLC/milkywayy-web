@@ -44,7 +44,7 @@ const asExtraIfProperty = <L extends { key?: string }>(l: L): L =>
   l.key === KEY.photos ? { ...l, key: undefined } : l;
 
 const AFTER_NAME: Record<string, [string, string]> = {
-  [KEY.short]: ["reel", "reels"],
+  [KEY.short]: ["short-form", "short-form"],
   [KEY.long]: ["long-form", "long-form"],
 };
 
@@ -120,7 +120,7 @@ export function lineName(key: string | undefined, qty: number, fallback = "") {
     case KEY.photos:
       return "Property shoot";
     case KEY.short:
-      return `Reels × ${qty}`;
+      return `Short-form × ${qty}`;
     case KEY.long:
       return `Long-form × ${qty}`;
     case KEY.extra:
@@ -188,6 +188,18 @@ export function PriceTag({ s, v }: { s: Shown | undefined; v: PriceView }) {
         <span className="bkp-muted">{v.rates ? "On request" : "Extra charges apply"}</span>
       );
   }
+}
+
+/** "Short-form up to 48 h · Long-form 48–72 h · Listing photos within 24 h": the admin's turnaround
+ *  texts (short_edit, long_edit, hdr_edit), "hours" shortened; the usual times when none is set. */
+export function deliveryLine(t: Record<string, string> | undefined) {
+  const h = (key: string, usual: string) =>
+    (t?.[key]?.trim() || usual).replace(/\s*hours?\b/gi, " h");
+  return [
+    `Short-form ${h("short_edit", "up to 48 h")}`,
+    `Long-form ${h("long_edit", "48–72 h")}`,
+    `Listing photos ${h("hdr_edit", "within 24 h")}`,
+  ].join(" · ");
 }
 
 export type PanelLine = { key?: string; label: string; sub?: string };

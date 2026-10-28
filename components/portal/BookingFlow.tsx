@@ -28,6 +28,7 @@ import {
   isLongLength,
   estimateLines,
   KEY,
+  LONG_FORM_MINUTES,
   LONG_LENGTHS,
   longKey,
   longPrice,
@@ -43,7 +44,15 @@ import {
 } from "@/lib/portal/booking";
 import type { RequestConfig } from "@/lib/portal/requests";
 import { halfDaysOf } from "@/lib/portal/payments";
-import { BookingPanel, lineName, PriceTag, priceView, type PanelLine } from "./bookPrice";
+import {
+  BookingPanel,
+  deliveryLine,
+  lineName,
+  PriceTag,
+  priceView,
+  type PanelLine,
+  type PriceView,
+} from "./bookPrice";
 import { confirmText, DueLine, DueNow, PanelTerms, TermsCheck } from "./BookingTerms";
 import { BookStep, Check, Counter, Seg, ServiceCard, ThankYou } from "./BookFrame";
 import {
@@ -558,6 +567,51 @@ export function BookingFlow({
   const plain = (n: number | null | undefined, plus = false) =>
     v.rates && n != null ? <span className="bkp-price">{`${plus ? "+" : ""}${m(n)}`}</span> : null;
 
+  // "Your booking" lists the property's parts on their own lines (display only: the stored estimate
+  // line stays one "Photos · …" line). Falls back to that line if the parts don't add up.
+  const at0 = lines.findIndex((l) => l.key === KEY.photos);
+  let panelRows: PanelLine[] = panelLines;
+  let panelV: PriceView = v;
+  if (at0 >= 0 && lines[at0].amount != null) {
+    const parts: { label: string; sub?: string; amount: number }[] = [];
+    if (prop.photo)
+      parts.push({
+        label: "Photography",
+        sub: propertyTitle(prop, pricing),
+        amount: prices.photo,
+      });
+    if (prop.photo && prop.twilight)
+      parts.push({
+        label: `Twilight × ${prop.twilightQty}`,
+        sub: "Edited from your daylight photos",
+        amount: twi[prop.twilightQty],
+      });
+    if (prop.tour && prices.tour != null) parts.push({ label: "360° tour", amount: prices.tour });
+    const sum = Math.round(parts.reduce((n, x) => n + x.amount, 0) * 100) / 100;
+    if (parts.length && Math.abs(sum - Number(lines[at0].amount)) < 0.01) {
+      const base = v.items[at0];
+      panelRows = [
+        ...panelLines.slice(0, at0),
+        ...parts.map((x) => ({ label: x.label, sub: x.sub })),
+        ...panelLines.slice(at0 + 1),
+      ];
+      panelV = {
+        ...v,
+        items: [
+          ...v.items.slice(0, at0),
+          ...parts.map((x) => ({
+            ...base,
+            key: undefined,
+            qty: 1,
+            amount: v.rates ? x.amount : null,
+            unit: v.rates ? x.amount : null,
+          })),
+          ...v.items.slice(at0 + 1),
+        ],
+      };
+    }
+  }
+
   const propertyStep = (
     <>
       <div className="bkp-group">
@@ -678,17 +732,13 @@ export function BookingFlow({
           <div className="bkp-row">
             <Check
               label="Short-form reel"
-              sub={`30–90 sec · ${DELIVERY.short.toLowerCase()}`}
+              sub={`Shot + edited at the property · 30–90 sec · ${DELIVERY.short.toLowerCase()}`}
               checked={pv.short > 0}
               right={pv.short > 0 ? <PriceTag s={shown(KEY.short)} v={v} /> : offPrice(KEY.short)}
               onChange={() => setP({ short: pv.short > 0 ? 0 : 1 })}
             />
             {pv.short > 0 && !keepPlan && (
-              <Counter
-                label="Short-form reels"
-                value={pv.short}
-                onChange={(n) => setP({ short: n })}
-              />
+              <Counter label="Short-form" value={pv.short} onChange={(n) => setP({ short: n })} />
             )}
           </div>
         </div>
@@ -696,7 +746,7 @@ export function BookingFlow({
           <div className="bkp-row">
             <Check
               label="Long-form walkthrough"
-              sub={`Up to 5 min · ${DELIVERY.long} · extra minutes billed after delivery`}
+              sub={`Up to ${LONG_FORM_MINUTES} min · shot + edited at the property · ${DELIVERY.long}`}
               checked={pv.long > 0}
               right={pv.long > 0 ? <PriceTag s={shown(KEY.long)} v={v} /> : offPrice(KEY.long)}
               onChange={() => setP(pv.long > 0 ? { long: 0, extra_min: 0 } : { long: 1 })}
@@ -771,7 +821,7 @@ export function BookingFlow({
           <span className="bkp-check-t">
             Short-form edits
             <span className="bkp-muted">
-              Reels, up to 60 sec
+              Up to 60 sec
               {priceOf(CONTENT_KEY.short) ? ` · ${priceOf(CONTENT_KEY.short)} each` : ""}
             </span>
           </span>
@@ -829,6 +879,9 @@ export function BookingFlow({
             </div>
           );
         })}
+        <p className="bkp-muted" data-testid="delivery-times">
+          {deliveryLine(cfg.turnaround)}
+        </p>
       </div>
       <label className="pt-field">
         Brief
@@ -992,7 +1045,7 @@ export function BookingFlow({
       {/* Phones: the side panel isn't shown, so the prices go here. */}
       {!keepPrice && (
         <div className="bkp-box-card bkp-phone-only">
-          <BookingPanel lines={panelLines} v={v} />
+          <BookingPanel lines={panelRows} v={panelV} />
         </div>
       )}
       {!edit && (
@@ -1055,7 +1108,7 @@ export function BookingFlow({
                 Prices stay as booked unless you change the services.
               </p>
             ) : (
-              <BookingPanel lines={panelLines} v={v} />
+              <BookingPanel lines={panelRows} v={panelV} />
             )}
             {!edit && <PanelTerms terms={cfg.terms} estimate={est} currency={cfg.price.currency} />}
           </>

@@ -19,7 +19,7 @@ import { TYPE_PATH } from "@/lib/portal/projects";
 import type { RequestConfig } from "@/lib/portal/requests";
 import { money } from "@/lib/portal/billing";
 import { BookStep, Counter, ThankYou } from "./BookFrame";
-import { BookingPanel, priceView, type PanelLine } from "./bookPrice";
+import { BookingPanel, deliveryLine, priceView, type PanelLine } from "./bookPrice";
 import { confirmText, DueNow, PanelTerms, TermsCheck } from "./BookingTerms";
 import { PriceBlock } from "./PriceBlock";
 import {
@@ -521,7 +521,8 @@ export function ProjectRequestModal({
               <span className="bkp-check-t">
                 Short-form edits
                 <span className="bkp-muted">
-                  Reels, up to 60 sec{rate("reel") != null ? ` · ${m(rate("reel")!)} each` : ""}
+                  Short-form, up to 60 sec
+                  {rate("reel") != null ? ` · ${m(rate("reel")!)} each` : ""}
                 </span>
               </span>
               <Counter
@@ -615,28 +616,13 @@ export function ProjectRequestModal({
                 />
                 <Counter
                   label={`Listing ${i + 1} photos`}
-                  value={Math.max(0, Number(l.count) || 0)}
+                  editable
+                  value={Math.max(1, Number(l.count) || 1)}
                   min={1}
                   max={10000}
                   onChange={(n) =>
                     set({
                       listings: listings.map((x, j) => (j === i ? { ...x, count: String(n) } : x)),
-                    })
-                  }
-                />
-                <input
-                  type="number"
-                  className="bkp-listing-n"
-                  min={1}
-                  max={10000}
-                  inputMode="numeric"
-                  aria-label={`Listing ${i + 1} photo count`}
-                  value={l.count}
-                  onChange={(e) =>
-                    set({
-                      listings: listings.map((x, j) =>
-                        j === i ? { ...x, count: e.target.value } : x,
-                      ),
                     })
                   }
                 />
@@ -857,7 +843,15 @@ export function ProjectRequestModal({
               v={v}
               note="Long-form is priced by length · over 30 min, we quote"
             />
-            <PanelTerms terms={cfg.terms} estimate={itemsEst} currency={cfg.price.currency} />
+            <PanelTerms
+              terms={cfg.terms}
+              estimate={itemsEst}
+              currency={cfg.price.currency}
+              changes={false}
+            />
+            <p className="bkp-muted" data-testid="delivery-times">
+              {deliveryLine(cfg.turnaround)}
+            </p>
           </>
         }
       >

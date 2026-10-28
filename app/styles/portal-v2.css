@@ -994,6 +994,22 @@
     overflow: hidden;
     border-color: var(--line);
   }
+  .bkp-count input {
+    width: 64px;
+    min-height: 44px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: center;
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+  .bkp-count input::-webkit-outer-spin-button,
+  .bkp-count input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
   .bkp-count button {
     min-width: 44px;
     min-height: 44px;
@@ -1375,7 +1391,7 @@
   }
   .bkp-listing {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto 84px auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 8px;
     align-items: center;
   }

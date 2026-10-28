@@ -240,7 +240,7 @@ export const hoursNeeded = (short: number, longs: number) =>
 export const VIDEO_KEYS: readonly string[] = [KEY.short, KEY.long, KEY.extra];
 export const isMinimumKey = (k: string) => k === KEY.min.half || k === KEY.min.full;
 /** Short-form is up to 60 seconds, long-form up to 5 minutes (then per extra minute). */
-export const LONG_FORM_MINUTES = 5;
+export const LONG_FORM_MINUTES = 10;
 
 /** A property config with only the Photos parts (photos, twilight, 360 tour). A 360° tour can be
  *  booked on its own (owner, 18 Oct 2026); with neither, photography is on. */
@@ -421,7 +421,7 @@ export function videoSummary(v: VideoPlan): string {
     const head = v.raw ? `${day} · raw files only` : `${day}, edited`;
     const done = [
       v.short ? plural(v.short, "short-form") : "",
-      v.long ? plural(v.long, "walkthrough") : "",
+      v.long ? plural(v.long, "long-form") : "",
     ].filter(Boolean);
     return [head, done.length ? done.join(" · ") : v.approx ? `about: ${v.approx}` : ""]
       .filter(Boolean)
@@ -429,7 +429,7 @@ export function videoSummary(v: VideoPlan): string {
   }
   const parts = [
     v.short ? plural(v.short, "short-form") : "",
-    v.long ? `${plural(v.long, "walkthrough")}${v.extra_min ? ` (+${v.extra_min} min)` : ""}` : "",
+    v.long ? `${plural(v.long, "long-form")}${v.extra_min ? ` (+${v.extra_min} min)` : ""}` : "",
   ].filter(Boolean);
   return parts.join(" · ") || "No videos yet";
 }
@@ -531,7 +531,7 @@ export function videoLines(v: VideoPlan, rates: Rates): EstimateLine[] {
     return out;
   }
   if (v.short) line(KEY.short, "Short-form video (30–90 sec)", v.short);
-  if (v.long) line(KEY.long, `Walkthrough (up to ${LONG_FORM_MINUTES} min)`, v.long);
+  if (v.long) line(KEY.long, `Long-form walkthrough (up to ${LONG_FORM_MINUTES} min)`, v.long);
   if (v.long && v.extra_min) line(KEY.extra, "Walkthrough, extra minutes", v.extra_min);
   return out;
 }

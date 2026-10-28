@@ -198,10 +198,13 @@ export function PanelTerms({
   terms,
   estimate,
   currency,
+  changes = true,
 }: {
   terms: TermsView;
   estimate: number | null;
   currency: string;
+  /** "Free changes up to 3h before" (bookings; not an edit-only request). */
+  changes?: boolean;
 }) {
   const m = (n: number) => money(currency, n);
   const d =
@@ -230,7 +233,7 @@ export function PanelTerms({
           {terms.upcoming.name} starts {dateLabel(terms.upcoming.starts_on, { year: undefined })}
         </span>
       )}
-      <span>Free changes up to {terms.cancel_free_hours}h before</span>
+      {changes && <span>Free changes up to {terms.cancel_free_hours}h before</span>}
     </p>
   );
 }

@@ -15,9 +15,9 @@ export const SERVICE_HINT: Record<ServiceKey, string> = {
 };
 /** The two video counters. */
 export const VIDEO_LABEL = {
-  short: { title: "Short-form", sub: "30–90 sec · 9:16 reels, agent or property" },
+  short: { title: "Short-form", sub: "30–90 sec · 9:16, agent or property" },
   // Dubai's long-form is "Walkthrough" (AUDIT item 24): post-production sells its own long-form.
-  long: { title: "Walkthrough", sub: "Long-form, up to 5 min · 16:9, property or agent" },
+  long: { title: "Long-form", sub: "Up to 10 min · 16:9, property or agent" },
 } as const;
 
 /* AI avatar videos (owner, 10 Oct 2026). Lengths follow the price list (17 Oct 2026): short

@@ -179,8 +179,11 @@ export function Counter({
   value,
   min = 1,
   max = 100,
+  editable,
   onChange,
 }: {
+  /** A number input between − and + (large counts). */
+  editable?: boolean;
   label: string;
   value: number;
   min?: number;
@@ -202,7 +205,22 @@ export function Counter({
       >
         −
       </button>
-      <output aria-live="polite">{value}</output>
+      {editable ? (
+        <input
+          type="number"
+          inputMode="numeric"
+          min={min}
+          max={max}
+          aria-label={`${label} count`}
+          value={value}
+          onChange={(e) => {
+            const n = Math.round(Number(e.target.value));
+            onChange(Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min);
+          }}
+        />
+      ) : (
+        <output aria-live="polite">{value}</output>
+      )}
       <button
         type="button"
         aria-label={`More: ${label}`}
