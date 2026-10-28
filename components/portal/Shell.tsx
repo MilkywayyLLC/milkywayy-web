@@ -113,42 +113,30 @@ export function Shell({
         </nav>
         {railPlan && (
           <Link href="/portal/billing" className="pt-rail-plan" data-testid="rail-plan">
-            {railPlan.kind === "package" ? (
-              <>
-                <span className="pt-rail-plan-k">Your plan</span>
-                <b>{railPlan.name}</b>
-                <div
-                  className="pt-mtr-bar"
-                  role="meter"
-                  aria-label={`Package used: ${railPlan.text}`}
-                  aria-valuemin={0}
-                  aria-valuemax={railPlan.total}
-                  aria-valuenow={Math.min(railPlan.used + railPlan.booked, railPlan.total)}
-                >
-                  <div
-                    className="pt-mtr-done"
-                    style={{
-                      width: `${Math.min(100, (railPlan.used / Math.max(1, railPlan.total)) * 100)}%`,
-                    }}
-                  />
-                  <div
-                    className="pt-mtr-booked"
-                    style={{
-                      width: `${Math.min(100, (railPlan.booked / Math.max(1, railPlan.total)) * 100)}%`,
-                    }}
-                  />
-                </div>
-                <span>{railPlan.text}</span>
-              </>
-            ) : (
-              <>
-                <span className="pt-rail-plan-k">
-                  {railPlan.upcoming ? "Your plan" : "How you pay"}
-                </span>
-                <b>{railPlan.upcoming ?? railPlan.text}</b>
-                {railPlan.upcoming && <span>{railPlan.text}</span>}
-              </>
-            )}
+            <span className="pt-rail-plan-k">Your plan</span>
+            <b>{railPlan.name}</b>
+            <div
+              className="pt-mtr-bar"
+              role="meter"
+              aria-label={`Package used: ${railPlan.text}`}
+              aria-valuemin={0}
+              aria-valuemax={railPlan.total}
+              aria-valuenow={Math.min(railPlan.used + railPlan.booked, railPlan.total)}
+            >
+              <div
+                className="pt-mtr-done"
+                style={{
+                  width: `${Math.min(100, (railPlan.used / Math.max(1, railPlan.total)) * 100)}%`,
+                }}
+              />
+              <div
+                className="pt-mtr-booked"
+                style={{
+                  width: `${Math.min(100, (railPlan.booked / Math.max(1, railPlan.total)) * 100)}%`,
+                }}
+              />
+            </div>
+            <span>{railPlan.text}</span>
           </Link>
         )}
       </aside>

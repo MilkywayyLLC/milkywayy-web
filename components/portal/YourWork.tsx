@@ -12,13 +12,7 @@ import {
   TYPE_PATH,
   type Project,
 } from "@/lib/portal/projects";
-import { StartRequests } from "./StartRequests";
 
-type Cat = { key: string; name: string; href: string; items: Project[] };
-
-/** A website booking, or a portal booking with a property in it. */
-const isProperty = (p: Project) =>
-  !p.meta.booking || p.meta.booking.services.some((s) => s.service === "property");
 const active = (p: Project) => p.status !== "completed" && p.status !== "cancelled";
 
 const weekday = (iso: string) =>
@@ -63,116 +57,80 @@ function Steps({ p }: { p: Project }) {
 }
 
 /**
- * Home → Your work (site-refine, Oct 2026): grouped by kind (property shoots, video shoots,
- * editing, AI avatars; empty groups hidden), one full-width text row per item: title and meta,
- * the real stages as a 2px line with labels, and the status in words with Open →.
+ * Home → active shoots (owner, 28 Oct 2026): the three latest open shoots as one text row each, the
+ * real stages as a 2px line, then View all. A draft awaiting payment has no stages: it gets Finish
+ * payment instead. With shoots switched off it shows the open editing / avatar work.
  */
-export function YourWork({ projects, cfg }: { projects: Project[]; cfg: RequestConfig }) {
-  const shoots = projects.filter((p) => p.type === "shoot");
-  const cats: Cat[] = [
-    ...(cfg.shoots
-      ? [
-          {
-            key: "property",
-            name: "Property shoots",
-            href: TYPE_PATH.shoot,
-            items: shoots.filter(isProperty),
-          },
-          {
-            key: "video",
-            name: "Video shoots",
-            href: TYPE_PATH.shoot,
-            items: shoots.filter((p) => !isProperty(p)),
-          },
-        ]
-      : []),
-    ...(cfg.editing
-      ? [
-          {
-            key: "edit",
-            name: "Editing",
-            href: TYPE_PATH.edit,
-            items: projects.filter((p) => p.type === "edit"),
-          },
-        ]
-      : []),
-    ...(cfg.avatars
-      ? [
-          {
-            key: "avatar",
-            name: "AI avatars",
-            href: TYPE_PATH.avatar,
-            items: projects.filter((p) => p.type === "avatar"),
-          },
-        ]
-      : []),
-  ].filter((c) => c.items.length > 0);
-
-  if (!cats.length)
-    return (
-      <section className="pt-card" aria-labelledby="work">
-        <h2 id="work" className="pt-eb">
-          Your work
-        </h2>
-        <p className="pt-meta" style={{ margin: 0 }}>
-          Nothing yet. Book a shoot, send files to edit or brief an AI avatar video, and follow it
-          here.
-        </p>
-        <span>
-          <StartRequests cfg={cfg} />
-        </span>
-      </section>
-    );
-
+export function YourWork({
+  projects,
+  cfg,
+  payHrefs,
+}: {
+  projects: Project[];
+  cfg: RequestConfig;
+  /** Draft project id → its checkout page (the unpaid booking invoice). */
+  payHrefs: Record<string, string>;
+}) {
+  const open = projects.filter(active);
+  const items = cfg.shoots
+    ? open.filter((p) => p.type === "shoot")
+    : open.filter((p) => p.type !== "shoot");
+  const name = cfg.shoots ? "Active shoots" : "Active work";
+  const all = cfg.shoots ? TYPE_PATH.shoot : TYPE_PATH[items[0]?.type ?? "edit"];
+  if (!items.length) return null;
   return (
     <section className="pt-work" aria-labelledby="work" data-testid="your-work">
-      <h2 id="work" className="pt-eb">
-        Your work
-      </h2>
-      {cats.map((c) => {
-        const live = c.items.filter(active);
-        // In progress first; with nothing open, the latest finished one keeps the group useful.
-        const shown = (live.length ? live : c.items).slice(0, 4);
-        return (
-          <div key={c.key} className="pt-work-group" data-testid={`work-${c.key}`}>
-            <div className="pt-row">
-              <span className="pt-eb">
-                {c.name} · {live.length} active
+      <div className="pt-row">
+        <h2 id="work" className="pt-eb">
+          {name}
+        </h2>
+        <Link href={all} className="lnk pt-small" prefetch={false}>
+          View all
+        </Link>
+      </div>
+      <ul className="pt-work-items">
+        {items.slice(0, 3).map((p) => {
+          const to = `${TYPE_PATH[p.type]}/${encodeURIComponent(p.ref)}`;
+          const draft = p.status === "awaiting_payment";
+          const when = p.type === "shoot" && p.shoot_date ? projectWhen(p) : day(p.created_at);
+          const body = (
+            <>
+              <span className="pt-wbody">
+                <b className="pt-title">{shortTitle(p.title)}</b>
+                <span className="pt-meta">
+                  {[p.ref, when, service(p)].filter(Boolean).join(" · ")}
+                </span>
+                {!draft && <Steps p={p} />}
               </span>
-              <Link href={c.href} className="lnk pt-small" prefetch={false}>
-                View all
-              </Link>
-            </div>
-            <ul className="pt-work-items">
-              {shown.map((p) => {
-                const when =
-                  p.type === "shoot" && p.shoot_date ? projectWhen(p) : day(p.created_at);
-                return (
-                  <li key={p.id}>
-                    <Link
-                      href={`${TYPE_PATH[p.type]}/${encodeURIComponent(p.ref)}`}
-                      prefetch={false}
-                      className="pt-wrow"
-                    >
-                      <span className="pt-wbody">
-                        <b className="pt-title">{shortTitle(p.title)}</b>
-                        <span className="pt-meta">
-                          {[p.ref, when, service(p)].filter(Boolean).join(" · ")}
-                        </span>
-                        <Steps p={p} />
-                      </span>
-                      <span className="pt-wside">
-                        <span className="pt-wstatus">{statusText(p)}</span>
-                        <span className="lnk pt-small">Open →</span>
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        );
-      })}
+              <span className="pt-wside">
+                <span className="pt-wstatus">{statusText(p)}</span>
+                {!draft && <span className="lnk pt-small">Open →</span>}
+              </span>
+            </>
+          );
+          return (
+            <li key={p.id}>
+              {draft ? (
+                <div className="pt-wrow" data-testid="work-draft">
+                  {body}
+                  <Link
+                    href={payHrefs[p.id] ?? to}
+                    prefetch={false}
+                    className="btn btn-p btn-s"
+                    style={{ justifySelf: "start" }}
+                  >
+                    Finish payment
+                  </Link>
+                </div>
+              ) : (
+                <Link href={to} prefetch={false} className="pt-wrow">
+                  {body}
+                </Link>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }

@@ -445,7 +445,7 @@ export function PackageBookings({ v }: { v: ValueMonth }) {
   );
 }
 
-/** "How you pay" in plain words, with the invoice-question line and WhatsApp link inside. */
+/** "How you pay": one line, with the WhatsApp link for questions. */
 export function HowYouPay({
   bp,
   card,
@@ -467,60 +467,41 @@ export function HowYouPay({
       : (ways[0] ?? "bank transfer");
   const text = bp.value
     ? monthMode(bp.value) === "upfront"
-      ? "Your package is invoiced on the 1st of each month; anything beyond it goes on the next month’s invoice. Nothing is due when you book."
-      : "Your package is billed at the end of each month for the work you used. Nothing is due when you book."
+      ? "Invoiced on the 1st of each month; extras go on the next invoice."
+      : "Your package is billed at the end of each month for what you used."
     : bp.terms === "month_end"
-      ? "You book and we invoice everything at the end of the month. Nothing is due when you book."
+      ? "We invoice at the end of the month."
       : bp.terms === "split"
-        ? "You pay 50% when you book; we confirm the date and time once it’s paid. The other 50% is invoiced when we deliver; the files unlock for download once it’s paid."
-        : "You pay 100% when you book; we confirm the date and time once it’s paid. The files are yours to download as soon as we deliver.";
+        ? "You pay 50% when you book, the rest after delivery."
+        : "You pay 100% when you book.";
   return (
-    <section className="pt-card" aria-labelledby="hyp-h" data-testid="how-you-pay">
-      <h2 id="hyp-h" className="pt-h2">
-        How you pay
-      </h2>
-      <span>{text}</span>
-      <span className="pt-meta">
-        Pay by {waysText}.
-        {bank ? " For a bank transfer, upload the receipt on the invoice and we confirm it." : ""}
-      </span>
-      <div className="pt-plan-row pt-hyp-q">
-        <span className="pt-meta">Something on an invoice? A real person replies.</span>
-        <a className="btn btn-g btn-s" href={chat} target="_blank" rel="noopener noreferrer">
-          WhatsApp us
-        </a>
-      </div>
-    </section>
+    <p className="pt-meta" data-testid="how-you-pay" style={{ margin: 0 }}>
+      <b>How you pay:</b> {text} Pay by {waysText}.{" "}
+      <a className="lnk" href={chat} target="_blank" rel="noopener noreferrer">
+        WhatsApp us
+      </a>
+    </p>
   );
 }
 
-/** The sidebar's plan card: the package with a thin AED meter, or how a pay-per-shoot client pays. */
-export type RailPlan =
-  | { kind: "package"; name: string; used: number; booked: number; total: number; text: string }
-  | { kind: "payg"; text: string; upcoming?: string | null };
+/** The sidebar's plan card: package clients only (name + meters); pay-as-you-go has none. */
+export type RailPlan = {
+  name: string;
+  used: number;
+  booked: number;
+  total: number;
+  text: string;
+};
 
 export function railPlanOf(bp: BillingPayments | null): RailPlan | null {
-  if (!bp) return null;
-  if (bp.value) {
-    const u = packageSplitUsage(bp.value);
-    return {
-      kind: "package",
-      name: bp.value.name,
-      used: u.aed.done,
-      booked: u.aed.booked,
-      total: u.aed.total,
-      text: `${money(bp.value.currency, u.aed.done + u.aed.booked)} of ${Number(u.aed.total).toLocaleString("en-US")} · ${dayCount(u.hd.done + u.hd.booked)} of ${dayCount(u.hd.total)} days`,
-    };
-  }
+  if (!bp?.value) return null;
+  const u = packageSplitUsage(bp.value);
   return {
-    kind: "payg",
-    upcoming: upcomingText(bp.upcoming),
-    text:
-      bp.terms === "month_end"
-        ? "Pay per shoot · invoiced monthly"
-        : bp.terms === "split"
-          ? "Pay per shoot · 50% upfront"
-          : "Pay per shoot · 100% upfront",
+    name: bp.value.name,
+    used: u.aed.done,
+    booked: u.aed.booked,
+    total: u.aed.total,
+    text: `${money(bp.value.currency, u.aed.done + u.aed.booked)} of ${Number(u.aed.total).toLocaleString("en-US")} · ${dayCount(u.hd.done + u.hd.booked)} of ${dayCount(u.hd.total)} days`,
   };
 }
 

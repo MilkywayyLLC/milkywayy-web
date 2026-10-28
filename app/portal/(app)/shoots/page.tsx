@@ -2,7 +2,8 @@ import Link from "next/link";
 import { projectWhen } from "@/lib/portal/when";
 import { Icon } from "@/components/portal/Icon";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
-import { DraftsRow, StartRequests } from "@/components/portal/StartRequests";
+import { ShootDrafts } from "@/components/portal/ShootDrafts";
+import { StartRequests } from "@/components/portal/StartRequests";
 import { Badge, Stepper } from "@/components/portal/ui";
 import { requireAccount } from "@/lib/portal/auth";
 import {
@@ -42,10 +43,14 @@ export default async function Shoots({
     requestConfig(db, current),
     myDrafts(),
   ]);
-  const active = all.filter((p) => p.status !== "completed" && p.status !== "cancelled");
+  // Unpaid bookings are drafts (their own section above), not active shoots.
+  const unpaid = all.filter((p) => p.status === "awaiting_payment");
+  const active = all.filter(
+    (p) => p.status !== "completed" && p.status !== "cancelled" && p.status !== "awaiting_payment",
+  );
   const done = all.filter((p) => p.status === "completed" || p.status === "cancelled");
   // Covers and prices don't depend on each other: one round trip, not two.
-  const [covers, { data: items }] = await Promise.all([
+  const [covers, { data: items }, { data: draftInvoices }] = await Promise.all([
     projectCovers(
       db,
       all.filter((p) => p.delivered_at || p.status === "delivered").map((p) => p.id),
@@ -60,7 +65,20 @@ export default async function Shoots({
             all.map((p) => p.id),
           )
       : Promise.resolve({ data: null }),
+    // Each unpaid booking's checkout: its open invoice (the booker may not see billing: then the
+    // shoot page, which has the same button).
+    unpaid.length
+      ? db
+          .from("invoices")
+          .select("id, project_id")
+          .in(
+            "project_id",
+            unpaid.map((p) => p.id),
+          )
+          .neq("status", "paid")
+      : Promise.resolve({ data: null }),
   ]);
+  const payFor = new Map((draftInvoices ?? []).map((i) => [i.project_id, i.id]));
   const price = new Map<string, string>();
   const sums = new Map<string, { t: number; c: string }>();
   for (const i of items ?? []) {
@@ -84,9 +102,16 @@ export default async function Shoots({
         <StartRequests cfg={cfg} only="booking" />
       </div>
 
-      <DraftsRow
-        drafts={drafts.filter((d) => d.kind === "booking")}
-        hrefs={{ booking: "/portal/book?draft=1" }}
+      <ShootDrafts
+        form={drafts.find((d) => d.kind === "booking") ?? null}
+        unpaid={unpaid.map((p) => ({
+          id: p.id,
+          ref: p.ref,
+          title: shortTitle(p.title),
+          payHref: payFor.has(p.id)
+            ? `/portal/pay/${payFor.get(p.id)}`
+            : `/portal/shoots/${encodeURIComponent(p.ref)}`,
+        }))}
       />
       {all.length === 0 && (
         <div className="pt-card">
@@ -94,7 +119,7 @@ export default async function Shoots({
         </div>
       )}
 
-      {all.length > 0 && (
+      {active.length + done.length > 0 && (
         <nav className="pt-tabs" aria-label="Shoots">
           <Link href="/portal/shoots" aria-selected={tab === "active"} scroll={false}>
             Active ({active.length})
@@ -109,7 +134,7 @@ export default async function Shoots({
         </nav>
       )}
 
-      {all.length > 0 && (tab === "active" ? active : done).length === 0 && (
+      {active.length + done.length > 0 && (tab === "active" ? active : done).length === 0 && (
         <div className="pt-card">
           <span className="pt-meta">
             {tab === "active"

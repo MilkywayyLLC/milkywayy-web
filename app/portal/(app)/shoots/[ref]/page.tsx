@@ -57,6 +57,23 @@ import {
   type Deliverable,
 } from "@/lib/portal/booking";
 
+/** The address once: unit, then the full address; building and community only when it lacks them. */
+function fullAddress(l: {
+  unit?: string | null;
+  building?: string | null;
+  community?: string | null;
+  address?: string | null;
+}) {
+  const addr = l.address ?? "";
+  const lower = addr.toLowerCase();
+  const parts = [
+    l.unit && !lower.includes(l.unit.toLowerCase()) ? `Unit ${l.unit}` : null,
+    ...(addr ? [] : [l.building, l.community]),
+    addr,
+  ];
+  return parts.filter(Boolean).join(", ");
+}
+
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
 export const metadata = { title: "Shoot" };
 
@@ -340,14 +357,7 @@ export default async function ShootPage({
                 [
                   "Address",
                   booking
-                    ? [
-                        booking.location.unit,
-                        booking.location.building,
-                        booking.location.community,
-                        booking.location.address,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")
+                    ? fullAddress(booking.location)
                     : [p.meta.unit && `Unit ${p.meta.unit}`, p.meta.building, p.meta.area]
                         .filter(Boolean)
                         .join(", "),

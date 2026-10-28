@@ -627,6 +627,27 @@
       display: none;
     }
   }
+  .pt-due {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .pt-sumrow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 32px;
+  }
+  .pt-sum {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    align-items: center;
+  }
+  .pt-sum b {
+    font-size: 18px;
+  }
   .pt-stats {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -400,7 +400,7 @@ test("what the client sees: plan card, segmented meters, How you pay, sidebar pl
   await page.context().clearCookies();
   await signInUI(page, p.email);
   await page.goto("/portal/billing");
-  await expect(page.getByTestId("rail-plan")).toContainText("Pay per shoot · 50% upfront");
+  await expect(page.getByTestId("rail-plan")).toHaveCount(0);
   await expect(page.getByTestId("how-you-pay")).toContainText("You pay 50% when you book");
   const { data: u } = await p.db.auth.getUser();
   await p.db.from("portal_drafts").upsert({

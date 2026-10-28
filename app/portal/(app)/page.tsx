@@ -1,7 +1,5 @@
-import { dateLabel, money, shownStatus, type Invoice } from "@/lib/portal/billing";
+import { dateLabel, dueSummary, money, type Invoice } from "@/lib/portal/billing";
 import { activityIcon, activityTime } from "@/lib/portal/activity";
-import type { BillingPayments } from "@/components/portal/PaymentParts";
-import { dayCount, packageSplitUsage } from "@/lib/portal/payments";
 import { Icon } from "@/components/portal/Icon";
 import { projectCovers } from "@/lib/portal/covers";
 import Link from "next/link";
@@ -28,7 +26,6 @@ export default async function PortalHome({
     { data: projectRows },
     { data: profile },
     invites,
-    { data: payments },
     { data: eventRows },
     { data: invoiceRows },
     cfg,
@@ -46,9 +43,6 @@ export default async function PortalHome({
           .eq("account_id", a.id)
           .is("accepted_at", null)
       : Promise.resolve({ count: 0 }),
-    seesMoney(current)
-      ? db.rpc("my_billing_payments", { p_account: a.id })
-      : Promise.resolve({ data: null }),
     db
       .from("project_events")
       .select(
@@ -61,7 +55,7 @@ export default async function PortalHome({
     seesMoney(current)
       ? db
           .from("invoices")
-          .select("id, number, due_on, status, amount, currency")
+          .select("id, number, due_on, status, amount, currency, project_id")
           .eq("account_id", a.id)
           .order("due_on")
       : Promise.resolve({ data: [] }),
@@ -70,9 +64,13 @@ export default async function PortalHome({
 
   const invoices = (invoiceRows ?? []) as Pick<
     Invoice,
-    "id" | "number" | "due_on" | "status" | "amount" | "currency"
+    "id" | "number" | "due_on" | "status" | "amount" | "currency" | "project_id"
   >[];
-  const unpaid = invoices.filter((i) => i.status !== "paid");
+  const due = dueSummary(invoices);
+  // A draft booking's checkout: its own unpaid invoice.
+  const payHrefs = Object.fromEntries(
+    due.open.filter((i) => i.project_id).map((i) => [i.project_id!, `/portal/pay/${i.id}`]),
+  );
   const projects = ((projectRows ?? []) as Project[]).filter((p) => visibleTo(p, user.id));
   const waiting = projects.filter(
     (p) =>
@@ -101,8 +99,7 @@ export default async function PortalHome({
   });
   const openInvites = invites.count ?? 0;
   const first = (profile?.full_name ?? "").trim().split(/\s+/)[0] ?? "";
-  // Stats (owner, 25 Oct 2026): next shoot, in editing, ready to download; no money on Home,
-  // except what's left on a package.
+  // Stats (owner, 25 Oct 2026): next shoot, in editing, ready to download; no money on Home.
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" });
   const nextShoot = projects
     .filter(
@@ -117,8 +114,6 @@ export default async function PortalHome({
   const inEditing = projects.filter((p) =>
     ["shot", "editing", "in_editing", "files_received", "in_production"].includes(p.status),
   ).length;
-  const pkg = (payments as BillingPayments | null)?.value;
-  const left = pkg ? packageSplitUsage(pkg) : null;
   // Recent activity: one row per event, no repeats (a status change and its delivery note).
   const eventText = (e: (typeof events)[number]) => {
     const t = shortTitle(e.project.title);
@@ -152,7 +147,7 @@ export default async function PortalHome({
       seen.add(k);
       return true;
     })
-    .slice(0, 8);
+    .slice(0, 5);
 
   const href = (p: Project) => `/portal/p/${encodeURIComponent(p.ref)}`;
 
@@ -222,19 +217,6 @@ export default async function PortalHome({
       text: [shortTitle(p.title), p.status_note].filter(Boolean).join(". "),
       cta: "Open",
     })),
-    // No amounts on Home (owner, 4 Oct 2026): money only on the invoice itself.
-    ...unpaid.map((i) => {
-      const plain = shownStatus(i) === "overdue" ? "Invoice overdue" : "Invoice due";
-      return {
-        key: i.id,
-        href: "/portal/billing",
-        eb: `Billing · ${i.number ?? ""}`,
-        title: plain,
-        plain,
-        text: `Due ${dateLabel(i.due_on)}. Open Billing to see it and pay.`,
-        cta: "Open Billing",
-      };
-    }),
     ...(openInvites > 0
       ? [
           {
@@ -313,6 +295,25 @@ export default async function PortalHome({
         </p>
       )}
 
+      {due.count > 0 && (
+        <section className="pt-card pt-due" aria-label="Payment due" data-testid="due-card">
+          <b>
+            {due.count} invoice{due.count === 1 ? "" : "s"} due · {money(due.currency, due.total)}
+          </b>
+          <span className="pt-btns">
+            <Link
+              href={due.count === 1 ? `/portal/pay/${due.open[0].id}` : "/portal/billing"}
+              className="btn btn-p btn-s"
+            >
+              Pay
+            </Link>
+            <Link href="/portal/billing" className="btn btn-g btn-s">
+              Open Billing
+            </Link>
+          </span>
+        </section>
+      )}
+
       {attn.length > 0 && (
         <section className="pt-sec" aria-labelledby="attn">
           <h2 id="attn" className="pt-eb">
@@ -368,20 +369,10 @@ export default async function PortalHome({
           <span className="pt-eb">In editing</span>
           <b>{inEditing}</b>
         </div>
-        {left && pkg ? (
-          <div className="pt-stat3" data-testid="stat-package">
-            <span className="pt-eb">Package left</span>
-            <b>
-              {money(pkg.currency, left.aed.rest)} · {dayCount(left.hd.rest)}{" "}
-              {left.hd.rest === 2 ? "day" : "days"}
-            </b>
-          </div>
-        ) : (
-          <div className="pt-stat3">
-            <span className="pt-eb">Ready to download</span>
-            <b>{waiting.length}</b>
-          </div>
-        )}
+        <div className="pt-stat3">
+          <span className="pt-eb">Ready</span>
+          <b>{waiting.length}</b>
+        </div>
       </section>
 
       {tiles.length > 0 && (
@@ -401,7 +392,7 @@ export default async function PortalHome({
         </section>
       )}
 
-      <YourWork projects={projects} cfg={cfg} />
+      <YourWork projects={projects} cfg={cfg} payHrefs={payHrefs} />
 
       <section className="pt-sec" aria-labelledby="act">
         <h2 id="act" className="pt-eb">

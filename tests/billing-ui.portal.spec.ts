@@ -82,8 +82,7 @@ test("Owner: Billing is invoices only (unpaid first), no running totals; Home sh
   // One active month: too little history for a package suggestion.
   await expect(page.getByTestId("suggestion")).toHaveCount(0);
   await page.goto("/portal");
-  await expect(page.getByTestId("attention")).toContainText("Invoice overdue");
-  await expect(page.getByTestId("attention")).not.toContainText("AED");
+  await expect(page.getByTestId("due-card")).toContainText("1 invoice due · AED 750");
 });
 
 test("Owner on a package: plan name, usage as counts, renewal date; the badge says so", async ({

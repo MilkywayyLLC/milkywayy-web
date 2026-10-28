@@ -110,9 +110,7 @@ export function RecipientsForm({ cc }: { cc: NotifyCc }) {
             autoCapitalize="none"
             inputMode="email"
           />
-          <small className="pt-muted">
-            {sub}. Separate addresses with commas, up to 5.
-          </small>
+          <small className="pt-muted">{sub}. Separate addresses with commas, up to 5.</small>
         </label>
       ))}
       <Status state={state} />
@@ -207,10 +205,6 @@ export function CompanyForm({ account }: { account: Account }) {
               />
             </label>
           )}
-          <label className="pt-field">
-            Roughly how much you need a month
-            <input type="text" name="volume_note" defaultValue={account.volume_note ?? ""} />
-          </label>
         </>
       )}
       <label className="pt-field">

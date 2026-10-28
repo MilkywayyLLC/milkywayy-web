@@ -12,8 +12,9 @@ import {
   ValuePackageCard,
   type BillingPayments,
 } from "@/components/portal/PaymentParts";
+import Link from "next/link";
 import { TERMS_LABEL } from "@/lib/portal/payments";
-import { BILLING_LABEL, monthMode } from "@/lib/portal/plan";
+import { BILLING_LABEL, monthMode, nextInvoice } from "@/lib/portal/plan";
 import { LiveRefresh } from "@/components/portal/LiveRefresh";
 import { ActivityList, BudgetCard } from "@/components/portal/Budget";
 import { Badge } from "@/components/portal/ui";
@@ -21,6 +22,7 @@ import { requireAccount } from "@/lib/portal/auth";
 import {
   chatLink,
   dateLabel,
+  dueSummary,
   extraCount,
   inclusionsText,
   money,
@@ -99,6 +101,17 @@ export default async function Billing({
     return px ? y.issued_on.localeCompare(x.issued_on) : x.due_on.localeCompare(y.due_on);
   });
   const unpaid = invoices.some((i) => i.status !== "paid");
+  const due = dueSummary(invoices);
+  const dueList = invoices.filter((i) => i.status !== "paid");
+  const paidList = invoices.filter((i) => i.status === "paid");
+  // Each booking invoice names its booking (MW-xxxx).
+  const projectIds = [...new Set(invoices.map((i) => i.project_id).filter(Boolean))] as string[];
+  const { data: refRows } = projectIds.length
+    ? await db.from("projects").select("id, ref").in("id", projectIds)
+    : { data: [] };
+  const refOf = new Map((refRows ?? []).map((r) => [r.id, r.ref as string]));
+  // End-of-month clients: the month so far, from the plan's own next-invoice numbers.
+  const soFar = bp?.value && monthMode(bp.value) === "usage" ? nextInvoice(bp.value) : null;
   // A value package (allowance + half-days) has its own card; the old inclusions card otherwise.
   const plan = bp?.value ? null : b?.plan;
   const anyOver = !!plan?.usage.some((u) => Number(u.over) > 0);
@@ -126,7 +139,31 @@ export default async function Billing({
         </p>
       )}
 
-      {/* Top (owner, 24 Oct 2026): the plan and its meters, then how this client pays. */}
+      {(due.count > 0 || soFar) && (
+        <section className="pt-card pt-sumrow" aria-label="Summary" data-testid="bill-summary">
+          {due.count > 0 && (
+            <div className="pt-sum" data-testid="due-now">
+              <span className="pt-eb">Due now</span>
+              <b className="pt-mono">{money(due.currency, due.total)}</b>
+              <Link
+                href={due.count === 1 && cardPay ? `/portal/pay/${due.open[0].id}` : "#invoices"}
+                className="btn btn-p btn-s"
+              >
+                Pay
+              </Link>
+            </div>
+          )}
+          {soFar && bp?.value && (
+            <div className="pt-sum" data-testid="month-so-far">
+              <span className="pt-eb">This month so far</span>
+              <b className="pt-mono">{money(bp.value.currency, soFar.amount)}</b>
+              <span className="pt-meta">invoiced {dateLabel(soFar.on, { year: undefined })}</span>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* The plan and its meters (owner, 24 Oct 2026). */}
       {bp?.value && <ValuePackageCard v={bp.value} />}
       {!bp?.value && bp?.upcoming && (
         <section className="pt-card pt-plancard" data-testid="plan-upcoming">
@@ -291,85 +328,101 @@ export default async function Billing({
           Invoices
         </h2>
         {invoices.length ? (
-          <div className="pt-list" data-testid="invoices">
-            {invoices.map((i) => {
-              const st = shownStatus(i);
-              const open = st !== "paid";
-              const submitted = open && i.payment_state === "submitted";
-              const month = i.statement_month ?? i.issued_on.slice(0, 8) + "01";
-              const statement = i.statement_month
-                ? statements.get(i.statement_month.slice(0, 10))
-                : undefined;
-              return (
-                <InvoiceRow
-                  key={i.id}
-                  number={i.number ?? "Invoice"}
-                  amount={money(i.currency, i.amount)}
-                  badge={
-                    <Badge
-                      tone={
-                        st === "paid"
-                          ? "ok"
-                          : submitted
-                            ? undefined
-                            : st === "overdue"
-                              ? "warn"
-                              : "gold"
-                      }
-                    >
-                      {submitted
-                        ? "Submitted"
-                        : st === "paid" && refundState(i)
-                          ? refundState(i)
-                          : STATUS_LABEL[st]}
-                    </Badge>
-                  }
-                  meta={
-                    <>
-                      {monthLabel(month)} · due {dateLabel(i.due_on, { year: undefined })}
-                      {i.paid_via === "stripe" ? " · by card" : ""}
-                      {i.paid_via === "bank" ? " · by bank transfer" : ""}
-                      {Number(i.refunded ?? 0) > 0
-                        ? ` · ${money(i.currency, Number(i.refunded))} refunded`
-                        : ""}
-                    </>
-                  }
-                  note={
-                    open && i.payment_state === "rejected" ? (
-                      <div className="pt-meta pt-warn-text">
-                        We couldn’t confirm your transfer: {i.reject_reason}. Upload the proof
-                        again.
-                      </div>
-                    ) : null
-                  }
-                  actions={
-                    <>
-                      {open && !submitted && bp && (
-                        <PayActions
-                          inv={i}
-                          card={cardPay}
-                          bank={bp.bank_transfer !== false}
-                          wio={bp.wio_link}
-                        />
-                      )}
-                      {i.pdf_source === "generated" ? (
-                        <PdfLink id={i.id} number={i.number ?? "invoice"} />
-                      ) : (
-                        i.pdf_key && <InvoiceDownload id={i.id} number={i.number ?? ""} />
-                      )}
-                    </>
-                  }
-                  breakdown={
-                    // A ledger invoice for a frozen month shows that month's statement; drafts carry their own lines.
-                    statement ? (
-                      <Breakdown s={statement} />
-                    ) : i.lines?.length ? (
-                      <InvoiceLines inv={i} />
-                    ) : null
-                  }
-                />
-              );
-            })}
+          <div className="stack" style={{ gap: 12 }} data-testid="invoices" id="invoices">
+            {[
+              ["Due", dueList],
+              ["Paid", paidList],
+            ].map(
+              ([label, list]) =>
+                (list as Invoice[]).length > 0 && (
+                  <div key={label as string} className="stack" style={{ gap: 6 }}>
+                    <span className="pt-eb">{label as string}</span>
+                    <div className="pt-list">
+                      {(list as Invoice[]).map((i) => {
+                        const st = shownStatus(i);
+                        const open = st !== "paid";
+                        const submitted = open && i.payment_state === "submitted";
+                        const month = i.statement_month ?? i.issued_on.slice(0, 8) + "01";
+                        const statement = i.statement_month
+                          ? statements.get(i.statement_month.slice(0, 10))
+                          : undefined;
+                        return (
+                          <InvoiceRow
+                            key={i.id}
+                            number={i.number ?? "Invoice"}
+                            amount={money(i.currency, i.amount)}
+                            badge={
+                              <Badge
+                                tone={
+                                  st === "paid"
+                                    ? "ok"
+                                    : submitted
+                                      ? undefined
+                                      : st === "overdue"
+                                        ? "warn"
+                                        : "gold"
+                                }
+                              >
+                                {submitted
+                                  ? "Submitted"
+                                  : st === "paid" && refundState(i)
+                                    ? refundState(i)
+                                    : STATUS_LABEL[st]}
+                              </Badge>
+                            }
+                            meta={
+                              <>
+                                {i.project_id && refOf.get(i.project_id)
+                                  ? `${refOf.get(i.project_id)} · `
+                                  : ""}
+                                {monthLabel(month)} · due {dateLabel(i.due_on, { year: undefined })}
+                                {i.paid_via === "stripe" ? " · by card" : ""}
+                                {i.paid_via === "bank" ? " · by bank transfer" : ""}
+                                {Number(i.refunded ?? 0) > 0
+                                  ? ` · ${money(i.currency, Number(i.refunded))} refunded`
+                                  : ""}
+                              </>
+                            }
+                            note={
+                              open && i.payment_state === "rejected" ? (
+                                <div className="pt-meta pt-warn-text">
+                                  We couldn’t confirm your transfer: {i.reject_reason}. Upload the
+                                  proof again.
+                                </div>
+                              ) : null
+                            }
+                            actions={
+                              <>
+                                {open && !submitted && bp && (
+                                  <PayActions
+                                    inv={i}
+                                    card={cardPay}
+                                    bank={bp.bank_transfer !== false}
+                                    wio={bp.wio_link}
+                                  />
+                                )}
+                                {i.pdf_source === "generated" ? (
+                                  <PdfLink id={i.id} number={i.number ?? "invoice"} />
+                                ) : (
+                                  i.pdf_key && <InvoiceDownload id={i.id} number={i.number ?? ""} />
+                                )}
+                              </>
+                            }
+                            breakdown={
+                              // A ledger invoice for a frozen month shows that month's statement; drafts carry their own lines.
+                              statement ? (
+                                <Breakdown s={statement} />
+                              ) : i.lines?.length ? (
+                                <InvoiceLines inv={i} />
+                              ) : null
+                            }
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                ),
+            )}
           </div>
         ) : (
           <p className="pt-meta" style={{ margin: 0 }}>

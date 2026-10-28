@@ -240,6 +240,19 @@ export const refundState = (i: { amount: number; refunded?: number | null }) =>
 export const shownStatus = (i: Pick<Invoice, "status" | "due_on">): InvoiceStatus =>
   i.status === "due" && i.due_on < dubaiToday() ? "overdue" : i.status;
 
+/** What's waiting for payment, for the Home card and Billing's summary: count, total, currency. */
+export function dueSummary<T extends Pick<Invoice, "status" | "amount" | "currency">>(
+  invoices: T[],
+) {
+  const open = invoices.filter((i) => i.status !== "paid");
+  return {
+    open,
+    count: open.length,
+    total: open.reduce((t, i) => t + Number(i.amount), 0),
+    currency: open[0]?.currency ?? "AED",
+  };
+}
+
 export const STATUS_LABEL: Record<InvoiceStatus, string> = {
   due: "Due",
   paid: "Paid",

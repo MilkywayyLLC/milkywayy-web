@@ -388,7 +388,6 @@ const Company = z
     name: z.string().trim().min(2, "Add the name.").max(120),
     industry: z.enum(INDUSTRIES.map((i) => i[0]) as [string, ...string[]]).optional(),
     industry_other: z.string().trim().max(120).optional(),
-    volume_note: z.string().trim().max(500).optional(),
     trn: z
       .string()
       .transform((t) => t.replace(/\s/g, ""))
@@ -408,7 +407,6 @@ export async function saveCompany(_: Result | undefined, form: FormData): Promis
     name: opt("name") ?? "",
     industry: current.account.type === "company" ? opt("industry") : undefined,
     industry_other: opt("industry_other"),
-    volume_note: opt("volume_note"),
     trn: opt("trn"),
     billing_address: opt("billing_address"),
   });
@@ -422,7 +420,6 @@ export async function saveCompany(_: Result | undefined, form: FormData): Promis
         ? {
             industry: v.industry ?? null,
             industry_other: v.industry === "other" ? (v.industry_other ?? null) : null,
-            volume_note: v.volume_note ?? null,
           }
         : {}),
       trn: v.trn || null,
