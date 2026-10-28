@@ -136,7 +136,7 @@ export const CONTENT_KEY = {
   short: "content_short_edit",
   /** Older bookings (before v2): a flat price per long-form edit. */
   long: "content_long_edit",
-  /** Per 30 minutes beyond the booked length. */
+  /** Per extra hour beyond the booked length. */
   overtime: "content_overtime",
 } as const;
 /** Long-form lengths (minutes): one per-minute rate per length, applied to every minute. Longer
@@ -622,7 +622,7 @@ export function contentSummary(v: VideoPlan, p: ContentPrices, currency: string)
   }`;
 }
 
-/** What was booked or shot, for "Confirm what we shot": hours in 30-minute steps. */
+/** What was booked or shot, for "Confirm what we shot": hours in 1-hour steps. */
 export type ShotPlan = {
   hours: number;
   short: number;
@@ -644,9 +644,9 @@ export const bookedShot = (v: VideoPlan): ShotPlan => ({
   raw: !!v.raw,
 });
 
-/** Overtime in 30-minute steps beyond the booked length. */
+/** Overtime in whole hours beyond the booked length. */
 export const overtimeSteps = (booked: number, actual: number) =>
-  Math.max(0, Math.ceil((actual - booked) * 2 - 1e-9));
+  Math.max(0, Math.ceil(actual - booked - 1e-9));
 
 /** The actual, priced at the booking's prices. Throws on a missing price. */
 export function shotItems(actual: ShotPlan, booked: ShotPlan, p: ContentPrices): ConfirmItem[] {
@@ -667,7 +667,7 @@ export function shotItems(actual: ShotPlan, booked: ShotPlan, p: ContentPrices):
   if (steps)
     out.push({
       key: CONTENT_KEY.overtime,
-      description: "Overtime · per 30 min",
+      description: "Overtime · per extra hour",
       qty: steps,
       unit_price: need(p.overtime, "overtime"),
     });
@@ -701,7 +701,7 @@ const itemsTotal = (items: ConfirmItem[]) =>
   Math.round(items.reduce((t, i) => t + i.qty * i.unit_price, 0) * 100) / 100;
 
 /**
- * Booked vs actual (owner, 28 Oct 2026): overtime in 30-minute steps (a shorter shoot isn't
+ * Booked vs actual (owner, 28 Oct 2026): overtime per extra hour (a shorter shoot isn't
  * credited: the time was booked), short-form by count, each long-form by its final length,
  * long-forms added or dropped. Throws on a missing price.
  */
@@ -719,7 +719,7 @@ export function shotDiff(booked: ShotPlan, actual: ShotPlan, p: ContentPrices) {
     );
   };
   const steps = overtimeSteps(booked.hours, actual.hours);
-  if (steps) add(`+${steps * 30} min overtime`, steps * Number(p.overtime));
+  if (steps) add(`+${steps} h overtime`, steps * Number(p.overtime));
   const ds = actual.short - booked.short;
   if (ds)
     add(

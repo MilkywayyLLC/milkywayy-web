@@ -3,13 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { dateLabel, money, monthLabel } from "@/lib/portal/billing";
+import { PayOptions } from "./PayOptions";
 import { acceptPackageOffer, requestPackage } from "@/lib/portal/package-actions";
 import {
   editsLabel,
   hoursFromVolume,
   LONG_MINUTES,
   savingsLine,
-  sixMonthLine,
+  PAY_WORDS,
   splitHours,
   splitLabel,
   type MyPackageOffer,
@@ -85,8 +86,7 @@ function PackageForm({ onCancel }: { onCancel: () => void }) {
   const [long, setLong] = useState("");
   const [minutes, setMinutes] = useState("10");
   const [property, setProperty] = useState("");
-  const [pref, setPref] = useState<"upfront" | "usage">("upfront");
-  const [six, setSix] = useState(false);
+  const [pay, setPay] = useState<PackageOption>("upfront");
   const [scripting, setScripting] = useState(false);
   const [notes, setNotes] = useState("");
   const [err, setErr] = useState("");
@@ -120,8 +120,8 @@ function PackageForm({ onCancel }: { onCancel: () => void }) {
             long: videos ? num(long) : 0,
             longMinutes: videos && num(long) > 0 ? Number(minutes) : null,
             property: needs.includes("property") ? num(property) : 0,
-            paymentPref: pref,
-            sixMonths: six,
+            paymentPref: pay === "usage" ? "usage" : "upfront",
+            sixMonths: pay === "six",
             scripting,
             notes,
           });
@@ -198,37 +198,23 @@ function PackageForm({ onCancel }: { onCancel: () => void }) {
       )}
       {hours > 0 && (
         <p className="pt-meta" style={{ margin: 0 }} data-testid="package-hours">
-          About {hours} hours of shooting a month: {splitLabel(split.full, split.half)} (or{" "}
-          {hours / 4} half days).
+          Shoot hours: {hours} h · {splitLabel(split.full, split.half)}
         </p>
       )}
-      <fieldset className="pt-field" style={{ border: 0, padding: 0, margin: 0 }}>
-        <legend>How would you like to pay?</legend>
-        <label className="pt-check">
-          <input
-            type="radio"
-            name="pref"
-            checked={pref === "upfront"}
-            onChange={() => setPref("upfront")}
-          />{" "}
-          <span>Upfront each month</span>
-        </label>
-        <label className="pt-check">
-          <input
-            type="radio"
-            name="pref"
-            checked={pref === "usage"}
-            onChange={() => setPref("usage")}
-          />{" "}
-          <span>Pay for what you use</span>
-        </label>
-      </fieldset>
-      <label className="pt-check">
-        <input type="checkbox" checked={six} onChange={(e) => setSix(e.target.checked)} />{" "}
-        <span>
-          Interested in 6 months? <small className="pt-meta">· an extra discount</small>
-        </span>
-      </label>
+      <PayOptions
+        name="pref"
+        value={pay}
+        onChange={(v) => setPay(v as PackageOption)}
+        options={[
+          { value: "upfront", ...PAY_WORDS.upfront },
+          { value: "usage", ...PAY_WORDS.usage },
+          {
+            value: "six",
+            title: PAY_WORDS.six.title(),
+            detail: PAY_WORDS.six.detail(),
+          },
+        ]}
+      />
       <label className="pt-check">
         <input
           type="checkbox"
@@ -307,10 +293,12 @@ function PackageReady({ id, o }: { id: string; o: PackageOffer }) {
             <span className="pt-mono">{m(o.property_value)} of shoots at your prices</span>
           </li>
         )}
-        <li>
-          <span>Pay as you go</span>
-          <span className="pt-mono">{m(o.payg_total)}</span>
-        </li>
+        {o.payg_total !== o.price && (
+          <li>
+            <span>Pay as you go</span>
+            <span className="pt-mono">{m(o.payg_total)}</span>
+          </li>
+        )}
         <li className="pt-lines-total">
           <b>Monthly price</b>
           <b className="pt-mono">{m(o.price)}</b>
@@ -330,62 +318,42 @@ function PackageReady({ id, o }: { id: string; o: PackageOffer }) {
         </p>
       )}
 
-      <fieldset className="pt-field" style={{ border: 0, padding: 0, margin: 0 }}>
-        <legend>How would you like to pay?</legend>
-        <label className="pt-check">
-          <input
-            type="radio"
-            name="pkg-opt"
-            checked={choice === "upfront"}
-            onChange={() => setChoice("upfront")}
-          />{" "}
-          <span>
-            <b>Upfront monthly · {m(o.price)}</b>
-            <small className="pt-meta">
-              {" "}
-              · paid at the start of each month. Unused hours and edits carry over for 1 month.
-              Change or stop with 7 days’ notice before the 1st.
-            </small>
-          </span>
-        </label>
-        {o.usage_enabled && (
-          <label className="pt-check">
-            <input
-              type="radio"
-              name="pkg-opt"
-              checked={choice === "usage"}
-              onChange={() => setChoice("usage")}
-            />{" "}
-            <span>
-              <b>Pay for what you use</b>
-              <small className="pt-meta">
-                {" "}
-                · month 1 is paid upfront; from month 2 you’re billed at month end for what you
-                used, at package rates
-                {o.minimum ? ` (minimum ${m(o.minimum)} a month)` : ""}.
-              </small>
-            </span>
-          </label>
-        )}
-        {o.six_enabled && (
-          <label className="pt-check">
-            <input
-              type="radio"
-              name="pkg-opt"
-              checked={choice === "six"}
-              onChange={() => setChoice("six")}
-            />{" "}
-            <span>
-              <b>6 months · {o.six_month_pct}% off</b>
-              <small className="pt-meta">
-                {" "}
-                · {o.currency} {sixMonthLine(o)}. Bank transfer. Unused value carries into month 7.
-                We confirm before it starts.
-              </small>
-            </span>
-          </label>
-        )}
-      </fieldset>
+      <PayOptions
+        name="pkg-opt"
+        value={choice}
+        onChange={(v) => setChoice(v as PackageOption)}
+        options={[
+          { value: "upfront", ...PAY_WORDS.upfront },
+          ...(o.usage_enabled
+            ? [
+                {
+                  value: "usage",
+                  ...PAY_WORDS.usage,
+                  note: (
+                    <span className="pt-meta">
+                      Month 1 is paid upfront; from month 2 you’re billed at month end at package
+                      rates{o.minimum ? ` (minimum ${m(o.minimum)} a month)` : ""}.
+                    </span>
+                  ),
+                },
+              ]
+            : []),
+          ...(o.six_enabled
+            ? [
+                {
+                  value: "six",
+                  title: PAY_WORDS.six.title(o.six_month_pct),
+                  detail: PAY_WORDS.six.detail(o),
+                  note: (
+                    <span className="pt-meta">
+                      Unused value carries into month 7. We confirm before it starts.
+                    </span>
+                  ),
+                },
+              ]
+            : []),
+        ]}
+      />
       {choice !== "six" && (
         <span className="pt-meta">
           Accepting sets up your plan and sends the first invoice: {m(o.price)} for{" "}

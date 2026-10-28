@@ -124,14 +124,32 @@ export const sixMonthLine = (o: PackageOffer) =>
     o.six_instalment,
   )} now + ${k(o.six_instalment)} at start of month 4`;
 
-/** "Save AED 1,500 a month — about 1 extra half day for the same money". */
+/** "Save AED 1,500 a month vs pay as you go"; null when the price isn't lower. */
 export function savingsLine(o: PackageOffer) {
   if (o.savings <= 0) return null;
-  const n = o.extra_half_days;
-  return `Save ${money(o.currency, o.savings)} a month${
-    n > 0 ? ` — about ${n} extra half day${n === 1 ? "" : "s"} for the same money` : ""
-  }`;
+  return `Save ${money(o.currency, o.savings)} a month vs pay as you go`;
 }
+
+/** "32.4K now + 32.4K at month 4". */
+export const sixSplit = (o: Pick<PackageOffer, "six_instalment">) =>
+  `${k(o.six_instalment)} now + ${k(o.six_instalment)} at month 4`;
+
+/** The three ways to pay, worded the same for the client and the admin. */
+export const PAY_WORDS = {
+  upfront: {
+    title: "Upfront each month",
+    detail: "unused shoot hours and edits roll over to next month",
+  },
+  usage: {
+    title: "Pay at the end of the month",
+    detail: "you only pay for what you used",
+  },
+  six: {
+    title: (pct?: number) => (pct ? `6 months · ${pct}% off` : "6 months · extra discount"),
+    detail: (o?: Pick<PackageOffer, "six_instalment">) =>
+      `${o ? sixSplit(o) : "half now, half at month 4"} · bank transfer`,
+  },
+} as const;
 
 /** The discount level as a label: "8% off", "No discount", "Custom". */
 export const levelLabel = (pct: number | null | undefined) =>

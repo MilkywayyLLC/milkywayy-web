@@ -1,5 +1,6 @@
+import { RateCardTabs } from "@/components/admin/RateCardTabs";
 import { PricesNav } from "@/components/admin/PricesNav";
-import { RateCardRow, type RateRow } from "@/components/admin/BillingTools";
+import { type RateRow } from "@/components/admin/BillingTools";
 import { portalAdminPage } from "@/lib/portal/admin";
 
 export const metadata = { title: "Rate card" };
@@ -24,12 +25,7 @@ export default async function Rates() {
         </div>
       </div>
       <PricesNav current="/admin/billing/rates" />
-      <section className="ad-card" data-testid="rate-card">
-        {rows.map((r) => (
-          <RateCardRow key={r.key} row={r} />
-        ))}
-        <RateCardRow />
-      </section>
+      <RateCardTabs rows={rows} />
     </div>
   );
 }

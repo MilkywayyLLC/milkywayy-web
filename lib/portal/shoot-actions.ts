@@ -163,8 +163,8 @@ export async function confirmShot(
   note: string,
 ): Promise<ShootResult> {
   const hours = Number(actual.hours);
-  if (!(hours >= 0.5 && hours <= 16) || Math.round(hours * 2) !== hours * 2)
-    return { ok: false, error: "Shoot length in 30-minute steps." };
+  if (!(hours >= 1 && hours <= 16) || !Number.isInteger(hours))
+    return { ok: false, error: "Shoot length in 1-hour steps." };
   const short = Math.round(Number(actual.short));
   if (!(short >= 0 && short <= 100)) return { ok: false, error: "Short-form edits: 0 to 100." };
   if (actual.longs.length > CONTENT_LONG_MAX_V2 || !actual.longs.every(isLongLength))

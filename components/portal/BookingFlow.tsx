@@ -737,7 +737,7 @@ export function BookingFlow({
             {hours} hours{priceOf(CONTENT_KEY[hours]) ? ` · ${priceOf(CONTENT_KEY[hours])}` : ""}
           </b>
         </div>
-        <span className="bkp-muted">Shoot only: you get the raw files. Add edits below.</span>
+        <span className="bkp-muted">Shoot only — you get the raw files. Add edits below.</span>
         <input
           type="range"
           className="bkp-slider"
@@ -805,26 +805,31 @@ export function BookingFlow({
             )}
           />
         </div>
-        {longs.map((min, i) => (
-          <div className="bkp-group" key={i}>
-            <span className="bkp-muted">
-              Long-form {i + 1}: length{longOf(min) != null ? ` · ${m(longOf(min)!)}` : ""}
-            </span>
-            <div className="bkp-chips" role="group" aria-label={`Long-form ${i + 1} length`}>
-              {LONG_LENGTHS.map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  aria-pressed={min === l}
-                  onClick={() => setLong(i, l)}
-                >
-                  <span>{l} min</span>
-                  {longOf(l) != null && <span className="bkp-muted">{m(longOf(l)!)}</span>}
-                </button>
-              ))}
+        {longs.map((min, i) => {
+          const at = LONG_LENGTHS.indexOf(min as (typeof LONG_LENGTHS)[number]);
+          return (
+            <div className="bkp-lform" key={i}>
+              <span className="bkp-muted">Long-form {i + 1}</span>
+              <input
+                type="range"
+                className="bkp-slider"
+                min={0}
+                max={LONG_LENGTHS.length - 1}
+                step={1}
+                value={at < 0 ? 1 : at}
+                aria-label={`Long-form ${i + 1} length`}
+                aria-valuetext={`${min} min`}
+                style={{
+                  ["--pct" as string]: `${((at < 0 ? 1 : at) / (LONG_LENGTHS.length - 1)) * 100}%`,
+                }}
+                onChange={(e) => setLong(i, LONG_LENGTHS[Number(e.target.value)])}
+              />
+              <b className="bkp-lform-v">
+                {min} min{longOf(min) != null ? ` · ${m(longOf(min)!)}` : ""}
+              </b>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {summary && (
           <p className="bkp-muted" data-testid="content-summary" aria-live="polite">
             {summary}
@@ -1079,8 +1084,8 @@ export function BookingFlow({
           body={
             <p>
               {rate(CONTENT_KEY.overtime) != null
-                ? `If we run over, it’s ${m(rate(CONTENT_KEY.overtime)!)} per 30 min.`
-                : "If we run over, overtime is charged per 30 min."}
+                ? `If the shoot runs past ${hours} hours, each extra hour is ${m(rate(CONTENT_KEY.overtime)!)}.`
+                : `If the shoot runs past ${hours} hours, each extra hour is charged as overtime.`}
             </p>
           }
           onDismiss={() => setFitAsk(false)}

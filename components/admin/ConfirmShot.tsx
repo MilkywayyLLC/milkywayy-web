@@ -56,11 +56,11 @@ function Note({ r, pending }: { r?: ShootResult; pending?: boolean }) {
 }
 
 const hoursText = (h: number) => `${h.toLocaleString("en-US")} h`;
-const HOUR_STEPS = Array.from({ length: 32 }, (_, i) => (i + 1) / 2);
+const HOUR_STEPS = Array.from({ length: 16 }, (_, i) => i + 1);
 
 /**
  * Confirm what we shot (owner, 28 Oct 2026): a v2 content shoot's booked vs actual side by side. Edit
- * what differs (shoot length in 30-minute steps, short-form count, each long-form's final length,
+ * what differs (shoot length in 1-hour steps, short-form count, each long-form's final length,
  * raw files); the lines and the total update live at the booking's prices. Required before the
  * booking can be delivered. More = an adjustment invoice (downloads locked until paid); less = a
  * smaller balance (50%), an account credit (paid in full) or package usage.

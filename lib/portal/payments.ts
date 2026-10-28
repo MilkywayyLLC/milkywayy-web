@@ -380,7 +380,7 @@ export const BOOKING_TERMS: { title: string; text: string }[] = [
   },
   {
     title: "Content shoot overtime",
-    text: "If a content shoot runs past the booked length, overtime is AED 150 per 30 minutes.",
+    text: "Extra time is charged per hour at the overtime rate shown when you book.",
   },
   {
     title: "After-shoot adjustments",

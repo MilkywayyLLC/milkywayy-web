@@ -1349,6 +1349,31 @@
   .bkp-ticks small {
     font-size: 12px;
   }
+  .bkp-lform {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+  }
+  .bkp-lform .bkp-slider {
+    margin: 8px 0;
+  }
+  .bkp-lform-v {
+    min-width: 8.5rem;
+    text-align: right;
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  @media (max-width: 520px) {
+    .bkp-lform {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .bkp-lform .bkp-slider {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+  }
   .bkp-edits {
     display: grid;
     gap: 14px;

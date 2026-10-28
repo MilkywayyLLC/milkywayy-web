@@ -134,10 +134,20 @@ export function lineName(key: string | undefined, qty: number, fallback = "") {
     case KEY.raw.half:
     case KEY.raw.full:
       return `Raw files · ${DAY_LABEL[day(key)].toLowerCase()}`;
-    default:
+    default: {
+      // Content shoot v2: "Content shoot · 4h", "Short-form edits × 4", "Long-form edits × 2".
+      const h = key?.match(/^content_(\d+)h$/);
+      if (h) return `Content shoot · ${h[1]}h`;
+      if (key === "content_short_edit") return `Short-form edits × ${qty}`;
+      if (key && /^content_long_\d+$/.test(key)) return `Long-form edits × ${qty}`;
       return fallback;
+    }
   }
 }
+
+const isLongEdit = (k?: string) => !!k && /^content_long_\d+$/.test(k);
+/** The raw-files note under a content shoot's line. */
+const isShootLine = (k?: string) => !!k && /^content_\d+h$/.test(k);
 
 /** A line's price, wherever it's shown (rows, cards, panel, summary). */
 export function PriceTag({ s, v }: { s: Shown | undefined; v: PriceView }) {
@@ -196,20 +206,43 @@ export function BookingPanel({
   empty?: string;
 }) {
   if (!lines.length) return <p className="bkp-muted">{empty}</p>;
-  if (!v.pkg)
+  if (!v.pkg) {
+    // Long-form edits of different lengths show as one line (display only).
+    const rows: { l: PanelLine; s: Shown }[] = [];
+    lines.forEach((l, i) => {
+      const s = v.items[i];
+      const at = isLongEdit(s.key) ? rows.findIndex((r) => isLongEdit(r.s.key)) : -1;
+      if (at < 0) return void rows.push({ l, s });
+      const r = rows[at].s;
+      rows[at] = {
+        l: { ...rows[at].l, label: `Long-form edits × ${r.qty + s.qty}` },
+        s: {
+          ...r,
+          qty: r.qty + s.qty,
+          amount: r.amount == null || s.amount == null ? null : r.amount + s.amount,
+        },
+      };
+    });
+    const hasEdits = rows.some(({ s }) => s.key === "content_short_edit" || isLongEdit(s.key));
     return (
       <>
         <ul className="bkp-lines">
-          {lines.map((l, i) => (
+          {rows.map(({ l, s }, i) => (
             <li key={i}>
               <span>
                 {l.label}
                 {l.sub && <small className="bkp-muted">{l.sub}</small>}
+                {isShootLine(s.key) && <small className="bkp-muted">Raw files included</small>}
               </span>
-              <PriceTag s={v.items[i]} v={v} />
+              <PriceTag s={s} v={v} />
             </li>
           ))}
         </ul>
+        {hasEdits && (
+          <p className="bkp-muted">
+            Short-form up to 60 sec · Long-form up to the length you picked
+          </p>
+        )}
         {v.total && (
           <div className="bkp-total" data-testid="estimate">
             <span>{v.total.label}</span>
@@ -218,6 +251,7 @@ export function BookingPanel({
         )}
       </>
     );
+  }
   const inc = v.items
     .map((s, i) => ({ s, l: lines[i] }))
     .filter(({ s }) => s.kind === "flex" || s.included > 0);

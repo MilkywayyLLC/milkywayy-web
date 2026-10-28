@@ -17,6 +17,7 @@ import {
   levelLabel,
   LONG_MINUTES,
   NEED_LABEL,
+  PAY_WORDS,
   savingsLine,
   sixMonthLine,
   splitHours,
@@ -108,6 +109,21 @@ export function OfferBuilder({ r }: { r: RequestDetail }) {
   const set = <K extends keyof OfferInput>(k: K, v: OfferInput[K]) =>
     setO((c) => ({ ...c, [k]: v }));
   const hours = (o.full_days * 2 + o.half_days) * 4;
+  // Shoot hours are typed in; only a multiple of 4 (half days) is applied.
+  const [hoursText, setHoursText] = useState(() => String(hours));
+  const typedHours = Number(hoursText);
+  const badHours =
+    hoursText.trim() !== "" && (!Number.isInteger(typedHours) || typedHours % 4 !== 0);
+  const setHours = (h: number) => {
+    const sp = splitHours(h);
+    setHoursText(String(h));
+    setO((c) => ({ ...c, full_days: sp.full, half_days: sp.half }));
+  };
+  const levelPct = preview?.level.pct ?? null;
+  const suggested =
+    preview && levelPct != null
+      ? Math.round(preview.payg_total * (1 - levelPct / 100) * 100) / 100
+      : null;
   const decided = r.status === "accepted" || r.status === "closed";
 
   // The live numbers, from the same function the published offer uses.
@@ -168,8 +184,11 @@ export function OfferBuilder({ r }: { r: RequestDetail }) {
           <li>
             <span>Payment</span>
             <span>
-              {r.payment_pref === "upfront" ? "Upfront" : "Pay for what they use"}
-              {r.six_months ? " · interested in 6 months" : ""}
+              {r.six_months
+                ? "6 months"
+                : r.payment_pref === "upfront"
+                  ? PAY_WORDS.upfront.title
+                  : PAY_WORDS.usage.title}
             </span>
           </li>
           {r.scripting && (
@@ -206,35 +225,44 @@ export function OfferBuilder({ r }: { r: RequestDetail }) {
           />
         </div>
         <div className="ad-grid3">
-          {numField("Full days (8 h)", "full_days")}
-          {numField("Half days (4 h)", "half_days")}
           <div className="ad-field">
-            <span>Hours</span>
-            <b className="ad-mono">{hours} h</b>
+            <label htmlFor="ob-hours">Shoot hours (steps of 4)</label>
+            <input
+              id="ob-hours"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={4}
+              value={hoursText}
+              disabled={decided}
+              onChange={(e) => {
+                setHoursText(e.target.value);
+                const n = Number(e.target.value);
+                if (e.target.value.trim() !== "" && Number.isInteger(n) && n >= 0 && n % 4 === 0)
+                  setHours(n);
+              }}
+            />
             <span className="ad-help">{splitLabel(o.full_days, o.half_days)}</span>
           </div>
         </div>
-        {hours > 0 && (
-          <div className="ad-btns">
-            <button
-              type="button"
-              className="ad-btn small ghost"
-              disabled={decided}
-              onClick={() => {
-                const sp = splitHours(hours);
-                setO((c) => ({ ...c, full_days: sp.full, half_days: sp.half }));
-              }}
-            >
-              Full days first
-            </button>
-            <button
-              type="button"
-              className="ad-btn small ghost"
-              disabled={decided}
-              onClick={() => setO((c) => ({ ...c, full_days: 0, half_days: hours / 4 }))}
-            >
-              All half days ({hours / 4})
-            </button>
+        {badHours && (
+          <div className="ad-note warn" role="alert" data-testid="hours-warning">
+            <span>
+              Use a multiple of 4 (half days). {typedHours} h → {Math.floor(typedHours / 4) * 4} h
+              or {Math.ceil(typedHours / 4) * 4} h?
+            </span>
+            <div className="ad-btns">
+              {[Math.floor(typedHours / 4) * 4, Math.ceil(typedHours / 4) * 4].map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  className="ad-btn small ghost"
+                  onClick={() => setHours(h)}
+                >
+                  {h} h
+                </button>
+              ))}
+            </div>
           </div>
         )}
         <div className="ad-grid3">
@@ -292,7 +320,8 @@ export function OfferBuilder({ r }: { r: RequestDetail }) {
       <section className="ad-card" aria-label="Payment options">
         <span className="ad-eb">Payment options</span>
         <span className="ad-help">
-          Upfront monthly is always offered (month 1 is always upfront).
+          Always offered: {PAY_WORDS.upfront.title.toLowerCase()} ({PAY_WORDS.upfront.detail}; month
+          1 is always upfront).
         </span>
         <label className="ad-check">
           <input
@@ -301,7 +330,10 @@ export function OfferBuilder({ r }: { r: RequestDetail }) {
             onChange={(e) => set("usage_enabled", e.target.checked)}
             disabled={decided}
           />
-          <span>Allow pay for what you use (from month 2, at package rates)</span>
+          <span>
+            Offer: {PAY_WORDS.usage.title} ({PAY_WORDS.usage.detail}; from month 2, at package
+            rates)
+          </span>
         </label>
         {o.usage_enabled &&
           numField(`Minimum a month (${r.currency}, optional)`, "minimum", "none", true)}
@@ -312,7 +344,10 @@ export function OfferBuilder({ r }: { r: RequestDetail }) {
             onChange={(e) => set("six_enabled", e.target.checked)}
             disabled={decided}
           />
-          <span>Offer 6 months ({r.rates.six_month_pct}% off, two bank-transfer instalments)</span>
+          <span>
+            Offer: {PAY_WORDS.six.title(r.rates.six_month_pct)} (
+            {PAY_WORDS.six.detail(preview ?? undefined)})
+          </span>
         </label>
         <div className="ad-field">
           <label htmlFor="ob-note">Note to the client (optional)</label>
@@ -367,15 +402,24 @@ export function OfferBuilder({ r }: { r: RequestDetail }) {
               <b>Pay as you go</b>
               <b className="ad-mono">{m(preview.payg_total)}</b>
             </li>
-            <li>
+            <li data-testid="discount-chain">
               <span>
-                Level: from {m(preview.level.from)} · {levelLabel(preview.level.pct)}
-                {o.discount_pct != null ? ` · using ${preview.discount_pct}%` : ""}
+                Discount level (from {m(preview.level.from)} a month) ·{" "}
+                {levelLabel(preview.level.pct)}
+                {o.discount_pct != null ? ` · overridden to ${preview.discount_pct}%` : ""}
               </span>
               <span className="ad-mono">− {preview.discount_pct}%</span>
             </li>
+            {suggested != null && (
+              <li>
+                <span>
+                  Suggested price ({m(preview.payg_total)} − {levelPct}%)
+                </span>
+                <span className="ad-mono">{m(suggested)}</span>
+              </li>
+            )}
             <li>
-              <b>Monthly price</b>
+              <b>Monthly price{o.price != null ? " (your override)" : ""}</b>
               <b className="ad-mono">{m(preview.price)}</b>
             </li>
             <li>
@@ -396,6 +440,12 @@ export function OfferBuilder({ r }: { r: RequestDetail }) {
         ) : (
           <p className="ad-small ad-muted">{err || "Working it out…"}</p>
         )}
+        {preview && o.price != null && preview.savings <= 0 && (
+          <p className="ad-note warn" role="alert" data-testid="no-saving">
+            No saving: this price is {m(preview.price)} against {m(preview.payg_total)} pay as you
+            go. The client would pay the same or more.
+          </p>
+        )}
         {preview && err && <p className="ad-note warn">{err}</p>}
         {msg && (
           <p className="ad-note" role="status">
@@ -407,7 +457,7 @@ export function OfferBuilder({ r }: { r: RequestDetail }) {
             <button
               type="button"
               className="ad-btn"
-              disabled={pending || !preview || !!err}
+              disabled={pending || !preview || !!err || badHours}
               onClick={() =>
                 start(async () => {
                   const res = await publishOffer(r.id, o);
