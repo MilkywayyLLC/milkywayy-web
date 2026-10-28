@@ -14,6 +14,9 @@ export type InvoiceLine = {
   amount: number;
   line_item_id?: string;
   kind?: string;
+  /** A package extra's booking ref and month (YYYY-MM-01). */
+  ref?: string;
+  month?: string;
 };
 
 export type Invoice = {

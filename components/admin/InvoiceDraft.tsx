@@ -49,6 +49,9 @@ type Row = {
   unit_price: string;
   line_item_id?: string;
   kind?: string;
+  // A package extra's booking and month: what's billed of it (upfront late extras, 28 Oct 2026).
+  ref?: string;
+  month?: string;
 };
 
 /**
@@ -65,6 +68,8 @@ export function DraftEditor({ inv, vatOn }: { inv: DraftData; vatOn: boolean }) 
       unit_price: String(Number(l.unit_price)),
       line_item_id: l.line_item_id,
       kind: l.kind,
+      ref: l.ref,
+      month: l.month,
     })),
   );
   const [note, setNote] = useState(inv.note ?? "");
@@ -118,6 +123,8 @@ export function DraftEditor({ inv, vatOn }: { inv: DraftData; vatOn: boolean }) 
         amount: 0,
         line_item_id: x.line_item_id,
         kind: x.kind,
+        ref: x.ref,
+        month: x.month,
       })),
       note,
       due,

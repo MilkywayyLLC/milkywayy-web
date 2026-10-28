@@ -290,3 +290,44 @@ test("admin and portal read the same numbers", async () => {
   const all = await admin<{ account_id: string; plan: Plan }[]>("portal_admin_plan_summaries", {});
   expect(all.find((r) => r.account_id === c.account)!.plan).toEqual(adminView);
 });
+
+test("upfront: an extra booked after next month's draft is approved goes on the one after, once", async () => {
+  const c = await clientAccount(RUN, "late", "E2E Pkg late extra");
+  await onPackage(c, { started: THIS, billing: "upfront", allowance: 500 });
+  const idOf = async (month: string, status: string) => {
+    const q = await admin<
+      { id: string; account_id: string; period_start: string; advance: boolean; status: string }[]
+    >("portal_admin_invoice_queue", { p_status: null });
+    return q.find(
+      (r) =>
+        r.account_id === c.account && r.period_start === month && r.advance && r.status === status,
+    )?.id;
+  };
+  // From the 25th: next month's draft (the fee; nothing extra yet), approved early.
+  await generate(`${THIS.slice(0, 8)}28`);
+  const next = (await idOf(NEXT, "draft"))!;
+  expect(Number((await draftFor(c, NEXT, true))!.amount)).toBe(10000);
+  await admin("portal_admin_approve_invoice", { p_id: next, p_publish_now: false });
+  // Then work beyond the package this month.
+  await book(c, 1600);
+  const extra = (await plan(c)).extras_total;
+  expect(extra).toBeGreaterThan(0);
+  expect(
+    Number((await admin<{ amount: number }>("portal_admin_invoice", { p_id: next })).amount),
+  ).toBe(10000);
+  // The month after's draft carries it, tagged with its booking and month.
+  await generate(`${NEXT.slice(0, 8)}28`);
+  const after = await draftFor(c, AFTER, true);
+  expect(Number(after!.amount)).toBe(10000 + extra);
+  const line = after!.lines.find(
+    (l) => (l as Line & { kind?: string }).kind === "package_extra",
+  ) as (Line & { ref?: string; month?: string }) | undefined;
+  expect(line).toMatchObject({ month: THIS, unit_price: extra });
+  expect(line!.ref).toMatch(/^MW-/);
+  // Refreshing that draft keeps it; the invoice after that doesn't bill it again.
+  const afterId = (await idOf(AFTER, "draft"))!;
+  await admin("portal_admin_refresh_draft", { p_id: afterId });
+  expect(Number((await draftFor(c, AFTER, true))!.amount)).toBe(10000 + extra);
+  await generate(`${AFTER.slice(0, 8)}28`);
+  expect(Number((await draftFor(c, firstOf(today(), 3), true))!.amount)).toBe(10000);
+});

@@ -85,6 +85,8 @@ export async function saveDraft(
         unit_price: Number(l.unit_price),
         ...(l.line_item_id ? { line_item_id: l.line_item_id } : {}),
         ...(l.kind ? { kind: l.kind } : {}),
+        ...(l.ref ? { ref: l.ref } : {}),
+        ...(l.month ? { month: l.month } : {}),
       })),
       p_note: d.note,
       p_due: d.due,
