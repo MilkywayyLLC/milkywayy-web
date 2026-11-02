@@ -10,6 +10,7 @@ export type DueInvoice = {
   number: string;
   amount: number;
   due_on: string;
+  period: string;
   refs: string[];
 };
 
@@ -47,7 +48,7 @@ export function PayAll({ invoices, currency }: { invoices: DueInvoice[]; currenc
               <span>
                 <span className="pt-mono">{i.number}</span>
                 {i.refs.length > 0 && ` · ${i.refs.join(", ")}`}
-                <span className="pt-meta"> · Due {dateLabel(i.due_on, { year: undefined })}</span>
+                <span className="pt-meta"> · {i.period} · Due {dateLabel(i.due_on, { year: undefined })}</span>
               </span>
             </label>
             <span className="pt-mono">{money(currency, Number(i.amount))}</span>

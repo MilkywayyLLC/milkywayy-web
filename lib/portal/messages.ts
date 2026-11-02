@@ -243,34 +243,35 @@ export type BillingEmail = "invoice_issued" | "payment_received" | "payment_reje
 
 export function invoiceEmail(
   kind: BillingEmail,
-  inv: { number: string; amount: string; due: string; reason?: string | null },
+  inv: { number: string; amount: string; due: string; reason?: string | null; period?: string | null },
   o: { name?: string | null; link: string },
 ) {
   const hi = `Hi ${firstName(o.name)},`;
+  const named = inv.period ? `${inv.number} (${inv.period})` : inv.number;
   if (kind === "invoice_issued")
     return {
-      subject: `New invoice ${inv.number}: ${inv.amount}`,
+      subject: `New invoice ${named}: ${inv.amount}`,
       lines: [
         hi,
-        `Invoice ${inv.number} for ${inv.amount} is in your portal, due ${inv.due}.`,
+        `Invoice ${named} for ${inv.amount} is in your portal, due ${inv.due}.`,
         "Download the PDF from Billing. Questions about it? Reply to this email.",
       ],
       button: "View the invoice",
     };
   if (kind === "payment_rejected")
     return {
-      subject: `Payment not confirmed yet: ${inv.number}`,
+      subject: `Payment not confirmed yet: ${named}`,
       lines: [
         hi,
-        `We couldn't confirm your bank transfer for invoice ${inv.number} (${inv.amount}).`,
+        `We couldn't confirm your bank transfer for invoice ${named}, ${inv.amount}.`,
         ...(inv.reason ? [`Reason: ${inv.reason}`] : []),
         "Check it and upload the proof again in Billing, or reply to this email.",
       ],
       button: "Open Billing",
     };
   return {
-    subject: `Payment received: ${inv.number}`,
-    lines: [hi, `Thank you. We've received ${inv.amount} for invoice ${inv.number}.`],
+    subject: `Payment received: ${named}`,
+    lines: [hi, `Thank you. We've received ${inv.amount} for invoice ${named}.`],
     button: "Open Billing",
   };
 }

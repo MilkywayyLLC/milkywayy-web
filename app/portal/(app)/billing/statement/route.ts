@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { PdfInvoice } from "@/lib/invoice-pdf";
+import { invoicePeriod } from "@/lib/portal/billing";
 import { renderInvoicePdf, pdfResponse } from "@/lib/portal/invoice-pdf-data";
 import { portalDb } from "@/lib/portal/supabase";
 
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
   const lines = parts.map((p, n) => {
     const r = [...(refs.get(ids[n]) ?? [])];
     return {
-      description: `${p.invoice.number ?? "Invoice"}${r.length ? ` · ${r.join(", ")}` : ""} · Due ${day(p.invoice.due_on)}`,
+      description: `${p.invoice.number ?? "Invoice"}${r.length ? ` · ${r.join(", ")}` : ""} · ${invoicePeriod(p.invoice)} · Due ${day(p.invoice.due_on)}`,
       qty: 1,
       unit_price: Number(p.invoice.amount),
       amount: Number(p.invoice.amount),
@@ -51,10 +52,12 @@ export async function GET(req: NextRequest) {
   });
   const total = lines.reduce((t, l) => t + l.amount, 0);
   const due = parts.map((p) => p.invoice.due_on).sort();
-  const month = new Date(`${due[due.length - 1]}T12:00:00`).toLocaleDateString("en-GB", {
-    month: "long",
-    year: "numeric",
-  });
+  // The months these invoices are for: "October 2026", or "October 2026 – November 2026".
+  const periods = parts
+    .map((p) => p.invoice.period_start ?? p.invoice.issued_on)
+    .sort()
+    .map((d) => invoicePeriod({ period_start: d }));
+  const month = [...new Set([periods[0], periods[periods.length - 1]])].join(" – ");
   // A statement is a new document: today's details, not what each invoice was issued with.
   const stmt: PdfInvoice = {
     ...first,

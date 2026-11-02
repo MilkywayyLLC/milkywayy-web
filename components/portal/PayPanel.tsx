@@ -11,6 +11,7 @@ import { StripeEmbed } from "./StripeEmbed";
 export type PayBank = {
   account_name: string | null;
   bank: string | null;
+  account_no?: string | null;
   iban: string | null;
   swift: string | null;
 } | null;
@@ -99,10 +100,10 @@ export function PayPanel({
       )}
       <p className="pt-meta" style={{ margin: 0 }}>
         {card && transfer
-          ? "Pay instantly by card, or by bank transfer with no fees."
+          ? "Pay by card, or by bank transfer."
           : card
             ? "Pay instantly by card."
-            : "Pay by bank transfer — no card fees."}
+            : "Pay by bank transfer."}
       </p>
       {!card && options === "card" && (
         <p className="pt-meta" role="status" style={{ margin: 0 }}>
@@ -134,7 +135,7 @@ export function PayPanel({
             >
               <Icon name="building" size={20} />
               <span>
-                <b>Pay by bank transfer — no card fees</b>
+                <b>Pay by bank transfer</b>
                 <span className="pt-meta">{bankOpen ? "Hide details" : "Show our bank details"}</span>
               </span>
             </button>
@@ -191,6 +192,7 @@ function BankTransfer({
   const rows: [string, string | null | undefined, boolean][] = [
     ["Bank", bank?.bank, false],
     ["Account name", bank?.account_name, false],
+    ["Account number", bank?.account_no, true],
     ["IBAN", bank?.iban, true],
     ["SWIFT/BIC", bank?.swift, true],
     ["Reference", reference, true],

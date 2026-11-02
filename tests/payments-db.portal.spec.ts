@@ -489,6 +489,16 @@ test("what the client sees: plan card, segmented meters, How you pay, sidebar pl
   await expect(page.getByTestId("terms-check")).toBeVisible();
 });
 
+test("a booking's Payment panel names the invoice's period", async ({ page }) => {
+  const c = clients.prepay;
+  const b = await book(c, { estimate: 500 });
+  await signInUI(page, c.email);
+  await page.goto(`/portal/shoots/${b.ref}`);
+  await expect(page.getByTestId("project-payment")).toContainText(
+    new Date(`${today()}T12:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" }),
+  );
+});
+
 /* ---------- cancellations and refunds ---------- */
 
 type AdminPay = {

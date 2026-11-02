@@ -30,6 +30,7 @@ import {
   extraCount,
   inclusionsText,
   money,
+  invoicePeriod,
   monthLabel,
   shownStatus,
   refundState,
@@ -181,6 +182,7 @@ export default async function Billing({
       number: i.number ?? "Invoice",
       amount: Number(i.amount),
       due_on: i.due_on,
+      period: invoicePeriod(i),
       refs: refsFor(i),
     }));
   const due = dueSummary(
@@ -448,7 +450,6 @@ export default async function Billing({
                         const st = shownStatus(i);
                         const open = st !== "paid";
                         const submitted = open && i.payment_state === "submitted";
-                        const month = i.statement_month ?? i.issued_on.slice(0, 8) + "01";
                         const statement = i.statement_month
                           ? statements.get(i.statement_month.slice(0, 10))
                           : undefined;
@@ -479,7 +480,7 @@ export default async function Billing({
                             meta={
                               <>
                                 {refsFor(i).length ? `${refsFor(i).join(", ")} · ` : ""}
-                                {monthLabel(month)} · Due {dateLabel(i.due_on, { year: undefined })}
+                                {invoicePeriod(i)} · Due {dateLabel(i.due_on, { year: undefined })}
                                 {i.paid_via === "stripe" ? " · by card" : ""}
                                 {i.paid_via === "bank" ? " · by bank transfer" : ""}
                                 {Number(i.refunded ?? 0) > 0

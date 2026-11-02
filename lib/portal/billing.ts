@@ -361,6 +361,13 @@ export const monthLabel = (m: string | null | undefined) =>
       })
     : "";
 
+/** The month an invoice is for: its period, never the day it was issued (owner, 2 Nov 2026). */
+export const invoicePeriod = (i: {
+  period_start?: string | null;
+  statement_month?: string | null;
+  issued_on?: string | null;
+}) => monthLabel(i.period_start ?? i.statement_month ?? i.issued_on);
+
 /** The month picker on the invoice queue: this month and the last 6. Previous month in a month's first 7 days. */
 export function draftPeriods(today: string) {
   const y = Number(today.slice(0, 4));

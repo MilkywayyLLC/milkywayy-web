@@ -975,7 +975,7 @@ export function BillingSettingsForm({ s }: { s: BillingSettings }) {
       </label>
       <h2 className="ad-h2">Invoices</h2>
       <span className="ad-small ad-muted">
-        Numbers are given when you approve a draft. The PDF shows these company details.
+        Numbers are given when you approve a draft, and never repeat: the next number can only go up. The PDF shows these company details.
       </span>
       <div className="ad-grid3">
         <div className="ad-field">
@@ -993,7 +993,7 @@ export function BillingSettingsForm({ s }: { s: BillingSettings }) {
             id="in-next"
             name="next_no"
             type="number"
-            min={1}
+            min={s.next_invoice_no ?? 1}
             defaultValue={s.next_invoice_no ?? 1001}
           />
         </div>

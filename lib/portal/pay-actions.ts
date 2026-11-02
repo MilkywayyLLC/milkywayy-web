@@ -48,10 +48,13 @@ export type PayView = {
   bank: {
     account_name: string | null;
     bank: string | null;
+    account_no: string | null;
     iban: string | null;
     swift: string | null;
   } | null;
   due_on: string;
+  period_start: string | null;
+  refs: string[];
   reject_reason: string | null;
   customer_id: string | null;
   project: {
@@ -160,6 +163,7 @@ export type BatchView = {
     amount: number;
     status: string;
     due_on: string;
+    period_start: string | null;
     payment_state: string | null;
     refs: string[];
   }[];

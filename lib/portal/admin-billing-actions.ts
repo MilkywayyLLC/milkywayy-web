@@ -29,7 +29,7 @@ const fail = (e: unknown): BillingResult => {
   console.error("[admin/billing]", m);
   if (/not allowed/.test(m)) return { ok: false, error: "The portal admin key isn’t set up." };
   if (/duplicate key|unique/.test(m))
-    return { ok: false, error: "That invoice number is already used for this client." };
+    return { ok: false, error: "That invoice number is already used." };
   if (/due_on >= issued_on|check constraint "invoices_check"/.test(m))
     return { ok: false, error: "The due date can’t be before the invoice date." };
   if (/a client is on this package/.test(m))

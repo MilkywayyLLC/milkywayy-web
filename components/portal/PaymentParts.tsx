@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { dateLabel, money } from "@/lib/portal/billing";
+import { dateLabel, invoicePeriod, money } from "@/lib/portal/billing";
 import { shortTitle } from "@/lib/portal/projects";
 import { carriedLines, carrySummary, type Carry } from "@/lib/portal/rollover";
 import {
@@ -540,6 +540,7 @@ export type MyProjectPayment = {
         id: string;
         number: string | null;
         stage: "full" | "deposit" | "balance" | "fee" | "adjustment";
+        period_start?: string | null;
         amount: number;
         currency: string;
         status: "due" | "paid" | "overdue";
@@ -619,6 +620,7 @@ export function ProjectPaymentCard({
               meta={
                 <>
                   {STAGE[i.stage] ?? "Invoice"}
+                  {i.period_start ? ` · ${invoicePeriod(i)}` : ""}
                   {Number(i.refunded) > 0
                     ? ` · ${money(i.currency, Number(i.refunded))} refunded`
                     : ""}

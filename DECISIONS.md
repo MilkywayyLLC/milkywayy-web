@@ -717,3 +717,9 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 
 - **Usage counts in the delivery month again.** `20261105` had brought back stamping today's date on logged items, undoing the 17 Oct decision: an item logged in one month and delivered in another used the wrong month's inclusions and could be billed as an Extra. Service day, else delivery, else today, with no stamp. Production had no client on a package, so nothing to backfill.
 - **Everyone on a value package sees hours:** Shoot hours, Edits (when the package has any) and Value used, on the plan card and in the sidebar. Allowance + Shoot days meters are gone.
+
+## 2 Nov 2026 — invoice numbers and periods (migration `20261119090000_invoice_period_numbering`)
+
+- **Numbers never repeat.** The counter can only go up, skips any number already used (void too, whichever client has it), and a number is unique across all clients. On first run it moves past every number on an invoice or in the admin log: production goes from 1002 to 1018, past the void INV-1015 to 1017.
+- **Period everywhere a client sees an invoice:** Billing, Pay all, a booking's Payment panel, statements, the PDF and billing emails. The month it's for, not the day it was issued.
+- **Payment view:** no "no fees" wording. Checkout summary shows period, MW ref and due date; the bank card has the account number (some UAE banks use it for local transfers), copy buttons, receipt upload and "I've paid".

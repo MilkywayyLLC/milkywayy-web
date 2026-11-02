@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckoutGuard } from "@/components/portal/CheckoutChrome";
 import { PayPanel } from "@/components/portal/PayPanel";
-import { dateLabel, money } from "@/lib/portal/billing";
+import { dateLabel, invoicePeriod, money } from "@/lib/portal/billing";
 import { batchView } from "@/lib/portal/pay-actions";
 import { stripeReady } from "@/lib/stripe";
 
@@ -49,7 +49,7 @@ export default async function PayAll({ params }: { params: Promise<{ batch: stri
                 <span>
                   <span className="pt-mono">{i.number}</span>
                   {i.refs.length > 0 && ` · ${i.refs.join(", ")}`}
-                  <span className="pt-meta"> · Due {dateLabel(i.due_on, { year: undefined })}</span>
+                  <span className="pt-meta"> · {invoicePeriod(i)} · Due {dateLabel(i.due_on, { year: undefined })}</span>
                 </span>
                 <span className="pt-mono">{money(b.currency, Number(i.amount))}</span>
               </li>

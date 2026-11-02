@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { CheckoutGuard, PaySummaryBar } from "@/components/portal/CheckoutChrome";
 import { PayChoice } from "@/components/portal/PayChoice";
 import { PayPanel } from "@/components/portal/PayPanel";
-import { money } from "@/lib/portal/billing";
+import { dateLabel, money, monthLabel } from "@/lib/portal/billing";
 import { payView } from "@/lib/portal/pay-actions";
 import { pagePath } from "@/lib/portal/payment-server";
 import { shortTitle } from "@/lib/portal/projects";
@@ -51,6 +51,8 @@ export default async function Pay({ params }: { params: Promise<{ id: string }> 
       </div>
     );
   const shoot = p?.type === "shoot";
+  // The booking row above already names a booking invoice's own ref.
+  const refs = inv.refs.filter((r) => r !== p?.ref);
   // The summary: a side card on desktop, the bottom bar's sheet on phones (owner, 27 Oct 2026).
   const summary = (
     <>
@@ -78,6 +80,22 @@ export default async function Pay({ params }: { params: Promise<{ id: string }> 
         <li>
           <span>Invoice</span>
           <span className="pt-mono">{inv.number}</span>
+        </li>
+        {inv.period_start && (
+          <li>
+            <span>Period</span>
+            <span>{monthLabel(inv.period_start)}</span>
+          </li>
+        )}
+        {refs.length > 0 && (
+          <li>
+            <span>{refs.length === 1 ? "Booking" : "Bookings"}</span>
+            <span className="pt-mono">{refs.join(", ")}</span>
+          </li>
+        )}
+        <li>
+          <span>Due</span>
+          <span>{dateLabel(inv.due_on)}</span>
         </li>
         <li>
           <span>{STAGE[inv.stage ?? ""] ?? "Amount"}</span>

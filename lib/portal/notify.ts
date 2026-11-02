@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { monthLabel } from "./billing";
 import {
   emailFor,
   invoiceEmail,
@@ -183,6 +184,20 @@ export async function notifyMilkywayy(
   );
 }
 
+/** "October 2026" for the email; if the lookup fails the email still goes, without it. */
+async function invoicePeriodOf(account: string, number: string, actor: string) {
+  if (!process.env.PORTAL_ADMIN_SECRET || !number) return null;
+  const db = createClient(portalUrl, portalKey, { auth: { persistSession: false } });
+  const { data, error } = await db.rpc("portal_admin_invoice_period", {
+    p_secret: process.env.PORTAL_ADMIN_SECRET,
+    p_actor: actor,
+    p_account: account,
+    p_number: number,
+  });
+  if (error) console.error("[notify] couldn't read the invoice period:", error.message);
+  return data ? monthLabel(data as string) : null;
+}
+
 /** Billing emails to an account's Owner/Admins and billing copies, each logged (no project). */
 export async function notifyBilling(
   account: string,
@@ -193,8 +208,9 @@ export async function notifyBilling(
   actor = "admin",
 ) {
   let sent = 0;
+  const period = await invoicePeriodOf(account, inv.number, actor);
   for (const r of recipients) {
-    const m = invoiceEmail(kind, inv, { name: r.name, link });
+    const m = invoiceEmail(kind, { ...inv, period }, { name: r.name, link });
     const { text, html } = renderEmail(m.lines, m.button, link);
     const res = await sendEmail(r.email, m.subject, text, html);
     if (res.status === "sent") sent++;
