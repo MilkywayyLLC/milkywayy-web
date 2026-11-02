@@ -14,6 +14,7 @@ import {
   proofLink,
   removeLineItem,
   saveBillingSettings,
+  saveInvoiceSignature,
   savePackage,
   saveRate,
   setClientBilling,
@@ -949,6 +950,7 @@ export function BillingSettingsForm({ s }: { s: BillingSettings }) {
             vat_registered: f.get("vat") === "on",
             bank_account_name: String(f.get("account_name") ?? ""),
             bank_name: String(f.get("bank") ?? ""),
+            bank_account_no: String(f.get("account_no") ?? ""),
             bank_iban: String(f.get("iban") ?? ""),
             bank_swift: String(f.get("swift") ?? ""),
             invoice_prefix: String(f.get("prefix") ?? ""),
@@ -958,6 +960,8 @@ export function BillingSettingsForm({ s }: { s: BillingSettings }) {
             company_address: String(f.get("company_address") ?? ""),
             company_trn: String(f.get("company_trn") ?? ""),
             company_email: String(f.get("company_email") ?? ""),
+            company_licence: String(f.get("company_licence") ?? ""),
+            company_phone: String(f.get("company_phone") ?? ""),
           });
           setR(res);
           if (res.ok) router.refresh();
@@ -1037,13 +1041,33 @@ export function BillingSettingsForm({ s }: { s: BillingSettings }) {
           />
         </div>
         <div className="ad-field">
-          <label htmlFor="co-trn">TRN (shown when VAT registered)</label>
+          <label htmlFor="co-trn">TRN</label>
           <input
             id="co-trn"
             name="company_trn"
             maxLength={15}
             inputMode="numeric"
             defaultValue={s.company_trn ?? ""}
+          />
+        </div>
+      </div>
+      <div className="ad-grid2">
+        <div className="ad-field">
+          <label htmlFor="co-licence">Licence No.</label>
+          <input
+            id="co-licence"
+            name="company_licence"
+            maxLength={60}
+            defaultValue={s.company_licence ?? ""}
+          />
+        </div>
+        <div className="ad-field">
+          <label htmlFor="co-phone">Phone</label>
+          <input
+            id="co-phone"
+            name="company_phone"
+            maxLength={40}
+            defaultValue={s.company_phone ?? ""}
           />
         </div>
       </div>
@@ -1066,6 +1090,15 @@ export function BillingSettingsForm({ s }: { s: BillingSettings }) {
           <input id="bk-bank" name="bank" maxLength={120} defaultValue={s.bank_name ?? ""} />
         </div>
       </div>
+      <div className="ad-field">
+        <label htmlFor="bk-no">Account number</label>
+        <input
+          id="bk-no"
+          name="account_no"
+          maxLength={34}
+          defaultValue={s.bank_account_no ?? ""}
+        />
+      </div>
       <div className="ad-grid2">
         <div className="ad-field">
           <label htmlFor="bk-iban">IBAN</label>
@@ -1079,6 +1112,53 @@ export function BillingSettingsForm({ s }: { s: BillingSettings }) {
       <div className="ad-btns ad-center">
         <button type="submit" className="ad-btn" disabled={pending}>
           Save settings
+        </button>
+        <Note r={r} pending={pending} />
+      </div>
+    </form>
+  );
+}
+
+/** The signature printed on invoice PDFs. New invoices pick it up; issued ones keep theirs. */
+export function InvoiceSignatureForm({ preview }: { preview: string | null }) {
+  const router = useRouter();
+  const [r, setR] = useState<BillingResult>();
+  const [pending, start] = useTransition();
+  return (
+    <form
+      className="ad-card ad-form"
+      aria-label="Invoice signature"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const f = new FormData(e.currentTarget);
+        const file = f.get("signature");
+        if (file instanceof File && file.size > 900_000) {
+          setR({ ok: false, error: "That image is too big. Keep it under 900 KB." });
+          return;
+        }
+        start(async () => {
+          const res = await saveInvoiceSignature(f);
+          setR(res);
+          if (res.ok) router.refresh();
+        });
+      }}
+    >
+      <h2 className="ad-h2">Invoice signature</h2>
+      <span className="ad-small ad-muted">
+        Printed above “Akash Praseed, Founder &amp; CEO”. A PNG with a transparent or white
+        background prints best.
+      </span>
+      {preview && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={preview} alt="Current signature" style={{ maxWidth: 160, maxHeight: 100, background: "#fff" }} />
+      )}
+      <div className="ad-field">
+        <label htmlFor="sig-file">{preview ? "Replace signature" : "Upload signature"}</label>
+        <input id="sig-file" name="signature" type="file" accept="image/*" required />
+      </div>
+      <div className="ad-btns ad-center">
+        <button type="submit" className="ad-btn small" disabled={pending}>
+          Save signature
         </button>
         <Note r={r} pending={pending} />
       </div>

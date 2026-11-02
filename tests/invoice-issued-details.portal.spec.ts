@@ -68,7 +68,7 @@ test("drafts read details live; publishing freezes them; statements still see to
   // The draft picks up details saved after it was made.
   await save("Details Saved", "100000000000001", "Saved Street");
   const draft = await must<Pdf>(adminRpc("portal_admin_invoice_pdf", { p_invoice: id }));
-  expect(draft.account).toEqual({
+  expect(draft.account).toMatchObject({
     name: "Details Saved",
     trn: "100000000000001",
     billing_address: "Saved Street",

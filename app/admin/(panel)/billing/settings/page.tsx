@@ -1,7 +1,8 @@
-import { BillingSettingsForm } from "@/components/admin/BillingTools";
+import { BillingSettingsForm, InvoiceSignatureForm } from "@/components/admin/BillingTools";
 import { PaymentSettingsForm, type PaymentSettings } from "@/components/admin/PaymentAdmin";
 import { portalAdminPage, portalAdminReady } from "@/lib/portal/admin";
 import type { BillingSettings } from "@/lib/portal/admin-billing-actions";
+import { getObject } from "@/lib/r2";
 import { stripeReady } from "@/lib/stripe";
 
 export const metadata = { title: "Billing settings" };
@@ -11,6 +12,10 @@ export default async function BillingSettingsPage() {
   const rpc = await portalAdminPage();
   const s = portalAdminReady()
     ? await rpc<BillingSettings>("portal_admin_billing_settings", {})
+    : null;
+  const sign = s?.signature_key ? await getObject(s.signature_key).catch(() => null) : null;
+  const signPreview = sign
+    ? `data:image/png;base64,${Buffer.from(await sign.arrayBuffer()).toString("base64")}`
     : null;
   return (
     <div className="ad-page">
@@ -23,6 +28,7 @@ export default async function BillingSettingsPage() {
       {s ? (
         <>
           <BillingSettingsForm s={s} />
+          <InvoiceSignatureForm preview={signPreview} />
           <PaymentSettingsForm s={s as unknown as PaymentSettings} />
         </>
       ) : (

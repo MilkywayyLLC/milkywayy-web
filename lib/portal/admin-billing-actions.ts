@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { deleteObject, downloadUrl, r2Ready } from "@/lib/r2";
+import sharp from "sharp";
+import { deleteObject, downloadUrl, putObject, r2Ready } from "@/lib/r2";
 import { emailConfirmed } from "./payment-server";
 import { portalAdminAction } from "./admin";
 import { dateLabel, money, type Invoice } from "./billing";
@@ -309,6 +310,7 @@ export type BillingSettings = {
   vat_registered: boolean;
   bank_account_name: string | null;
   bank_name: string | null;
+  bank_account_no?: string | null;
   bank_iban: string | null;
   bank_swift: string | null;
   invoice_prefix?: string;
@@ -318,6 +320,9 @@ export type BillingSettings = {
   company_address?: string | null;
   company_trn?: string | null;
   company_email?: string | null;
+  company_licence?: string | null;
+  company_phone?: string | null;
+  signature_key?: string | null;
 };
 
 /** Suggestions (switch, minimum saving), VAT, bank details: whichever fields are given. */
@@ -350,6 +355,32 @@ export async function saveBillingSettings(p: Partial<BillingSettings>): Promise<
     await rpc("portal_admin_save_billing_settings", { p });
     refresh("/admin/billing/suggestions", "/admin/billing/settings");
     return { ok: true, notice: "Saved." };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/**
+ * The signature on invoice PDFs. Each upload gets its own key and old files stay, because issued
+ * invoices keep the signature they were issued with. Goes through a server action, so 1 MB at most.
+ */
+export async function saveInvoiceSignature(form: FormData): Promise<BillingResult> {
+  const file = form.get("signature");
+  if (!(file instanceof File) || !file.size) return { ok: false, error: "Choose an image." };
+  if (!file.type.startsWith("image/")) return { ok: false, error: "The signature must be an image." };
+  try {
+    const rpc = await portalAdminAction();
+    if (!r2Ready()) return { ok: false, error: "File storage isn’t set up here." };
+    const png = await sharp(Buffer.from(await file.arrayBuffer()))
+      .rotate()
+      .resize({ width: 800, withoutEnlargement: true })
+      .png()
+      .toBuffer();
+    const key = `billing/signature-${Date.now()}.png`;
+    await putObject(key, png, "image/png");
+    await rpc("portal_admin_save_billing_settings", { p: { signature_key: key } });
+    refresh("/admin/billing/settings");
+    return { ok: true, notice: "Signature saved." };
   } catch (e) {
     return fail(e);
   }

@@ -700,3 +700,15 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 - **Already issued invoices** were frozen with the details on the day of the migration, the best record available.
 - **Ledger PDFs** are uploaded files, so they never changed and this doesn't touch them.
 
+
+## 2 Nov 2026 — invoice PDF in the Ledger layout (migration `20261118090000_invoice_ledger_layout`)
+
+- **Layout only:** totals, statuses, numbering and who sees what are unchanged. The writer stays dependency-free; sharp decodes the logo and signature before they reach it.
+- **New settings:** licence no., phone, bank account no., signature. Licence, phone and account no. were seeded from the Ledger invoice MW-CH-02112026-001 and can be edited. The signature is uploaded in Business & billing and kept in R2; every upload gets a new key, so issued invoices keep theirs.
+- **Attn** is the account owner's profile name, left out when it just repeats the account name. There's no separate contact field.
+- **Frozen on issue:** licence, phone, signature and Attn join the snapshot. Invoices issued before this keep their old snapshot, so they show none of the four. Bank details stay live, as decided earlier today.
+- **Line sub-line:** the description splits at its first " · " into the bold service and the grey rest, plus the line item's service date or the project's shoot date. Descriptions aren't rewritten.
+- **"TAX INVOICE"** still replaces "INVOICE" once VAT registered, because a VAT-registered business needs that wording.
+- **Kept from the old PDF:** the "use this reference" line (in the bank box), PAID/REFUNDED (in place of the bank box), and notes.
+- **Our TRN** now prints whenever it's set, as on the Ledger invoice. It used to need VAT registered.
+- **QR code:** a fixed matrix for https://milkywayy.com/terms, so no QR dependency.

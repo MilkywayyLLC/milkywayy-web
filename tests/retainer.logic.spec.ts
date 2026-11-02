@@ -158,7 +158,7 @@ test("the invoice PDF: a valid file with the number, lines, VAT and bank details
     "MW-1001",
     "AED 13,650.00",
     "VAT 5%",
-    "IBAN: AE070331234567890123456",
+    "AE070331234567890123456",
   ])
     expect(text).toContain(s);
   // The xref offsets point at the objects.
