@@ -712,3 +712,8 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 - **Kept from the old PDF:** the "use this reference" line (in the bank box), PAID/REFUNDED (in place of the bank box), and notes.
 - **Our TRN** now prints whenever it's set, as on the Ledger invoice. It used to need VAT registered.
 - **QR code:** a fixed matrix for https://milkywayy.com/terms, so no QR dependency.
+
+## 2 Nov 2026 — package usage and plan meters (migration `20261120090000_inclusions_count_in_delivery_month`)
+
+- **Usage counts in the delivery month again.** `20261105` had brought back stamping today's date on logged items, undoing the 17 Oct decision: an item logged in one month and delivered in another used the wrong month's inclusions and could be billed as an Extra. Service day, else delivery, else today, with no stamp. Production had no client on a package, so nothing to backfill.
+- **Everyone on a value package sees hours:** Shoot hours, Edits (when the package has any) and Value used, on the plan card and in the sidebar. Allowance + Shoot days meters are gone.

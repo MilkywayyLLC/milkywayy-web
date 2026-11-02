@@ -13,7 +13,6 @@ import {
 } from "@/lib/portal/plan";
 import {
   aed0,
-  dayCount,
   packageSplitUsage,
   shootDays,
   TERMS_LABEL,
@@ -76,7 +75,6 @@ export type ValueMonth = PlanMoney & {
   base_allowance?: number;
   base_half_day_cap?: number;
   /** Built packages (28 Oct 2026): hours (a half day is 4 h) and edits, included and used. */
-  hours_included?: number | null;
   hours_used?: number | null;
   base_hours?: number | null;
   hours_split?: { full: number; half: number } | null;
@@ -314,8 +312,8 @@ export const upcomingText = (u: PlanUpcoming | null | undefined) =>
   u ? `${u.name} starts ${dateLabel(u.starts_on, { year: undefined })}` : null;
 
 /**
- * A value package's month (owner, 28 Oct 2026): the plan and how it's billed, the allowance and
- * shoot-day bars (with carried credit on upfront), the next invoice so far, and in the last 7 days of
+ * A value package's month (owner, 28 Oct 2026): the plan and how it's billed, the shoot hours, edits
+ * and value bars (with carried credit on upfront), the next invoice so far, and in the last 7 days of
  * an upfront month what carries over. `admin`: the rollover lines and the credits too.
  */
 export function ValuePackageCard({ v, admin = false }: { v: ValueMonth; admin?: boolean }) {
@@ -325,8 +323,6 @@ export function ValuePackageCard({ v, admin = false }: { v: ValueMonth; admin?: 
   const later = upfrontLater(v);
   const notice = carryNoticeLine(v);
   const extras = aed0(v.extras_total);
-  // A built package (hours + edits); older value packages keep allowance + shoot days.
-  const built = v.hours_included != null;
   // A half day is 4 hours.
   const hours = {
     done: u.hd.done * 4,
@@ -353,29 +349,16 @@ export function ValuePackageCard({ v, admin = false }: { v: ValueMonth; admin?: 
           <b className="pt-mono">{planAmount(v)}</b>
         </div>
       </div>
-      {built ? (
-        <>
-          <Meter label="Shoot hours" part={hours} fmt={(n) => `${Math.round(n * 10) / 10} h`} />
-          {v.hours_split && (v.hours_split.full > 0 || v.hours_split.half > 0) && (
-            <span className="pt-meta" data-testid="plan-split">
-              {splitLabel(v.hours_split.full, v.hours_split.half)} a month
-            </span>
-          )}
-          {Number(v.edits_included ?? 0) > 0 && (
-            <Meter label="Edits" part={edits} fmt={(n) => String(n)} />
-          )}
-          <Meter label="Value used" part={u.aed} fmt={(n) => m(n)} />
-        </>
-      ) : (
-        <>
-          <Meter label="Allowance" part={u.aed} fmt={(n) => m(n)} />
-          <Meter
-            label="Shoot days"
-            part={u.hd}
-            fmt={(n) => `${dayCount(n)} ${n === 2 ? "day" : "days"}`}
-          />
-        </>
+      <Meter label="Shoot hours" part={hours} fmt={(n) => `${Math.round(n * 10) / 10} h`} />
+      {v.hours_split && (v.hours_split.full > 0 || v.hours_split.half > 0) && (
+        <span className="pt-meta" data-testid="plan-split">
+          {splitLabel(v.hours_split.full, v.hours_split.half)} a month
+        </span>
       )}
+      {Number(v.edits_included ?? 0) > 0 && (
+        <Meter label="Edits" part={edits} fmt={(n) => String(n)} />
+      )}
+      <Meter label="Value used" part={u.aed} fmt={(n) => m(n)} />
       {carriedLines(v.currency, v.carry).map((l) => (
         <p key={l} className="pt-carried" data-testid="value-carried">
           {l}
@@ -538,7 +521,8 @@ export function railPlanOf(bp: BillingPayments | null): RailPlan | null {
     used: u.aed.done,
     booked: u.aed.booked,
     total: u.aed.total,
-    text: `${money(bp.value.currency, u.aed.done + u.aed.booked)} of ${Number(u.aed.total).toLocaleString("en-US")} · ${dayCount(u.hd.done + u.hd.booked)} of ${dayCount(u.hd.total)} days`,
+    // A half day is 4 hours.
+    text: `${money(bp.value.currency, u.aed.done + u.aed.booked)} of ${Number(u.aed.total).toLocaleString("en-US")} · ${Math.round((u.hd.done + u.hd.booked) * 40) / 10} of ${Math.round(u.hd.total * 40) / 10} h`,
   };
 }
 

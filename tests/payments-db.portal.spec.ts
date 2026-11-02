@@ -117,6 +117,19 @@ async function deliver(projectId: string, ref: string) {
   await admin("portal_admin_set_status", { p_id: projectId, p_status: "delivered" });
   return f;
 }
+/** The admin confirms the shoot went as booked: nothing is delivered until the charges are logged. */
+const confirmAsBooked = (projectId: string, estimate: number) =>
+  admin("portal_admin_confirm_shoot", {
+    p_project: projectId,
+    p: {
+      booked_total: estimate,
+      actual_total: estimate,
+      lines: [],
+      items: [
+        { key: "reel_shoot", description: "Short-form video", qty: 4, unit_price: estimate / 4 },
+      ],
+    },
+  });
 
 test.beforeAll(async () => {
   test.setTimeout(120_000);
@@ -166,6 +179,11 @@ test("100% before: invoice at booking, locked until paid, paid = pending confirm
   expect(await status(c, b.id)).toBe("requested");
   expect(await paidAt(c, b.id)).toBeTruthy();
   expect((await pay(c, b.id)).locked).toBe(false);
+  // Nothing is delivered unbilled: refused until the charges are logged or confirmed.
+  await expect(
+    admin("portal_admin_set_status", { p_id: b.id, p_status: "delivered" }),
+  ).rejects.toThrow(/add the charges first/);
+  await confirmAsBooked(b.id, 1600);
   await deliver(b.id, b.ref);
   expect((await pay(c, b.id)).locked).toBe(false);
   // Nothing logged beyond what was paid: no further invoice.
@@ -178,6 +196,7 @@ test("100% before: invoice at booking, locked until paid, paid = pending confirm
 test("100% before, unpaid at delivery: still locked; Mark as paid releases", async () => {
   const c = clients.prepay;
   const b = await book(c, { estimate: 800 });
+  await confirmAsBooked(b.id, 800);
   await deliver(b.id, b.ref);
   expect((await pay(c, b.id)).locked).toBe(true);
   // Release only: unlocked while still unpaid.
@@ -227,12 +246,54 @@ test("end of month: nothing due at booking, never locked, the term means month-e
   const c = clients.monthend;
   const b = await book(c, { estimate: 1600 });
   expect(b.inv).toBeNull();
+  await confirmAsBooked(b.id, 1600);
   await deliver(b.id, b.ref);
   expect((await pay(c, b.id)).locked).toBe(false);
   const setup = await admin<{ payg_invoicing: string }>("portal_admin_client_setup", {
     p_account: c.account,
   });
   expect(setup.payg_invoicing).toBe("month_end");
+});
+
+test("booking invoices (full, deposit) freeze the client's details when issued; a rename doesn't change them", async () => {
+  for (const [name, terms, stage] of [
+    ["detailsfull", "prepay", "full"],
+    ["detailsdeposit", "split", "deposit"],
+  ] as const) {
+    const c = await clientAccount(RUN, name, `E2E Pay ${name}`);
+    await admin("portal_admin_set_payment_terms", { p_account: c.account, p_terms: terms });
+    const save = (n: string, trn: string, billing_address: string) =>
+      must(c.db.from("accounts").update({ name: n, trn, billing_address }).eq("id", c.account));
+    await save(`E2E Pay ${name} Issued`, "100000000000001", "Issued Street");
+    const b = await book(c, { estimate: 1000 });
+    expect(b.inv).toMatchObject({ stage });
+    const stored = async () =>
+      (
+        await must<{ issued_details: { account: Record<string, unknown> } | null }[]>(
+          c.db.from("invoices").select("issued_details").eq("id", b.inv!.id),
+        )
+      )[0].issued_details;
+    const issued = {
+      name: `E2E Pay ${name} Issued`,
+      trn: "100000000000001",
+      billing_address: "Issued Street",
+    };
+    expect((await stored())?.account).toMatchObject(issued);
+
+    await save(`E2E Pay ${name} Renamed`, "100000000000002", "New Street");
+    expect((await stored())?.account).toMatchObject(issued);
+    type Pdf = PdfInvoice & { account: { name: string }; current: { account: { name: string } } };
+    for (const pdf of [
+      await must<Pdf>(c.db.rpc("my_invoice_pdf", { p_invoice: b.inv!.id })),
+      await admin<Pdf>("portal_admin_invoice_pdf", { p_invoice: b.inv!.id }),
+    ]) {
+      expect(pdf.account).toMatchObject(issued);
+      expect(pdf.current.account.name).toBe(`E2E Pay ${name} Renamed`);
+    }
+    // Paid later: still what it was issued with.
+    await markPaid(b.inv!.id);
+    expect((await stored())?.account).toMatchObject(issued);
+  }
 });
 
 test("receipt upload → the admin is asked → Mark as paid → pending confirmation", async () => {
@@ -374,19 +435,20 @@ test("package: property shoots count their price, not shoot days; cap hit by val
 test("what the client sees: plan card, segmented meters, How you pay, sidebar plan, summary line", async ({
   page,
 }) => {
-  // pkg2 (AED 3,000 · 5 shoot days): content 1,600 (0.5 day) + property 2,000 → 600 extra.
+  // pkg2 (AED 3,000 · 40 shoot hours): content 1,600 (4 h) + property 2,000 → 600 extra.
   const c = clients.pkg2;
   await signInUI(page, c.email);
   await page.goto("/portal/billing");
   const card = page.getByTestId("value-package");
   await expect(card).toContainText("E2E Value");
   await expect(card.getByTestId("plan-amount")).toContainText("up to AED 3,000 / month");
-  // Refinement round (25 Oct 2026): full-width bars with a label row under each.
-  await expect(card.getByTestId("meter-allowance")).toContainText("AED 3,000 of AED 3,000");
-  await expect(card.getByTestId("meter-allowance")).toContainText("AED 3,000 booked · AED 0 left");
-  await expect(card.getByTestId("meter-shoot-days")).toContainText(
-    "0.5 days booked · 4.5 days left",
-  );
+  // Every value package shows hours (owner, 2 Nov 2026): a half day is 4 hours.
+  await expect(card.getByTestId("meter-shoot-hours")).toContainText("4 h of 40 h");
+  await expect(card.getByTestId("meter-shoot-hours")).toContainText("4 h booked · 36 h left");
+  await expect(card.getByTestId("meter-value-used")).toContainText("AED 3,000 of AED 3,000");
+  await expect(card.getByTestId("meter-value-used")).toContainText("AED 3,000 booked · AED 0 left");
+  // No edits in this package: no edits bar.
+  await expect(card.getByTestId("meter-edits")).toHaveCount(0);
   // Month end (28 Oct 2026): all of the month's work at client prices, on one invoice.
   await expect(card.getByTestId("plan-bill")).toContainText(
     /billed AED\s?3,600 on \d+ \w+ \(so far\)/,
@@ -395,6 +457,7 @@ test("what the client sees: plan card, segmented meters, How you pay, sidebar pl
   await expect(page.getByTestId("how-you-pay")).toContainText("billed at the end of each month");
   await expect(page.getByTestId("how-you-pay")).toContainText("WhatsApp us");
   await expect(page.getByTestId("rail-plan")).toContainText("E2E Value");
+  await expect(page.getByTestId("rail-plan")).toContainText("4 of 40 h");
   // A pay-per-shoot client: the sidebar says how they pay; the summary says what's due now.
   const p = clients.split;
   await page.context().clearCookies();

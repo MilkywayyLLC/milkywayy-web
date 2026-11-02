@@ -427,13 +427,13 @@ test("calendar months: a mid-month start gets the full first month (no pro-ratin
   // The 4 reels were Included (AED 0); the avatar video is an Extra at its price.
   expect(st.overage[0]).toMatchObject({ key: "reel", qty: reels, used: 4, over: 0 });
   expect(Number(st.total)).toBeCloseTo(price + 900 + 300, 2);
-  // This month too: full price, full inclusions.
+  // This month too: full price, full inclusions. The first month counts now, so this is month 2.
   const now = await must<{
     mode: string;
     plan: { prorated: boolean; month_no: number };
   }>(pro.db.rpc("my_billing", { p_account: pro.account }));
   expect(now.mode).toBe("package");
-  expect(now.plan).toMatchObject({ prorated: false, month_no: 1 });
+  expect(now.plan).toMatchObject({ prorated: false, month_no: 2 });
   expect(
     (
       await admin<{ plan: { package: { price: number; prorated: boolean } } }>(
@@ -468,7 +468,7 @@ test("Stripe: Paid only when the session, amount and currency match", async () =
   });
   expect(await must(O.rpc("my_invoice_for_payment", { p_invoice: inv.id }))).toMatchObject({
     unpaid: true,
-    pay_online: false, // AED → bank transfer by default
+    pay_online: true, // Card + bank transfer for everyone by default (2 Nov 2026)
   });
   await expect(
     M.rpc("my_invoice_for_payment", { p_invoice: inv.id }).then((r) => {
@@ -691,25 +691,26 @@ test("pay as you go: the suggestion card (monthly and 6-month), last month's fin
   await expect(bd).toContainText("total");
   await expect(bd).toContainText("AED 3,300");
 
-  // AED → bank transfer: the details, then "I've paid" with the receipt.
+  // The Pay page (27 Oct 2026): bank transfer details, then "I've paid" with the receipt.
+  await row0.getByRole("link", { name: `Pay invoice INV-UI-${TAG}` }).click();
+  await page.getByRole("button", { name: /Pay by bank transfer/ }).click();
   const bank = page.getByTestId("bank");
   await expect(bank).toContainText("AE070331234567890123456");
   await expect(bank).toContainText("BOMLAEAD");
-  const row = page.getByRole("group", { name: `Invoice INV-UI-${TAG}`, exact: true });
-  await expect(row.getByRole("button", { name: /Pay invoice/ })).toHaveCount(0);
   if (hasR2) {
-    await row.getByRole("button", { name: `I've paid invoice INV-UI-${TAG}` }).click();
-    const sheet = page.getByRole("form", { name: "Payment proof" });
-    await sheet.getByLabel("Transfer receipt (PDF or image, up to 10 MB)").setInputFiles({
+    const receipt = page.getByRole("form", { name: "Payment receipt" });
+    await receipt.locator('input[type="file"]').setInputFiles({
       name: "receipt.pdf",
       mimeType: "application/pdf",
       buffer: Buffer.from("%PDF-1.1\n%%EOF\n"),
     });
-    await sheet.getByLabel("Note (optional)").fill("Paid from the company account");
-    await sheet.getByRole("button", { name: "Send proof" }).click();
-    // The row turns "Payment submitted" straight away (the sheet closes with it).
-    await expect(row).toContainText("Payment submitted");
-    await expect(row.getByRole("button", { name: /I've paid/ })).toHaveCount(0);
+    await receipt.getByLabel("Note (optional)").fill("Paid from the company account");
+    await receipt.getByRole("button", { name: "I’ve paid" }).click();
+    await expect(page.getByTestId("pay-submitted")).toContainText("Payment submitted");
+    // Back on Billing the row says so, with nothing left to pay.
+    await page.goto("/portal/billing");
+    await expect(row0).toContainText("Payment submitted");
+    await expect(row0.getByRole("link", { name: /Pay invoice/ })).toHaveCount(0);
     const [proof] = await must<{ id: string }[]>(
       ui.db.from("payment_proofs").select("id").eq("invoice_id", inv.id),
     );
@@ -718,9 +719,12 @@ test("pay as you go: the suggestion card (monthly and 6-month), last month's fin
       p_confirm: false,
       p_reason: "Reference missing",
     });
-    await page.reload();
-    await expect(row).toContainText("We couldn’t confirm your transfer: Reference missing");
+    await page.goto(`/portal/pay/${inv.id}`);
+    await expect(page.getByTestId("pay-panel").getByRole("alert")).toContainText(
+      "We couldn’t confirm your transfer: Reference missing",
+    );
   }
+  await page.goto("/portal/billing");
 
   // Pinned but not cheaper: "Your offer", no saving line.
   const dear = await pkg({
@@ -823,14 +827,12 @@ test("card payments: Pay now for online accounts; a signed Stripe webhook marks 
   await signInUI(page, ui.email);
   await page.goto("/portal/billing");
   const row = page.getByRole("group", { name: `Invoice INV-CARD-${TAG}`, exact: true });
-  const pay = row.getByRole("button", { name: `Pay invoice INV-CARD-${TAG} now` });
-  await expect(pay).toBeVisible();
-  // Payment terms (24 Oct 2026): a receipt can be uploaded on every unpaid invoice.
-  await expect(row.getByRole("button", { name: /I've paid/ })).toBeVisible();
-  if (!env.STRIPE_SECRET_KEY) {
-    await pay.click();
-    await expect(row.getByRole("alert")).toContainText("Card payments aren’t set up yet");
-  }
+  await row.getByRole("link", { name: `Pay invoice INV-CARD-${TAG}` }).click();
+  // The Pay page (27 Oct 2026): card, and a receipt can be uploaded on every unpaid invoice.
+  if (env.STRIPE_SECRET_KEY)
+    await expect(page.getByRole("region", { name: "Pay by card" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Pay by bank transfer" })).toBeVisible();
+  await page.goto("/portal/billing");
 
   // What Stripe sends after a test payment (the session id was saved when Checkout opened).
   await admin("portal_admin_set_stripe_session", {
@@ -870,6 +872,6 @@ test("card payments: Pay now for online accounts; a signed Stripe webhook marks 
   expect(await ok.json()).toMatchObject({ received: true, paid: true });
   await page.reload();
   await expect(row).toContainText("Paid");
-  await expect(row).toContainText("paid by card");
-  await expect(row.getByRole("button", { name: /Pay invoice/ })).toHaveCount(0);
+  await expect(row).toContainText("by card");
+  await expect(row.getByRole("link", { name: /Pay invoice/ })).toHaveCount(0);
 });
