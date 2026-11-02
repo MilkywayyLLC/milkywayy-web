@@ -361,6 +361,16 @@ export const monthLabel = (m: string | null | undefined) =>
       })
     : "";
 
+/** The month picker on the invoice queue: this month and the last 6. Previous month in a month's first 7 days. */
+export function draftPeriods(today: string) {
+  const y = Number(today.slice(0, 4));
+  const m = Number(today.slice(5, 7));
+  const months = Array.from({ length: 7 }, (_, i) =>
+    new Date(Date.UTC(y, m - 1 - i, 1)).toISOString().slice(0, 10),
+  );
+  return { months, selected: Number(today.slice(8, 10)) <= 7 ? months[1] : months[0] };
+}
+
 /** "10 reels, 2 shoot days" from a package's inclusions. */
 export const inclusionsText = (inc: Inclusion[]) =>
   inc.map((i) => `${Number(i.qty)} ${i.label.toLowerCase()}`).join(", ");

@@ -85,7 +85,8 @@ const FILTERS = [
 /**
  * Admin → Billing → Invoice queue (owner, 10 Oct 2026). Every invoice is a draft first: month-end
  * drafts appear on the 25th (budget and fixed packages, pay as you go billed monthly, and next
- * month's package for clients billed in advance); one-off drafts when a project is delivered.
+ * month's package for clients billed in advance), or any day for lines logged late for a closed
+ * month; one-off drafts when a project is delivered.
  * Open one to edit and approve it. Approved month-end invoices publish on the month's last day,
  * one-offs on approval; publishing emails the client.
  */
@@ -144,8 +145,8 @@ export default async function InvoiceQueue({
           <span className="ad-eb">Money</span>
           <h1 className="ad-h1">Invoices</h1>
           <span className="ad-small ad-muted">
-            Drafts are made on the 25th and when a one-off project is delivered. Nothing reaches a
-            client until you approve it.
+            Drafts are made on the 25th, when a one-off project is delivered, and for anything
+            logged late for a closed month. Nothing reaches a client until you approve it.
           </span>
         </div>
       </div>
@@ -159,7 +160,9 @@ export default async function InvoiceQueue({
       <div className="ad-card ad-gap-12">
         <div className="ad-row-between">
           <h2 className="ad-h2 ad-m0">Invoice queue{toReview ? ` · ${toReview} to review` : ""}</h2>
-          <GenerateDrafts />
+          <GenerateDrafts
+            today={new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" }).format(new Date())}
+          />
         </div>
         <nav className="ad-btns ad-chips" aria-label="Filter invoices">
           {FILTERS.map(([k, label]) => (

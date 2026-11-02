@@ -107,6 +107,18 @@ function wrap(s: string, max: number, size: number, f: Font = "R") {
   return lines.length ? lines : [""];
 }
 
+/** A whole calendar month reads "October 2026"; anything else as two dates. */
+const period = (start: string, end: string | null) => {
+  const s = start.slice(0, 10);
+  const last = new Date(Date.UTC(+s.slice(0, 4), +s.slice(5, 7), 0)).toISOString().slice(0, 10);
+  if (s.endsWith("-01") && end?.slice(0, 10) === last)
+    return new Date(`${s}T12:00:00Z`).toLocaleDateString("en-GB", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  return `${day(s)}${end ? ` – ${day(end)}` : ""}`;
+};
 const money = (cur: string, n: number) =>
   `${cur} ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const day = (d: string | null) =>
@@ -195,7 +207,7 @@ export function invoicePdf(
     p.right(
       W - M,
       y + 12,
-      `Period ${day(i.period_start)}${i.period_end ? ` – ${day(i.period_end)}` : ""}`,
+      `Period ${period(i.period_start, i.period_end)}`,
       9,
       "R",
       0.35,

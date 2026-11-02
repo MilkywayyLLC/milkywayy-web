@@ -144,13 +144,14 @@ export async function deleteDraft(id: string): Promise<InvoiceResult> {
   }
 }
 
-/** "Make this month's drafts now" (the cron does it daily from the 25th). */
-export async function generateDrafts(): Promise<InvoiceResult> {
+/** "Make month-end drafts now" for a picked month, any day (the cron does this month from the 25th). */
+export async function generateDrafts(month: string): Promise<InvoiceResult> {
   try {
     const rpc = await portalAdminAction();
-    const out = await rpc<{ created: number; note?: string }>("portal_admin_generate_drafts", {});
+    const out = await rpc<{ created: number }>("portal_admin_generate_drafts", {
+      p_month: month,
+    });
     refresh();
-    if (out.note) return { ok: true, notice: "Month-end drafts are made from the 25th." };
     if (out.created)
       await alertMilkywayy(
         `${out.created} invoice draft${out.created === 1 ? "" : "s"} ready for review`,
@@ -159,7 +160,7 @@ export async function generateDrafts(): Promise<InvoiceResult> {
       );
     return {
       ok: true,
-      notice: out.created ? `${out.created} draft(s) made.` : "Nothing new to draft.",
+      notice: out.created ? `${out.created} draft(s) made or updated.` : "Nothing new to draft.",
     };
   } catch (e) {
     return fail(e);

@@ -678,3 +678,16 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 - **Pay all:** `payment_batches` + one Stripe session (`client_reference_id = batch_<id>`); the webhook marks each invoice paid. Bank transfer: one receipt recorded on every invoice (each shows "Payment submitted" until confirmed). The statement PDF reuses the invoice writer with one line per invoice.
 - **Test accounts:** `accounts.is_test` (toggle on the client page). Drafts can always be deleted; issued or cancelled invoices only on a test account.
 - **Not done on purpose:** logging a delivered project later does not auto-create the month-end draft (make it from the queue).
+
+## 2 Nov 2026 — month-end drafts never leave a line behind (migration `20261116090000_month_end_late_lines`)
+
+- **Cause:** Inhouse's MW-1772 was logged on 2 Nov for a 29 Oct shoot. The button made nothing because month-end drafts only ran from the 25th.
+- **Period picker:** "Make month-end drafts now" takes a month (this one and the last 6). It defaults to the previous month in the first 7 days. An explicit pick ignores the 25th rule.
+- **Closed months:** the daily run also drafts unbilled lines from closed months, any day, for pay as you go billed monthly and budget clients. Lines worth AED 0 don't trigger a draft. Everything stays a draft until approved.
+- **Late lines, pay as you go:** added to that month's open draft, keeping edits. If that month is already issued or void, they go on the next open month, because `invoices_period_once` allows one invoice per client per month.
+- **Late lines, budget:** on an invoiced month, they bill only what newly goes over that month's budget, on the next budget draft.
+- **Dates:** a draft for a closed month is dated the day it's made (due +7), never backdated. A whole month reads "October 2026" on the PDF.
+- **Test accounts** get no generated drafts.
+- **Side effect:** deleting a pay-as-you-go draft for a closed month, or removing a line from it, frees the line and the next daily run drafts it again. To drop a charge for good, waive it to AED 0.
+- **Not covered:** value packages bill from bookings, not line items, so work logged late for a package month that's already invoiced isn't picked up. No client is on a package today.
+

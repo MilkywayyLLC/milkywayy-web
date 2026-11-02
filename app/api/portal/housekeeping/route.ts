@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Invoice drafts (from the 25th; safe to repeat) and scheduled publishing.
+  // Invoice drafts (from the 25th, plus late lines for closed months; safe to repeat) and scheduled publishing.
   const drafts = await portalAdminSystem<{ created: number }>("portal_admin_generate_drafts").catch(
     (e) => (console.error("[housekeeping] drafts:", e), { created: 0 }),
   );

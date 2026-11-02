@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { uploadFile } from "@/lib/upload-browser";
 import { startInvoiceUpload } from "@/lib/portal/admin-billing-actions";
-import { money, type InvoiceLine } from "@/lib/portal/billing";
+import { draftPeriods, money, monthLabel, type InvoiceLine } from "@/lib/portal/billing";
 import {
   approveInvoice,
   deleteDraft,
@@ -358,19 +358,33 @@ export function DraftEditor({ inv, vatOn }: { inv: DraftData; vatOn: boolean }) 
   );
 }
 
-export function GenerateDrafts() {
+export function GenerateDrafts({ today }: { today: string }) {
   const router = useRouter();
+  const periods = draftPeriods(today);
+  const [month, setMonth] = useState(periods.selected);
   const [r, setR] = useState<InvoiceResult>();
   const [pending, start] = useTransition();
   return (
     <div className="ad-btns ad-center">
+      <select
+        aria-label="Month to draft"
+        value={month}
+        disabled={pending}
+        onChange={(e) => setMonth(e.target.value)}
+      >
+        {periods.months.map((m) => (
+          <option key={m} value={m}>
+            {monthLabel(m)}
+          </option>
+        ))}
+      </select>
       <button
         type="button"
         className="ad-btn ghost small"
         disabled={pending}
         onClick={() =>
           start(async () => {
-            const res = await generateDrafts();
+            const res = await generateDrafts(month);
             setR(res);
             if (res.ok) router.refresh();
           })

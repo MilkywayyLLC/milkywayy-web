@@ -8,6 +8,7 @@ import {
   videoSummary,
   type BookingService,
 } from "@/lib/portal/booking";
+import { draftPeriods } from "@/lib/portal/billing";
 import { aed0, halfDaysOf, monthEndSoFar, packageSplit } from "@/lib/portal/payments";
 
 /** Portal refinement (owner, 25 Oct 2026): content shoot by length, month-end so far, whole AED. */
@@ -101,4 +102,12 @@ test("short titles for lists: building and community, no city or country", async
   expect(shortTitle("Shoot · Dubai Marina Mall Tram Station, Dubai Marina, Dubai, UAE")).toBe(
     "Dubai Marina Mall Tram Station, Dubai Marina",
   );
+});
+
+test("draft month picker: previous month in the first 7 days, then this month", () => {
+  expect(draftPeriods("2026-11-07").selected).toBe("2026-10-01");
+  expect(draftPeriods("2026-11-08").selected).toBe("2026-11-01");
+  expect(draftPeriods("2026-01-02").selected).toBe("2025-12-01");
+  expect(draftPeriods("2026-11-20").months).toHaveLength(7);
+  expect(draftPeriods("2026-11-20").months[0]).toBe("2026-11-01");
 });
