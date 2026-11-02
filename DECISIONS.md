@@ -691,3 +691,12 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 - **Side effect:** deleting a pay-as-you-go draft for a closed month, or removing a line from it, frees the line and the next daily run drafts it again. To drop a charge for good, waive it to AED 0.
 - **Not covered:** value packages bill from bookings, not line items, so work logged late for a package month that's already invoiced isn't picked up. No client is on a package today.
 
+## 2 Nov 2026 — issued invoices keep their details (migration `20261117090000_invoice_issued_details`)
+
+- **Frozen when an invoice leaves draft/approved:** the client's name, TRN and billing address, and our company name, address, TRN, email and VAT status, in `invoices.issued_details`. A trigger does it, so every path that issues an invoice is covered.
+- **Drafts and approved-not-yet-published invoices stay live**, so a client saving details before publishing is picked up.
+- **Bank details stay live on purpose:** an unpaid invoice should show the account to pay today.
+- **Statements use today's details**, because they're new documents. They now group by account id, since frozen names can differ.
+- **Already issued invoices** were frozen with the details on the day of the migration, the best record available.
+- **Ledger PDFs** are uploaded files, so they never changed and this doesn't touch them.
+

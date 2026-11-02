@@ -6,6 +6,7 @@
  */
 export type PdfInvoice = {
   invoice: {
+    account_id?: string;
     number: string | null;
     issued_on: string;
     due_on: string;
@@ -36,6 +37,8 @@ export type PdfInvoice = {
     swift: string | null;
   };
   pays_online: boolean;
+  /** Today's details; `account` and `company` are frozen once an invoice is issued. */
+  current?: Pick<PdfInvoice, "account" | "company">;
 };
 
 // Advance widths (1/1000 em) for code points 32–126.

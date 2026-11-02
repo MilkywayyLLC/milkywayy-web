@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     parts.push(data as PdfInvoice);
   }
   const first = parts[0];
-  if (parts.some((p) => p.invoice.currency !== first.invoice.currency || p.account.name !== first.account.name))
+  if (parts.some((p) => p.invoice.currency !== first.invoice.currency || p.invoice.account_id !== first.invoice.account_id))
     return new NextResponse("One company and currency at a time", { status: 400 });
   // Each invoice's booking refs: from the billed items (RLS shows the client their own).
   const { data: items } = await db
@@ -55,8 +55,10 @@ export async function GET(req: NextRequest) {
     month: "long",
     year: "numeric",
   });
+  // A statement is a new document: today's details, not what each invoice was issued with.
   const stmt: PdfInvoice = {
     ...first,
+    ...first.current,
     invoice: {
       ...first.invoice,
       number: `Statement · ${month}`,
