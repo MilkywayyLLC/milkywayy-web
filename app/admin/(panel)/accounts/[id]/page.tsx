@@ -177,7 +177,11 @@ export default async function ClientPage({ params, searchParams }: Props) {
         <HowTheyPay
           account={a.id}
           data={payments}
-          bankTransfer={(a as { bank_transfer?: boolean }).bank_transfer !== false}
+          paymentOptions={
+            ((a as { payment_options?: string }).payment_options as "both" | "card" | "bank") ??
+            "both"
+          }
+          isTest={!!(a as { is_test?: boolean }).is_test}
         >
           <CurrencyField id={a.id} currency={a.currency} />
         </HowTheyPay>

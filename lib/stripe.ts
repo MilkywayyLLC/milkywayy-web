@@ -99,6 +99,8 @@ async function api<T>(
 export async function createCheckout(o: {
   invoiceId: string;
   number: string;
+  /** The line's name on Stripe's page (default "Milkywayy invoice <number>"). */
+  label?: string;
   amount: number;
   currency: string;
   email?: string | null;
@@ -127,7 +129,7 @@ export async function createCheckout(o: {
           price_data: {
             currency: o.currency.toLowerCase(),
             unit_amount: minor(o.amount),
-            product_data: { name: `Milkywayy invoice ${o.number}` },
+            product_data: { name: o.label ?? `Milkywayy invoice ${o.number}` },
           },
         },
       },

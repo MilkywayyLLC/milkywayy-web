@@ -53,6 +53,15 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     : (await rpc<InvoiceRowData[]>("portal_admin_invoices", { p_account: inv.account_id })).find(
         (x) => x.id === id,
       );
+  // Test accounts (flagged on the client page) can have issued and cancelled invoices deleted.
+  const isTest = editable
+    ? false
+    : !!(
+        await rpc<{ account: { is_test?: boolean } } | null>("portal_admin_client", {
+          p_id: inv.account_id,
+          p_view_as: false,
+        }).catch(() => null)
+      )?.account?.is_test;
   const c = inv.currency;
   const category = inv.category as InvoiceCategory | null;
 
@@ -140,7 +149,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           {row && (
             <>
               <PaymentReview inv={row} />
-              <InvoiceActions inv={row} />
+              <InvoiceActions inv={row} canDelete={isTest} />
             </>
           )}
         </div>

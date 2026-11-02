@@ -321,7 +321,8 @@ export function Deliveries({
 
   return (
     <section className="ad-card ad-form" aria-label="Deliveries" data-testid="deliveries">
-      <h2 className="ad-h2">Deliveries</h2>
+      <h2 className="ad-h2">3 · Files for the client</h2>
+      <p className="ad-small ad-muted ad-m0">Publishing marks the project Delivered.</p>
       {groups.length === 0 && !open && <p className="ad-empty">Nothing delivered yet.</p>}
       {groups.map((g) => (
         <div

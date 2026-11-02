@@ -318,6 +318,17 @@ export async function startCheckout(
 export async function recordCheckoutPaid(rpc: Rpc, s: CheckoutSession, origin: string) {
   const invoice = s.client_reference_id ?? s.metadata?.invoice_id;
   if ((s.mode && s.mode !== "payment") || s.payment_status !== "paid" || !invoice) return null;
+  // "Pay all": one session over several invoices, recorded on each.
+  if (invoice.startsWith("batch_")) {
+    const batch = await rpc<{ results: Paid[] }>("portal_admin_batch_paid", {
+      p_batch: invoice.slice("batch_".length),
+      p_session: s.id,
+      p_amount_minor: s.amount_total ?? -1,
+      p_currency: s.currency ?? "",
+    });
+    for (const r of batch.results) await afterPaid(rpc, r, origin);
+    return batch.results.find((r) => !r.already) ?? batch.results[0] ?? null;
+  }
   const out = await rpc<Paid>("portal_admin_stripe_paid", {
     p_invoice: invoice,
     p_session: s.id,
@@ -326,6 +337,32 @@ export async function recordCheckoutPaid(rpc: Rpc, s: CheckoutSession, origin: s
   });
   await afterPaid(rpc, out, origin);
   return out;
+}
+
+/** A Checkout session for several invoices at once ("Pay all due"); the webhook marks each paid. */
+export async function startBatchCheckout(
+  rpc: Rpc,
+  b: { id: string; numbers: string[]; amount: number; currency: string },
+  o: { origin: string; email?: string | null; customer?: string | null; back: string },
+) {
+  const pk = publishableKey();
+  const done = `${o.origin}/portal/pay/all/${b.id}/done?session_id={CHECKOUT_SESSION_ID}`;
+  const list = b.numbers.join(", ");
+  const s = await createCheckout({
+    invoiceId: `batch_${b.id}`,
+    number: list.slice(0, 400),
+    label: `Milkywayy invoices ${list}`.slice(0, 250),
+    amount: b.amount,
+    currency: b.currency,
+    email: o.email,
+    customer: o.customer,
+    ui: pk ? "embedded" : "hosted",
+    returnUrl: done,
+    successUrl: done,
+    cancelUrl: o.back,
+  });
+  await rpc("portal_admin_set_batch_session", { p_batch: b.id, p_session: s.id });
+  return { publishableKey: pk, clientSecret: s.clientSecret, url: s.url };
 }
 
 /** Emails after any card payment: the receipt, and "confirm this booking" to Milkywayy. */

@@ -17,6 +17,7 @@ import {
   pagePath,
   recordCheckoutPaid,
   runRefunds,
+  startBatchCheckout,
   startCheckout,
   type RefundRow,
 } from "./payment-server";
@@ -43,6 +44,15 @@ export type PayView = {
   payment_state: string | null;
   billing: boolean;
   bank_transfer: boolean;
+  payment_options: "both" | "card" | "bank";
+  bank: {
+    account_name: string | null;
+    bank: string | null;
+    iban: string | null;
+    swift: string | null;
+  } | null;
+  due_on: string;
+  reject_reason: string | null;
   customer_id: string | null;
   project: {
     id: string;
@@ -129,6 +139,113 @@ export async function finishPayment(invoiceId: string, sessionId: string, record
   } catch (e) {
     console.error("[pay] finish:", e instanceof Error ? e.message : e);
     return { state: "processing" as const, inv };
+  }
+}
+
+/* ---------- Pay all: several due invoices in one payment ---------- */
+
+export type BatchView = {
+  id: string;
+  account_id: string;
+  account: string;
+  currency: string;
+  amount: number;
+  unpaid: boolean;
+  payment_options: "both" | "card" | "bank";
+  bank: PayView["bank"];
+  customer_id: string | null;
+  invoices: {
+    id: string;
+    number: string;
+    amount: number;
+    status: string;
+    due_on: string;
+    payment_state: string | null;
+    refs: string[];
+  }[];
+};
+
+/** "Pay all due": the chosen invoices become one payment (Stripe, or one bank receipt). */
+export async function createBatch(ids: string[]): Promise<Result & { id?: string }> {
+  if (!ids.length || ids.length > 50 || ids.some((i) => !/^[0-9a-f-]{36}$/.test(i)))
+    return { ok: false, error: "Choose the invoices to pay." };
+  try {
+    const { user, rpc } = await me();
+    const b = await rpc<BatchView | null>("portal_admin_batch_create", {
+      p_user: user.id,
+      p_ids: ids,
+    });
+    if (!b) return { ok: false, error: "Only the owner, admins and billing people can pay these." };
+    return { ok: true, id: b.id };
+  } catch (e) {
+    const m = e instanceof Error ? e.message : String(e);
+    console.error("[pay] batch:", m);
+    return {
+      ok: false,
+      error: /paid or already submitted/.test(m)
+        ? "Some of those invoices are already paid or submitted. Refresh and try again."
+        : /one company/.test(m)
+          ? "Pay one currency at a time."
+          : "Couldn’t start the payment. Try again.",
+    };
+  }
+}
+
+export async function batchView(id: string) {
+  if (!/^[0-9a-f-]{36}$/.test(id)) return null;
+  const { user, rpc } = await me();
+  return rpc<BatchView | null>("portal_admin_batch_view", { p_batch: id, p_user: user.id });
+}
+
+export async function startBatchPayment(
+  id: string,
+): Promise<Result & { clientSecret?: string | null; url?: string | null; pk?: string | null }> {
+  if (!stripeReady()) return { ok: false, error: "Card payments aren’t switched on yet." };
+  const { user, current, rpc } = await me();
+  const b = await rpc<BatchView | null>("portal_admin_batch_view", { p_batch: id, p_user: user.id });
+  if (!b) return { ok: false, error: "That payment isn’t yours to make." };
+  if (!b.unpaid) return { ok: false, error: "Those invoices are already paid." };
+  if (b.payment_options === "bank") return { ok: false, error: "This client pays by bank transfer." };
+  const origin = originFrom(await headers());
+  try {
+    const customer = await customerFor(rpc, b.account_id, current.account.name, user.email);
+    const s = await startBatchCheckout(
+      rpc,
+      {
+        id: b.id,
+        numbers: b.invoices.filter((i) => i.status !== "paid").map((i) => i.number),
+        amount: b.amount,
+        currency: b.currency,
+      },
+      { origin, email: user.email, customer, back: `${origin}/portal/billing` },
+    );
+    return { ok: true, clientSecret: s.clientSecret, url: s.url, pk: s.publishableKey };
+  } catch (e) {
+    console.error("[pay] batch start:", e instanceof Error ? e.message : e);
+    return { ok: false, error: "Couldn’t open the payment form. Try again in a minute." };
+  }
+}
+
+/** The return page for "Pay all": asks Stripe (never the browser) whether the session is paid. */
+export async function finishBatch(batchId: string, sessionId: string, record = false) {
+  const { user, rpc } = await me();
+  const b = await rpc<BatchView | null>("portal_admin_batch_view", { p_batch: batchId, p_user: user.id });
+  if (!b) return { state: "missing" as const, batch: null };
+  if (!b.unpaid) return { state: "paid" as const, batch: b };
+  if (!/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return { state: "open" as const, batch: b };
+  try {
+    const s = await checkoutSession(sessionId);
+    if (s.client_reference_id !== `batch_${batchId}`) return { state: "open" as const, batch: b };
+    if (s.payment_status === "paid") {
+      if (!record) return { state: "confirming" as const, batch: b };
+      await recordCheckoutPaid(rpc, s, originFrom(await headers()));
+      revalidatePath("/portal", "layout");
+      return { state: "paid" as const, batch: b };
+    }
+    return { state: s.status === "complete" ? ("processing" as const) : ("open" as const), batch: b };
+  } catch (e) {
+    console.error("[pay] batch finish:", e instanceof Error ? e.message : e);
+    return { state: "processing" as const, batch: b };
   }
 }
 

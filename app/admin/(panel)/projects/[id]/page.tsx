@@ -12,6 +12,7 @@ import { shootEventOf } from "@/lib/portal/shoot-calendar";
 import { shortTitle } from "@/lib/portal/projects";
 import { projectWhen } from "@/lib/portal/when";
 import { LineItems } from "@/components/admin/BillingTools";
+import { MarkPaidOutside, PaidOutside } from "@/components/admin/PaidOutside";
 import { AttachToClient } from "@/components/admin/ClientProjectTools";
 import { FilesIn, ScriptPanel } from "@/components/admin/ProjectBrief";
 import { StatusButtons, WhatsAppButton, type StatusTarget } from "@/components/admin/ProjectStatus";
@@ -114,6 +115,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     name: d.submitter?.name || d.lead?.name || d.owner?.name || d.account?.name || null,
   };
   const shoot = p.type === "shoot";
+  // Past projects and ones flagged "Already paid" are never billed.
+  const exempt = !!p.meta.past || !!p.paid_outside;
   // Payment terms (owner, 24 Oct 2026): invoices, the lock, terms acceptance, cancel with fee.
   const payment = p.account_id
     ? await rpc<AdminProjectPayment>("portal_admin_project_payment", { p_project: p.id })
@@ -474,48 +477,56 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         />
       </div>
 
-      {work && contentV2 && (
-        <ConfirmShot
-          key={`confirm-${p.id}`}
-          project={p.id}
-          currency={d.account?.currency ?? "AED"}
-          booked={shotDone?.booked ?? bookedShot(contentV2)}
-          prices={
-            contentV2.priced ??
-            contentPrices(
-              Object.fromEntries(work.rates.map((r) => [r.key, r.amount])),
-              isContentHours(contentV2.hours) ? contentV2.hours : 4,
-            )
-          }
-          done={shotDone}
-          terms={payment?.on_package ? "package" : (payment?.terms ?? null)}
-        />
-      )}
-      {work && (
-        <>
-          {!contentV2 && (
-            <ShootLog
-              key={`log-${p.id}`}
-              project={p.id}
-              currency={d.account?.currency ?? "AED"}
-              rates={work.rates}
-              initial={logLines}
-              logged={work.logged.length > 0}
-              hasDeliverables={work.deliverables.length > 0}
-              onPackage={work.plan_mode === "package"}
-              locked={work.logged.some((l) => l.billed_invoice_id)}
-            />
-          )}
-          <DeliverablesAdmin
-            // Remounts only when the list itself changes (new ids), not on a status change.
-            key={work.deliverables.map((x) => x.id).join()}
-            project={p.id}
-            items={work.deliverables}
-          />
-        </>
-      )}
       {p.type === "avatar" && <ScriptPanel project={target} scripts={d.scripts} origin={origin} />}
       {!shoot && <FilesIn projectId={p.id} files={d.files} />}
+
+      {/* The three steps (2 Nov 2026): what we bill, what we'll deliver, the files. */}
+      {p.account_id &&
+        (exempt ? (
+          <PaidOutside project={p.id} past={!!p.meta.past} />
+        ) : work && contentV2 ? (
+          <ConfirmShot
+            key={`confirm-${p.id}`}
+            project={p.id}
+            currency={d.account?.currency ?? "AED"}
+            booked={shotDone?.booked ?? bookedShot(contentV2)}
+            prices={
+              contentV2.priced ??
+              contentPrices(
+                Object.fromEntries(work.rates.map((r) => [r.key, r.amount])),
+                isContentHours(contentV2.hours) ? contentV2.hours : 4,
+              )
+            }
+            done={shotDone}
+            terms={payment?.on_package ? "package" : (payment?.terms ?? null)}
+          />
+        ) : work ? (
+          <ShootLog
+            key={`log-${p.id}`}
+            project={p.id}
+            currency={d.account?.currency ?? "AED"}
+            rates={work.rates}
+            initial={logLines}
+            logged={work.logged.length > 0}
+            hasDeliverables={work.deliverables.length > 0}
+            onPackage={work.plan_mode === "package"}
+            locked={work.logged.some((l) => l.billed_invoice_id)}
+          />
+        ) : (
+          <LineItems project={p.id} items={d.line_items} />
+        ))}
+      {p.account_id && !exempt && <MarkPaidOutside project={p.id} />}
+      {work && !exempt && d.line_items.length > work.logged.length && (
+        <LineItems project={p.id} items={d.line_items} title="Other line items" />
+      )}
+      {work && (
+        <DeliverablesAdmin
+          // Remounts only when the list itself changes (new ids), not on a status change.
+          key={work.deliverables.map((x) => x.id).join()}
+          project={p.id}
+          items={work.deliverables}
+        />
+      )}
       <Deliveries
         project={target}
         groups={groups}
@@ -523,7 +534,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         origin={origin}
         past={!!p.meta.past}
       />
-      {p.account_id && <LineItems project={p.id} items={d.line_items} />}
       <Thread project={target} messages={d.messages} origin={origin} />
       <ProjectNotes projectId={p.id} notes={d.notes ?? ""} />
 

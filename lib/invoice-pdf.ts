@@ -141,7 +141,10 @@ class Page {
   }
 }
 
-export function invoicePdf(d: PdfInvoice, opts: { payUrl?: string } = {}): Uint8Array {
+export function invoicePdf(
+  d: PdfInvoice,
+  opts: { payUrl?: string; title?: string; reference?: string } = {},
+): Uint8Array {
   const i = d.invoice;
   const cur = i.currency;
   const pages: Page[] = [];
@@ -168,7 +171,7 @@ export function invoicePdf(d: PdfInvoice, opts: { payUrl?: string } = {}): Uint8
     p.text(M, ly, `TRN ${d.company.trn}`, 9, "R", 0.35);
     ly -= 12;
   }
-  const title = d.company.vat_registered ? "TAX INVOICE" : "INVOICE";
+  const title = opts.title ?? (d.company.vat_registered ? "TAX INVOICE" : "INVOICE");
   p.right(W - M, y - 6, title, 16, "B");
   p.right(W - M, y - 26, i.number ?? "Draft", 11, "B");
   p.right(W - M, y - 42, `Issued ${day(i.issued_on)}`, 9, "R", 0.35);
@@ -272,7 +275,7 @@ export function invoicePdf(d: PdfInvoice, opts: { payUrl?: string } = {}): Uint8
       p.text(
         M,
         y,
-        `Please use ${i.number ?? "the invoice number"} as the reference.`,
+        `Please use ${opts.reference ?? i.number ?? "the invoice number"} as the reference.`,
         9,
         "R",
         0.35,

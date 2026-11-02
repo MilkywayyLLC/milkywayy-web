@@ -355,7 +355,7 @@ export function PaymentReview({ inv }: { inv: InvoiceRowData }) {
             })
           }
         >
-          Confirm payment
+          Confirm paid
         </button>
         {rejecting ? (
           <form
@@ -396,7 +396,14 @@ export function PaymentReview({ inv }: { inv: InvoiceRowData }) {
   );
 }
 
-export function InvoiceActions({ inv }: { inv: InvoiceRowData }) {
+export function InvoiceActions({
+  inv,
+  canDelete = false,
+}: {
+  inv: InvoiceRowData;
+  /** Test accounts only: an issued or cancelled invoice can be deleted. */
+  canDelete?: boolean;
+}) {
   const router = useRouter();
   const [r, setR] = useState<BillingResult>();
   const [sure, setSure] = useState(false);
@@ -437,6 +444,7 @@ export function InvoiceActions({ inv }: { inv: InvoiceRowData }) {
           PDF
         </button>
       )}
+      {canDelete && (
       <button
         type="button"
         className="ad-btn quiet small"
@@ -454,6 +462,7 @@ export function InvoiceActions({ inv }: { inv: InvoiceRowData }) {
       >
         {sure ? "Really delete?" : "Delete"}
       </button>
+      )}
       <Note r={r} pending={pending} />
     </div>
   );
@@ -1277,18 +1286,23 @@ export type LineItemRow = {
   delivered_month: string | null;
 };
 
-export function LineItems({ project, items }: { project: string; items: LineItemRow[] }) {
+export function LineItems({
+  project,
+  items,
+  title = "1 · Charges — what we bill",
+}: {
+  project: string;
+  items: LineItemRow[];
+  title?: string;
+}) {
   const router = useRouter();
   const [r, setR] = useState<BillingResult>();
   const [pending, start] = useTransition();
   const total = items.reduce((t, i) => t + Number(i.qty) * Number(i.unit_price), 0);
   return (
     <section className="ad-card ad-form" aria-label="Line items" data-testid="line-items">
-      <h2 className="ad-h2">Line items</h2>
-      <span className="ad-small ad-muted">
-        What this project bills. Delivered items count towards the client’s month (“this month so
-        far”) and their plan’s usage.
-      </span>
+      <h2 className="ad-h2">{title}</h2>
+      <span className="ad-small ad-muted">Creates the invoice line.</span>
       {items.length > 0 && (
         <div style={{ overflowX: "auto" }}>
           <table className="ad-table">
@@ -1348,6 +1362,7 @@ export function LineItems({ project, items }: { project: string; items: LineItem
           e.preventDefault();
           const f = new FormData(e.currentTarget);
           const form = e.currentTarget;
+          if (!String(f.get("kind") ?? "")) return setR({ ok: false, error: "Pick an item from the price list." });
           start(async () => {
             const res = await addLineItem(
               project,
@@ -1364,7 +1379,8 @@ export function LineItems({ project, items }: { project: string; items: LineItem
           });
         }}
       >
-        <select name="kind" aria-label="Kind" defaultValue="reel">
+        <select name="kind" aria-label="Kind" defaultValue="">
+          <option value="">Add from price list…</option>
           {KINDS.map(([k, l]) => (
             <option key={k} value={k}>
               {l}

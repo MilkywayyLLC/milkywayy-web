@@ -105,11 +105,12 @@ export function ShootLog({
   );
 
   return (
-    <section className="ad-card ad-form" aria-label="Log what we shot" data-testid="shoot-log">
+    <section className="ad-card ad-form" aria-label="Charges" data-testid="shoot-log">
       <div className="ad-row-between">
-        <h2 className="ad-h2 ad-m0">Log what we shot</h2>
+        <h2 className="ad-h2 ad-m0">1 · Charges — what we bill</h2>
         <span className="ad-small ad-muted">{logged ? "Logged" : "Not logged yet"}</span>
       </div>
+      <p className="ad-small ad-muted ad-m0">Creates the invoice line.</p>
       <p className="ad-small ad-muted ad-m0">
         On a monthly package, items within what’s left of this month’s inclusions are saved as
         Included (AED 0); the rest are Extras at the client’s price. For a flexible booking add a
@@ -236,24 +237,27 @@ export function ShootLog({
         })}
       </div>
       <div className="ad-btns ad-center">
-        <button
-          type="button"
+        <select
           className="ad-btn ghost small"
+          aria-label="Add from price list"
           disabled={locked}
-          onClick={() =>
+          value=""
+          onChange={(e) => {
+            const o = options.find((x) => x.key === e.target.value);
+            if (!o) return;
             setLines((ls) => [
               ...ls,
-              {
-                key: options[0]?.key ?? "reel",
-                description: options[0]?.label ?? "",
-                qty: 1,
-                basis: "client_rate",
-              },
-            ])
-          }
+              { key: o.key, description: o.label, qty: 1, basis: "client_rate" },
+            ]);
+          }}
         >
-          Add an item
-        </button>
+          <option value="">Add from price list…</option>
+          {options.map((o) => (
+            <option key={o.key} value={o.key}>
+              {o.label}
+            </option>
+          ))}
+        </select>
         <span className="ad-small">
           Total <b data-testid="log-total">{money(currency, Math.round(total * 100) / 100)}</b>
         </span>
@@ -318,11 +322,12 @@ export function DeliverablesAdmin({
     setList((ls) => ls.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
   return (
-    <section className="ad-card ad-form" aria-label="Deliverables" data-testid="deliverables-admin">
-      <h2 className="ad-h2">Deliverables</h2>
+    <details className="ad-card ad-form" aria-label="What we'll deliver" data-testid="deliverables-admin">
+      <summary className="ad-h2">2 · What we’ll deliver</summary>
+      <p className="ad-small ad-muted ad-m0">Checklist for the client.</p>
       {list.length === 0 && (
         <p className="ad-small ad-muted ad-m0">
-          None yet. They’re created from “Log what we shot”, or add them here.
+          None yet. They’re filled in from the charges, or add them here.
         </p>
       )}
       {list.map((d, i) => {
@@ -461,6 +466,6 @@ export function DeliverablesAdmin({
         </button>
         <Note r={r} pending={pending} />
       </div>
-    </section>
+    </details>
   );
 }

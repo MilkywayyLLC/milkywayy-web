@@ -6,7 +6,11 @@ import { invoicePdf, type PdfInvoice } from "@/lib/invoice-pdf";
  * details come from Billing settings; until they're filled in, the site's company name and
  * address stand in.
  */
-export async function renderInvoicePdf(d: PdfInvoice, origin: string) {
+export async function renderInvoicePdf(
+  d: PdfInvoice,
+  origin: string,
+  opts: { title?: string; reference?: string } = {},
+) {
   const site = await getSiteSettings().catch(() => null);
   const data: PdfInvoice = {
     ...d,
@@ -17,7 +21,7 @@ export async function renderInvoicePdf(d: PdfInvoice, origin: string) {
       email: d.company.email || site?.email || null,
     },
   };
-  return invoicePdf(data, { payUrl: `${origin}/portal/billing` });
+  return invoicePdf(data, { payUrl: `${origin}/portal/billing`, ...opts });
 }
 
 export const pdfResponse = (bytes: Uint8Array, number: string | null) =>

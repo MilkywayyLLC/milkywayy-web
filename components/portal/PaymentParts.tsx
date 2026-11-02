@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { dateLabel, money } from "@/lib/portal/billing";
 import { shortTitle } from "@/lib/portal/projects";
 import { carriedLines, carrySummary, type Carry } from "@/lib/portal/rollover";
@@ -20,7 +21,7 @@ import {
 } from "@/lib/portal/payments";
 import type { ReactNode } from "react";
 import { Icon } from "./Icon";
-import { PaidByTransfer, PayNow } from "./InvoicePay";
+import { PaidByTransfer } from "./InvoicePay";
 import { splitLabel } from "@/lib/portal/package-builder";
 import { Badge } from "./ui";
 
@@ -39,7 +40,7 @@ export type BillingPayments = {
   bank: {
     account_name: string | null;
     bank: string | null;
-    iban: string;
+    iban: string | null;
     swift: string | null;
   } | null;
   value: ValueMonth | null;
@@ -99,40 +100,29 @@ export type ValueMonth = PlanMoney & {
 };
 
 /**
- * Pay this invoice (phase 1, 27 Oct 2026): card first (Stripe, on our own page) on every open invoice.
- * With card on, "I've paid" and Wio live only in the bank-transfer box (owner, 27 Oct 2026), never next
- * to Pay now; without card they're the invoice's own actions.
+ * Pay this invoice (owner, 2 Nov 2026): one "Pay" button to the invoice's own payment page, where card and
+ * bank transfer sit side by side. Nothing to pay once a receipt is submitted.
  */
 export function PayActions({
   inv,
-  card,
-  wio,
 }: {
   inv: { id: string; number: string | null; stage?: string | null; payment_state?: string | null };
-  card: boolean;
-  /** @deprecated kept for older callers; Stripe is on for every client now. */
+  card?: boolean;
+  wio?: string | null;
+  /** @deprecated kept for older callers. */
   payOnline?: boolean;
-  /** @deprecated the bank-transfer box decides now (BankBox `pay`). */
+  /** @deprecated the payment page decides now. */
   bank?: boolean;
-  wio: string | null;
 }) {
   if (inv.payment_state === "submitted") return null;
   return (
-    <>
-      {card && <PayNow id={inv.id} number={inv.number ?? ""} />}
-      {!card && wio && (
-        <a
-          className="btn btn-g btn-s pt-btn-sm"
-          href={wio}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Pay invoice ${inv.number ?? ""} with Wio`}
-        >
-          Pay with Wio ↗
-        </a>
-      )}
-      {!card && <PaidByTransfer id={inv.id} number={inv.number ?? ""} />}
-    </>
+    <Link
+      className="btn btn-p btn-s pt-btn-sm"
+      href={`/portal/pay/${inv.id}`}
+      aria-label={`Pay invoice ${inv.number ?? ""}`}
+    >
+      Pay
+    </Link>
   );
 }
 
@@ -167,10 +157,12 @@ export function BankBox({
               <dd>{bank.bank}</dd>
             </div>
           )}
-          <div>
-            <dt>IBAN</dt>
-            <dd className="pt-mono">{bank.iban}</dd>
-          </div>
+          {bank.iban && (
+            <div>
+              <dt>IBAN</dt>
+              <dd className="pt-mono">{bank.iban}</dd>
+            </div>
+          )}
           {bank.swift && (
             <div>
               <dt>SWIFT</dt>
@@ -179,7 +171,7 @@ export function BankBox({
           )}
         </dl>
       ) : (
-        <span className="pt-meta">WhatsApp us for our bank details.</span>
+        <span className="pt-meta">Our bank details aren’t available here yet.</span>
       )}
       {wio && (
         <span className="pt-meta">
@@ -585,12 +577,12 @@ const STAGE: Record<string, string> = {
 /** A project's payment card: what's due, how to pay, the lock, and refunds. */
 export function ProjectPaymentCard({
   pay,
-  card,
   billing,
   banner,
 }: {
   pay: MyProjectPayment;
-  card: boolean;
+  /** @deprecated the payment page decides. */
+  card?: boolean;
   billing: BillingPayments | null;
   banner?: "paid" | "pay" | null;
 }) {
@@ -632,7 +624,7 @@ export function ProjectPaymentCard({
               badge={
                 <Badge tone={i.status === "paid" ? "ok" : i.status === "overdue" ? "warn" : "gold"}>
                   {i.payment_state === "submitted" && i.status !== "paid"
-                    ? "Submitted"
+                    ? "Payment submitted"
                     : i.status === "paid"
                       ? "Paid"
                       : i.status === "overdue"
@@ -649,27 +641,11 @@ export function ProjectPaymentCard({
                 </>
               }
               actions={
-                i.status !== "paid" && billing ? (
-                  <PayActions
-                    inv={i}
-                    card={card}
-                    bank={billing.bank_transfer !== false}
-                    wio={billing.wio_link}
-                  />
-                ) : null
+                i.status !== "paid" && billing ? <PayActions inv={i} /> : null
               }
             />
           ))}
         </div>
-      )}
-      {open.length > 0 && billing && !card && (
-        <BankBox bank={billing.bank} wio={billing.wio_link} />
-      )}
-      {open.length > 0 && billing && card && billing.bank_transfer !== false && (
-        <details className="pt-breakdown">
-          <summary>Pay by bank transfer instead</summary>
-          <BankBox bank={billing.bank} wio={billing.wio_link} pay={open} />
-        </details>
       )}
       {refunds.length > 0 && (
         <ul className="pt-lines" aria-label="Refunds">

@@ -357,6 +357,47 @@ export async function backfillBookingInvoices(dry = true): Promise<Result & { ro
   }
 }
 
+export type PaymentOptions = "both" | "card" | "bank";
+
+/** Per client: how they may pay (card + bank transfer by default). Booking and month-end invoices alike. */
+export async function setPaymentOptions(account: string, options: PaymentOptions): Promise<Result> {
+  try {
+    const rpc = await portalAdminAction();
+    await rpc("portal_admin_set_payment_options", { p_account: account, p_options: options });
+    revalidatePath(`/admin/accounts/${account}`);
+    revalidatePath("/portal", "layout");
+    return { ok: true, notice: "Payment options saved." };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Flags an account as a test account: its invoices (even cancelled or paid ones) can then be deleted. */
+export async function setTestAccount(account: string, on: boolean): Promise<Result> {
+  try {
+    const rpc = await portalAdminAction();
+    await rpc("portal_admin_set_test_account", { p_account: account, p_on: on });
+    revalidatePath(`/admin/accounts/${account}`);
+    revalidatePath("/admin/billing");
+    return { ok: true, notice: on ? "Marked as a test account." : "No longer a test account." };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** "Paid outside the portal — not billed": no charges, no invoice, ever. */
+export async function setPaidOutside(project: string, on: boolean): Promise<Result> {
+  try {
+    const rpc = await portalAdminAction();
+    await rpc("portal_admin_set_paid_outside", { p_project: project, p_on: on });
+    revalidatePath(`/admin/projects/${project}`);
+    revalidatePath("/admin");
+    return { ok: true, notice: on ? "Marked as paid outside the portal." : "Billable again." };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 /** Per client: may they pay by bank transfer + receipt upload (phase 1; Stripe is the main way). */
 export async function setBankTransfer(account: string, on: boolean): Promise<Result> {
   try {

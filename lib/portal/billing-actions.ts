@@ -79,50 +79,71 @@ export async function submitProof(
   file: { key: string; name: string; size: number; type: string },
   note: string,
 ): Promise<Result> {
+  return submitProofs([id], file, note);
+}
+
+/**
+ * One receipt for one or more invoices ("Pay all" by bank transfer records the same receipt on each):
+ * every invoice shows "Payment submitted" until Milkywayy confirms it, and Milkywayy gets one email.
+ */
+export async function submitProofs(
+  ids: string[],
+  file: { key: string; name: string; size: number; type: string },
+  note: string,
+): Promise<Result> {
+  if (!ids.length || ids.length > 50 || ids.some((i) => !/^[0-9a-f-]{36}$/.test(i)))
+    return { ok: false, error: "Couldn’t send it. Try again." };
   const { db, user, current } = await requireAccount("/portal/billing");
-  const { data, error } = await db.rpc("submit_payment_proof", {
-    p_invoice: id,
-    p_key: file.key,
-    p_filename: file.name.slice(0, 160),
-    p_bytes: file.size,
-    p_content_type: file.type,
-    p_note: note.slice(0, 300) || null,
-  });
-  if (error) {
-    const m = error.message;
-    return {
-      ok: false,
-      error: /already submitted/.test(m)
+  const sent: { number: string; amount: number; currency: string; account: string; id: string }[] = [];
+  let failed = "";
+  for (const id of ids) {
+    const { data, error } = await db.rpc("submit_payment_proof", {
+      p_invoice: id,
+      p_key: file.key,
+      p_filename: file.name.slice(0, 160),
+      p_bytes: file.size,
+      p_content_type: file.type,
+      p_note: note.slice(0, 300) || null,
+    });
+    if (error) {
+      const m = error.message;
+      failed = /already submitted/.test(m)
         ? "You’ve already sent a proof for this invoice. We’ll confirm it soon."
         : /already paid/.test(m)
           ? "That invoice is already paid."
-          : "Couldn’t send it. Try again.",
-    };
+          : "Couldn’t send it. Try again.";
+      continue;
+    }
+    sent.push({ ...(data as Omit<(typeof sent)[number], "id">), id });
   }
-  const d = data as { number: string; amount: number; currency: string; account: string };
+  if (!sent.length) return { ok: false, error: failed || "Couldn’t send it. Try again." };
   const origin = originFrom(await headers());
+  const total = sent.reduce((t, d) => t + Number(d.amount), 0);
+  const numbers = sent.map((d) => d.number).join(", ");
   await alertMilkywayyBilling(
     current.account.id,
     "payment_submitted",
-    `Payment submitted: ${d.account} · ${d.number}`,
+    `Payment submitted: ${sent[0].account} · ${numbers}`,
     [
-      `${d.account} says they've paid invoice ${d.number} (${money(d.currency, d.amount)}) by bank transfer.`,
+      `${sent[0].account} says they've paid ${sent.length > 1 ? "invoices" : "invoice"} ${numbers} (${money(sent[0].currency, total)}) by bank transfer.`,
       ...(note ? [`Their note: ${note}`] : []),
       "Check the proof, then confirm it or reject it with a reason.",
     ],
     `${origin}/admin/billing?status=submitted`,
   );
   // A booking held for payment went through when the receipt was recorded: tell Milkywayy once.
-  const { data: inv } = await db.from("invoices").select("project_id").eq("id", id).maybeSingle();
-  if (inv?.project_id)
-    await emailBookingRequest(
-      portalAdminAs(`client:${user.email ?? user.id}`),
-      inv.project_id,
-      origin,
-      [
-        `Paid by bank transfer: ${d.number}, ${money(d.currency, d.amount)}. Receipt uploaded, payment to verify.`,
-      ],
-    );
+  for (const d of sent) {
+    const { data: inv } = await db.from("invoices").select("project_id").eq("id", d.id).maybeSingle();
+    if (inv?.project_id)
+      await emailBookingRequest(
+        portalAdminAs(`client:${user.email ?? user.id}`),
+        inv.project_id,
+        origin,
+        [
+          `Paid by bank transfer: ${d.number}, ${money(d.currency, d.amount)}. Receipt uploaded, payment to verify.`,
+        ],
+      );
+  }
   revalidatePath("/portal", "layout");
-  return { ok: true, notice: "Thanks. We’ll confirm it and email you." };
+  return { ok: true, notice: "Thanks — we’ll confirm your payment shortly." };
 }

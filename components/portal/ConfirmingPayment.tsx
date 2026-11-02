@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { finishPayment } from "@/lib/portal/pay-actions";
+import { finishBatch, finishPayment } from "@/lib/portal/pay-actions";
 
 /**
  * "Confirming payment…" (owner, 27 Oct 2026): Stripe's webhook records the payment, so the page checks
@@ -11,22 +11,28 @@ import { finishPayment } from "@/lib/portal/pay-actions";
  */
 export function ConfirmingPayment({
   invoiceId,
+  batchId,
   sessionId,
 }: {
-  invoiceId: string;
+  invoiceId?: string;
+  /** "Pay all": the batch the session paid. */
+  batchId?: string;
   sessionId: string;
 }) {
   const router = useRouter();
   useEffect(() => {
     const poll = setInterval(() => router.refresh(), 4000);
     const fallback = setTimeout(async () => {
-      await finishPayment(invoiceId, sessionId, true).catch(() => null);
+      await (batchId
+        ? finishBatch(batchId, sessionId, true)
+        : finishPayment(invoiceId ?? "", sessionId, true)
+      ).catch(() => null);
       router.refresh();
     }, 45000);
     return () => {
       clearInterval(poll);
       clearTimeout(fallback);
     };
-  }, [invoiceId, sessionId, router]);
+  }, [invoiceId, batchId, sessionId, router]);
   return null;
 }

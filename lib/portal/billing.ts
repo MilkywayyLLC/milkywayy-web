@@ -188,7 +188,7 @@ export type MyBilling = {
   bank: {
     account_name: string | null;
     bank: string | null;
-    iban: string;
+    iban: string | null;
     swift: string | null;
   } | null;
 };

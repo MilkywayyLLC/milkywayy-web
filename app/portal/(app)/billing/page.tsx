@@ -1,8 +1,8 @@
 import { carrySummary } from "@/lib/portal/rollover";
 import { cx } from "@/lib/cx";
 import { InvoiceDownload } from "@/components/portal/InvoiceDownload";
+import { PayAll, type DueInvoice } from "@/components/portal/PayAll";
 import {
-  BankBox,
   HowYouPay,
   PackageBookings,
   InvoiceRow,
@@ -108,7 +108,7 @@ export default async function Billing({
     ref: string | null;
     applied: { number: string | null; amount: number }[];
   }[];
-  const opts = options as { bank_transfer?: boolean } | null;
+  const opts = options as { bank_transfer?: boolean; payment_options?: string } | null;
   const bp = payments
     ? ({
         ...(payments as BillingPayments),
@@ -117,7 +117,7 @@ export default async function Billing({
     : null;
   if (error) console.error("[portal] my_billing:", error.message);
   const b = billing as MyBilling | null;
-  const cardPay = stripeReady();
+  const cardPay = stripeReady() && opts?.payment_options !== "bank";
   const statements = new Map(
     ((statementRows ?? []) as StatementRow[]).map((s) => [s.month.slice(0, 10), s]),
   );
@@ -128,15 +128,61 @@ export default async function Billing({
     if (px !== py) return px - py;
     return px ? y.issued_on.localeCompare(x.issued_on) : x.due_on.localeCompare(y.due_on);
   });
-  const unpaid = invoices.some((i) => i.status !== "paid");
   const dueList = invoices.filter((i) => i.status !== "paid");
   const paidList = invoices.filter((i) => i.status === "paid");
   // Each booking invoice names its booking (MW-xxxx).
   const projectIds = [...new Set(invoices.map((i) => i.project_id).filter(Boolean))] as string[];
+  // Month-end invoices name their bookings through the items billed on them.
+  const { data: billedRows } = invoices.length
+    ? await db
+        .from("line_items")
+        .select("billed_invoice_id, project_id")
+        .in(
+          "billed_invoice_id",
+          invoices.map((i) => i.id),
+        )
+    : { data: [] };
+  const billedProjects = new Map<string, Set<string>>();
+  for (const b2 of billedRows ?? [])
+    if (b2.billed_invoice_id && b2.project_id) {
+      projectIds.push(b2.project_id);
+      billedProjects.set(
+        b2.billed_invoice_id,
+        (billedProjects.get(b2.billed_invoice_id) ?? new Set()).add(b2.project_id),
+      );
+    }
   const { data: refRows } = projectIds.length
-    ? await db.from("projects").select("id, ref, status").in("id", projectIds)
+    ? await db
+        .from("projects")
+        .select("id, ref, status")
+        .in("id", [...new Set(projectIds)])
     : { data: [] };
   const refOf = new Map((refRows ?? []).map((r) => [r.id, r.ref as string]));
+  const refsFor = (i: Invoice) => {
+    const ids = new Set<string>([
+      ...(i.project_id ? [i.project_id] : []),
+      ...(billedProjects.get(i.id) ?? []),
+    ]);
+    return [...ids].map((id) => refOf.get(id)).filter(Boolean) as string[];
+  };
+  // "Pay all due": every unpaid invoice in the first currency that isn't already waiting on a receipt
+  // or on a held booking.
+  const heldIds = new Set(
+    (refRows ?? []).filter((r) => r.status === "awaiting_payment").map((r) => r.id),
+  );
+  const payable = dueList.filter(
+    (i) => i.payment_state !== "submitted" && !(i.project_id && heldIds.has(i.project_id)),
+  );
+  const payCurrency = payable[0]?.currency;
+  const payAllList: DueInvoice[] = payable
+    .filter((i) => i.currency === payCurrency)
+    .map((i) => ({
+      id: i.id,
+      number: i.number ?? "Invoice",
+      amount: Number(i.amount),
+      due_on: i.due_on,
+      refs: refsFor(i),
+    }));
   const due = dueSummary(
     invoices,
     new Set((refRows ?? []).filter((r) => r.status === "awaiting_payment").map((r) => r.id)),
@@ -189,12 +235,18 @@ export default async function Billing({
             <div className="pt-sum" data-testid="due-now">
               <span className="pt-eb">Due now</span>
               <b className="pt-mono">{money(due.currency, due.total)}</b>
-              <Link
-                href={due.count === 1 && cardPay ? `/portal/pay/${due.open[0].id}` : "#invoices"}
-                className="btn btn-p btn-s"
-              >
-                Pay
-              </Link>
+              {payAllList.length > 1 ? (
+                <a href="#pay-all" className="btn btn-p btn-s">
+                  Pay all
+                </a>
+              ) : (
+                <Link
+                  href={due.count === 1 ? `/portal/pay/${due.open[0].id}` : "#invoices"}
+                  className="btn btn-p btn-s"
+                >
+                  Pay
+                </Link>
+              )}
             </div>
           )}
           {soFar && (
@@ -368,6 +420,15 @@ export default async function Billing({
         </div>
       )}
 
+      {payAllList.length > 1 && payCurrency && (
+        <section className="pt-card" aria-labelledby="payall-h" id="pay-all">
+          <h2 id="payall-h" className="pt-h2">
+            Pay all due
+          </h2>
+          <PayAll invoices={payAllList} currency={payCurrency} />
+        </section>
+      )}
+
       <section className="pt-card" aria-labelledby="inv-h">
         <h2 id="inv-h" className="pt-h2">
           Invoices
@@ -409,7 +470,7 @@ export default async function Billing({
                                 }
                               >
                                 {submitted
-                                  ? "Submitted"
+                                  ? "Payment submitted"
                                   : st === "paid" && refundState(i)
                                     ? refundState(i)
                                     : STATUS_LABEL[st]}
@@ -417,10 +478,8 @@ export default async function Billing({
                             }
                             meta={
                               <>
-                                {i.project_id && refOf.get(i.project_id)
-                                  ? `${refOf.get(i.project_id)} · `
-                                  : ""}
-                                {monthLabel(month)} · due {dateLabel(i.due_on, { year: undefined })}
+                                {refsFor(i).length ? `${refsFor(i).join(", ")} · ` : ""}
+                                {monthLabel(month)} · Due {dateLabel(i.due_on, { year: undefined })}
                                 {i.paid_via === "stripe" ? " · by card" : ""}
                                 {i.paid_via === "bank" ? " · by bank transfer" : ""}
                                 {Number(i.refunded ?? 0) > 0
@@ -438,14 +497,7 @@ export default async function Billing({
                             }
                             actions={
                               <>
-                                {open && !submitted && bp && (
-                                  <PayActions
-                                    inv={i}
-                                    card={cardPay}
-                                    bank={bp.bank_transfer !== false}
-                                    wio={bp.wio_link}
-                                  />
-                                )}
+                                {open && !submitted && <PayActions inv={i} />}
                                 {i.pdf_source === "generated" ? (
                                   <PdfLink id={i.id} number={i.number ?? "invoice"} />
                                 ) : (
@@ -520,13 +572,6 @@ export default async function Billing({
           </div>
         )}
       </section>
-      {bp && bp.bank_transfer !== false && (unpaid || bp.value || bp.terms === "month_end") && (
-        <BankBox
-          bank={bp.bank}
-          wio={bp.wio_link}
-          pay={cardPay ? invoices.filter((i) => shownStatus(i) !== "paid") : undefined}
-        />
-      )}
     </>
   );
 }

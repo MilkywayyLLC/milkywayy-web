@@ -164,6 +164,8 @@ export type Project = {
   shoot_date: string | null;
   slot: string | null;
   delivered_at: string | null;
+  /** Settled outside the portal: never billed (2 Nov 2026). */
+  paid_outside?: boolean;
   completed_at: string | null;
   revision_rounds_allowed: number;
   revision_rounds_used: number;

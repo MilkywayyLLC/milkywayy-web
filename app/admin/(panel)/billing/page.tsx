@@ -39,6 +39,8 @@ type QueueRow = {
   changed: boolean;
   payment_state: "submitted" | "rejected" | null;
   stage?: "full" | "deposit" | "balance" | "fee" | "adjustment" | null;
+  refs?: string[];
+  is_test?: boolean;
 };
 
 const STAGE: Record<string, string> = {
@@ -202,7 +204,10 @@ export default async function InvoiceQueue({
             >
               <span role="cell">
                 <b>{r.account_name}</b>
-                <span className="ad-small ad-muted">{r.number ?? "No number yet"}</span>
+                <span className="ad-small ad-muted">
+                  {r.number ?? "No number yet"}
+                  {r.refs?.length ? ` · ${r.refs.join(", ")}` : ""}
+                </span>
               </span>
               <span role="cell">
                 {r.category ? CATEGORY_LABEL[r.category] : "Invoice"}

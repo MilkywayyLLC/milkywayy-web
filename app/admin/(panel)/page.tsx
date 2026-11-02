@@ -37,6 +37,14 @@ type QueueRow = {
   due_on: string;
   payment_state: "submitted" | "rejected" | null;
 };
+type Unlogged = {
+  id: string;
+  ref: string;
+  type: ProjectType;
+  title: string;
+  status: string;
+  account_name: string;
+};
 type Inquiry = {
   id: string;
   subject: string;
@@ -86,8 +94,19 @@ export default async function Today({
     }
   };
 
-  const [rows, queue, inquiries, revenue, settings, leads, changes, drafts, plans, pkgRequests] =
-    await Promise.all([
+  const [
+    rows,
+    queue,
+    inquiries,
+    revenue,
+    settings,
+    leads,
+    changes,
+    drafts,
+    plans,
+    pkgRequests,
+    unlogged,
+  ] = await Promise.all([
       // One call for every type: the RPC syncs bookings on each call.
       rpc ? safe(rpc<Row[]>("portal_admin_projects", {})) : null,
       rpc ? safe(rpc<QueueRow[]>("portal_admin_invoice_queue", { p_status: null })) : null,
@@ -114,6 +133,8 @@ export default async function Today({
       rpc
         ? safe(rpc<{ status: string }[]>("portal_admin_package_requests", { p_status: null }))
         : null,
+      // Delivered or completed with nothing logged: no invoice can follow (2 Nov 2026).
+      rpc ? safe(rpc<Unlogged[]>("portal_admin_unlogged_deliveries", {})) : null,
     ]);
 
   const origin = originFrom(await headers());
@@ -165,6 +186,7 @@ export default async function Today({
       "to confirm",
       "/admin/projects?status=requested",
     ],
+    [(unlogged ?? []).length, "delivered, not logged", "#unlogged"],
     [receipts.length, "receipts to check", "/admin/billing?status=submitted"],
     [drafts2approve.length, "invoice drafts", "/admin/billing?status=open"],
     [
@@ -266,6 +288,46 @@ export default async function Today({
               </Link>
             ))}
           </nav>
+
+          {unlogged && unlogged.length > 0 && (
+            <section
+              className="ad-card"
+              aria-label="Delivered but not logged"
+              id="unlogged"
+              data-testid="unlogged"
+            >
+              <div className="ad-row-between">
+                <h2 className="ad-h2">Delivered but not logged</h2>
+                <span className="ad-eb">{unlogged.length}</span>
+              </div>
+              <p className="ad-small ad-muted ad-m0">
+                Nothing is logged on these, so they can’t be invoiced. Add the charges (step 1), or
+                mark the project as paid outside the portal.
+              </p>
+              <div className="ad-list">
+                {unlogged.map((r) => (
+                  <Link
+                    key={r.id}
+                    href={`/admin/projects/${r.id}`}
+                    className="ad-row ad-today-row"
+                    prefetch={false}
+                  >
+                    <span className="ad-row-main">
+                      <span>
+                        <span className="ad-row-title">
+                          {r.ref} · {r.account_name}
+                        </span>
+                        <span className="ad-row-meta ad-block">
+                          {TYPE_LABEL[r.type]} · {statusLabel(r.status)}
+                        </span>
+                      </span>
+                    </span>
+                    <Pill tone="warn">Not logged</Pill>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="ad-card" aria-label="Pending confirmations">
             <div className="ad-row-between">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckoutGuard, PaySummaryBar } from "@/components/portal/CheckoutChrome";
 import { PayChoice } from "@/components/portal/PayChoice";
+import { PayPanel } from "@/components/portal/PayPanel";
 import { money } from "@/lib/portal/billing";
 import { payView } from "@/lib/portal/pay-actions";
 import { pagePath } from "@/lib/portal/payment-server";
@@ -110,19 +111,31 @@ export default async function Pay({ params }: { params: Promise<{ id: string }> 
           {summary}
         </aside>
         <section className="pt-card pt-pay-form" aria-label="Payment">
-          {stripeReady() ? (
+          {inv.billing ? (
+            <PayPanel
+              ids={[inv.id]}
+              numbers={[inv.number]}
+              amount={money(inv.currency, Number(inv.amount))}
+              options={inv.payment_options}
+              cardReady={stripeReady()}
+              bank={inv.bank}
+              target={{ kind: "invoice", id: inv.id }}
+              state={inv.payment_state === "submitted" ? "submitted" : null}
+              rejected={inv.payment_state === "rejected" ? inv.reject_reason : null}
+            />
+          ) : stripeReady() && inv.payment_options !== "bank" ? (
             <PayChoice
               invoiceId={inv.id}
               projectId={p?.id ?? null}
-              teammate={!inv.billing}
-              bank={inv.bank_transfer && inv.billing}
+              teammate
+              bank={false}
               back={back}
               number={inv.number}
             />
           ) : (
             <p className="pt-meta">
-              Card payments aren’t switched on yet. Pay by bank transfer from{" "}
-              <Link href={back}>{p ? "the booking page" : "Billing"}</Link>.
+              Ask your account owner or an admin to pay this invoice from{" "}
+              <Link href="/portal/billing">Billing</Link>.
             </p>
           )}
         </section>

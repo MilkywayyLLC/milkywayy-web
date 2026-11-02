@@ -137,9 +137,10 @@ export function ConfirmShot({
       data-testid="confirm-shot"
     >
       <div className="ad-row-between">
-        <h2 className="ad-h2 ad-m0">Confirm what we shot</h2>
+        <h2 className="ad-h2 ad-m0">1 · Charges — what we bill</h2>
         <span className="ad-small ad-muted">Required before delivery</span>
       </div>
+      <p className="ad-small ad-muted ad-m0">Creates the invoice line.</p>
       <p className="ad-small ad-muted ad-m0">
         Change only what differs. More than booked: {more}. Less: {less}. A shorter shoot isn’t
         credited.
@@ -360,7 +361,7 @@ function Confirmed({
       data-testid="confirm-shot"
     >
       <div className="ad-row-between">
-        <h2 className="ad-h2 ad-m0">What we shot</h2>
+        <h2 className="ad-h2 ad-m0">1 · Charges — what we bill</h2>
         <span className="ad-small ad-muted">
           Confirmed{c.confirmed_by ? ` by ${c.confirmed_by}` : ""} ·{" "}
           {new Date(c.confirmed_at).toLocaleDateString("en-GB", { timeZone: "Asia/Dubai" })}

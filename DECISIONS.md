@@ -668,3 +668,13 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 - **Follow-up (not built): "Already paid — don't invoice" toggle.** Admin switch on a project, default ON for projects created with a past date. Plan: a flag on the project meta; a line_items trigger forces lines on a flagged project to AED 0 (list price kept, reason "Already paid outside the portal", the MW-1296 waive mechanism) so Fix, manual lines and booking-time lines can't land on a bill; month-end and due totals skip flagged projects. One prod migration plus UI; build locally with tests and review before it goes to prod.
 - Emails with calendar links show one line, "Add to calendar: Google Calendar · Apple / Outlook", each a text hyperlink to the same URLs (email lines accept `[[label|url]]`; the plain-text part keeps "label (url)").
 - Shoot emails, WhatsApp texts and the admin project heading use the short location title (`shortTitle`: "Dubai Marina Mall Tram Station, Dubai Marina"); the full address stays in the details. Batches and avatar videos keep their titles.
+
+## 2 Nov 2026 — billing fix round (migration `20261115090000_billing_gates_payment_options`)
+
+- **Gate:** any client project (shoot, edit, avatar) can't go to Delivered/Completed until something is logged (charges or a v2 "as booked" confirmation). The invoice draft now fires on Completed as well as Delivered. Past projects and ones flagged `projects.paid_outside` are exempt and can't get charges at all (a trigger refuses inserts). The migration flags MW-1757.
+- **Delivered but not logged** on Today = delivered/completed, not exempt, zero line items, no confirmation.
+- **End-of-month, one per delivery:** the draft's due date is the last day of the delivery month (the approval still publishes it; if approved after month end, the normal +7 days applies).
+- **Payment options** (`accounts.payment_options` both/card/bank, default both for everyone) replaces "Card on month-end invoices" + the bank checkbox; the older `pay_online` / `bank_transfer` columns follow it, so older readers still agree.
+- **Pay all:** `payment_batches` + one Stripe session (`client_reference_id = batch_<id>`); the webhook marks each invoice paid. Bank transfer: one receipt recorded on every invoice (each shows "Payment submitted" until confirmed). The statement PDF reuses the invoice writer with one line per invoice.
+- **Test accounts:** `accounts.is_test` (toggle on the client page). Drafts can always be deleted; issued or cancelled invoices only on a test account.
+- **Not done on purpose:** logging a delivered project later does not auto-create the month-end draft (make it from the queue).
