@@ -1,21 +1,23 @@
 /*
  * Website dashboard previews (owner, 20 Oct 2026): still frames of the client portal as it is now
- * (Book media page, client home, booking detail), on the portal's own type tokens (DECISIONS.md
- * "Portal type system"). Everything is scoped under .scm and never reads the viewport: the frame
- * picks its layout from the width it gets (data-l="desk" or "phone", set in ShowcaseFrames), so
- * a phone visitor sees the phone portal (bottom tabs, stacked cards, bottom total bar), not a
- * shrunken desktop. Loaded with the frames only, when the section is near the screen.
+ * (the dark V2 portal, 3 Nov 2026), on the portal's own tokens. Everything is scoped under .scm
+ * and never reads the viewport: DashboardShowcase picks data-l="desk" (desktop portal, with the
+ * rail) or "tablet" (top bar and menu). Phones get the tablet frame scaled down, so it stays
+ * landscape. Loaded with the frames only, when the section is near the screen.
  */
 @layer components {
   .scm {
-    --bg: #f5f4f0;
-    --surface: #ffffff;
-    --surface-2: #ece9e2;
-    --line: #dad6cd;
-    --fg: #111110;
-    --muted: #5f5a52;
-    --acc: #7a5c2e;
+    --bg: #0f0f0e;
+    --surface: #171716;
+    --surface-2: #201f1d;
+    --line: #2a2927;
+    --fg: #ededea;
+    --muted: #8e8c87;
+    --acc: #e6d3a3;
     --gold: #e6d3a3;
+    --ink: #111110;
+    --r: 14px;
+    --r-sm: 10px;
     --t-title: 700 30px/1 var(--font-display);
     --t-sec: 700 18px/1.15 var(--font-display);
     --t-body: 400 15px/1.5 var(--font-sans);
@@ -35,7 +37,7 @@
     color: var(--fg);
     font: var(--t-body);
     text-align: left;
-    color-scheme: light;
+    color-scheme: dark;
   }
   .scm *,
   .scm *::before,
@@ -98,9 +100,6 @@
   .scm[data-l="desk"] .s-shell {
     grid-template-columns: 172px minmax(0, 1fr);
   }
-  .scm[data-l="phone"] .s-shell {
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
-  }
   .scm .s-rail {
     display: flex;
     flex-direction: column;
@@ -108,9 +107,6 @@
     padding: var(--sp-4) var(--sp-3);
     background: var(--surface);
     border-right: 1px solid var(--line);
-  }
-  .scm[data-l="phone"] .s-rail {
-    display: none;
   }
   .scm .s-logo .brand-logo {
     height: 18px;
@@ -144,9 +140,6 @@
     min-width: 0;
     min-height: 0;
   }
-  .scm[data-l="phone"] .s-main {
-    display: contents;
-  }
   .scm .s-top {
     display: flex;
     align-items: center;
@@ -157,15 +150,8 @@
     border-bottom: 1px solid var(--line);
     flex: none;
   }
-  .scm[data-l="phone"] .s-top {
-    justify-content: space-between;
-    padding: 0 var(--sp-4);
-  }
   .scm .s-top .s-logo {
     display: none;
-  }
-  .scm[data-l="phone"] .s-top .s-logo {
-    display: block;
   }
   .scm .s-top-r {
     display: flex;
@@ -175,9 +161,6 @@
   .scm .s-hello {
     font: var(--t-small);
     color: var(--muted);
-  }
-  .scm[data-l="phone"] .s-hello {
-    display: none;
   }
   .scm .s-acct {
     display: grid;
@@ -197,20 +180,8 @@
     flex-direction: column;
     gap: var(--sp-3);
   }
-  .scm[data-l="phone"] .s-content {
-    padding: var(--sp-4);
-    gap: var(--sp-3);
-  }
   .scm .s-tabs {
     display: none;
-  }
-  .scm[data-l="phone"] .s-tabs {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-    height: 60px;
-    background: var(--surface);
-    border-top: 1px solid var(--line);
   }
   .scm .s-tabs span {
     display: grid;
@@ -334,16 +305,8 @@
   .scm .s-steps li.m-now::before {
     background: var(--acc);
   }
-  .scm[data-l="phone"] .s-steps li {
-    font-size: 0;
-    gap: 0;
-  }
   .scm .s-steps-m {
     display: none;
-  }
-  .scm[data-l="phone"] .s-steps-m {
-    display: block;
-    margin-top: -4px;
   }
 
   /* Book media: what are you booking? */
@@ -351,9 +314,6 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--sp-3);
-  }
-  .scm[data-l="phone"] .s-choices {
-    grid-template-columns: minmax(0, 1fr);
   }
   .scm .s-choice {
     display: grid;
@@ -379,18 +339,6 @@
     margin-top: var(--sp-2);
     font-size: 14px;
   }
-  .scm[data-l="phone"] .s-choice {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    column-gap: var(--sp-3);
-  }
-  .scm[data-l="phone"] .s-choice ul {
-    display: none;
-  }
-  .scm[data-l="phone"] .s-choice .s-num {
-    grid-column: 3;
-    grid-row: 1 / span 2;
-  }
 
   /* the booking page: form + "Your booking" (desktop); form + bottom total bar (phone) */
   .scm .s-book {
@@ -398,9 +346,6 @@
     grid-template-columns: minmax(0, 1fr) 220px;
     gap: var(--sp-3) var(--sp-5);
     align-items: start;
-  }
-  .scm[data-l="phone"] .s-book {
-    grid-template-columns: minmax(0, 1fr);
   }
   .scm .s-book-head {
     grid-column: 1 / -1;
@@ -418,9 +363,6 @@
     padding: var(--sp-4);
     background: var(--surface);
     border: 1px solid var(--line);
-  }
-  .scm[data-l="phone"] .s-panel {
-    display: none;
   }
   .scm .s-lines {
     display: grid;
@@ -458,21 +400,8 @@
     padding-top: 10px;
     border-top: 1px solid var(--line);
   }
-  .scm[data-l="phone"] .s-foot {
-    display: none;
-  }
   .scm .s-totalbar {
     display: none;
-  }
-  .scm[data-l="phone"] .s-totalbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-3);
-    height: 64px;
-    padding: 0 var(--sp-4);
-    background: var(--surface);
-    border-top: 1px solid var(--line);
   }
   .scm .s-bar-t {
     display: inline-flex;
@@ -603,9 +532,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--sp-3);
   }
-  .scm[data-l="phone"] .s-two.m-stack {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .scm .s-field {
     display: grid;
     gap: 6px;
@@ -616,12 +542,9 @@
     height: 110px;
     border: 1px solid var(--line);
     background:
-      linear-gradient(90deg, transparent 48%, #e3dfd6 48% 52%, transparent 52%) 0 0 / 120px 100%,
-      linear-gradient(0deg, transparent 46%, #e3dfd6 46% 54%, transparent 54%) 0 0 / 100% 70px,
-      linear-gradient(135deg, #dfe9ee 0 30%, #efede7 30%);
-  }
-  .scm[data-l="phone"] .s-map {
-    display: none;
+      linear-gradient(90deg, transparent 48%, #2e2d2b 48% 52%, transparent 52%) 0 0 / 120px 100%,
+      linear-gradient(0deg, transparent 46%, #2e2d2b 46% 54%, transparent 54%) 0 0 / 100% 70px,
+      linear-gradient(135deg, #1b2226 0 30%, #1c1b1a 30%);
   }
   .scm .s-map i {
     position: absolute;
@@ -647,7 +570,7 @@
     border: 1px solid transparent;
   }
   .scm .s-cal span.m-off {
-    color: #b5b2aa;
+    color: #55534f;
   }
   .scm .s-cal span.m-on {
     background: var(--fg);
@@ -704,16 +627,10 @@
     flex: none;
     width: 34px;
   }
-  .scm[data-l="phone"] .m-desk {
-    display: none;
-  }
   .scm .s-thumbs {
     display: grid;
     grid-template-columns: repeat(var(--c, 4), minmax(0, 1fr));
     gap: var(--sp-2);
-  }
-  .scm[data-l="phone"] .s-thumbs {
-    grid-template-columns: repeat(var(--cp, 2), minmax(0, 1fr));
   }
   .scm .s-file {
     display: grid;
@@ -734,9 +651,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--sp-2);
-  }
-  .scm[data-l="phone"] .s-actions .s-btn {
-    flex: 1;
   }
 
   /* thank you */
@@ -768,11 +682,7 @@
     display: grid;
     place-items: center;
     padding: var(--sp-4);
-    background: rgb(17 17 16 / 0.42);
-  }
-  .scm[data-l="phone"] .s-modal-bg {
-    place-items: end stretch;
-    padding: 40px 0 0;
+    background: rgb(0 0 0 / 0.6);
   }
   .scm .s-modal {
     display: grid;
@@ -782,10 +692,6 @@
     padding: var(--sp-5);
     background: var(--surface);
     border: 1px solid var(--line);
-  }
-  .scm[data-l="phone"] .s-modal {
-    width: 100%;
-    padding: var(--sp-4);
   }
 
   /* the listing share page (buyers) */
@@ -798,19 +704,10 @@
     align-content: start;
     gap: var(--sp-4);
   }
-  .scm[data-l="phone"] .s-lp {
-    padding: 0 0 var(--sp-4);
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
-    height: 100%;
-    gap: var(--sp-3);
-  }
   .scm .s-lp-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-  }
-  .scm[data-l="phone"] .s-lp-top {
-    padding: var(--sp-3) var(--sp-4) 0;
   }
   .scm .s-mosaic {
     display: grid;
@@ -824,13 +721,6 @@
   }
   .scm .s-mosaic .s-ph:first-child {
     grid-row: span 2;
-  }
-  .scm[data-l="phone"] .s-mosaic {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 220px;
-  }
-  .scm[data-l="phone"] .s-mosaic .s-ph:not(:first-child) {
-    display: none;
   }
   .scm .s-count {
     position: absolute;
@@ -846,11 +736,6 @@
     grid-template-columns: minmax(0, 1fr) 210px;
     gap: var(--sp-5);
     align-items: start;
-  }
-  .scm[data-l="phone"] .s-lp-cols {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 0 var(--sp-4);
-    align-content: start;
   }
   .scm .s-price {
     font: 700 26px/1 var(--font-display);
@@ -877,31 +762,245 @@
     border: 1px solid var(--line);
     background: var(--surface);
   }
-  .scm[data-l="phone"] .s-agent {
-    display: none;
-  }
   .scm .s-callbar {
     display: none;
   }
-  .scm[data-l="phone"] .s-callbar {
+
+  /* ---------- V2: rounded cards, pill buttons, champagne as the one accent ---------- */
+  .scm .s-btn {
+    border-radius: 999px;
+  }
+  .scm .s-btn.m-p {
+    background: var(--acc);
+    border-color: var(--acc);
+    color: var(--ink);
+  }
+  .scm .s-card,
+  .scm .s-work,
+  .scm .s-panel,
+  .scm .s-opts,
+  .scm .s-done,
+  .scm .s-modal,
+  .scm .s-svc,
+  .scm .s-stat,
+  .scm .s-inv {
+    border-radius: var(--r);
+  }
+  .scm .s-seg span,
+  .scm .s-in,
+  .scm .s-acct,
+  .scm .s-ph,
+  .scm .s-map,
+  .scm .s-box {
+    border-radius: var(--r-sm);
+  }
+  .scm .s-box {
+    border-radius: 5px;
+  }
+  .scm .s-acct {
+    border-radius: 50%;
+  }
+  .scm .s-seg span,
+  .scm .s-in {
+    background: var(--surface-2);
+  }
+  .scm .s-seg span[aria-pressed="true"],
+  .scm .s-svc.m-on {
+    border-color: var(--acc);
+    box-shadow: inset 0 0 0 1px var(--acc);
+  }
+  .scm .s-opts.m-on {
+    border-color: var(--acc);
+  }
+  .scm .s-box.m-on,
+  .scm .s-cal span.m-on {
+    background: var(--acc);
+    border-color: var(--acc);
+    color: var(--ink);
+  }
+  .scm .s-cal span.m-on {
+    border-radius: 50%;
+  }
+  .scm .s-steps li::before {
+    border-radius: 999px;
+  }
+  .scm .s-steps li.m-done::before {
+    background: var(--acc);
+    opacity: 0.55;
+  }
+  .scm .s-pill {
+    border-radius: 999px;
+  }
+  .scm .s-pill.m-gold,
+  .scm .s-done-ic {
+    color: var(--ink);
+  }
+  .scm .s-link {
+    color: var(--acc);
+  }
+  .scm .s-ph,
+  .scm .s-chips span {
+    border-radius: var(--r-sm);
+  }
+  .scm .s-chips span {
+    border-radius: 999px;
+  }
+
+  /* the rail: pill active item, the plan at the bottom */
+  .scm .s-rail {
+    background: var(--bg);
+  }
+  .scm .s-nav span {
+    border-left: 0;
+    border-radius: 999px;
+    color: var(--muted);
+  }
+  .scm .s-nav span[aria-current] {
+    background: var(--surface-2);
+    color: var(--acc);
+  }
+  .scm .s-plan {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--sp-2);
-    padding: var(--sp-3) var(--sp-4) 0;
-    border-top: 1px solid var(--line);
-    background: var(--surface);
+    gap: 6px;
     margin-top: auto;
+    padding: var(--sp-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
   }
-  .scm .desk-only {
-    display: contents;
+  .scm .s-plan i {
+    display: block;
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(to right, var(--acc) 0 62%, var(--surface-2) 62% 100%);
   }
-  .scm[data-l="phone"] .desk-only {
+  .scm .s-menu {
     display: none;
   }
-  .scm .phone-only {
+
+  /* tablet: no rail; top bar with the menu and the logo */
+  .scm[data-l="tablet"] .s-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .scm[data-l="tablet"] .s-rail {
     display: none;
   }
-  .scm[data-l="phone"] .phone-only {
-    display: revert;
+  .scm[data-l="tablet"] .s-top {
+    justify-content: space-between;
+  }
+  .scm[data-l="tablet"] .s-top .s-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+  .scm[data-l="tablet"] .s-menu {
+    display: grid;
+    place-items: center;
+  }
+  .scm[data-l="tablet"] .s-content {
+    padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  }
+  .scm[data-l="tablet"] .s-book {
+    grid-template-columns: minmax(0, 1fr) 200px;
+  }
+  .scm[data-l="tablet"] .s-lp {
+    padding: var(--sp-3) var(--sp-4);
+  }
+  .scm[data-l="tablet"] .m-desk {
+    display: none;
+  }
+  .scm[data-l="tablet"] .s-thumbs {
+    grid-template-columns: repeat(var(--cp, 2), minmax(0, 1fr));
+  }
+
+  /* home: due card and the three stats */
+  .scm .s-due {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+  }
+  .scm .s-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .scm .s-stat {
+    display: grid;
+    gap: 6px;
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .scm .s-stat b {
+    font: 700 24px/1 var(--font-display);
+    font-variation-settings: "wdth" 85;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* book media: the shoot length slider and the edits */
+  .scm .s-range {
+    position: relative;
+    display: block;
+    height: 6px;
+    margin: 10px 0 2px;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      var(--acc) 0 var(--pct),
+      var(--surface-2) var(--pct) 100%
+    );
+  }
+  .scm .s-range i {
+    position: absolute;
+    left: var(--pct);
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--acc);
+    border: 3px solid var(--bg);
+    box-shadow: 0 0 0 1px var(--acc);
+    transform: translate(-50%, -50%);
+  }
+  .scm .s-ticks {
+    display: flex;
+    justify-content: space-between;
+    font: var(--t-small);
+    color: var(--muted);
+  }
+  .scm .s-ticks b {
+    font-weight: 500;
+    color: var(--acc);
+  }
+  .scm .s-step {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: 2px 4px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+  }
+  .scm .s-step i {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    font-style: normal;
+    border-radius: 50%;
+    background: var(--surface-2);
+  }
+
+  /* billing */
+  .scm .s-inv {
+    display: grid;
+    gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--surface);
+    border: 1px solid var(--line);
   }
 }

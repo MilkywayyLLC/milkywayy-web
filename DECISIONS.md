@@ -723,3 +723,14 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 - **Numbers never repeat.** The counter can only go up, skips any number already used (void too, whichever client has it), and a number is unique across all clients. On first run it moves past every number on an invoice or in the admin log: production goes from 1002 to 1018, past the void INV-1015 to 1017.
 - **Period everywhere a client sees an invoice:** Billing, Pay all, a booking's Payment panel, statements, the PDF and billing emails. The month it's for, not the day it was issued.
 - **Payment view:** no "no fees" wording. Checkout summary shows period, MW ref and due date; the bank card has the account number (some UAE banks use it for local transfers), copy buttons, receipt upload and "I've paid".
+
+## 3 Nov 2026 — website refinement pass (migration `20261121090000_completed_needs_deliverables`)
+
+- **Dashboard previews:** rebuilt on the dark V2 portal with the current nav. Desktop portal from 900px, tablet portal below; phones get the tablet frame scaled down, never a tall frame. This replaces the 20 Oct "desktop frame everywhere" decision.
+- **Post-production prices are back** (reverses 20 Oct): starting prices show, and a rate without an amount isn't rendered. Rates stack on phones.
+- **"See our work"** goes to the before/afters when there are any, else the work section. Production has no before/after pairs today.
+- **Free test:** up to 5 photos or 1 short reel, long-form not included. The server still accepts `long`, so an old open form doesn't fail.
+- **Delivery gate:** only Completed is blocked while a deliverable is Editing. Delivered stays allowed so photos can go before reels. The 7-day auto-complete skips those projects. Existing rows aren't changed.
+- **Working hours** (Mon–Sat, 8:00–18:00) come from the portal's booking hours and closed Sundays, in `lib/leads/rules.ts`.
+- **Geo:** an unknown country now asks for cookie consent first. Privacy text isn't changed until the owner approves it.
+

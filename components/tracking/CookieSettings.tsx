@@ -1,18 +1,7 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { trackingConfig } from "@/lib/tracking/config";
-
-const noop = () => () => {};
-
-/** Footer link that reopens the cookie choice (only when tracking is active on this site). */
+/** Footer link on every page that reopens the cookie choice. */
 export function CookieSettings() {
-  const on = useSyncExternalStore(
-    noop,
-    () => !!trackingConfig(),
-    () => false,
-  );
-  if (!on) return null;
   return (
     <button
       type="button"

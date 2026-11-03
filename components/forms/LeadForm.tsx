@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Field, Option, OptionGroup } from "@/components/ui/Field";
 import { readForm } from "@/lib/leads/client";
+import { WORKING_HOURS } from "@/lib/leads/rules";
 import { whatsappLink } from "@/lib/whatsapp";
 import { FormDone, FormError } from "./FormDone";
 import { Honeypot } from "./Honeypot";
@@ -109,12 +110,8 @@ export function LeadForm({
         </Field>
       </div>
       <div className="row2">
-        <PhoneField
-          label={pref === "Call" ? "Phone" : "Phone (or email)"}
-          error={errors.phone}
-          invalid={!!errors.phone}
-        />
-        <Field label={pref === "Email" ? "Email" : "Email (or phone)"} error={errors.email}>
+        <PhoneField label="Phone" error={errors.phone} invalid={!!errors.phone} />
+        <Field label="Email" error={errors.email}>
           <input
             name="email"
             type="email"
@@ -123,6 +120,7 @@ export function LeadForm({
           />
         </Field>
       </div>
+      <p className="fine">Provide at least one.</p>
       <Field label={briefLabel} error={errors.brief}>
         <textarea name="brief" placeholder={briefPlaceholder} maxLength={2000} />
       </Field>
@@ -152,7 +150,9 @@ export function LeadForm({
       <button className="btn btn-p" type="submit" disabled={sending}>
         {sending ? "Sending…" : pref === "WhatsApp" ? "Send and open WhatsApp" : "Send request"}
       </button>
-      <p className="fine">No payment now. We confirm scope and price first.</p>
+      <p className="fine">
+        No payment now. We confirm scope and price first. Working hours: {WORKING_HOURS}.
+      </p>
     </form>
   );
 }

@@ -95,8 +95,11 @@ function SiteTracking({ path }: { path: string }) {
   const [banner, setBanner] = useState(false);
 
   useEffect(() => {
+    const reopen = () => setBanner(true);
+    addEventListener("mw:cookie-settings", reopen);
+    const stop = () => removeEventListener("mw:cookie-settings", reopen);
     const c = trackingConfig();
-    if (!c) return;
+    if (!c) return stop;
     const start = async () => {
       setCfg(c);
       const stored = consent();
@@ -110,9 +113,7 @@ function SiteTracking({ path }: { path: string }) {
         : setTimeout(start, 1);
     if (document.readyState === "complete") idle();
     else addEventListener("load", idle, { once: true });
-    const reopen = () => setBanner(true);
-    addEventListener("mw:cookie-settings", reopen);
-    return () => removeEventListener("mw:cookie-settings", reopen);
+    return stop;
   }, []);
 
   // Page views on every route change; ViewContent on the four service pages.
@@ -139,13 +140,16 @@ function SiteTracking({ path }: { path: string }) {
     return () => document.removeEventListener("click", onClick, true);
   }, []);
 
-  if (!banner || !cfg) return null;
+  if (!banner) return null;
   const choose = (value: "granted" | "denied") => {
     try {
       localStorage.setItem("mw-consent", value);
     } catch {}
     setBanner(false);
-    if (value === "granted") return load(cfg);
+    if (value === "granted") {
+      if (cfg) load(cfg);
+      return;
+    }
     dropQueue();
     // Already loaded (changed their mind from "Cookie settings"): tell each tag to stop.
     const w = window as unknown as Record<string, ((...a: unknown[]) => void) | undefined>;

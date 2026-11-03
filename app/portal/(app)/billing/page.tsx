@@ -251,11 +251,18 @@ export default async function Billing({
               )}
             </div>
           )}
+          {due.count === 0 && (
+            <div className="pt-sum" data-testid="nothing-due">
+              <b>Nothing due today</b>
+            </div>
+          )}
           {soFar && (
             <div className="pt-sum" data-testid="month-so-far">
-              <span className="pt-eb">This month so far</span>
+              <span className="pt-eb">Unbilled work this month ·</span>
               <b className="pt-mono">{money(soFar.currency, soFar.amount)}</b>
-              <span className="pt-meta">invoiced {dateLabel(soFar.on, { year: undefined })}</span>
+              <span className="pt-meta">
+                Invoice scheduled for {dateLabel(soFar.on, { year: undefined })}
+              </span>
             </div>
           )}
         </section>

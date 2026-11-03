@@ -41,21 +41,23 @@ const why = (m: string) =>
       ? "Both included revision rounds are used. Write a message and we’ll sort it out."
       : /already under way/.test(m)
         ? "A revision is already under way."
-        : /delivered projects|nothing to approve/.test(m)
-          ? "That isn’t possible right now. Refresh the page."
-          : /say what should change/.test(m)
-            ? "Tell us what should change."
-            : /isn't waiting for you/.test(m)
-              ? "That script has already been answered. Refresh the page."
-              : /this project is completed/.test(m)
-                ? "This project is completed. Ask in Messages if you need more."
-                : /https:\/\/ link/.test(m)
-                  ? "Paste a full link starting with https://"
-                  : /too many/.test(m)
-                    ? "That’s a lot at once. WhatsApp us and we’ll sort it out."
-                    : /deadline is in the past/.test(m)
-                      ? "Pick a deadline from today on."
-                      : "Something went wrong. Try again.";
+        : /deliverables are still editing/.test(m)
+          ? "Some items are still being edited. You can approve once everything is delivered."
+          : /delivered projects|nothing to approve/.test(m)
+            ? "That isn’t possible right now. Refresh the page."
+            : /say what should change/.test(m)
+              ? "Tell us what should change."
+              : /isn't waiting for you/.test(m)
+                ? "That script has already been answered. Refresh the page."
+                : /this project is completed/.test(m)
+                  ? "This project is completed. Ask in Messages if you need more."
+                  : /https:\/\/ link/.test(m)
+                    ? "Paste a full link starting with https://"
+                    : /too many/.test(m)
+                      ? "That’s a lot at once. WhatsApp us and we’ll sort it out."
+                      : /deadline is in the past/.test(m)
+                        ? "Pick a deadline from today on."
+                        : "Something went wrong. Try again.";
 
 export async function fileLink(fileId: string): Promise<ClientResult> {
   const { db } = await requireAccount("/portal");

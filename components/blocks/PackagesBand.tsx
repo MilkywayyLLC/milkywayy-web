@@ -8,10 +8,13 @@ import { formatNumber } from "@/lib/format";
 export function PackagesBand({
   fromMonthly,
   chips,
+  example,
   actions,
 }: {
   fromMonthly?: number;
   chips: string[];
+  /** One example line under the text. No tier tables. */
+  example?: string;
   actions: ReactNode;
 }) {
   return (
@@ -25,6 +28,7 @@ export function PackagesBand({
           Every package is built around your listings, volume and schedule. Tell us what you need
           and we&apos;ll put your plan together on a call, over WhatsApp or in person.
         </p>
+        {example && <p className="fine">{example}</p>}
       </div>
       <div className="stack" style={{ gap: 14, alignContent: "end" }}>
         <StaticChips items={chips} />

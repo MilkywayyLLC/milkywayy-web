@@ -1,6 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- media is pre-sized WebP on R2 (signed URLs), not next/image */
+import { TourFrame } from "@/components/media/TourFrame";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/portal/Icon";
@@ -267,12 +268,12 @@ export function ListingGallery({
             </a>
           }
         >
-          <iframe
+          <TourFrame
             className="sh-tour-frame"
             src={tour}
+            href={tour}
             title={`${title}: 360° tour`}
             allow="fullscreen; xr-spatial-tracking; gyroscope; accelerometer"
-            allowFullScreen
           />
         </MediaModal>
       )}

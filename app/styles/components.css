@@ -1602,7 +1602,15 @@
     border-radius: 12px;
     box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.35);
   }
-  [data-tone="light"] :is(.trio .fr, .hero-one .fr, .hero-ph, .hero-media-col > .fr, .hero-media-col > .av-stage > .fr, .ba.p-hero-ba) {
+  [data-tone="light"]
+    :is(
+      .trio .fr,
+      .hero-one .fr,
+      .hero-ph,
+      .hero-media-col > .fr,
+      .hero-media-col > .av-stage > .fr,
+      .ba.p-hero-ba
+    ) {
     box-shadow: 0 16px 40px -14px rgba(0, 0, 0, 0.18);
   }
   /* Stagger by pushing the outer frames down, never by lifting a frame into the content above. */
@@ -3587,7 +3595,12 @@
   }
   /* the window */
   .dsh-win {
+    --surface: #171716;
+    --line: #2a2927;
+    --muted: #8e8c87;
     border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
     background: var(--surface);
     box-shadow: 0 30px 60px -30px rgb(0 0 0 / 0.25);
     min-width: 0;
@@ -3612,14 +3625,14 @@
     color: var(--muted);
     letter-spacing: 0.04em;
   }
-  /* The preview frames (components/blocks/showcase): a fixed canvas (the desktop portal at
-     800×500, on phones too) scaled to the window by --k and centred when it's narrower
+  /* The preview frames (components/blocks/showcase): a fixed landscape canvas (desktop or tablet
+     portal; phones get the tablet one) scaled to the window by --k and centred when it's narrower
      than the window. Each frame is paint-contained and they only crossfade. Before the frames
      load, the window keeps their shape so nothing jumps. */
   .dsh-mock {
     position: relative;
     overflow: hidden;
-    background: #f5f4f0;
+    background: #0f0f0e;
     isolation: isolate;
   }
   .dsh-mock:not([data-l]) {
@@ -4246,6 +4259,53 @@
   }
   .fr:has(.vc[data-show]) .fr-title {
     opacity: 0;
+  }
+  /* A 360 tour embed: its loading and failure states sit over the frame (TourFrame). */
+  .tour-box {
+    position: relative;
+    background: #000;
+  }
+  .tour-box iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+  .tour-fill {
+    position: absolute;
+    inset: 0;
+  }
+  .tour-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 16px;
+    text-align: center;
+    font-size: 14px;
+    color: #ededea;
+    background: #111110;
+  }
+  .tour-spin {
+    width: 28px;
+    height: 28px;
+    border: 2px solid rgb(255 255 255 / 0.2);
+    border-top-color: #e6d3a3;
+    border-radius: 50%;
+    animation: tour-spin 0.9s linear infinite;
+  }
+  @keyframes tour-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tour-spin {
+      animation: none;
+    }
   }
   .fr-inline {
     position: absolute;

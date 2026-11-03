@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Field, Option, OptionGroup } from "@/components/ui/Field";
 import { env } from "@/lib/env";
 import { readForm } from "@/lib/leads/client";
-import { AVATAR_USES } from "@/lib/leads/rules";
+import { AVATAR_USES, WORKING_HOURS } from "@/lib/leads/rules";
 import { whatsappLink } from "@/lib/whatsapp";
 import { CalEmbed } from "./CalEmbed";
 import { FormDone, FormError } from "./FormDone";
@@ -99,7 +99,7 @@ export function DemoForm({
         </Field>
       </div>
       <div className="row2">
-        <Field label={pref === "Email" ? "Email" : "Email (or phone)"} error={errors.email}>
+        <Field label="Email" error={errors.email}>
           <input
             name="email"
             type="email"
@@ -109,6 +109,7 @@ export function DemoForm({
         </Field>
         <PhoneField label="Phone" error={errors.phone} invalid={!!errors.phone} />
       </div>
+      <p className="fine">Provide at least one.</p>
       <OptionGroup legend="What's it for?" error={errors.use}>
         {AVATAR_USES.map((u) => (
           <Option
@@ -160,6 +161,7 @@ export function DemoForm({
       <button className="btn btn-p" type="submit" disabled={sending}>
         {sending ? "Sending…" : "Book my demo"}
       </button>
+      <p className="fine">Working hours: {WORKING_HOURS}.</p>
     </form>
   );
 }

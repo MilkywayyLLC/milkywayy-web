@@ -3,6 +3,7 @@ import { LeadForm } from "@/components/forms/LeadForm";
 import { HeroTitle } from "@/components/type/HeroTitle";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { getSiteSettings } from "@/lib/data";
+import { WORKING_HOURS } from "@/lib/leads/rules";
 import { pageWhatsappLink } from "@/lib/whatsapp";
 import { pageMetadata } from "@/lib/seo/meta";
 import { PageLd } from "@/components/seo/JsonLd";
@@ -36,6 +37,10 @@ export default async function ContactPage() {
             <div>
               <span>Email</span>
               <a href={`mailto:${site.email}`}>{site.email}</a>
+            </div>
+            <div>
+              <span>Working hours</span>
+              {WORKING_HOURS}
             </div>
             <div>
               <span>Studio</span>

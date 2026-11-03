@@ -1,5 +1,6 @@
 "use client";
 
+import { TourFrame } from "./TourFrame";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Playable } from "@/lib/playable";
@@ -114,7 +115,18 @@ export function MediaOpen({ play, ambient }: { play: Playable; ambient?: boolean
     setInline(true);
   };
 
-  if (inline && (play.type === "embed" || play.type === "tour"))
+  if (inline && play.type === "tour")
+    return (
+      <TourFrame
+        className="fr-inline"
+        src={play.src}
+        href={play.href}
+        title={play.title}
+        allow="fullscreen; xr-spatial-tracking; gyroscope; accelerometer"
+      />
+    );
+
+  if (inline && play.type === "embed")
     return (
       <iframe
         className="fr-inline"

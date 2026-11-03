@@ -58,7 +58,7 @@ export const SEO_PAGES: SeoPage[] = [
     name: "Post-production",
     title: "Real Estate Photo Editing & Video Editing | Milkywayy",
     description:
-      "Real estate photo editing, video editing and AI avatars for agencies, media companies and creators worldwide. Edits from $0.80. Free test edit.",
+      "Remote real estate photo and video editing, worldwide. HDR photos from $0.80, short-form edits from $50, long-form from $150. Free test edit.",
     og: ["Your remote", "editing team."],
     eyebrow: "Post-production · worldwide",
     sitemap: 0.9,
@@ -70,7 +70,7 @@ export const SEO_PAGES: SeoPage[] = [
     parent: "post-production",
     title: "Free Test Edit | Milkywayy",
     description:
-      "Book a free test edit: tell us what you need edited, book a 15-minute call, and we edit one listing (up to 10 photos) or one reel for free. No commitment.",
+      "Book a free test edit: tell us what you need edited, book a 15-minute call, and we edit up to 5 photos or 1 short reel for free. No commitment.",
     og: ["See the quality", "first. Free."],
     eyebrow: "Free test edit",
     sitemap: 0.6,

@@ -1557,9 +1557,6 @@
     .pt-act-list a {
       grid-template-columns: 32px minmax(0, 1fr) auto;
     }
-    .pt-act-ref {
-      display: none;
-    }
   }
 }
 

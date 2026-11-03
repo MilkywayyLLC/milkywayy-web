@@ -54,7 +54,18 @@ const fail = (e: unknown): ActionResult => {
   if (/add the charges first/.test(m))
     return {
       ok: false,
-      error: "Add the charges first: step 1 · Charges (log what we shot) before it can be delivered.",
+      error:
+        "Add the charges first: step 1 · Charges (log what we shot) before it can be delivered.",
+    };
+  if (/deliverables are still editing/.test(m))
+    return {
+      ok: false,
+      error: "Some deliverables are still Editing. Deliver them or change their status first.",
+    };
+  if (/cannot go back to editing/.test(m))
+    return {
+      ok: false,
+      error: "This project is completed, so a deliverable can’t go back to Editing.",
     };
   if (/approves the script first/.test(m))
     return { ok: false, error: "The client approves the script first (post it under Script)." };

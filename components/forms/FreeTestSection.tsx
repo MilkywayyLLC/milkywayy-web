@@ -30,7 +30,10 @@ export async function FreeTestSection({
           </p>
           <div className="direct">
             <div>
-              <span>Test size</span>1 listing (up to 10 photos) or 1 reel
+              <span>Test size</span>Up to 5 photos or 1 short reel
+            </div>
+            <div>
+              <span>Not included</span>Long-form videos
             </div>
             <div>
               <span>Commitment</span>None

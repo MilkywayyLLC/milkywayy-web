@@ -28,6 +28,8 @@ export const SERVICE_LABELS: Record<string, string> = {
   "post-production": "Post-production",
   "ai-avatars": "AI avatars",
 };
+/** Shown on the contact and lead forms. The portal's booking hours, closed Sundays. */
+export const WORKING_HOURS = "Mon–Sat, 8:00–18:00 Dubai time (GST, UTC+4)";
 export const AVATAR_USES = ["Real estate", "Clinic", "Personal brand", "Other"] as const;
 export const EDIT_KINDS: Record<string, string> = {
   photo: "Photo edits",
@@ -77,8 +79,7 @@ export function checkLead(type: LeadType, v: LeadValues): LeadErrors {
 
   if (type === "free-test") {
     if (!email) e.email = "Add your email so we can send the test and the call invite.";
-    if (!list(v.fields.what).length)
-      e.what = "Pick at least one: photo edits, short-form or long-form.";
+    if (!list(v.fields.what).length) e.what = "Pick at least one: photo edits or short-form.";
     if (list(v.fields.what).some((w) => !(w in EDIT_KINDS)))
       e.what = "Pick from the options shown.";
     const link = str(v.fields.link);
@@ -98,7 +99,7 @@ export function checkLead(type: LeadType, v: LeadValues): LeadErrors {
     if (reply === "Email" && !email) e.email = "Add your email, or choose another way to reply.";
     else if (reply === "Call" && type !== "avatars" && !phone)
       e.phone = "Add a phone number for the call, or choose another way to reply.";
-    else if (!phone && !email) e.phone = "Add a phone number or an email so we can reply.";
+    else if (!phone && !email) e.phone = "Provide at least one: a phone number or an email.";
     if (type === "contact" && !(str(v.fields.service) in SERVICE_LABELS))
       e.service = "Pick the service you're asking about.";
     if (type === "avatars") {

@@ -87,7 +87,7 @@ export const faqs: Faq[] = [
   draft(
     "post-production",
     "Is the free test really free?",
-    "Yes. After a 15-minute call we edit one listing (up to 10 photos) or one reel, free, so you can judge the quality.",
+    "Yes. After a 15-minute call we edit up to 5 photos or 1 short reel, free, so you can judge the quality.",
   ),
 
   draft(

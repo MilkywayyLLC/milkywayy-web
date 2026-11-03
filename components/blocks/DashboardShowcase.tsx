@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@/components/portal/Icon";
 import type { ShowcaseRates } from "@/lib/showcase";
-import { CANVAS, MAX_SCALE, type Layout } from "./showcase/canvas";
+import { CANVAS, DESK_FROM, MAX_SCALE, type Layout } from "./showcase/canvas";
 
 /**
  * The client dashboard, shown like a SaaS feature section: feature tabs on the left, and the
@@ -14,9 +14,9 @@ import { CANVAS, MAX_SCALE, type Layout } from "./showcase/canvas";
  * Auto-advances every 5s while in view and never pauses on hover; clicking a tab selects it and
  * holds it for 10s before auto-advance resumes.
  *
- * The frames (owner, 20 Oct 2026) match the portal as it is now: always the desktop portal on a
- * compact ~16:10 canvas, scaled to the window's width, so on phones it reads like a screenshot.
- * They load on their own, with their styles, only when the section is near the screen, so the
+ * The frames (owner, 3 Nov 2026) match the dark V2 portal: the desktop portal from 900px, the
+ * tablet portal below it, and on phones that same landscape frame scaled to the window's width
+ * (never a tall phone frame). They load on their own, with their styles, only when the section is near the screen, so the
  * pages above the fold carry none of it.
  */
 export type ShowcaseScreen =
@@ -26,6 +26,7 @@ export type ShowcaseScreen =
   | "book-where"
   | "confirmed"
   | "deliveries"
+  | "billing"
   | "share"
   | "edit-request"
   | "edit-status"
@@ -72,6 +73,7 @@ export function DashboardShowcase({
   const [inView, setInView] = useState(false);
   const [near, setNear] = useState(false); // load the frames once the section is close
   const [width, setWidth] = useState(0);
+  const [layout, setLayout] = useState<Layout>("desk");
   const n = features.length;
 
   useEffect(() => {
@@ -100,11 +102,13 @@ export function DashboardShowcase({
   useEffect(() => {
     const el = stage.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    const ro = new ResizeObserver(() => {
+      setWidth(el.clientWidth);
+      setLayout(window.innerWidth >= DESK_FROM ? "desk" : "tablet");
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const layout: Layout = "desk";
   const canvas = CANVAS[layout];
   const k = width ? Math.min(MAX_SCALE, width / canvas.w) : 0;
 

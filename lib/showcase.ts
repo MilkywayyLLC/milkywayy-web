@@ -99,7 +99,7 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
     {
       icon: "plus",
       title: "Book media",
-      text: "A shoot, an edit or an AI avatar video, booked from one button.",
+      text: "Pick the shoot length and your edits, and see the total as you go.",
       screen: "book-media",
     },
     {
@@ -107,6 +107,12 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
       title: "Your deliveries",
       text: "Photos, reels and the 360 tour, with Download all.",
       screen: "deliveries",
+    },
+    {
+      icon: "billing",
+      title: "Billing",
+      text: "Every invoice in one place. Pay by card or bank transfer.",
+      screen: "billing",
     },
     {
       icon: "listings",
@@ -131,7 +137,7 @@ export const SHOWCASE: Record<"home" | "property" | "post" | "avatars", Showcase
     {
       icon: "bell",
       title: "Request sent",
-      text: "No payment now. We confirm the slot by email, usually within the hour.",
+      text: "We confirm the slot by email, usually within the hour. Payment follows your account's terms.",
       screen: "confirmed",
     },
     {

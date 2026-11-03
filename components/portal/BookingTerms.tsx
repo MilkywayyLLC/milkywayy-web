@@ -126,7 +126,7 @@ export function DueNow({
   if (terms.terms === "month_end")
     return (
       <div className="bkp-due" data-testid="due-now">
-        <span className="bkp-muted">Nothing to pay now: it’s on your month-end invoice.</span>
+        <span className="bkp-muted">Nothing due today: it’s on your month-end invoice.</span>
       </div>
     );
   const d = dueNow(terms.terms, estimate, terms.vat_rate);
@@ -182,7 +182,7 @@ export function DueLine({
   const text = terms.package
     ? `${terms.package.name}: ${m(terms.package.allowance_left)} and ${shootDays(terms.package.half_days_left)} left this month`
     : terms.terms === "month_end"
-      ? "Nothing due now: it goes on your month-end invoice"
+      ? "Nothing due today: it goes on your month-end invoice"
       : (() => {
           const d = dueNow(terms.terms, estimate, terms.vat_rate);
           return d.total

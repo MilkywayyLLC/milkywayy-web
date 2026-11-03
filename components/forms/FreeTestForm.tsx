@@ -99,25 +99,18 @@ export function FreeTestForm({
       </ol>
 
       <div className="stack" style={{ gap: 16 }} hidden={step !== 1}>
-        <OptionGroup legend="What do you need edited?" cards error={err("what")}>
+        <OptionGroup legend="What should we test?" cards error={err("what")}>
           <Option
             type="checkbox"
             name="what"
             value="photo"
             label="Photo edits"
-            sub="Listing and property photos"
+            sub="Up to 5 photos"
             defaultChecked
           />
-          <Option
-            type="checkbox"
-            name="what"
-            value="short"
-            label="Short-form"
-            sub="Social media reels"
-          />
-          <Option type="checkbox" name="what" value="long" label="Long-form" sub="YouTube videos" />
+          <Option type="checkbox" name="what" value="short" label="Short-form" sub="1 short reel" />
         </OptionGroup>
-        <Field label="How much per month?" error={err("volume")}>
+        <Field label="How much do you edit per month?" error={err("volume")}>
           <textarea
             name="volume"
             rows={2}

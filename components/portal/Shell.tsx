@@ -167,7 +167,7 @@ export function Shell({
                 aria-label={
                   unpaid
                     ? `${unpaid} unpaid invoice${unpaid === 1 ? "" : "s"}`
-                    : "Billing: nothing to pay"
+                    : "Billing: nothing due today"
                 }
                 data-testid="bell"
               >

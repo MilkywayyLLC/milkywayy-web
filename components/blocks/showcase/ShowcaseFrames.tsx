@@ -19,20 +19,23 @@ import { CANVAS, type Layout } from "./canvas";
 import type { ShowcaseFeature, ShowcasePhoto, ShowcaseScreen } from "../DashboardShowcase";
 
 /**
- * The dashboard preview's frames (owner, 20 Oct 2026): faithful static mocks of the client
- * portal as it is now (Book media page, client home, booking detail with deliverables) on the
- * portal's type tokens. Demo data only: a made-up client, no MW- refs, the portal's real status
- * names, prices from the rate card this page already shows, and email-only wording.
+ * The dashboard preview's frames (dark V2 portal, owner 3 Nov 2026): static mocks of the client
+ * portal as it is now, on the portal's tokens. Demo data only: a made-up client, the portal's real
+ * status names and nav, prices from the rate card.
  *
- * One markup, two layouts: "desk" draws the desktop portal on an 800×700 canvas; "phone" draws the
- * phone portal (top bar, stacked cards, bottom total bar, bottom tabs) on a 390×780 canvas. The
- * canvas is scaled to the window (never above 1.15), so text stays readable at every width.
- * Loaded on its own (next/dynamic) once the section is near the screen.
+ * One markup, two landscape layouts: "desk" draws the desktop portal with its rail; "tablet" the
+ * tablet portal with its top bar and menu. Phones get the tablet frame scaled down, never a tall
+ * phone frame. Loaded on its own (next/dynamic) once the section is near the screen.
  */
 
 const SEED = showcaseRates(propertyPricing).shoot!;
 const Photos = createContext<ShowcasePhoto[]>([]);
 const Rates = createContext<ShowcaseRates | undefined>(undefined);
+
+/** Content shoot demo prices, from the portal's rate card (rate_card: content_4h, content_short_edit,
+ *  content_long_5 per minute). Change them with the rate card. */
+const CONTENT = { h4: 900, short: 200, long5: 95 };
+const INVOICE = { number: "INV-1042", amount: 1850 };
 
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const aed = (n: number, cur = "AED") =>
@@ -52,7 +55,6 @@ export function ShowcaseFrames({
   rates?: ShowcaseRates;
 }) {
   const { w, h } = CANVAS[layout];
-  const who = persona(features);
   return (
     <div className="dsh-canvas" inert style={{ width: w, height: h }}>
       <Photos.Provider value={photos}>
@@ -61,7 +63,7 @@ export function ShowcaseFrames({
             <div key={f.title} className={i === active ? "dsh-frame on" : "dsh-frame"}>
               <Fit key={layout} layout={layout}>
                 <div className="scm" data-l={layout}>
-                  <Screen kind={f.screen} who={who} />
+                  <Screen kind={f.screen} />
                 </div>
               </Fit>
             </div>
@@ -100,85 +102,60 @@ function Fit({ layout, children }: { layout: Layout; children: ReactNode }) {
   );
 }
 
-/* ---------------- who is signed in: the tabs follow the services the page is about ---------------- */
+/* ---------------- the portal's nav ---------------- */
 
-type Who = "all" | "editing" | "avatars";
-function persona(features: ShowcaseFeature[]): Who {
-  if (features.every((f) => f.screen.startsWith("edit-"))) return "editing";
-  if (features.every((f) => f.screen.startsWith("avatar-"))) return "avatars";
-  return "all";
-}
-
-const TABS: Record<Who, [string, string][]> = {
-  all: [
-    ["home", "Home"],
-    ["shoots", "Shoots"],
-    ["editing", "Editing"],
-    ["avatars", "Avatars"],
-    ["listings", "Listings"],
-    ["chat", "Inquiries"],
-    ["billing", "Billing"],
-  ],
-  editing: [
-    ["home", "Home"],
-    ["editing", "Editing"],
-    ["chat", "Inquiries"],
-    ["billing", "Billing"],
-  ],
-  avatars: [
-    ["home", "Home"],
-    ["avatars", "Avatars"],
-    ["chat", "Inquiries"],
-    ["billing", "Billing"],
-  ],
-};
+const TABS: [string, string][] = [
+  ["home", "Home"],
+  ["shoots", "Shoots"],
+  ["editing", "Editing"],
+  ["avatars", "Avatars"],
+  ["listings", "Listings"],
+  ["billing", "Billing"],
+  ["team", "People"],
+  ["settings", "Settings"],
+];
 
 function Shell({
-  who,
   tab,
   children,
-  bar,
   over,
 }: {
-  who: Who;
   tab: string;
   children: ReactNode;
-  /** Phones: the booking page's bottom total bar. */
-  bar?: ReactNode;
-  /** A modal (desktop) or sheet (phone) over the page. */
+  /** A modal over the page. */
   over?: ReactNode;
 }) {
-  const tabs = TABS[who];
   return (
     <div className="s-shell">
       <aside className="s-rail">
         <span className="s-logo">
-          <BrandLogo tone="light" />
+          <BrandLogo tone="dark" />
         </span>
         <nav className="s-nav">
-          {tabs.map(([icon, name]) => (
+          {TABS.map(([icon, name]) => (
             <span key={name} aria-current={name === tab ? "page" : undefined}>
               <Icon name={icon} size={18} /> {name}
             </span>
           ))}
-          <i className="s-sep" />
-          {who === "all" && (
-            <span>
-              <Icon name="contacts" size={18} /> Contacts
-            </span>
-          )}
-          <span>
-            <Icon name="settings" size={18} /> Settings
-          </span>
         </nav>
+        <span className="s-plan">
+          <span className="s-eb">Pay per shoot</span>
+          <span className="s-small">End of month</span>
+        </span>
       </aside>
       <div className="s-main">
         <header className="s-top">
           <span className="s-logo">
-            <BrandLogo tone="light" />
+            <span className="s-menu">
+              <Icon name="menu" size={18} />
+            </span>
+            <BrandLogo tone="dark" />
           </span>
           <span className="s-top-r">
             <span className="s-hello">Hello, Sara</span>
+            <span className="s-acct">
+              <Icon name="bell" size={18} />
+            </span>
             <span className="s-acct">
               <Icon name="person" size={18} />
             </span>
@@ -188,19 +165,6 @@ function Shell({
           </span>
         </header>
         <div className="s-content">{children}</div>
-        {bar}
-        <nav className="s-tabs">
-          {tabs.slice(0, 4).map(([icon, name]) => (
-            <span key={name} aria-current={name === tab ? "page" : undefined}>
-              <Icon name={icon} size={18} />
-              {name}
-            </span>
-          ))}
-          <span>
-            <Icon name="more" size={18} />
-            More
-          </span>
-        </nav>
       </div>
       {over}
     </div>
@@ -211,19 +175,13 @@ function Shell({
 
 function Steps({ steps, at }: { steps: readonly string[]; at: number }) {
   return (
-    <>
-      <ol className="s-steps" style={{ "--n": steps.length } as CSSProperties}>
-        {steps.map((s, i) => (
-          <li key={s} className={i < at ? "m-done" : i === at ? "m-now" : undefined}>
-            {s}
-          </li>
-        ))}
-      </ol>
-      <span className="s-eb s-steps-m">
-        Step {at + 1} of {steps.length}: {steps[at]}
-        {at + 1 < steps.length ? ` · Next: ${steps[at + 1]}` : ""}
-      </span>
-    </>
+    <ol className="s-steps" style={{ "--n": steps.length } as CSSProperties}>
+      {steps.map((s, i) => (
+        <li key={s} className={i < at ? "m-done" : i === at ? "m-now" : undefined}>
+          {s}
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -298,41 +256,26 @@ function Opt({
   );
 }
 
-/** The Book media page: heading, the step, the form, and "Your booking" (or the phone's bar). */
+/** The Book media page: heading, the step, the form, and "Your booking". */
 function BookPage({
-  who,
   step,
   heading,
   panelTitle = "Your booking",
   lines,
   total,
-  barText,
   primary = "Next",
   children,
 }: {
-  who: Who;
   step?: string;
   heading: string;
   panelTitle?: string;
   lines: { label: string; sub?: string; amount: string }[];
   total?: string;
-  barText: string;
   primary?: string;
   children: ReactNode;
 }) {
   return (
-    <Shell
-      who={who}
-      tab="Home"
-      bar={
-        <div className="s-totalbar">
-          <b className="s-bar-t">
-            {barText} <Icon name="chevron" size={14} />
-          </b>
-          <span className="s-btn m-p">{primary}</span>
-        </div>
-      }
-    >
+    <Shell tab="Home">
       <span className="s-back">
         <Icon name="back" size={14} /> Back
       </span>
@@ -381,36 +324,50 @@ function useRates() {
   return { ...s, edit: r?.edit };
 }
 
-/* ---------------- Home ---------------- */
+/* ---------------- Home: due card, stats, active shoots ---------------- */
 
-function Overview({ who }: { who: Who }) {
+function Overview() {
   const rows = [
     {
+      ref: "MW-1204",
       title: "2 Bed apartment, Marina Gate 1",
-      meta: "Thu 9 Oct · Photography, Short-form reel",
+      meta: "Thu 5 Nov · Photography, Short-form reel",
       at: 4,
     },
-    { title: "Villa, Arabian Ranches 2", meta: "Sat 25 Oct · Photography, 360° tour", at: 1 },
+    {
+      ref: "MW-1211",
+      title: "Villa, Arabian Ranches 2",
+      meta: "Sat 14 Nov · Photography, 360° tour",
+      at: 1,
+    },
   ];
   return (
-    <Shell who={who} tab="Home">
+    <Shell tab="Home">
       <div className="s-stack">
-        <span className="s-eb">Mon 20 Oct</span>
-        <span className="s-h1">Home</span>
+        <span className="s-eb">Tue 10 Nov</span>
+        <span className="s-h1">Hello, Sara</span>
       </div>
-      <section className="s-card">
-        <span className="s-h2">Needs your attention</span>
-        <div className="s-attn">
-          <span className="s-eb">Shoots</span>
-          <span className="s-strong">Your files are ready</span>
-          <span className="s-small">
-            Marina Gate 1. Download, then approve or ask for a revision.
-          </span>
-        </div>
+      <section className="s-due">
+        <b className="s-strong">1 invoice due · {aed(INVOICE.amount)}</b>
+        <span className="s-actions">
+          <span className="s-btn m-p">Pay</span>
+          <span className="s-btn">Open Billing</span>
+        </span>
       </section>
-      <span className="s-h2">Your work</span>
+      <div className="s-stats">
+        {[
+          ["Next shoot", "14 Nov"],
+          ["In editing", "2"],
+          ["Ready", "1"],
+        ].map(([k, v]) => (
+          <div key={k} className="s-stat">
+            <span className="s-eb">{k}</span>
+            <b>{v}</b>
+          </div>
+        ))}
+      </div>
       <div className="s-row">
-        <span className="s-eb">Property shoots · 2 active</span>
+        <span className="s-eb">Active shoots · 2</span>
         <span className="s-link">View all</span>
       </div>
       {rows.map((r) => (
@@ -418,12 +375,11 @@ function Overview({ who }: { who: Who }) {
           <div className="s-row">
             <span className="s-stack">
               <span className="s-strong">{r.title}</span>
-              <span className="s-small">{r.meta}</span>
+              <span className="s-small">
+                {r.ref} · {r.meta}
+              </span>
             </span>
-            <span className="s-stack" style={{ alignItems: "flex-end" }}>
-              <span className="s-strong">{SHOOT_STEPS[r.at]}</span>
-              <span className="s-link">Open →</span>
-            </span>
+            <span className="s-strong">{SHOOT_STEPS[r.at]}</span>
           </div>
           <Steps steps={SHOOT_STEPS} at={r.at} />
         </div>
@@ -432,34 +388,116 @@ function Overview({ who }: { who: Who }) {
   );
 }
 
-/* ---------------- Book media: what are you booking? ---------------- */
+/* ---------------- Book media: content shoot ---------------- */
 
-function BookChoose({ who }: { who: Who }) {
-  const r = useRates();
-  // Simplified for the preview (owner, 20 Oct 2026): icon, title, one line, "from".
-  const choices = [
-    { icon: "building", title: "Property shoot", line: "Photos, 360° tour and video", from: r.from },
-    { icon: "video", title: "Content shoot", line: "Reels and YouTube videos", from: r.contentFrom },
-    { icon: "editing", title: "Edit only", line: "You send the files, we edit", from: null },
-  ];
+function BookContent() {
+  const c = CONTENT;
+  const shorts = 8;
+  const long = c.long5 * 5;
+  const total = c.h4 + shorts * c.short + long;
   return (
-    <Shell who={who} tab="Home">
-      <span className="s-back">
-        <Icon name="back" size={14} /> Back to dashboard
-      </span>
-      <span className="s-h1">Book media</span>
-      <span className="s-h2">What are you booking?</span>
-      <div className="s-choices">
-        {choices.map((c) => (
-          <div key={c.title} className="s-choice">
-            <Icon name={c.icon} size={22} />
-            <span className="s-h2" style={{ fontSize: 16 }}>
-              {c.title}
-            </span>
-            <span className="s-small">{c.line}</span>
-            <span className="s-num">{c.from != null ? `from ${aed(c.from)}` : "\u00a0"}</span>
-          </div>
-        ))}
+    <BookPage
+      step="Step 1 of 3"
+      heading="Content shoot"
+      lines={[
+        { label: "Content shoot", sub: "4 hours, raw files", amount: aed(c.h4) },
+        { label: "Short-form edits", sub: `${shorts} videos`, amount: aed(shorts * c.short) },
+        { label: "Long-form edit", sub: "1 video, 5 min", amount: aed(long) },
+      ]}
+      total={aed(total)}
+    >
+      <div className="s-card">
+        <div className="s-row">
+          <span className="s-strong">Shoot length</span>
+          <span className="s-num">4 hours · {aed(c.h4)}</span>
+        </div>
+        <span className="s-small">Shoot only: you get the raw files. Add edits below.</span>
+        <span className="s-range" style={{ "--pct": "50%" } as CSSProperties}>
+          <i />
+        </span>
+        <span className="s-ticks">
+          <span>2 h</span>
+          <b>4 h</b>
+          <span>8 h</span>
+        </span>
+      </div>
+      <div className="s-opts">
+        <span className="s-opts-h">Edits</span>
+        <div className="s-opt" style={{ gridTemplateColumns: "minmax(0, 1fr) auto" }}>
+          <span className="s-stack">
+            <span>Short-form edit</span>
+            <span className="s-small">{aed(c.short)} each</span>
+          </span>
+          <span className="s-step">
+            <i>−</i> {shorts} <i>+</i>
+          </span>
+        </div>
+        <div className="s-opt" style={{ gridTemplateColumns: "minmax(0, 1fr) auto" }}>
+          <span className="s-stack">
+            <span>Long-form edit</span>
+            <span className="s-small">5 min · {aed(long)}</span>
+          </span>
+          <span className="s-step">
+            <i>−</i> 1 <i>+</i>
+          </span>
+        </div>
+      </div>
+    </BookPage>
+  );
+}
+
+/* ---------------- Billing ---------------- */
+
+function Billing() {
+  return (
+    <Shell tab="Billing">
+      <div className="s-stack">
+        <span className="s-h1">Billing</span>
+        <span className="s-small">End of month</span>
+      </div>
+      <section className="s-due">
+        <span className="s-stack">
+          <span className="s-eb">Due now</span>
+          <b className="s-strong">{aed(INVOICE.amount)}</b>
+        </span>
+        <span className="s-stack" style={{ alignItems: "flex-end" }}>
+          <span className="s-eb">Unbilled work this month</span>
+          <b className="s-strong">{aed(1250)}</b>
+          <span className="s-small">Invoice scheduled for 30 Nov</span>
+        </span>
+      </section>
+      <span className="s-eb">Due</span>
+      <div className="s-inv">
+        <div className="s-row">
+          <span className="s-stack">
+            <span className="s-strong">{INVOICE.number}</span>
+            <span className="s-small">MW-1204 · October 2026 · Due 30 Nov</span>
+          </span>
+          <span className="s-row" style={{ gap: 12 }}>
+            <span className="s-num">{aed(INVOICE.amount)}</span>
+            <span className="s-pill m-gold">Due</span>
+          </span>
+        </div>
+        <div className="s-actions">
+          <span className="s-btn m-p">Pay by card</span>
+          <span className="s-btn">Bank transfer</span>
+          <span className="s-btn">
+            <Icon name="download" size={16} /> PDF
+          </span>
+        </div>
+      </div>
+      <span className="s-eb">Paid</span>
+      <div className="s-inv">
+        <div className="s-row">
+          <span className="s-stack">
+            <span className="s-strong">INV-1029</span>
+            <span className="s-small">MW-1188 · September 2026 · by bank transfer</span>
+          </span>
+          <span className="s-row" style={{ gap: 12 }}>
+            <span className="s-num">{aed(2400)}</span>
+            <span className="s-pill">Paid</span>
+          </span>
+        </div>
       </div>
     </Shell>
   );
@@ -467,12 +505,11 @@ function BookChoose({ who }: { who: Who }) {
 
 /* ---------------- Book media: property shoot ---------------- */
 
-function BookProperty({ who }: { who: Who }) {
+function BookProperty() {
   const r = useRates();
   const total = r.photo + r.twilight + r.reel;
   return (
     <BookPage
-      who={who}
       step="Step 1 of 3"
       heading="Property shoot"
       lines={[
@@ -481,7 +518,6 @@ function BookProperty({ who }: { who: Who }) {
         { label: "Short-form reel", sub: "1 video", amount: aed(r.reel) },
       ]}
       total={aed(total)}
-      barText={aed(total)}
     >
       <span className="s-label">Property type</span>
       <Seg items={["Apartment", "Villa", "Commercial"]} on="Apartment" />
@@ -524,14 +560,13 @@ function BookProperty({ who }: { who: Who }) {
 
 /* ---------------- Book media: when & where ---------------- */
 
-function BookWhere({ who }: { who: Who }) {
+function BookWhere() {
   const r = useRates();
   const total = r.photo + r.twilight + r.reel;
   // October 2026 starts on a Thursday; Monday-first grid. Today is the 20th, the 22nd is picked.
   const days = [...Array(3).fill(0), ...Array.from({ length: 31 }, (_, i) => i + 1)].slice(0, 35);
   return (
     <BookPage
-      who={who}
       step="Step 2 of 3"
       heading="When & where"
       lines={[
@@ -541,7 +576,6 @@ function BookWhere({ who }: { who: Who }) {
         { label: "Thu 22 Oct", sub: "Start 10:00", amount: "" },
       ]}
       total={aed(total)}
-      barText={aed(total)}
     >
       <div className="s-two m-stack">
         <div className="s-field">
@@ -601,9 +635,9 @@ function BookWhere({ who }: { who: Who }) {
 
 /* ---------------- Booking requested ---------------- */
 
-function Confirmed({ who }: { who: Who }) {
+function Confirmed() {
   return (
-    <Shell who={who} tab="Home">
+    <Shell tab="Home">
       <div className="s-done">
         <span className="s-done-ic">
           <Icon name="check" size={22} />
@@ -611,8 +645,8 @@ function Confirmed({ who }: { who: Who }) {
         <span className="s-eb">Requested</span>
         <span className="s-h2">Booking requested</span>
         <p className="s-small">
-          Thu 22 Oct, start 10:00 · Marina Gate 1. No payment now. We&apos;ll confirm your slot by
-          email.
+          Thu 22 Oct, start 10:00 · Marina Gate 1. We&apos;ll confirm your slot by email. Payment
+          follows your account&apos;s terms.
         </p>
         <div className="s-actions" style={{ justifyContent: "center" }}>
           <span className="s-btn m-p">Track booking</span>
@@ -625,9 +659,9 @@ function Confirmed({ who }: { who: Who }) {
 
 /* ---------------- Booking detail: delivered ---------------- */
 
-function Deliveries({ who }: { who: Who }) {
+function Deliveries() {
   return (
-    <Shell who={who} tab="Shoots">
+    <Shell tab="Shoots">
       <span className="s-back">
         <Icon name="back" size={14} /> Shoots
       </span>
@@ -688,14 +722,12 @@ function Share() {
   return (
     <div className="s-lp">
       <div className="s-lp-top">
-        <BrandLogo tone="light" />
+        <BrandLogo tone="dark" />
         <span className="s-eb">Shared by Demo Realty</span>
       </div>
       <div className="s-mosaic">
         {[0, 1, 2, 3, 4].map((i) => (
-          <Ph key={i} i={i}>
-            {i === 0 && <span className="s-count phone-only">1 / 24</span>}
-          </Ph>
+          <Ph key={i} i={i} />
         ))}
       </div>
       <div className="s-lp-cols">
@@ -737,21 +769,13 @@ function Share() {
           </span>
         </aside>
       </div>
-      <div className="s-callbar">
-        <span className="s-btn">
-          <Icon name="phone" size={16} /> Call
-        </span>
-        <span className="s-btn m-p">
-          <Icon name="whatsapp" size={16} /> WhatsApp
-        </span>
-      </div>
     </div>
   );
 }
 
 /* ---------------- Editing ---------------- */
 
-function EditRequest({ who }: { who: Who }) {
+function EditRequest() {
   const { edit: e, delivery: d } = useRates();
   const delivery = cap(d.short);
   const cur = e?.currency ?? "USD";
@@ -776,7 +800,6 @@ function EditRequest({ who }: { who: Who }) {
   ];
   return (
     <BookPage
-      who={who}
       heading="Edit only"
       panelTitle="Your request"
       lines={[
@@ -787,7 +810,6 @@ function EditRequest({ who }: { who: Who }) {
         },
         { label: "Delivery", amount: delivery },
       ]}
-      barText="Short-form"
       primary="Send request"
     >
       <div className="s-cards">
@@ -852,9 +874,9 @@ function ProjectHead({
   );
 }
 
-function EditStatus({ who }: { who: Who }) {
+function EditStatus() {
   return (
-    <Shell who={who} tab="Editing">
+    <Shell tab="Editing">
       <ProjectHead
         tab="Editing"
         eb="Short-form · 6 reels"
@@ -895,9 +917,9 @@ function EditStatus({ who }: { who: Who }) {
   );
 }
 
-function EditDelivered({ who }: { who: Who }) {
+function EditDelivered() {
   return (
-    <Shell who={who} tab="Editing">
+    <Shell tab="Editing">
       <ProjectHead
         tab="Editing"
         eb="Short-form · 6 reels"
@@ -939,10 +961,9 @@ function EditDelivered({ who }: { who: Who }) {
 
 /* ---------------- AI avatars ---------------- */
 
-function AvatarRequest({ who }: { who: Who }) {
+function AvatarRequest() {
   return (
     <Shell
-      who={who}
       tab="Avatars"
       over={
         <div className="s-modal-bg">
@@ -1006,9 +1027,9 @@ function AvatarList() {
   );
 }
 
-function AvatarProduction({ who }: { who: Who }) {
+function AvatarProduction() {
   return (
-    <Shell who={who} tab="Avatars">
+    <Shell tab="Avatars">
       <ProjectHead
         tab="Avatars"
         eb="AI avatar · Long form · 1 min"
@@ -1046,9 +1067,9 @@ function AvatarProduction({ who }: { who: Who }) {
   );
 }
 
-function AvatarDelivered({ who }: { who: Who }) {
+function AvatarDelivered() {
   return (
-    <Shell who={who} tab="Avatars">
+    <Shell tab="Avatars">
       <ProjectHead
         tab="Avatars"
         eb="AI avatar · Long form · 1 min"
@@ -1081,33 +1102,35 @@ function AvatarDelivered({ who }: { who: Who }) {
   );
 }
 
-function Screen({ kind, who }: { kind: ShowcaseScreen; who: Who }) {
+function Screen({ kind }: { kind: ShowcaseScreen }) {
   switch (kind) {
     case "overview":
-      return <Overview who={who} />;
+      return <Overview />;
     case "book-media":
-      return <BookChoose who={who} />;
+      return <BookContent />;
     case "book-property":
-      return <BookProperty who={who} />;
+      return <BookProperty />;
     case "book-where":
-      return <BookWhere who={who} />;
+      return <BookWhere />;
     case "confirmed":
-      return <Confirmed who={who} />;
+      return <Confirmed />;
     case "deliveries":
-      return <Deliveries who={who} />;
+      return <Deliveries />;
+    case "billing":
+      return <Billing />;
     case "share":
       return <Share />;
     case "edit-request":
-      return <EditRequest who={who} />;
+      return <EditRequest />;
     case "edit-status":
-      return <EditStatus who={who} />;
+      return <EditStatus />;
     case "edit-delivered":
-      return <EditDelivered who={who} />;
+      return <EditDelivered />;
     case "avatar-request":
-      return <AvatarRequest who={who} />;
+      return <AvatarRequest />;
     case "avatar-production":
-      return <AvatarProduction who={who} />;
+      return <AvatarProduction />;
     case "avatar-delivered":
-      return <AvatarDelivered who={who} />;
+      return <AvatarDelivered />;
   }
 }

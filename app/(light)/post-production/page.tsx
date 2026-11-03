@@ -169,8 +169,8 @@ export default async function PostProductionPage() {
       kicker: "Long-form",
       title: "YouTube and walkthroughs",
       text: "Tours, launches, vlogs and explainers, cut to hold attention with b-roll and graphics.",
-      cta: "Free test",
-      href: "#free-test",
+      cta: "See rates",
+      href: "#rates",
       media: media("long-form", 2),
     },
     {
@@ -200,6 +200,14 @@ export default async function PostProductionPage() {
     },
   ];
 
+  // "See our work": the before/afters when there are any, else the work section (never a dead link).
+  const workHref =
+    pairs.length > 0
+      ? "#before-after"
+      : stats.length > 0 || work.length > 0
+        ? "#our-work"
+        : "#services";
+
   return (
     <>
       <PageLd page="post-production" />
@@ -223,7 +231,7 @@ export default async function PostProductionPage() {
             </ul>
             <Ctas>
               <ButtonLink href="#free-test">Book a free test edit</ButtonLink>
-              <ButtonLink href="#before-after" variant="ghost">
+              <ButtonLink href={workHref} variant="ghost">
                 See our work
               </ButtonLink>
             </Ctas>
@@ -256,7 +264,7 @@ export default async function PostProductionPage() {
         </div>
       </section>
 
-      <section className="sec" aria-labelledby="services-title">
+      <section className="sec" id="services" aria-labelledby="services-title">
         <div className="w">
           <SectionHead
             id="services-title"
@@ -294,7 +302,11 @@ export default async function PostProductionPage() {
             title="Price per edit."
             aside={<p className="lede">{other.postProduction.note}</p>}
           />
-          <RateCards rates={other.postProduction.rates} snap prices={false} />
+          <RateCards rates={other.postProduction.rates} />
+          <p className="fine" style={{ marginTop: 16 }}>
+            Billed in your currency · pay by card or bank transfer · delivery times in Dubai time
+            (GST, UTC+4)
+          </p>
           <Ctas style={{ marginTop: 28 }}>
             <ButtonLink href="#free-test">Get a custom quote</ButtonLink>
           </Ctas>
@@ -362,7 +374,7 @@ export default async function PostProductionPage() {
         actions={
           <>
             <ButtonLink href="#free-test">Book a free test</ButtonLink>
-            <ButtonLink href="#before-after" variant="ghost">
+            <ButtonLink href={workHref} variant="ghost">
               See our work
             </ButtonLink>
           </>

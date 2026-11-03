@@ -313,19 +313,24 @@
     white-space: nowrap;
   }
   @media (max-width: 559px) {
+    /* Phones: the title, then the MW ref and the time, so similar addresses stay apart. */
     .pt-act-compact :is(a, .pt-act-row) {
-      grid-template-columns: 24px minmax(0, 1fr);
+      grid-template-columns: 24px minmax(0, 1fr) auto;
       row-gap: 0;
     }
     .pt-act-compact .pt-act-ic {
       grid-row: span 2;
       align-self: start;
     }
+    .pt-act-compact .pt-act-t {
+      grid-column: 2 / -1;
+    }
     .pt-act-compact .pt-act-ref {
-      display: none;
+      display: block;
+      grid-column: 2;
     }
     .pt-act-compact time {
-      grid-column: 2;
+      grid-column: 3;
     }
   }
 }

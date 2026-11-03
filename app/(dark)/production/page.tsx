@@ -157,9 +157,13 @@ export default async function ProductionPage() {
         <div className="w">
           <PackagesBand
             chips={other.production.chips}
+            example="e.g. 20 reels + 4 long videos a month ≈ AED 10,000"
             actions={
               <>
-                <ButtonLink href="#get-your-package">Get your package</ButtonLink>
+                <ButtonLink href="/portal/billing">Build a monthly package</ButtonLink>
+                <ButtonLink href="#get-your-package" variant="ghost">
+                  Get your package
+                </ButtonLink>
                 <ButtonLink href={whatsapp} variant="ghost">
                   WhatsApp us
                 </ButtonLink>

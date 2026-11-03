@@ -1,5 +1,6 @@
 "use client";
 
+import { TourFrame } from "./TourFrame";
 import dynamic from "next/dynamic";
 import { getImageProps } from "next/image";
 import { useEffect, useRef } from "react";
@@ -107,11 +108,12 @@ function Player({
       ) : (
         <>
           <div className="mv-stage" style={{ aspectRatio: "16 / 9" }} data-ratio="16 / 9">
-            <iframe
+            <TourFrame
+              className="tour-fill"
               src={play.src}
+              href={play.href}
               title={`${play.title}, 360 tour`}
               allow="fullscreen; xr-spatial-tracking; gyroscope; accelerometer; magnetometer"
-              allowFullScreen
             />
           </div>
           <a className="mv-out" href={play.href} target="_blank" rel="noopener noreferrer">
