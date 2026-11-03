@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PrivacyPage() {
   const site = await getSiteSettings();
   return (
-    <LegalPage title="Privacy" updated="2 October 2026">
+    <LegalPage title="Privacy" updated="3 November 2026">
       <PageLd page="privacy" />
       <p>
         This notice explains what {site.company} ({site.addressLine}, {site.licence} licence) does
