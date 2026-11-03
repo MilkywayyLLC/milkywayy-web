@@ -304,8 +304,8 @@ export default async function PostProductionPage() {
           />
           <RateCards rates={other.postProduction.rates} />
           <p className="fine" style={{ marginTop: 16 }}>
-            Billed in your currency · pay by card or bank transfer · delivery times in Dubai time
-            (GST, UTC+4)
+            Billed in USD or AED · pay by card or bank transfer · delivery times in Dubai time (GST,
+            UTC+4)
           </p>
           <Ctas style={{ marginTop: 28 }}>
             <ButtonLink href="#free-test">Get a custom quote</ButtonLink>

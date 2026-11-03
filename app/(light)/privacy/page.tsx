@@ -29,7 +29,9 @@ export default async function PrivacyPage() {
         </li>
         <li>For a free test edit: your website or a link to your work, and your country.</li>
         <li>
-          With your consent only: analytics about how the site is used (pages visited, device type).
+          Analytics about how the site is used (pages visited, device type). In the EEA, UK and
+          Switzerland, only with your consent; elsewhere by default, and you can turn it off in
+          Cookie settings.
         </li>
       </ul>
       <h2>Why we use it</h2>

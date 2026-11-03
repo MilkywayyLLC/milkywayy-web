@@ -28,8 +28,8 @@ export const SERVICE_LABELS: Record<string, string> = {
   "post-production": "Post-production",
   "ai-avatars": "AI avatars",
 };
-/** Shown on the contact and lead forms. The portal's booking hours, closed Sundays. */
-export const WORKING_HOURS = "Mon–Sat, 8:00–18:00 Dubai time (GST, UTC+4)";
+/** Shown on the contact and lead forms (owner, 3 Nov 2026). */
+export const WORKING_HOURS = "Mon–Sat, 9:00–19:00 Dubai time (GST)";
 export const AVATAR_USES = ["Real estate", "Clinic", "Personal brand", "Other"] as const;
 export const EDIT_KINDS: Record<string, string> = {
   photo: "Photo edits",

@@ -731,6 +731,8 @@ Style tokens (booking page, `.bkp` in portal.css; reuse these, nothing else):
 - **"See our work"** goes to the before/afters when there are any, else the work section. Production has no before/after pairs today.
 - **Free test:** up to 5 photos or 1 short reel, long-form not included. The server still accepts `long`, so an old open form doesn't fail.
 - **Delivery gate:** only Completed is blocked while a deliverable is Editing. Delivered stays allowed so photos can go before reels. The 7-day auto-complete skips those projects. Existing rows aren't changed.
-- **Working hours** (Mon–Sat, 8:00–18:00) come from the portal's booking hours and closed Sundays, in `lib/leads/rules.ts`.
-- **Geo:** an unknown country now asks for cookie consent first. Privacy text isn't changed until the owner approves it.
+- **Working hours:** Mon–Sat, 9:00–19:00 Dubai time (owner), in `lib/leads/rules.ts`. The portal's booking wheel keeps its own 08–18 window.
+- **Geo and privacy:** an unknown country now asks for cookie consent first. The owner approved the privacy line: consent first in the EEA, UK and Switzerland, on by default elsewhere.
+- **Billing line:** "Billed in USD or AED", because accounts only support those two currencies.
+- **Free test** keeps email required (owner): the test and the call invite go there. MW-1777 and MW-1779 are test data.
 
